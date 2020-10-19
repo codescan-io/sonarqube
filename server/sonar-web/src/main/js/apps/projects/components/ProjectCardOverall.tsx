@@ -99,7 +99,7 @@ export default class ProjectCardOverall extends React.PureComponent<Props> {
             <div className="project-card-not-analyzed">
               <span className="note">{translate('projects.not_analyzed')}</span>
               {isLoggedIn(currentUser) && (
-                <Link className="button spacer-left" to={getProjectUrl(project.key)}>
+                <Link className="button spacer-left" to={"/project/extension/developer/project?id=" + project.key}>
                   {translate('projects.configure_analysis')}
                 </Link>
               )}
