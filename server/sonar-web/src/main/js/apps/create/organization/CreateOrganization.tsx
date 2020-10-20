@@ -215,10 +215,8 @@ export class CreateOrganization extends React.PureComponent<Props & WithRouterPr
   };
 
   fetchSubscriptionPlans = () => {
-    return getSubscriptionPlans().then(subscriptionPlans => {
-      if (this.mounted) {
-        this.setState({ subscriptionPlans });
-      }
+    this.setState({
+      subscriptionPlans: []
     });
   };
 
