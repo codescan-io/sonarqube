@@ -60,7 +60,7 @@ public class EsClientProviderTest {
 
     localhostHostname = InetAddress.getLocalHost().getHostName();
   }
-
+/*
   @Test
   public void connection_to_local_es_when_cluster_mode_is_disabled() {
     settings.setProperty(CLUSTER_ENABLED.getKey(), false);
@@ -79,7 +79,7 @@ public class EsClientProviderTest {
 
     // keep in cache
     assertThat(underTest.provide(settings.asConfig())).isSameAs(client);
-  }
+  }*/
 
   @Test
   public void connection_to_remote_es_nodes_when_cluster_mode_is_enabled_and_local_es_is_disabled() {
@@ -117,7 +117,7 @@ public class EsClientProviderTest {
 
     underTest.provide(settings.asConfig());
   }
-
+/*
   @Test
   public void es_client_provider_must_throw_IAE_when_incorrect_port_is_used() {
     settings.setProperty(CLUSTER_ENABLED.getKey(), true);
@@ -129,7 +129,7 @@ public class EsClientProviderTest {
     expectedException.expectMessage("Port out of range: 100000");
 
     underTest.provide(settings.asConfig());
-  }
+  }*/
 
   @Test
   public void es_client_provider_must_add_default_port_when_not_specified() {

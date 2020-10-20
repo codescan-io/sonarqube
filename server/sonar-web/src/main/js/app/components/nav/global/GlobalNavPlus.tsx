@@ -32,6 +32,7 @@ import { AlmKeys, AlmSettingsInstance } from '../../../../types/alm-settings';
 import { ComponentQualifier } from '../../../../types/component';
 import CreateApplicationForm from '../../extensions/CreateApplicationForm';
 import GlobalNavPlusMenu from './GlobalNavPlusMenu';
+import { getBaseUrl } from '../../../../helpers/urls';
 
 interface Props {
   appState: Pick<T.AppState, 'branchesEnabled' | 'qualifiers'>;
