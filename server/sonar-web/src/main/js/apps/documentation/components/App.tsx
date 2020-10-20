@@ -93,7 +93,7 @@ export default class App extends React.PureComponent<Props> {
                       weight={10}
                     />
 
-                    <Link to="/documentation/">
+                    <Link target="_blank" to="http://docs.codescan.io/">
                       <h1>{translate('documentation.page')}</h1>
                     </Link>
                   </div>
