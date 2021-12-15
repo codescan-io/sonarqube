@@ -241,5 +241,3 @@ const mapStateToProps = (state: Store) => {
 };
 
 export default connect(mapStateToProps)(EmbedDocsPopup);
-
-
