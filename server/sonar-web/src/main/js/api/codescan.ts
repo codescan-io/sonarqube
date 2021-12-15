@@ -60,9 +60,8 @@ export function getApiKeyForZoho(data: {
   loginName: string;
   fullName: string;
   utype: string;
-  remoteauthkey: string;
 }): Promise<string> {
-  return postJSON('/_codescan/getApiKeyForZoho', data)
+  return postJSON('/_codescan/zoho/apiKey', data)
     .catch(throwGlobalError);
 }
 
