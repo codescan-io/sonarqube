@@ -127,7 +127,7 @@ public final class RuleParamType {
       String values = StringUtils.substringBetween(s, "[", "]");
       return multipleListOfValues(StringUtils.split(values, ','));
     }
-    if("KEY_VALUE_MAP".equals(s)){
+    if ("KEY_VALUE_MAP".equals(s)) {
       return KEY_VALUE_MAP;
     }
 
