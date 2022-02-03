@@ -113,7 +113,7 @@ export default class OrganizationKeyInput extends React.PureComponent<Props, Sta
         label={translate('onboarding.create_organization.organization_name')}
         required={true}>
         <div className="display-inline-flex-baseline">
-          <span className="little-spacer-right min-width-fit-content">
+          <span className="little-spacer-right nowrap">
             {getHostUrl().replace(/https*:\/\//, '') + '/organizations/'}
           </span>
           <input
