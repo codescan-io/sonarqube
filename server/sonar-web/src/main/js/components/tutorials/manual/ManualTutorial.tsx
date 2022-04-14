@@ -55,8 +55,7 @@ export default class ManualTutorial extends React.PureComponent<Props, State> {
         <div className="page-header big-spacer-bottom">
           <h1 className="page-title">{translate('onboarding.project_analysis.header')}</h1>
           <p className="page-description">
-            <InstanceMessage message={translate('onboarding.project_analysis.description')} />
-            <p>Run analysis on <a href={getHostUrl() + '/project/extension/developer/project?id=' + projectKey}>Project Analysis</a> Page. </p>
+            <p>{translate('layout.must_be_configured')} Run analysis on <a href={getHostUrl() + '/project/extension/developer/project?id=' + projectKey}>Project Analysis</a> Page. </p>
           </p>
         </div>
       </>
