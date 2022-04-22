@@ -25,7 +25,6 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -84,7 +83,6 @@ public class OrganizationValidationImpl implements OrganizationValidation {
 
   private static void checkUrlValidation(@Nullable String value) {
     if (StringUtils.isNotEmpty(value)) {
-      Pattern URL_PATTERN = Pattern.compile(URL_REGEX);
       Matcher matcher = URL_PATTERN.matcher(value);
       checkArgument(matcher.matches(), "Url must be valid");
     }
