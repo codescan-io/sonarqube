@@ -29,6 +29,7 @@ public interface OrganizationValidation {
   int NAME_MAX_LENGTH = 255;
   int DESCRIPTION_MAX_LENGTH = 256;
   int URL_MAX_LENGTH = 256;
+  String URL_REGEX = "((http|https)://)(www.)?[a-zA-Z0-9@:%._\\+~#?&-//=]{1,256}";
 
   /**
    * Ensures the specified argument is a valid key by failing with an exception if it is not so.
