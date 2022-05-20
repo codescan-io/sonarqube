@@ -24,6 +24,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static org.sonar.application.config.SonarQubeVersionHelper.getSonarqubeVersion;
 import static org.sonar.process.ProcessProperties.Property.CLUSTER_NAME;
 
+import ch.qos.logback.classic.LoggerContext;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -62,7 +63,8 @@ public class App {
         AppSettings settings = settingsLoader.load();
         // order is important - logging must be configured before any other components (AppFileSystem, ...)
         AppLogging logging = new AppLogging(settings);
-        logging.configure();
+        LoggerContext context = logging.configure();
+        context.putProperty("host", System.getenv("DD_HOST"));
         AppFileSystem fileSystem = new AppFileSystem(settings);
         checkJavaVersion();
 
