@@ -62,6 +62,7 @@ import systemRoutes from '../../apps/system/routes';
 import usersRoutes from '../../apps/users/routes';
 import webAPIRoutes from '../../apps/web-api/routes';
 import webhooksRoutes from '../../apps/webhooks/routes';
+import grcRoutes from '../../apps/grc/routes';
 import withIndexationGuard from '../../components/hoc/withIndexationGuard';
 import App from '../components/App';
 import GlobalContainer from '../components/GlobalContainer';
@@ -296,6 +297,7 @@ export default function startReactApp(
 
                   <Route component={GlobalContainer}>
                     <RouteWithChildRoutes path="account" childRoutes={accountRoutes} />
+                    <RouteWithChildRoutes path="grc" childRoutes={grcRoutes} />
                     <RouteWithChildRoutes path="coding_rules" childRoutes={codingRulesRoutes} />
                     <RouteWithChildRoutes path="documentation" childRoutes={documentationRoutes} />
                     <Route
