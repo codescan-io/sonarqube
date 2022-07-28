@@ -35,7 +35,7 @@ export default function SamlLogin() {
   return (
       <div className="login-page" id="login_form">
         <h1 className="login-title text-center">Sign in Using SSO</h1>
-        <form className="login-form" action={`/_codescan/saml-connections/login/${email}`} method="POST">
+        <form className="login-form" action={`/_codescan/saml2/login/${email}`} method="POST">
           <div className="big-spacer-bottom">
             <input
                 autoFocus={true}
