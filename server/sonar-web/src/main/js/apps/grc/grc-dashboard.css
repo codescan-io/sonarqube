@@ -1,0 +1,15 @@
+.dashboard-page{
+    padding-top:15px;
+}
+.row{
+    width: 100%;
+    clear:both;
+    padding-bottom: 15px;
+    display: flex;
+}
+.col-4{
+    width:33.33%;
+    background-color: white;
+    padding:15px;
+    margin-right: 15px;
+}

@@ -24,7 +24,7 @@ const routes = [
     component: lazyLoadComponent(() => import('./components/GrcPage')),
     childRoutes: [
       {
-        indexRoute: { component: lazyLoadComponent(() => import('./components/Dashboard')) }
+        indexRoute: { component: lazyLoadComponent(() => import('./dashboard/Dashboard')) }
       },
       {
         path: 'rules',
