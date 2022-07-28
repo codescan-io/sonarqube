@@ -27,17 +27,17 @@ export default function Nav() {
         <NavBarTabs>
           <li>
             <IndexLink activeClassName="active" to="/grc">
-              Review my inventory
+              Review my Inventory
             </IndexLink>
           </li>
           <li>
             <Link activeClassName="active" to="/grc/rules">
-              Manage my rules
+              Manage my Rules
             </Link>
           </li>
           <li>
             <Link activeClassName="active" to="/grc/organization">
-              Analyze my org
+              Analyze my Org
             </Link>
           </li>
           <li>
