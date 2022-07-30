@@ -24,7 +24,8 @@ export default function IssuesByPolicyType() {
 
   return (
       <>
-      Issues By Policy Type
+      Issues By Policy Type<br/>
+      Template Coming Soon!!!
       </>
   );
 

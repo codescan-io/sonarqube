@@ -18,14 +18,46 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import React from "react";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import '../grc-dashboard.css';
 
 export default function RulesCoverage() {
+  const totalRules = 75;
+  const usedRules = 50;
+
+  const ruleCoverage = Math.ceil(((usedRules / totalRules)*100));
+  const ruleCoveragePercentage = ruleCoverage ? ruleCoverage+"%": "0%";
+  const unusedRules = totalRules - usedRules
+
+  const data = [
+    { name: "Used Rules", value: usedRules },
+    { name: "Unused Rules", value: unusedRules }
+  ];
 
   return (
-      <>
-      Rules Coverage
-      </>
+    <>
+      <div className="widget">
+        <label>Rule Coverage</label>
+        <br />
+        <div className="guage-chart-cntr">
+          <PieChart height={200} width={220}>
+            <Tooltip/>
+            <Pie
+              startAngle={180}
+              endAngle={0}
+              innerRadius="56%"
+              data={data}
+              dataKey="value"
+              labelLine={false}
+              blendStroke
+              isAnimationActive={true}>
+              <Cell fill="#6BDE40" />
+              <Cell fill="#DDDDDD" />
+            </Pie>
+          </PieChart>
+          <label className="value">{ruleCoveragePercentage}</label>
+        </div>
+      </div>
+    </>
   );
-
-}
+  }

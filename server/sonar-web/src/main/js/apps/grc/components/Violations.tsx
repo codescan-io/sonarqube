@@ -24,7 +24,8 @@ export default function Violations() {
 
   return (
       <>
-      Violations
+      Violations<br/>
+      Template Coming Soon!!!
       </>
   );
 

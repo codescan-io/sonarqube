@@ -17,15 +17,47 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import React from "react";
+import React from 'react';
+import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import '../grc-dashboard.css';
 
 export default function PolicyCoverage() {
+  const totalPolicies = 75;
+  const usedPolicies = 25;
+
+  const policyCoverage = Math.ceil(((usedPolicies / totalPolicies)*100));
+  const policyCoveragePercentage = policyCoverage ? policyCoverage+"%": "0%";
+  const unusedPolicies = totalPolicies - usedPolicies;
+
+  const data = [
+    { name: "Used Policies", value: usedPolicies },
+    { name: "Unused Policies", value: unusedPolicies }
+  ];
 
   return (
-      <>
-      Policy Coverage
-      </>
+    <>
+      <div className="widget">
+        <label>Policy Coverage</label>
+        <br />
+        <div className="guage-chart-cntr">
+          <PieChart height={200} width={220}>
+            <Tooltip/>
+            <Pie
+              startAngle={180}
+              endAngle={0}
+              innerRadius="56%"
+              data={data}
+              dataKey="value"
+              labelLine={false}
+              blendStroke
+              isAnimationActive={true}>
+              <Cell fill="#57ACFB" />
+              <Cell fill="#DDDDDD" />
+            </Pie>
+          </PieChart>
+          <label className="value">{policyCoveragePercentage}</label>
+        </div>
+      </div>
+    </>
   );
-
-}
+  }

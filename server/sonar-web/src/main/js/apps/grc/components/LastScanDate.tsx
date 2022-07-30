@@ -22,9 +22,14 @@ import '../grc-dashboard.css';
 
 export default function LastScanDate() {
 
+  const lastScanDate: string = "07/30/2022, 05:08 AM"
+
   return (
       <>
-      Last Scan Date
+      <div className="widget last-scan-cntr">
+        <label>Last Scan Date</label><br/>
+        <label className="value">{lastScanDate}</label>
+      </div>
       </>
   );
 
