@@ -17,15 +17,71 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import React from "react";
+import React from 'react';
+import { Cell, Legend, Pie, PieChart, Tooltip } from 'recharts';
 import '../grc-dashboard.css';
 
-export default function IssuesBySeverity() {
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  percent
+}: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
   return (
-      <>
-      Issues By Severity
-      </>
+    <text
+      x={x}
+      y={y}
+      fill="white"
+      textAnchor={x > cx ? "start" : "end"}
+      dominantBaseline="central"
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
   );
+};
 
+export default function IssuesBySeverity() {
+  const data = [
+    { name: "Blocker", value: 90 },
+    { name: "Critical", value: 210 },
+    { name: "Major", value: 300 },
+  ];
+
+  const COLORS = ["#E63613", "#F4A41F", "#8884d8"];
+
+  return (
+    <>
+      <div className="widget">
+        <label>Issues By Severity</label>
+        <div id="severity-pie-chart-cntr">
+          <PieChart width={200} height={300}>
+            <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+            <Tooltip/>
+            <Pie
+              data={data}
+              cx={100}
+              cy={125}
+              labelLine={false}
+              label={renderCustomizedLabel}
+              outerRadius={80}
+              startAngle={180}
+              endAngle={-180}
+              fill="#8884d8"
+              dataKey="value">
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+          </PieChart>
+        </div>
+      </div>
+    </>
+  );
 }
