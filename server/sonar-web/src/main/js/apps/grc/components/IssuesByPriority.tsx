@@ -54,16 +54,16 @@ export default function IssuesByPriority() {
     { name: "Low", value: 100 }
   ];
 
-  const highColorCode = "#FF6361";
-  const mediumColorCode = "#6F975C";
-  const lowColorCode = "#D2D462"
+  const highColorCode = "#d4333f";
+  const mediumColorCode = "#ed7d20";
+  const lowColorCode = "#eabe06"
 
   const COLORS = [highColorCode,mediumColorCode,lowColorCode];
 
   return (
     <>
       <div className="widget">
-        <label>Issues By Severity</label>
+        <label>Violations</label>
         <div id="severity-pie-chart-cntr" className="pie-chart-cntr">
           <PieChart width={200} height={300}>
             <Legend layout="horizontal" verticalAlign="bottom" align="center" />

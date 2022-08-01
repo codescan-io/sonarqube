@@ -38,14 +38,17 @@
     padding:15px;
     margin-right: 15px;
 }
+.no-padding{
+    padding: 0px !important;
+}
 .guage-chart-cntr .recharts-wrapper{
     height: 100px !important;
     margin-top: -10px;
 }
 .guage-chart-cntr .value{
     font-size: 20px;
-    margin-top: -30px;
-    margin-left: 95px;
+    margin-top: 24px;
+    margin-left: 112px;
     position: absolute;
 }
 .widget.last-scan-cntr .value{
@@ -62,4 +65,24 @@
     height: auto !important;
     left: 15px !important;
     bottom: 10px !important;
+}
+.policy-count .policy{
+    padding: 15px;
+    padding-bottom: 50px;
+}
+.policy-count hr{
+    height: 15px;
+    background-color: #F3F3F3;
+}
+.policy-count .policy .value{
+    font-size: 30px;
+    display: inline-block;
+    margin-top: 15px;
+}
+.last-analysis-cntr .value{
+    margin-bottom: 15px;
+    display: inline-block;
+}
+.last-analysis-cntr .value.first{
+    margin-top: 15px;
 }

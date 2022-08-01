@@ -18,15 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import React from "react";
-import IssuesByPolicyType from "../components/IssuesByPolicyType";
 import IssuesByPriority from "../components/IssuesByPriority";
-import IssuesBySeverity from "../components/IssuesBySeverity";
-import LastScanDate from "../components/LastScanDate";
-import PolicyCoverage from "../components/PolicyCoverage";
-import ProgressDonut from "../components/ProgressDonut";
+import LastAnalysis from "../components/LastAnalysis";
+import PolicyCount from "../components/PolicyCount";
 import RiskIndicator from "../components/RiskIndicator";
-import RulesCoverage from "../components/RulesCoverage";
-import Violations from "../components/Violations";
 import '../grc-dashboard.css';
 
 export default function Dashboard() {
@@ -34,10 +29,10 @@ export default function Dashboard() {
   return (
       <div className="dashboard-page">
         <div className="row">
-          <div className="col-3"><IssuesBySeverity></IssuesBySeverity></div>
+          <div className="col-3 no-padding"><PolicyCount></PolicyCount></div>
           <div className="col-3"><RiskIndicator></RiskIndicator></div>
           <div className="col-3"><IssuesByPriority></IssuesByPriority></div>
-          <div className="col-3"><ProgressDonut></ProgressDonut></div>
+          <div className="col-3"><LastAnalysis></LastAnalysis></div>
         </div>
         <div className="row">
         </div>

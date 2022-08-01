@@ -37,7 +37,7 @@ export default function RiskIndicator() {
   return (
     <>
       <div className="widget">
-        <label>Risk Indicator</label>
+        <label>Policy Risk Score</label>
         <br />
         <div className="guage-chart-cntr">
           <PieChart height={300} width={260}>
@@ -55,6 +55,7 @@ export default function RiskIndicator() {
               <Cell fill="#DDDDDD" />
             </Pie>
           </PieChart>
+          <label className="value">{policyCoveragePercentage}</label>
         </div>
       </div>
     </>
