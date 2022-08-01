@@ -47,22 +47,18 @@ const renderCustomizedLabel = ({
   );
 };
 
-export default function IssuesBySeverity() {
+export default function IssuesByPriority() {
   const data = [
-    { name: "Blocker", value: 300 },
-    { name: "Critical", value: 300 },
-    { name: "Major", value: 300 },
-    { name: "Minor", value: 300 },
-    { name: "Info", value: 300 },
+    { name: "High", value: 100 },
+    { name: "Medium", value: 100 },
+    { name: "Low", value: 100 }
   ];
 
-  const blockerColorCode = "#780000";
-  const criticalColorCode = "#DC0000";
-  const majorColorCode = "#FD8C00";
-  const minorColorCode = "#FDC500";
-  const infoColorCode = "#00AC46"
+  const highColorCode = "#FF6361";
+  const mediumColorCode = "#6F975C";
+  const lowColorCode = "#D2D462"
 
-  const COLORS = [blockerColorCode,criticalColorCode,majorColorCode,minorColorCode,infoColorCode];
+  const COLORS = [highColorCode,mediumColorCode,lowColorCode];
 
   return (
     <>
