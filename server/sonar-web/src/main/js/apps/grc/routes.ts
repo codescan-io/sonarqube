@@ -27,12 +27,20 @@ const routes = [
         indexRoute: { component: lazyLoadComponent(() => import('./dashboard/Dashboard')) }
       },
       {
+        path: 'violations',
+        component: lazyLoadComponent(() => import('./violations/Violations'))
+      },
+      {
         path: 'rules',
         component: lazyLoadComponent(() => import('./rules/Rules'))
       },
       {
         path: 'organization',
         component: lazyLoadComponent(() => import('./organization/MyOrganization'))
+      },
+      {
+        path: 'create',
+        component: lazyLoadComponent(() => import('./create/ChooseOrganizationStep'))
       },
     ]
   }
