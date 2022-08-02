@@ -26,17 +26,22 @@
     padding-bottom: 15px;
     display: flex;
 }
-.col-3{
-    width: 25%;
+.col{
     background-color: white;
     padding: 15px;
     margin-right: 15px;
 }
+.col-3{
+    width: 25%;
+}
 .col-4{
     width:33.33%;
-    background-color: white;
-    padding:15px;
-    margin-right: 15px;
+}
+.col-5{
+    width:40%;
+}
+.col-7{
+    width:60%;
 }
 .no-padding{
     padding: 0px !important;
@@ -70,7 +75,7 @@
     padding: 15px;
     padding-bottom: 50px;
 }
-.policy-count hr{
+hr.seperator{
     height: 15px;
     background-color: #F3F3F3;
 }
@@ -85,4 +90,10 @@
 }
 .last-analysis-cntr .value.first{
     margin-top: 15px;
+}
+.violation-details-cntr{
+    padding: 15px;
+}
+.hot-spot-series-cntr{
+    padding: 15px;
 }
