@@ -30,9 +30,11 @@ import { isLoggedIn } from '../../../../helpers/users';
 import { rawSizes } from '../../../theme';
 import { setPendoInitialized } from "../../../../store/appState";
 import getStore from "../../../utils/getStore";
+import AppSwitchLink from "../../../../apps/grc/nav/AppSwitchLink";
+import GrcProjects from "../../../../apps/grc/nav/GrcProjects";
 
 interface Props {
-  appState: { organizationsEnabled?: boolean };
+  appState: { organizationsEnabled?: boolean, grc: boolean };
   currentUser: T.CurrentUser;
   organizations: T.Organization[];
   pendoInitialized: boolean;
@@ -58,7 +60,7 @@ export class GlobalNavUser extends React.PureComponent<Props> {
   };
 
   renderAuthenticated() {
-    const { organizations, pendoInitialized } = this.props;
+    const { appState, organizations, pendoInitialized } = this.props;
     const currentUser = this.props.currentUser as T.LoggedInUser;
     const hasOrganizations = this.props.appState.organizationsEnabled && organizations.length > 0;
 
@@ -103,17 +105,21 @@ export class GlobalNavUser extends React.PureComponent<Props> {
             <li>
               <Link to="/account">{translate('my_account.page')}</Link>
             </li>
-            {hasOrganizations && <li className="divider" role="separator" />}
-            {hasOrganizations && (
+            <li className="divider" />
+            <AppSwitchLink appState={appState} currentUser={currentUser} />
+            <li className="divider" role="separator" />
+            { appState.grc && <GrcProjects /> }
+            { !appState.grc && (
               <li>
                 <Link to="/account/organizations">{translate('my_organizations')}</Link>
               </li>
             )}
-            {hasOrganizations &&
+            { !appState.grc &&
               sortBy(organizations, org => org.name.toLowerCase()).map(organization => (
                 <OrganizationListItem key={organization.key} organization={organization} />
-              ))}
-            {hasOrganizations && <li className="divider" role="separator" />}
+              ))
+            }
+            <li className="divider" role="separator" />
             <li>
               <a href="#" onClick={this.handleLogout}>
                 {translate('layout.logout')}

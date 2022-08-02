@@ -1,36 +1,38 @@
-/*
- * SonarQube
- * Copyright (C) 2009-2020 SonarSource SA
- * mailto:info AT sonarsource DOT com
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-import React from "react";
-import Nav from "./Nav";
+import React, {useEffect} from "react";
 import "../styles.css";
+import {setGrcUi} from "../../../store/appState";
+import {connect} from "react-redux";
 
-export default function GrcPage({children}) {
+interface Props {
+  children: React.ReactNode;
+  setGrcUi: (grc: boolean) => void;
+}
+
+function GrcPage({setGrcUi, children}: Props) {
+
+  useEffect(() => {
+    // Set 'grc' state variable to true when component is mounted.
+    setGrcUi(true);
+
+    // Set 'grc' state variable to false when component is unmounted.
+    return () => {
+      setGrcUi(false);
+    };
+  }, []);
+
 
   return (
       <div className="grc-container">
-        <header className="grc-header">
-          <Nav/>
-        </header>
-
         {children}
       </div>
   );
-
 }
+
+const mapStateToProps = () => ({
+});
+
+const mapDispatchToProps = {
+  setGrcUi
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(GrcPage);

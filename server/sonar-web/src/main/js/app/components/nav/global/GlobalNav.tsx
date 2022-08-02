@@ -44,6 +44,9 @@ import './GlobalNav.css';
 import GlobalNavBranding, { SonarCloudNavBranding } from './GlobalNavBranding';
 import GlobalNavMenu from './GlobalNavMenu';
 import GlobalNavUserContainer from './GlobalNavUserContainer';
+import GrcGlobalNavMenu from "../../../../apps/grc/nav/GrcGlobalNavMenu";
+import {Link} from "react-router";
+import PlusIcon from "sonar-ui-common/components/icons/PlusIcon";
 
 const GlobalNavPlus = lazyLoadComponent(() => import('./GlobalNavPlus'), 'GlobalNavPlus');
 const NotificationsSidebar = lazyLoadComponent(
@@ -57,7 +60,7 @@ const NavLatestNotification = lazyLoadComponent(
 
 interface Props {
   accessToken?: string;
-  appState: Pick<T.AppState, 'canAdmin' | 'globalPages' | 'organizationsEnabled' | 'qualifiers'>;
+  appState: Pick<T.AppState, 'canAdmin' | 'globalPages' | 'organizationsEnabled' | 'qualifiers' | 'grc'>;
   currentUser: T.CurrentUser;
   location: { pathname: string };
   notificationsLastReadDate?: Date;
@@ -175,7 +178,7 @@ export class GlobalNav extends React.PureComponent<Props, State> {
       <NavBar className="navbar-global" height={rawSizes.globalNavHeightRaw} id="global-navigation">
         {isSonarCloud() ? <SonarCloudNavBranding /> : <GlobalNavBranding />}
 
-        <GlobalNavMenu {...this.props} />
+        {appState.grc ? <GrcGlobalNavMenu {...this.props} /> : <GlobalNavMenu {...this.props} /> }
 
         <ul className="global-navbar-menu global-navbar-menu-right">
           {isSonarCloud() && isLoggedIn(currentUser) && news.length > 0 && (
@@ -189,8 +192,15 @@ export class GlobalNav extends React.PureComponent<Props, State> {
           )}
           <EmbedDocsPopupHelper />
           <Search appState={appState} currentUser={currentUser} />
-          {isLoggedIn(currentUser) && (
+          {isLoggedIn(currentUser) && !appState.grc && (
             <GlobalNavPlus appState={appState} currentUser={currentUser} />
+          )}
+          {isLoggedIn(currentUser) && appState.grc && (
+            <li>
+              <Link to='/grc/create' className="navbar-icon navbar-plus">
+                <PlusIcon />
+              </Link>
+            </li>
           )}
           <GlobalNavUserContainer appState={appState} currentUser={currentUser} />
         </ul>

@@ -55,7 +55,7 @@ export default function Rules() {
           {!loading && (
               <ul>
                 {rules?.map(rule => (
-                    <li>
+                    <li key={rule.key}>
                       {rule.name}
                     </li>
                 ))}

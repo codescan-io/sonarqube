@@ -41,7 +41,7 @@ class Landing extends React.PureComponent<StateProps & OwnProps & WithRouterProp
         const homepage = getHomePageUrl(currentUser.homepage);
         this.props.router.replace(homepage);
       } else {
-        this.props.router.replace('/grc');
+        this.props.router.replace('/projects');
       }
     } else {
       this.props.router.replace('/sessions/new');

@@ -109,6 +109,7 @@ declare namespace T {
     version: string;
     webAnalyticsJsPath?: string;
     pendoInitialized?: boolean;
+    grc?: boolean;
   }
 
   export interface Breadcrumb {
