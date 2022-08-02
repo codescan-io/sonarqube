@@ -1,3 +1,4 @@
+
 /*
  * SonarQube
  * Copyright (C) 2009-2020 SonarSource SA
@@ -20,20 +21,21 @@
 import React from 'react';
 import '../grc-dashboard.css';
 
-export default function PolicyCount() {
+export default function ViolationDetails() {
 
   return (
     <>
-      <div className="widget policy-count">
-        <div className='policy'>
-            <label className='name'>Total Policies</label><br/>
-            <label className='value'>8</label> <br/>
-        </div>
-        <hr className="seperator"></hr>
-        <div className='policy'>
-            <label className='name'>Policies Consumed</label><br/>
-            <label className='value'>6</label>
-        </div>
+      <div className="widget violation-details-cntr">
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
       </div>
     </>
   );

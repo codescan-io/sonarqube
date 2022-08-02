@@ -20,20 +20,12 @@
 import React from 'react';
 import '../grc-dashboard.css';
 
-export default function PolicyCount() {
+export default function HotSpotSeries() {
 
   return (
     <>
-      <div className="widget policy-count">
-        <div className='policy'>
-            <label className='name'>Total Policies</label><br/>
-            <label className='value'>8</label> <br/>
-        </div>
-        <hr className="seperator"></hr>
-        <div className='policy'>
-            <label className='name'>Policies Consumed</label><br/>
-            <label className='value'>6</label>
-        </div>
+      <div className="widget hot-spot-series-cntr">
+        Two Line Charts Comming Soon
       </div>
     </>
   );

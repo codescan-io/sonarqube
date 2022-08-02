@@ -18,10 +18,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import React from "react";
+import HotSpotSeries from "../components/HotSpotSeries";
 import IssuesByPriority from "../components/IssuesByPriority";
 import LastAnalysis from "../components/LastAnalysis";
 import PolicyCount from "../components/PolicyCount";
 import RiskIndicator from "../components/RiskIndicator";
+import SecurityHotSpots from "../components/SecurityHotSpots";
+import ViolationDetails from "../components/ViloationDetails";
 import '../grc-dashboard.css';
 
 export default function Dashboard() {
@@ -29,24 +32,19 @@ export default function Dashboard() {
   return (
       <div className="dashboard-page">
         <div className="row">
-          <div className="col-3 no-padding"><PolicyCount></PolicyCount></div>
-          <div className="col-3"><RiskIndicator></RiskIndicator></div>
-          <div className="col-3"><IssuesByPriority></IssuesByPriority></div>
-          <div className="col-3"><LastAnalysis></LastAnalysis></div>
+          <div className="col col-3 no-padding"><PolicyCount></PolicyCount></div>
+          <div className="col col-3"><RiskIndicator></RiskIndicator></div>
+          <div className="col col-3"><IssuesByPriority></IssuesByPriority></div>
+          <div className="col col-3"><LastAnalysis></LastAnalysis></div>
         </div>
         <div className="row">
-        </div>
-        <div className="row">
+          <div className="col col-5"><SecurityHotSpots></SecurityHotSpots></div>
+          <div className="col col-7  no-padding">
+            <ViolationDetails></ViolationDetails>
+            <hr className="seperator"></hr>
+            <HotSpotSeries></HotSpotSeries>
+          </div>
         </div>
       </div>
   );
-
 }
-
-//<div className="col-3"><Violations></Violations></div>
-//<div className="col-3"><IssuesByPolicyType></IssuesByPolicyType></div>
-//<div className="col-3"><IssuesBySeverity></IssuesBySeverity></div>
-//<div className="col-3"><LastScanDate></LastScanDate></div>
-//<div className="col-3"><PolicyCoverage></PolicyCoverage></div>
-//<div className="col-3"><RulesCoverage></RulesCoverage></div>
-//<div className="col-3"><RulesCoverage></RulesCoverage></div>
