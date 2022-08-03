@@ -19,6 +19,8 @@
  */
 import { intersection } from 'lodash';
 import * as React from 'react';
+import { connect } from "react-redux";
+import { getAppState, Store } from '../../../store/rootReducer'; 
 import withKeyboardNavigation from '../../../components/hoc/withKeyboardNavigation';
 import { BranchLike } from '../../../types/branch-like';
 import { getCodeMetrics } from '../utils';
@@ -33,19 +35,22 @@ interface Props {
   metrics: T.Dict<T.Metric>;
   rootComponent: T.ComponentMeasure;
   selected?: T.ComponentMeasure;
+  appState: T.AppState | undefined
 }
 
 export class Components extends React.PureComponent<Props> {
   render() {
+    const isGRC =  this.props.appState?.grc !== undefined ? this.props.appState.grc : false;
     const { baseComponent, branchLike, components, rootComponent, selected } = this.props;
+    // once the GRC Project is autoppulated, remove the negation flag - TODO
     const metricKeys = intersection(
-      getCodeMetrics(rootComponent.qualifier, branchLike),
+      getCodeMetrics(rootComponent.qualifier, branchLike, {}, !isGRC),
       Object.keys(this.props.metrics)
     );
     const metrics = metricKeys.map(metric => this.props.metrics[metric]);
     const colSpan = metrics.length + 4;
     const canBePinned = baseComponent && !['APP', 'VW', 'SVW'].includes(baseComponent.qualifier);
-
+   
     return (
       <table className="data boxed-padding zebra">
         {baseComponent && (
@@ -102,4 +107,9 @@ export class Components extends React.PureComponent<Props> {
   }
 }
 
-export default withKeyboardNavigation(Components);
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+
+export default connect(mapStateToProps)(withKeyboardNavigation(Components));
