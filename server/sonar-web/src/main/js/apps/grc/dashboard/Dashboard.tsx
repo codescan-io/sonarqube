@@ -37,14 +37,15 @@ export default function Dashboard() {
           <div className="col col-3"><IssuesByPriority></IssuesByPriority></div>
           <div className="col col-3"><LastAnalysis></LastAnalysis></div>
         </div>
-        <div className="row">
-          <div className="col col-5"><SecurityHotSpots></SecurityHotSpots></div>
-          <div className="col col-7  no-padding">
-            <ViolationDetails></ViolationDetails>
-            <hr className="seperator"></hr>
-            <HotSpotSeries></HotSpotSeries>
-          </div>
-        </div>
       </div>
   );
 }
+
+{/* <div className="row">
+  <div className="col col-5"><SecurityHotSpots></SecurityHotSpots></div>
+  <div className="col col-7  no-padding">
+    <ViolationDetails></ViolationDetails>
+    <hr className="seperator"></hr>
+    <HotSpotSeries></HotSpotSeries>
+  </div>
+</div> */}
