@@ -35,6 +35,8 @@ import { DrilldownMeasureValue } from './DrilldownMeasureValue';
 import { LeakPeriodInfo } from './LeakPeriodInfo';
 import MeasuresPanelIssueMeasureRow from './MeasuresPanelIssueMeasureRow';
 import MeasuresPanelNoNewCode from './MeasuresPanelNoNewCode';
+import { getAppState, Store } from '../../../store/rootReducer'; 
+import { connect } from 'react-redux';
 
 export interface MeasuresPanelProps {
   appLeak?: ApplicationPeriod;
@@ -43,6 +45,7 @@ export interface MeasuresPanelProps {
   loading?: boolean;
   measures?: T.MeasureEnhanced[];
   period?: T.Period;
+  appState: T.AppState | undefined
 }
 
 export enum MeasuresPanelTabs {
@@ -51,7 +54,9 @@ export enum MeasuresPanelTabs {
 }
 
 export function MeasuresPanel(props: MeasuresPanelProps) {
-  const { appLeak, branch, component, loading, measures = [], period } = props;
+  const { appLeak, branch, component, loading, measures = [], period, appState } = props;
+  // TODO Remove the negation flag once the grc project is loaded
+  const isGRC =  !(appState?.grc !== undefined ? appState.grc : false);
 
   const hasDiffMeasures = measures.some(m => isDiffMetric(m.metric.key));
   const isApp = component.qualifier === ComponentQualifier.Application;
@@ -71,12 +76,15 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [loading, hasDiffMeasures]);
 
+  const newCodeLabel = isGRC ?translate('grc.new_violations') :translate('overview.new_code');
+  const overallCodeLabel = isGRC ?translate('grc.existing_violations') :translate('overview.overall_code');
+
   const tabs = [
     {
       key: MeasuresPanelTabs.New,
       label: (
         <div className="text-left overview-measures-tab">
-          <span className="text-bold">{translate('overview.new_code')}</span>
+          <span className="text-bold">{newCodeLabel}</span>
           {leakPeriod && <LeakPeriodInfo leakPeriod={leakPeriod} />}
         </div>
       )
@@ -86,7 +94,7 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
       label: (
         <div className="text-left overview-measures-tab">
           <span className="text-bold" style={{ position: 'absolute', top: 2 * rawSizes.grid }}>
-            {translate('overview.overall_code')}
+            {overallCodeLabel}
           </span>
         </div>
       )
@@ -184,4 +192,9 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
   );
 }
 
-export default React.memo(MeasuresPanel);
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default connect(mapStateToProps)(React.memo(MeasuresPanel));
