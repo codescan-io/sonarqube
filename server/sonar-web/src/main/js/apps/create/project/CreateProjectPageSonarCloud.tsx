@@ -36,6 +36,7 @@ interface Props {
   fetchMyOrganizations: () => Promise<void>;
   skipOnboarding: () => void;
   userOrganizations: T.Organization[];
+  onNextClick: (key: string) => any;
 }
 
 interface State {
@@ -78,6 +79,10 @@ export class CreateProjectPageSonarCloud extends React.PureComponent<
     }
   };
 
+  handleNextClick = (key: string) => {
+    this.props.onNextClick(key);
+  }
+
   render() {
     const { location, userOrganizations } = this.props;
     const { loading } = this.state;
@@ -99,6 +104,7 @@ export class CreateProjectPageSonarCloud extends React.PureComponent<
                 <ManualProjectCreate
                     onProjectCreate={this.handleProjectCreate}
                     organization={state.organization}
+                    nextClick={this.handleNextClick}
                     userOrganizations={userOrganizations.filter(
                         ({ actions = {} }) => actions.provision
                     )}

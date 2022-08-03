@@ -33,9 +33,11 @@ import {translate} from 'sonar-ui-common/helpers/l10n';
 import {addWhitePageClass, removeWhitePageClass} from 'sonar-ui-common/helpers/pages';
 import {get, remove} from 'sonar-ui-common/helpers/storage';
 import {getOrganizationUrl} from '../../../helpers/urls';
+import { getAppState, Store } from '../../../store/rootReducer';
 // import { skipOnboarding } from '../../../store/users';
 
 interface Props {
+    appState: T.AppState | undefined;
     createOrganization: (
         organization: T.Organization & { installationId?: string }
     ) => Promise<string>;
@@ -91,10 +93,18 @@ export class CreateOrganization extends React.PureComponent<Props & WithRouterPr
     handleOrgCreated = (organization: string) => {
         // this.props.skipOnboarding();
         if (this.isStoredTimestampValid(ORGANIZATION_IMPORT_REDIRECT_TO_PROJECT_TIMESTAMP)) {
-            this.props.router.push({
-                pathname: '/projects/create',
-                state: {organization}
-            });
+            if(this.props.appState?.grc) {
+                this.props.router.push({
+                    pathname: '/grc/create',
+                    state: {organization}
+                });
+            } else {
+                this.props.router.push({
+                    pathname: '/projects/create',
+                    state: {organization}
+                });
+            }
+            
         } else {
             this.props.router.push({pathname: getOrganizationUrl(organization)});
         }
@@ -181,11 +191,15 @@ const mapDispatchToProps = {
     updateOrganization: updateOrganization as any
 };
 
+const mapStateToProps = (state: Store) => ({
+    appState: getAppState(state)
+});
+
 export default whenLoggedIn(
     withUserOrganizations(
         withRouter(
             connect(
-                null,
+                mapStateToProps,
                 mapDispatchToProps
             )(CreateOrganization)
         )

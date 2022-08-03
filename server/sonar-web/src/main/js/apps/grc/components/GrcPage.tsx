@@ -4,15 +4,16 @@ import {setGrcUi} from "../../../store/appState";
 import {connect} from "react-redux";
 import {getComponentData, searchProjects} from "../../../api/components";
 import {WithRouterProps} from "react-router";
-import {withRouter} from "../../../components/hoc/withRouter";
+import {Router, withRouter} from "../../../components/hoc/withRouter";
 import {ComponentContext} from "../../../app/components/ComponentContext";
 
 interface Props {
   children: React.ReactElement;
   setGrcUi: (grc: boolean) => void;
+  router: Pick<Router, 'replace'>;
 }
 
-function GrcPage({setGrcUi, children, location}: Props & WithRouterProps) {
+function GrcPage({setGrcUi, children, router, location}: Props & WithRouterProps) {
 
   const [component, setComponent] = useState<T.Component>();
   const [loading, setLoading] = useState<boolean>();
@@ -40,6 +41,7 @@ function GrcPage({setGrcUi, children, location}: Props & WithRouterProps) {
         return Promise.reject();
       }
 
+      router.replace('/grc/dashboard');
       return getComponentData({component: id || components[0].key});
     })
     .then(({component}) => {

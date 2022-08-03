@@ -1,0 +1,22 @@
+.create-container {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    align-items: center;
+}
+
+.create {
+    width: 200px;
+    height: 200px;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.info {
+    margin-bottom: 10px;
+}

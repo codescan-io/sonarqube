@@ -26,7 +26,7 @@ export default function CreateProjectPage(props: WithRouterProps) {
   return (
       <>
         <A11ySkipTarget anchor="create_project_main" />
-        <CreateProjectPageSonarCloud {...props} />
+        <CreateProjectPageSonarCloud {...props} onNextClick={()=> {}} />
       </>
   );
 }
