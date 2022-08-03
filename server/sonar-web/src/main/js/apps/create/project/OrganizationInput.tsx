@@ -18,13 +18,16 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
+import { connect } from 'react-redux';
 import { withRouter, WithRouterProps } from 'react-router';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { save } from 'sonar-ui-common/helpers/storage';
+import { getAppState , Store} from '../../../store/rootReducer';
 import OrganizationSelect from '../components/OrganizationSelect';
 import { ORGANIZATION_IMPORT_REDIRECT_TO_PROJECT_TIMESTAMP } from '../organization/utils';
 
 interface Props {
+  appState: T.AppState | undefined;
   autoImport?: boolean;
   onChange: (organization: T.Organization) => void;
   organization: string;
@@ -36,10 +39,17 @@ export class OrganizationInput extends React.PureComponent<Props & WithRouterPro
     event.preventDefault();
     event.stopPropagation();
     save(ORGANIZATION_IMPORT_REDIRECT_TO_PROJECT_TIMESTAMP, Date.now().toString(10));
-    this.props.router.push({
-      pathname: '/create-organization',
-      state: {tab: this.props.autoImport ? 'auto' : 'manual'}
-    });
+    if(this.props.appState?.grc) {
+      this.props.router.push({
+        pathname: '/grc/create-organization',
+        state: {tab: this.props.autoImport ? 'auto' : 'manual'}
+      });
+    } else {
+      this.props.router.push({
+        pathname: '/create-organization',
+        state: {tab: this.props.autoImport ? 'auto' : 'manual'}
+      });
+    }
   };
 
   render() {
@@ -68,4 +78,8 @@ export class OrganizationInput extends React.PureComponent<Props & WithRouterPro
   }
 }
 
-export default withRouter(OrganizationInput);
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default withRouter(connect(mapStateToProps)(OrganizationInput));

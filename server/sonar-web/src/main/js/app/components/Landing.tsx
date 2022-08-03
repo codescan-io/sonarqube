@@ -37,12 +37,12 @@ class Landing extends React.PureComponent<StateProps & OwnProps & WithRouterProp
   componentDidMount() {
     const { currentUser } = this.props;
     if (currentUser && isLoggedIn(currentUser)) {
-      if (currentUser.homepage) {
+      /*if (currentUser.homepage) {
         const homepage = getHomePageUrl(currentUser.homepage);
         this.props.router.replace(homepage);
-      } else {
-        this.props.router.replace('/projects');
-      }
+      } else { */
+        this.props.router.replace('/home');
+     // }
     } else {
       this.props.router.replace('/sessions/new');
     }
