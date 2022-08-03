@@ -1,17 +1,76 @@
-import React from "react";
-import Nav from "./Nav";
+import React, {useEffect, useState} from "react";
 import "../styles.css";
+import {setGrcUi} from "../../../store/appState";
+import {connect} from "react-redux";
+import {getComponentData, searchProjects} from "../../../api/components";
+import {WithRouterProps} from "react-router";
+import {Router, withRouter} from "../../../components/hoc/withRouter";
+import {ComponentContext} from "../../../app/components/ComponentContext";
 
-export default function GrcPage({children}) {
+interface Props {
+  children: React.ReactElement;
+  setGrcUi: (grc: boolean) => void;
+  router: Pick<Router, 'replace'>;
+}
+
+function GrcPage({setGrcUi, children, router, location}: Props & WithRouterProps) {
+
+  const [component, setComponent] = useState<T.Component>();
+  const [loading, setLoading] = useState<boolean>();
+
+  useEffect(() => {
+    // Set 'grc' state variable to true when component is mounted.
+    setGrcUi(true);
+
+    // Load GRC projects.
+    loadGrcProjects();
+
+    // Set 'grc' state variable to false when component is unmounted.
+    return () => {
+      setGrcUi(false);
+    };
+  }, []);
+
+  const loadGrcProjects = () => {
+    setLoading(true);
+    searchProjects({filter: 'tags=grc'})
+    .then(({components}) => {
+      const {id} = location.query;
+
+      if (!components.length) {
+        return Promise.reject();
+      }
+
+      router.replace('/grc/dashboard');
+      return getComponentData({component: id || components[0].key});
+    })
+    .then(({component}) => {
+      setComponent(component);
+      setLoading(false);
+    }, () => {
+      setLoading(false);
+    });
+  }
 
   return (
       <div className="grc-container">
-        <header className="grc-header">
-          <Nav/>
-        </header>
-
-        {children}
+        {loading ? (
+            <div className="page page-limited">
+              <i className="spinner"/>
+            </div>
+        ) : (
+            <ComponentContext.Provider value={{branchLike: undefined, component}}>
+              {React.cloneElement(children, {component})}
+            </ComponentContext.Provider>
+        )}
       </div>
   );
-
 }
+
+const mapStateToProps = () => ({});
+
+const mapDispatchToProps = {
+  setGrcUi
+};
+
+export default withRouter(connect(mapStateToProps, mapDispatchToProps)(GrcPage));

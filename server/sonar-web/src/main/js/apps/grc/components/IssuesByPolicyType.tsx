@@ -17,16 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
-import { WithRouterProps } from 'react-router';
-import A11ySkipTarget from '../../../app/components/a11y/A11ySkipTarget';
-import CreateProjectPageSonarCloud from './CreateProjectPageSonarCloud';
+import React from "react";
+import '../grc-dashboard.css';
 
-export default function CreateProjectPage(props: WithRouterProps) {
+export default function IssuesByPolicyType() {
+
   return (
       <>
-        <A11ySkipTarget anchor="create_project_main" />
-        <CreateProjectPageSonarCloud {...props} onNextClick={()=> {}} />
+      Issues By Policy Type<br/>
+      Template Coming Soon!!!
       </>
   );
+
 }

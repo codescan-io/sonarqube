@@ -17,16 +17,27 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
-import { WithRouterProps } from 'react-router';
-import A11ySkipTarget from '../../../app/components/a11y/A11ySkipTarget';
-import CreateProjectPageSonarCloud from './CreateProjectPageSonarCloud';
+import React from "react";
+import '../grc-dashboard.css';
 
-export default function CreateProjectPage(props: WithRouterProps) {
+export default function LastAnalysis() {
+
+  const lastScanDate: string = "07/30/2022, 05:08 AM";
+  const qualityGate: string = "Red"
+  const qualityProfile: string = "Used IBM MO Profile(SF Metadata)"
+  const version: string = "1"
+
   return (
       <>
-        <A11ySkipTarget anchor="create_project_main" />
-        <CreateProjectPageSonarCloud {...props} onNextClick={()=> {}} />
+      <div className="widget last-analysis-cntr">
+        <label>Last Analysis </label><br/><br/>
+        <label className="value first">Time: <b>{lastScanDate}</b></label><br/>
+        <label className="value">Quality Gate: <b>{qualityGate}</b></label><br/>
+        <label className="value">Quality Profile: <b>{qualityProfile}</b></label><br/>
+        <label className="value">Version: <b>{version}</b></label><br/>
+
+      </div>
       </>
   );
+
 }

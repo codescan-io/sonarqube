@@ -1,3 +1,4 @@
+
 /*
  * SonarQube
  * Copyright (C) 2009-2020 SonarSource SA
@@ -17,16 +18,25 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
-import { WithRouterProps } from 'react-router';
-import A11ySkipTarget from '../../../app/components/a11y/A11ySkipTarget';
-import CreateProjectPageSonarCloud from './CreateProjectPageSonarCloud';
+import React from 'react';
+import '../grc-dashboard.css';
 
-export default function CreateProjectPage(props: WithRouterProps) {
+export default function ViolationDetails() {
+
   return (
-      <>
-        <A11ySkipTarget anchor="create_project_main" />
-        <CreateProjectPageSonarCloud {...props} onNextClick={()=> {}} />
-      </>
+    <>
+      <div className="widget violation-details-cntr">
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+        Violation Details Comming Soon !!!<br/>
+      </div>
+    </>
   );
-}
+  }

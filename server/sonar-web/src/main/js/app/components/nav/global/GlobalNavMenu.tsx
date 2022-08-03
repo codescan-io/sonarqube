@@ -19,7 +19,7 @@
  */
 import * as classNames from 'classnames';
 import * as React from 'react';
-import { Link } from 'react-router';
+import { Link, WithRouterProps } from 'react-router';
 import Dropdown from 'sonar-ui-common/components/controls/Dropdown';
 import DropdownIcon from 'sonar-ui-common/components/icons/DropdownIcon';
 import { translate } from 'sonar-ui-common/helpers/l10n';
@@ -34,7 +34,7 @@ interface Props {
   location: { pathname: string };
 }
 
-export default class GlobalNavMenu extends React.PureComponent<Props> {
+export default class GlobalNavMenu extends React.PureComponent<Props & WithRouterProps> {
   renderProjects() {
     if (isSonarCloud() && !isLoggedIn(this.props.currentUser)) {
       return null;
@@ -178,7 +178,8 @@ export default class GlobalNavMenu extends React.PureComponent<Props> {
     const { organizationsEnabled } = this.props.appState;
 
     return (
-      <ul className="global-navbar-menu">
+      <div>
+      {!this.props.location.pathname.includes('/home') && <ul className="global-navbar-menu">
         {this.renderProjects()}
         {governanceInstalled && this.renderPortfolios()}
         {this.renderIssuesLink()}
@@ -187,7 +188,8 @@ export default class GlobalNavMenu extends React.PureComponent<Props> {
         {!organizationsEnabled && this.renderQualityGatesLink()}
         {this.renderAdministrationLink()}
         {this.renderMore()}
-      </ul>
+      </ul>}
+      </div>
     );
   }
 }

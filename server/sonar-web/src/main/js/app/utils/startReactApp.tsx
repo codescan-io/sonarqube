@@ -300,6 +300,9 @@ export default function startReactApp(
                     <RouteWithChildRoutes path="grc" childRoutes={grcRoutes} />
                     <RouteWithChildRoutes path="coding_rules" childRoutes={codingRulesRoutes} />
                     <RouteWithChildRoutes path="documentation" childRoutes={documentationRoutes} />
+                    <Route path="home"
+                      component={lazyLoadComponent(() => import('../../apps/home/home'))}
+                    />
                     <Route
                       path="extension/:pluginKey/:extensionKey"
                       component={lazyLoadComponent(() =>
@@ -311,14 +314,12 @@ export default function startReactApp(
                       component={withIndexationGuard(Issues, PageContext.Issues)}
                     />
                     {isSonarCloud() && (
-                      <>
                         <Route
                           path="create-organization"
                           component={lazyLoadComponent(() =>
                             import('../../apps/create/organization/CreateOrganization')
                           )}
                         />
-                      </>
                     )}
                     <RouteWithChildRoutes path="organizations" childRoutes={organizationsRoutes} />
                     <RouteWithChildRoutes path="projects" childRoutes={projectsRoutes} />

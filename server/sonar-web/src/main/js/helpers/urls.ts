@@ -266,5 +266,5 @@ export function getHomePageUrl(homepage: T.HomePage) {
   }
 
   // should never happen, but just in case...
-  return '/grc';
+  return '/projects';
 }

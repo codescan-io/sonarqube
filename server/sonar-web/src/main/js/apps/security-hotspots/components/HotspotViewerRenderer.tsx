@@ -25,7 +25,6 @@ import LinkIcon from 'sonar-ui-common/components/icons/LinkIcon';
 import DeferredSpinner from 'sonar-ui-common/components/ui/DeferredSpinner';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { getPathUrlAsString } from 'sonar-ui-common/helpers/urls';
-import { withCurrentUser } from '../../../components/hoc/withCurrentUser';
 import { getBranchLikeQuery } from '../../../helpers/branch-like';
 import { getComponentSecurityHotspotsUrl } from '../../../helpers/urls';
 import { isLoggedIn } from '../../../helpers/users';
@@ -37,6 +36,8 @@ import HotspotSnippetContainer from './HotspotSnippetContainer';
 import './HotspotViewer.css';
 import HotspotViewerTabs from './HotspotViewerTabs';
 import Status from './status/Status';
+import {getAppState, getCurrentUser, Store} from "../../../store/rootReducer";
+import {connect} from "react-redux";
 
 export interface HotspotViewerRendererProps {
   branchLike?: BranchLike;
@@ -50,6 +51,7 @@ export interface HotspotViewerRendererProps {
   onCloseComment: () => void;
   onUpdateHotspot: () => Promise<void>;
   securityCategories: T.StandardSecurityCategories;
+  appState: T.AppState;
 }
 
 export function HotspotViewerRenderer(props: HotspotViewerRendererProps) {
@@ -123,11 +125,13 @@ export function HotspotViewerRenderer(props: HotspotViewerRendererProps) {
             </div>
           </div>
 
-          <HotspotSnippetContainer
-            branchLike={branchLike}
-            component={component}
-            hotspot={hotspot}
-          />
+          {!props.appState.grc && (
+            <HotspotSnippetContainer
+              branchLike={branchLike}
+              component={component}
+              hotspot={hotspot}
+            />
+          )}
           <HotspotViewerTabs hotspot={hotspot} />
           <HotspotReviewHistoryAndComments
             commentTextRef={commentTextRef}
@@ -144,4 +148,11 @@ export function HotspotViewerRenderer(props: HotspotViewerRendererProps) {
   );
 }
 
-export default withCurrentUser(HotspotViewerRenderer);
+function mapStateToProps(state: Store) {
+  return {
+    appState: getAppState(state),
+    currentUser: getCurrentUser(state),
+  };
+}
+
+export default connect(mapStateToProps)(HotspotViewerRenderer);

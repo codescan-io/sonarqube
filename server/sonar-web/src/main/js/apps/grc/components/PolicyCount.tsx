@@ -17,35 +17,24 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
-import { IndexLink, Link } from 'react-router';
-import NavBarTabs from 'sonar-ui-common/components/ui/NavBarTabs';
+import React from 'react';
+import '../grc-dashboard.css';
 
-export default function Nav() {
+export default function PolicyCount() {
+
   return (
-      <nav className="grc-nav">
-        <NavBarTabs>
-          <li>
-            <IndexLink activeClassName="active" to="/grc">
-              Review my inventory
-            </IndexLink>
-          </li>
-          <li>
-            <Link activeClassName="active" to="/grc/rules">
-              Manage my rules
-            </Link>
-          </li>
-          <li>
-            <Link activeClassName="active" to="/grc/organization">
-              Analyze my org
-            </Link>
-          </li>
-          <li>
-            <Link activeClassName="active" to="/projects">
-              Return to Codescan
-            </Link>
-          </li>
-        </NavBarTabs>
-      </nav>
+    <>
+      <div className="widget policy-count">
+        <div className='policy'>
+            <label className='name'>Total Policies</label><br/>
+            <label className='value'>8</label> <br/>
+        </div>
+        <hr className="seperator"></hr>
+        <div className='policy'>
+            <label className='name'>Policies Consumed</label><br/>
+            <label className='value'>6</label>
+        </div>
+      </div>
+    </>
   );
-}
+  }

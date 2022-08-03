@@ -24,7 +24,23 @@ const routes = [
     component: lazyLoadComponent(() => import('./components/GrcPage')),
     childRoutes: [
       {
-        indexRoute: { component: lazyLoadComponent(() => import('./components/Dashboard')) }
+        indexRoute: { component: lazyLoadComponent(() => import('./create/CreateGRCProject')) }
+      },
+      {
+        path: 'create',
+        indexRoute: { component: lazyLoadComponent(() => import('./create-project/CreateProject')) }
+      },
+      {
+        path: 'create-organization',
+        indexRoute: { component: lazyLoadComponent(() => import('./create-organization/CreateGrcOrganization')) }
+      },
+      {
+        path: 'dashboard',
+        indexRoute: { component: lazyLoadComponent(() => import('./dashboard/Dashboard')) }
+      },
+      {
+        path: 'violations',
+        component: lazyLoadComponent(() => import('./violations/Violations'))
       },
       {
         path: 'rules',
@@ -33,7 +49,7 @@ const routes = [
       {
         path: 'organization',
         component: lazyLoadComponent(() => import('./organization/MyOrganization'))
-      },
+      }
     ]
   }
 ];

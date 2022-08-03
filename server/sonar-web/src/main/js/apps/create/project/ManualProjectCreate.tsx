@@ -27,11 +27,15 @@ import './ManualProjectCreate.css';
 import { isSonarCloud } from "../../../helpers/system";
 import { getBaseUrl } from "sonar-ui-common/helpers/urls";
 import OrganizationInput from './OrganizationInput';
+import { connect } from 'react-redux';
+import { getAppState, Store } from '../../../store/rootReducer';
 
 interface Props {
+  appState: T.AppState | undefined;
   onProjectCreate: (projectKeys: string[]) => void;
   organization?: string;
   userOrganizations?: T.Organization[];
+  nextClick: (key: string) => any;
 }
 
 interface State {
@@ -47,7 +51,7 @@ interface State {
   validating: boolean;
 }
 
-export default class ManualProjectCreate extends React.PureComponent<Props, State> {
+class ManualProjectCreate extends React.PureComponent<Props, State> {
   mounted = false;
 
   constructor(props: Props) {
@@ -149,9 +153,13 @@ export default class ManualProjectCreate extends React.PureComponent<Props, Stat
                     organizations={this.props.userOrganizations}
                 />
             )}
-            <SubmitButton disabled={!this.canSubmit(this.state) || submitting}>
+
+            {!this.props.appState?.grc && <SubmitButton disabled={!this.canSubmit(this.state) || submitting}>
               {translate('set_up')}
-            </SubmitButton>
+            </SubmitButton>}
+            {this.props.appState?.grc && <button type="button" onClick={() => this.props.nextClick(this.state?.selectedOrganization?.key)} disabled={!this.canSubmit(this.state) || submitting}>
+              Next
+            </button>}
             <DeferredSpinner className="spacer-left" loading={submitting} />
           </form>
         </div>
@@ -159,3 +167,9 @@ export default class ManualProjectCreate extends React.PureComponent<Props, Stat
     );
   }
 }
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default connect(mapStateToProps)(ManualProjectCreate);
