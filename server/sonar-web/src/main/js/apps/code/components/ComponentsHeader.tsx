@@ -20,12 +20,16 @@
 import * as classNames from 'classnames';
 import * as React from 'react';
 import { translate } from 'sonar-ui-common/helpers/l10n';
+import { connect } from 'react-redux';
+import { getAppState, Store } from '../../../store/rootReducer';
+import { MetricKey } from '../../../types/metrics';
 
 interface Props {
   baseComponent?: T.ComponentMeasure;
   canBePinned?: boolean;
   metrics: string[];
   rootComponent: T.ComponentMeasure;
+  appState: T.AppState | undefined;
 }
 
 const SHORT_NAME_METRICS = [
@@ -35,12 +39,15 @@ const SHORT_NAME_METRICS = [
   'new_duplicated_lines_density'
 ];
 
-export default function ComponentsHeader({
+function ComponentsHeader({
   baseComponent,
   canBePinned = true,
   metrics,
-  rootComponent
+  rootComponent,
+  appState
 }: Props) {
+  //TODO remove negation flag, once the grc project is assigned - TODO
+  const isGRC = !(appState?.grc !== undefined ? appState.grc : false);
   const isPortfolio = ['VW', 'SVW'].includes(rootComponent.qualifier);
   let columns: string[] = [];
   if (isPortfolio) {
@@ -53,9 +60,13 @@ export default function ComponentsHeader({
       translate('metric', 'ncloc', 'name')
     ];
   } else {
-    columns = metrics.map(metric =>
-      translate('metric', metric, SHORT_NAME_METRICS.includes(metric) ? 'short_name' : 'name')
-    );
+    columns = metrics.map(metric => {
+      if (metric === MetricKey.security_hotspots && isGRC) {
+        return translate('grc.security_hotspots');
+      } else {
+        return translate('metric', metric, SHORT_NAME_METRICS.includes(metric) ? 'short_name' : 'name');
+      }
+    });
   }
 
   return (
@@ -81,3 +92,9 @@ export default function ComponentsHeader({
     </thead>
   );
 }
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default connect(mapStateToProps)(ComponentsHeader);
