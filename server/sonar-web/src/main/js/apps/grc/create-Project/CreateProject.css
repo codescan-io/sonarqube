@@ -1,0 +1,18 @@
+.modal-foot {
+    padding: 0 24px;
+    border: none;
+    background-color: #fff;
+    text-align: left;
+}
+
+input {
+    max-width: 300px;
+}
+
+.success-msg {
+    margin: 20px 0;
+}
+
+.create-hdr{
+    margin-top: 20px;
+}

@@ -7,22 +7,22 @@ import CreateProjectPage from "./CreateProjectPage";
 
 interface Props {
     appState: T.AppState | undefined;
-    onNextClick: (key: string) => any;
+    onNextClick: (org: string) => any;
     onOrganizationUpgrade: () => void;
     organization: T.Organization;
 }
 const CreateProject = (props: Props & WithRouterProps) => {
-    const [orgKey, setOrgKey] = useState('');
+    const [org, setOrg] = useState(props.organization);
 
-    const nextClick = (key: string) => {
-        setOrgKey(key);
+    const nextClick = (data: T.Organization) => {
+        setOrg(data);
     }
     
   return (
     <div>
-    {!orgKey && <CreateProjectPageSonarCloud {...props} onNextClick={nextClick} />}
-    {orgKey && <CreateProjectPage {...props} onOrganizationUpgrade={props.onOrganizationUpgrade}
-          organization={props.organization}/>}
+    {!org && <CreateProjectPageSonarCloud {...props} onNextClick={nextClick} />}
+    {org && <CreateProjectPage {...props} onOrganizationUpgrade={props.onOrganizationUpgrade}
+          organization={org}/>}
     </div>
   );
 }
