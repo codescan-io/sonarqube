@@ -53,6 +53,12 @@ interface State {
 
 class ManualProjectCreate extends React.PureComponent<Props, State> {
   mounted = false;
+  styles = {
+    color: "#236a97",
+    padding: "8px",
+    fontWeight: 600,
+    border: "1px solid #236a97"
+  }
 
   constructor(props: Props) {
     super(props);
@@ -157,7 +163,7 @@ class ManualProjectCreate extends React.PureComponent<Props, State> {
             {!this.props.appState?.grc && <SubmitButton disabled={!this.canSubmit(this.state) || submitting}>
               {translate('set_up')}
             </SubmitButton>}
-            {this.props.appState?.grc && <button type="button" onClick={() => this.props.nextClick(this.state?.selectedOrganization)} disabled={!this.canSubmit(this.state) || submitting}>
+            {this.props.appState?.grc && <button type="button" style={(this.canSubmit(this.state) && !submitting) ? this.styles : {padding: "8px"}} onClick={() => this.props.nextClick(this.state?.selectedOrganization)} disabled={!this.canSubmit(this.state) || submitting}>
               Next
             </button>}
             <DeferredSpinner className="spacer-left" loading={submitting} />
