@@ -36,7 +36,7 @@ interface Props {
   fetchMyOrganizations: () => Promise<void>;
   skipOnboarding: () => void;
   userOrganizations: T.Organization[];
-  onNextClick: (key: string) => any;
+  onNextClick: (key: T.Organization) => any;
 }
 
 interface State {
@@ -79,8 +79,8 @@ export class CreateProjectPageSonarCloud extends React.PureComponent<
     }
   };
 
-  handleNextClick = (key: string) => {
-    this.props.onNextClick(key);
+  handleNextClick = (org: T.Organization) => {
+    this.props.onNextClick(org);
   }
 
   render() {

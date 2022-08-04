@@ -21,7 +21,7 @@ export default function GrcGlobalNavMenu(props: Props) {
 
     return (
         <li>
-          <Link className={classNames({active})} to="/grc">
+          <Link className={classNames({active})} to="/grc/dashboard">
             Dashboard
           </Link>
         </li>

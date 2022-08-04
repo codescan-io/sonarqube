@@ -8,3 +8,11 @@
 input {
     max-width: 300px;
 }
+
+.success-msg {
+    margin: 20px 0;
+}
+
+.create-hdr{
+    margin-top: 20px;
+}

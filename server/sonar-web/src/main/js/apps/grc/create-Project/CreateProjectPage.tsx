@@ -25,11 +25,11 @@ import { Alert } from 'sonar-ui-common/components/ui/Alert';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { createProject, setProjectTags } from '../../../api/components';
 import VisibilitySelector from '../../../components/common/VisibilitySelector';
-import { getProjectUrl } from '../../../helpers/urls';
+import { getGrcProjectUrl } from '../../../helpers/urls';
 import './CreateProject.css';
 
 interface Props {
-  onProjectCreated: () => void;
+  //onProjectCreated: () => void;
   onOrganizationUpgrade: () => void;
   organization: T.Organization;
 }
@@ -54,7 +54,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
       key: '',
       loading: false,
       name: '',
-      visibility: props.organization.projectVisibility
+      visibility: props.organization?.projectVisibility
     };
   }
 
@@ -103,7 +103,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
         if (this.mounted) {
           this.setState({ createdProject: response.project, loading: false });
           setProjectTags({ project: data.project, tags: "grc" });
-          this.props.onProjectCreated();
+          //this.props.onProjectCreated();
         }
       },
       () => {
@@ -125,12 +125,12 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
     return (
       <div>
         {createdProject ? (
-          <div>
+          <div className="create-hdr">
             <header>
               <h2>{translate('qualifiers.create.TRK')}</h2>
             </header>
 
-            <div>
+            <div className="success-msg">
               <Alert variant="success">
                 <FormattedMessage
                   defaultMessage={translate(
@@ -139,7 +139,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
                   id="projects_management.project_has_been_successfully_created"
                   values={{
                     project: (
-                      <Link to={getProjectUrl(createdProject.key)}>{createdProject.name}</Link>
+                      <Link to={getGrcProjectUrl(createdProject.key)}>{createdProject.name}</Link>
                     )
                   }}
                 />
@@ -150,7 +150,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
               <ResetButtonLink
                 id="create-project-close"
                 innerRef={node => (this.closeButton = node)}
-                >
+                onClick={()=> this.props.router.replace('/grc/dashboard')}>
                 {translate('close')}
               </ResetButtonLink>
             </footer>
@@ -195,9 +195,8 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
               </div>
               <div className="modal-field">
                 <label>{translate('visibility')}</label>
-                {/* canTurnToPrivate={organization.canUpdateProjectsVisibilityToPrivate} */}
                 <VisibilitySelector
-                  canTurnToPrivate={true}
+                  canTurnToPrivate={organization?.canUpdateProjectsVisibilityToPrivate}
                   className="little-spacer-top"
                   onChange={this.handleVisibilityChange}
                   visibility={this.state.visibility}
