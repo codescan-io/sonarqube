@@ -51,10 +51,35 @@ export default function GrcGlobalNavMenu(props: Props) {
   function renderMoreMenu() {
     const morePages = [
       {
+        key: 'overview',
+        path: '/grc/overview',
+        name: 'Overview'
+      },
+      {
+        key: 'activity',
+        path: '/grc/activity',
+        name: 'Activity'
+      },
+      {
+        key: 'profiles',
+        path: '/grc/profiles',
+        name: 'Profiles'
+      },
+      {
         key: 'rules',
         path: '/grc/rules',
-        name: 'Rules',
+        name: 'Rules'
       },
+      {
+        key: 'inventory',
+        path: '/grc/inventory',
+        name: 'Inventory'
+      },
+      {
+        key: 'projectSettings',
+        path: '/grc/settings',
+        name: 'Project Settings'
+      }
     ];
 
     return (

@@ -26,9 +26,10 @@ import { translate } from 'sonar-ui-common/helpers/l10n';
 import { createProject, setProjectTags } from '../../../api/components';
 import VisibilitySelector from '../../../components/common/VisibilitySelector';
 import { getProjectUrl } from '../../../helpers/urls';
+import './CreateProject.css';
 
 interface Props {
-  //onProjectCreated: () => void;
+  onProjectCreated: () => void;
   onOrganizationUpgrade: () => void;
   organization: T.Organization;
 }
@@ -53,12 +54,13 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
       key: '',
       loading: false,
       name: '',
-      //visibility: props.organization.projectVisibility
+      visibility: props.organization.projectVisibility
     };
   }
 
   componentDidMount() {
     this.mounted = true;
+    document.body.classList.add('white-page');
   }
 
   componentDidUpdate() {
@@ -101,7 +103,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
         if (this.mounted) {
           this.setState({ createdProject: response.project, loading: false });
           setProjectTags({ project: data.project, tags: "grc" });
-          //this.props.onProjectCreated();
+          this.props.onProjectCreated();
         }
       },
       () => {
@@ -155,12 +157,12 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
           </div>
         ) : (
           <form id="create-project-form" onSubmit={this.handleFormSubmit}>
-            <header>
+            <header className="modal-head">
               <h2>{translate('qualifiers.create.TRK')}</h2>
             </header>
 
-            <div>
-              <div>
+            <div className="modal-body">
+              <div className="modal-field">
                 <label htmlFor="create-project-name">
                   {translate('name')}
                   <em className="mandatory">*</em>
@@ -176,7 +178,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
                   value={this.state.name}
                 />
               </div>
-              <div>
+              <div className="modal-field">
                 <label htmlFor="create-project-key">
                   {translate('key')}
                   <em className="mandatory">*</em>
@@ -191,10 +193,11 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
                   value={this.state.key}
                 />
               </div>
-              <div>
+              <div className="modal-field">
                 <label>{translate('visibility')}</label>
+                {/* canTurnToPrivate={organization.canUpdateProjectsVisibilityToPrivate} */}
                 <VisibilitySelector
-                  canTurnToPrivate={false}
+                  canTurnToPrivate={true}
                   className="little-spacer-top"
                   onChange={this.handleVisibilityChange}
                   visibility={this.state.visibility}
@@ -202,7 +205,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
               </div>
             </div>
 
-            <footer>
+            <footer className="modal-foot">
               {this.state.loading && <i className="spinner spacer-right" />}
               <SubmitButton disabled={this.state.loading} id="create-project-submit">
                 {translate('create')}

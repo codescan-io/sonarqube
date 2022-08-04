@@ -1,0 +1,10 @@
+.modal-foot {
+    padding: 0 24px;
+    border: none;
+    background-color: #fff;
+    text-align: left;
+}
+
+input {
+    max-width: 300px;
+}

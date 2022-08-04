@@ -44,11 +44,16 @@ const routes = [
       },
       {
         path: 'rules',
-        component: lazyLoadComponent(() => import('./rules/Rules'))
+        component: lazyLoadComponent(() => import('../coding-rules/components/App'))
       },
       {
-        path: 'organization',
+        path: 'settings',
+        //TODO need to update the below component to project settings accordingly. 
         component: lazyLoadComponent(() => import('./organization/MyOrganization'))
+      },
+      {
+        path: 'activity',
+        component: lazyLoadComponent(() => import('../projectActivity/components/ProjectActivityAppContainer'))
       }
     ]
   }
