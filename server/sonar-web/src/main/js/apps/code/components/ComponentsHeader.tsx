@@ -46,8 +46,7 @@ function ComponentsHeader({
   rootComponent,
   appState
 }: Props) {
-  //TODO remove negation flag, once the grc project is assigned - TODO
-  const isGRC = !(appState?.grc !== undefined ? appState.grc : false);
+  const isGRC = (appState?.grc !== undefined ? appState.grc : false);
   const isPortfolio = ['VW', 'SVW'].includes(rootComponent.qualifier);
   let columns: string[] = [];
   if (isPortfolio) {

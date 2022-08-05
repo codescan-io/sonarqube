@@ -42,9 +42,8 @@ export class Components extends React.PureComponent<Props> {
   render() {
     const isGRC =  this.props.appState?.grc !== undefined ? this.props.appState.grc : false;
     const { baseComponent, branchLike, components, rootComponent, selected } = this.props;
-    // once the GRC Project is autoppulated, remove the negation flag - TODO
     const metricKeys = intersection(
-      getCodeMetrics(rootComponent.qualifier, branchLike, {}, !isGRC),
+      getCodeMetrics(rootComponent.qualifier, branchLike, {}, isGRC),
       Object.keys(this.props.metrics)
     );
     const metrics = metricKeys.map(metric => this.props.metrics[metric]);

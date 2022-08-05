@@ -55,8 +55,7 @@ export enum MeasuresPanelTabs {
 
 export function MeasuresPanel(props: MeasuresPanelProps) {
   const { appLeak, branch, component, loading, measures = [], period, appState } = props;
-  // TODO Remove the negation flag once the grc project is loaded
-  const isGRC =  !(appState?.grc !== undefined ? appState.grc : false);
+  const isGRC =  (appState?.grc !== undefined ? appState.grc : false);
 
   const hasDiffMeasures = measures.some(m => isDiffMetric(m.metric.key));
   const isApp = component.qualifier === ComponentQualifier.Application;
