@@ -40,6 +40,10 @@ const METRICS = [
   MetricKey.duplicated_lines_density
 ];
 
+const GRC_METRICS = [
+  MetricKey.security_hotspots
+];
+
 const APPLICATION_METRICS = [MetricKey.alert_status, ...METRICS];
 
 const PORTFOLIO_METRICS = [
@@ -104,8 +108,12 @@ function storeChildrenBreadcrumbs(parentComponentKey: string, children: T.Breadc
 export function getCodeMetrics(
   qualifier: string,
   branchLike?: BranchLike,
-  options: { includeQGStatus?: boolean } = {}
+  options: { includeQGStatus?: boolean } = {},
+  isGRC:boolean = false
 ) {
+  if(isGRC){
+    return [...GRC_METRICS]
+  }
   if (['VW', 'SVW'].includes(qualifier)) {
     const metrics = [...PORTFOLIO_METRICS];
     return options.includeQGStatus ? metrics.concat(MetricKey.alert_status) : metrics;
