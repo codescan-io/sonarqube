@@ -5,23 +5,25 @@ import Dropdown from 'sonar-ui-common/components/controls/Dropdown';
 import DropdownIcon from 'sonar-ui-common/components/icons/DropdownIcon';
 import {translate} from 'sonar-ui-common/helpers/l10n';
 import {Button} from "sonar-ui-common/components/controls/buttons";
+import { getGrcActivityUrl, getGrcDashboardUrl, getGrcInventoryUrl, getGrcOverviewUrl, getGrcProfilesUrl, getGrcProjectSettingsUrl, getGrcRulesUrl, getGrcViolationsUrl } from '../../../helpers/urls';
 
 interface Props {
   appState: Pick<T.AppState, 'canAdmin' | 'globalPages' | 'organizationsEnabled' | 'qualifiers'>;
   currentUser: T.CurrentUser;
-  location: { pathname: string };
+  location: { pathname: string , query:any};
 }
 
 export default function GrcGlobalNavMenu(props: Props) {
 
   const {location} = props;
+  const projectKey = location.query.id;
 
   function renderDashboard() {
     const active = location.pathname === '/grc';
 
     return (
         <li>
-          <Link className={classNames({active})} to="/grc/dashboard">
+          <Link className={classNames({active})} to={getGrcDashboardUrl(projectKey)}>
             Dashboard
           </Link>
         </li>
@@ -33,7 +35,7 @@ export default function GrcGlobalNavMenu(props: Props) {
 
     return (
         <li>
-          <Link className={classNames({active})} to="/grc/violations">
+          <Link className={classNames({active})} to={getGrcViolationsUrl(projectKey)}>
             Violations
           </Link>
         </li>
@@ -52,32 +54,32 @@ export default function GrcGlobalNavMenu(props: Props) {
     const morePages = [
       {
         key: 'overview',
-        path: '/grc/overview',
+        path: getGrcOverviewUrl(projectKey),
         name: 'Overview'
       },
       {
         key: 'activity',
-        path: '/grc/activity',
+        path: getGrcActivityUrl(projectKey),
         name: 'Activity'
       },
       {
         key: 'profiles',
-        path: '/grc/profiles',
+        path: getGrcProfilesUrl(projectKey),
         name: 'Profiles'
       },
       {
         key: 'rules',
-        path: '/grc/rules',
+        path: getGrcRulesUrl(projectKey),
         name: 'Rules'
       },
       {
         key: 'inventory',
-        path: '/grc/inventory',
+        path: getGrcInventoryUrl(projectKey),
         name: 'Inventory'
       },
       {
         key: 'projectSettings',
-        path: '/grc/settings',
+        path: getGrcProjectSettingsUrl(projectKey),
         name: 'Project Settings'
       }
     ];

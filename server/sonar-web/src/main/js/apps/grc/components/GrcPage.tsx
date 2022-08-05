@@ -41,7 +41,7 @@ function GrcPage({setGrcUi, children, router, location}: Props & WithRouterProps
         return Promise.reject();
       }
 
-      router.replace('/grc/dashboard');
+      router.replace('/grc/dashboard?id='+components[0].key);
       return getComponentData({component: id || components[0].key});
     })
     .then(({component}) => {
