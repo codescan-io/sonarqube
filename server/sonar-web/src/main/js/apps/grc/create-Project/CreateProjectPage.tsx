@@ -96,13 +96,13 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
     };
 
     this.setState({ loading: true });
-   // associateProject({ language: “sfmeta”, name: “GRC”, organization}, project);
 
     createProject(data).then(
       response => {
         if (this.mounted) {
           this.setState({ createdProject: response.project, loading: false });
           setProjectTags({ project: data.project, tags: "grc" });
+          // associateProject({ language: “sfmeta”, name: “GRC”, organization}, project);
           //this.props.onProjectCreated();
         }
       },

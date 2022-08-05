@@ -7,18 +7,20 @@ import { getGrcDashboardUrl } from '../../../helpers/urls';
 const GrcProjects = () => {
 
   const [projects, setProjects] = useState<Component[]>();
+  const [showMyProjects, setShowMyProjects] = useState(false);
 
   useEffect(() => {
     searchProjects({filter: 'tags=grc'}).then(({components}) => {
       setProjects(components);
+      if(components.length) {
+        setShowMyProjects(true);
+      }
     });
   }, []);
 
   return (
       <>
-        <li>
-          <span>My Projects</span>
-        </li>
+        {showMyProjects && <><li className="divider" role="separator" /><li><span>My Projects</span></li></>}
         {!!projects && projects.map(p => (
             <li key={p.key}>
               {/* TODO store the selected project key */}
@@ -29,9 +31,4 @@ const GrcProjects = () => {
   );
 }
 
-const mapStateToProps = () => {
-};
-
-const mapDispatchToProps = {};
-
-export default connect(mapStateToProps, mapDispatchToProps)(GrcProjects);
+export default GrcProjects;

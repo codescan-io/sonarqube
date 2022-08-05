@@ -19,7 +19,7 @@
  */
 import { sortBy } from 'lodash';
 import * as React from 'react';
-import { Link } from 'react-router';
+import { Link, WithRouterProps } from 'react-router';
 import Dropdown from 'sonar-ui-common/components/controls/Dropdown';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { getBaseUrl } from 'sonar-ui-common/helpers/urls';
@@ -39,9 +39,10 @@ interface Props {
   organizations: T.Organization[];
   pendoInitialized: boolean;
   router: Pick<Router, 'push'>;
+  location: { pathname: string };
 }
 
-export class GlobalNavUser extends React.PureComponent<Props> {
+export class GlobalNavUser extends React.PureComponent<Props & WithRouterProps> {
   handleLogin = (event: React.SyntheticEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     const shouldReturnToCurrentPage = window.location.pathname !== `${getBaseUrl()}/about`;
@@ -105,16 +106,13 @@ export class GlobalNavUser extends React.PureComponent<Props> {
             <li>
               <Link to="/account">{translate('my_account.page')}</Link>
             </li>
-            <li className="divider" />
-            <AppSwitchLink appState={appState} currentUser={currentUser} />
-            <li className="divider" role="separator" />
+            {!this.props.location.pathname.includes('/home') && <><li className="divider" /><AppSwitchLink appState={appState} currentUser={currentUser} /></>}
             { appState.grc && <GrcProjects /> }
-            { !appState.grc && (
-              <li>
-                <Link to="/account/organizations">{translate('my_organizations')}</Link>
-              </li>
+            { !this.props.location.pathname.includes('/home') && !appState.grc && (<><li className="divider" role="separator" /><li>
+              <Link to="/account/organizations">{translate('my_organizations')}</Link>
+            </li></>
             )}
-            { !appState.grc &&
+            { !this.props.location.pathname.includes('/home') && !appState.grc &&
               sortBy(organizations, org => org.name.toLowerCase()).map(organization => (
                 <OrganizationListItem key={organization.key} organization={organization} />
               ))

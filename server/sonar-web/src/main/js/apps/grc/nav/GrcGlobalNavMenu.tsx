@@ -1,5 +1,5 @@
 import * as classNames from 'classnames';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {Link} from 'react-router';
 import Dropdown from 'sonar-ui-common/components/controls/Dropdown';
 import DropdownIcon from 'sonar-ui-common/components/icons/DropdownIcon';
@@ -14,12 +14,13 @@ interface Props {
 }
 
 export default function GrcGlobalNavMenu(props: Props) {
+    const [hasProjects, setHasProjects] = useState(false);
+    const projectKey = "123"
 
   const {location} = props;
-  const projectKey = location.query.id;
 
   function renderDashboard() {
-    const active = location.pathname === '/grc';
+    const active = location.pathname === '/grc/dashboard';
 
     return (
         <li>
@@ -110,10 +111,10 @@ export default function GrcGlobalNavMenu(props: Props) {
 
   return (
       <ul className="global-navbar-menu">
-        {renderDashboard()}
-        {renderViolations()}
-        {renderMoreMenu()}
-        {renderRerunAnalysis()}
+        {hasProjects && renderDashboard()}
+        {hasProjects && renderViolations()}
+        {hasProjects && renderMoreMenu()}
+        {hasProjects && renderRerunAnalysis()}
       </ul>
   );
 }
