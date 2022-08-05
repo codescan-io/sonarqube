@@ -30,5 +30,4 @@ const GrcProjects = () => {
   );
 }
 
-
 export default GrcProjects;
