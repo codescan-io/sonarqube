@@ -40,6 +40,10 @@ export function getProjectUrl(project: string, branch?: string): Location {
   return { pathname: '/dashboard', query: { id: project, branch } };
 }
 
+export function getGrcProjectUrl(project: string, branch?: string): Location {
+  return { pathname: '/grc/dashboard', query: { id: project, branch } };
+}
+
 export function getProjectQueryUrl(project: string, branchParameters?: BranchParameters): Location {
   return { pathname: '/dashboard', query: { id: project, ...branchParameters } };
 }

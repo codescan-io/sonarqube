@@ -35,7 +35,7 @@ interface Props {
   onProjectCreate: (projectKeys: string[]) => void;
   organization?: string;
   userOrganizations?: T.Organization[];
-  nextClick: (key: string) => any;
+  nextClick: (key: T.Organization) => any;
 }
 
 interface State {
@@ -157,7 +157,7 @@ class ManualProjectCreate extends React.PureComponent<Props, State> {
             {!this.props.appState?.grc && <SubmitButton disabled={!this.canSubmit(this.state) || submitting}>
               {translate('set_up')}
             </SubmitButton>}
-            {this.props.appState?.grc && <button type="button" onClick={() => this.props.nextClick(this.state?.selectedOrganization?.key)} disabled={!this.canSubmit(this.state) || submitting}>
+            {this.props.appState?.grc && <button type="button" onClick={() => this.props.nextClick(this.state?.selectedOrganization)} disabled={!this.canSubmit(this.state) || submitting}>
               Next
             </button>}
             <DeferredSpinner className="spacer-left" loading={submitting} />

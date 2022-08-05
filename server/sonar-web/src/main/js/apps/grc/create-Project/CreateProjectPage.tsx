@@ -25,7 +25,8 @@ import { Alert } from 'sonar-ui-common/components/ui/Alert';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { createProject, setProjectTags } from '../../../api/components';
 import VisibilitySelector from '../../../components/common/VisibilitySelector';
-import { getProjectUrl } from '../../../helpers/urls';
+import { getGrcProjectUrl } from '../../../helpers/urls';
+import './CreateProject.css';
 
 interface Props {
   //onProjectCreated: () => void;
@@ -53,12 +54,13 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
       key: '',
       loading: false,
       name: '',
-      //visibility: props.organization.projectVisibility
+      visibility: props.organization?.projectVisibility
     };
   }
 
   componentDidMount() {
     this.mounted = true;
+    document.body.classList.add('white-page');
   }
 
   componentDidUpdate() {
@@ -123,12 +125,12 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
     return (
       <div>
         {createdProject ? (
-          <div>
+          <div className="create-hdr">
             <header>
               <h2>{translate('qualifiers.create.TRK')}</h2>
             </header>
 
-            <div>
+            <div className="success-msg">
               <Alert variant="success">
                 <FormattedMessage
                   defaultMessage={translate(
@@ -137,7 +139,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
                   id="projects_management.project_has_been_successfully_created"
                   values={{
                     project: (
-                      <Link to={getProjectUrl(createdProject.key)}>{createdProject.name}</Link>
+                      <Link to={getGrcProjectUrl(createdProject.key)}>{createdProject.name}</Link>
                     )
                   }}
                 />
@@ -148,19 +150,19 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
               <ResetButtonLink
                 id="create-project-close"
                 innerRef={node => (this.closeButton = node)}
-                >
+                onClick={()=> this.props.router.replace('/grc/dashboard')}>
                 {translate('close')}
               </ResetButtonLink>
             </footer>
           </div>
         ) : (
           <form id="create-project-form" onSubmit={this.handleFormSubmit}>
-            <header>
+            <header className="modal-head">
               <h2>{translate('qualifiers.create.TRK')}</h2>
             </header>
 
-            <div>
-              <div>
+            <div className="modal-body">
+              <div className="modal-field">
                 <label htmlFor="create-project-name">
                   {translate('name')}
                   <em className="mandatory">*</em>
@@ -176,7 +178,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
                   value={this.state.name}
                 />
               </div>
-              <div>
+              <div className="modal-field">
                 <label htmlFor="create-project-key">
                   {translate('key')}
                   <em className="mandatory">*</em>
@@ -191,10 +193,10 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
                   value={this.state.key}
                 />
               </div>
-              <div>
+              <div className="modal-field">
                 <label>{translate('visibility')}</label>
                 <VisibilitySelector
-                  canTurnToPrivate={false}
+                  canTurnToPrivate={organization?.canUpdateProjectsVisibilityToPrivate}
                   className="little-spacer-top"
                   onChange={this.handleVisibilityChange}
                   visibility={this.state.visibility}
@@ -202,7 +204,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
               </div>
             </div>
 
-            <footer>
+            <footer className="modal-foot">
               {this.state.loading && <i className="spinner spacer-right" />}
               <SubmitButton disabled={this.state.loading} id="create-project-submit">
                 {translate('create')}
