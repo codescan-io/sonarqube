@@ -6,6 +6,7 @@ import DropdownIcon from 'sonar-ui-common/components/icons/DropdownIcon';
 import {translate} from 'sonar-ui-common/helpers/l10n';
 import {Button} from "sonar-ui-common/components/controls/buttons";
 import { getGrcActivityUrl, getGrcDashboardUrl, getGrcInventoryUrl, getGrcOverviewUrl, getGrcProfilesUrl, getGrcProjectSettingsUrl, getGrcRulesUrl, getGrcViolationsUrl } from '../../../helpers/urls';
+import { searchProjects } from '../../../api/components';
 
 interface Props {
   appState: Pick<T.AppState, 'canAdmin' | 'globalPages' | 'organizationsEnabled' | 'qualifiers'>;
@@ -14,10 +15,18 @@ interface Props {
 }
 
 export default function GrcGlobalNavMenu(props: Props) {
-    const [hasProjects, setHasProjects] = useState(false);
-    const projectKey = "123"
+  const [hasProjects, setHasProjects] = useState(false);
+  const projectKey = props.location.query.id;
 
   const {location} = props;
+
+  useEffect(() => {
+    searchProjects({filter: 'tags=grc'}).then(({components}) => {
+      if (components.length) {
+        setHasProjects(true);
+      }
+    });
+  }, []);
 
   function renderDashboard() {
     const active = location.pathname === '/grc/dashboard';
