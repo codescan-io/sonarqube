@@ -191,11 +191,11 @@ export class GlobalNav extends React.PureComponent<Props, State> {
             />
           )}
           <EmbedDocsPopupHelper />
-          <Search appState={appState} currentUser={currentUser} />
-          {isLoggedIn(currentUser) && !appState.grc && (
+          {!this.props.location.pathname.includes('/home') && <Search appState={appState} currentUser={currentUser} />}
+          {!this.props.location.pathname.includes('/home') && isLoggedIn(currentUser) && !appState.grc && (
             <GlobalNavPlus appState={appState} currentUser={currentUser} />
           )}
-          {isLoggedIn(currentUser) && appState.grc && (
+          {!this.props.location.pathname.includes('/home') && isLoggedIn(currentUser) && appState.grc && (
             <li>
               <Link to='/grc/create' className="navbar-icon navbar-plus">
                 <PlusIcon />
