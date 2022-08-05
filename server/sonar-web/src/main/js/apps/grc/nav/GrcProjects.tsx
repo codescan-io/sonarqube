@@ -1,7 +1,8 @@
 import React, {useEffect, useState} from 'react';
 import {connect} from "react-redux";
 import {Component, searchProjects} from "../../../api/components";
-import {Link} from "react-router";
+import { Link } from 'react-router';
+import { getGrcDashboardUrl } from '../../../helpers/urls';
 
 const GrcProjects = () => {
 
@@ -23,7 +24,7 @@ const GrcProjects = () => {
         {!!projects && projects.map(p => (
             <li key={p.key}>
               {/* TODO store the selected project key */}
-              <Link to="/grc">{p.name}</Link>
+              <Link to={getGrcDashboardUrl(p.key)}>{p.name}</Link>
             </li>
         ))}
       </>

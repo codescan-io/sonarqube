@@ -40,9 +40,36 @@ export function getProjectUrl(project: string, branch?: string): Location {
   return { pathname: '/dashboard', query: { id: project, branch } };
 }
 
-export function getGrcProjectUrl(project: string, branch?: string): Location {
+export function getGrcDashboardUrl(project: string, branch?: string): Location {
   return { pathname: '/grc/dashboard', query: { id: project, branch } };
 }
+
+export function getGrcViolationsUrl(project: string, branch?: string): Location {
+  return { pathname: '/grc/violations', query: { id: project, branch } };
+}
+
+export function getGrcOverviewUrl(project: string, branch?: string): Location {
+  return { pathname: '/grc/overview', query: { id: project, branch } };
+}
+
+export function getGrcActivityUrl(project: string, branch?: string): Location {
+  return { pathname: '/grc/activity', query: { id: project, branch } };
+}
+
+export function getGrcInventoryUrl(project: string, branch?: string): Location {
+  return { pathname: '/grc/inventory', query: { id: project, branch } };
+}
+export function getGrcProfilesUrl(project: string, branch?: string): Location {
+  return { pathname: '/grc/profiles', query: { id: project, branch } };
+}
+export function getGrcRulesUrl(project: string, branch?: string): Location {
+  return { pathname: '/grc/rules', query: { id: project, branch } };
+}
+export function getGrcProjectSettingsUrl(project: string, branch?: string): Location {
+  return { pathname: '/grc/settings', query: { id: project, branch } };
+}
+
+
 
 export function getProjectQueryUrl(project: string, branchParameters?: BranchParameters): Location {
   return { pathname: '/dashboard', query: { id: project, ...branchParameters } };

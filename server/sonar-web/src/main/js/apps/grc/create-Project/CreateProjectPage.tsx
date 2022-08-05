@@ -25,7 +25,7 @@ import { Alert } from 'sonar-ui-common/components/ui/Alert';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { createProject, setProjectTags } from '../../../api/components';
 import VisibilitySelector from '../../../components/common/VisibilitySelector';
-import { getGrcProjectUrl } from '../../../helpers/urls';
+import { getGrcDashboardUrl } from '../../../helpers/urls';
 import './CreateProject.css';
 
 interface Props {
@@ -139,7 +139,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
                   id="projects_management.project_has_been_successfully_created"
                   values={{
                     project: (
-                      <Link to={getGrcProjectUrl(createdProject.key)}>{createdProject.name}</Link>
+                      <Link to={getGrcDashboardUrl(createdProject.key)}>{createdProject.name}</Link>
                     )
                   }}
                 />
