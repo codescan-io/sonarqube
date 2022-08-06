@@ -35,8 +35,7 @@ import { DrilldownMeasureValue } from './DrilldownMeasureValue';
 import { LeakPeriodInfo } from './LeakPeriodInfo';
 import MeasuresPanelIssueMeasureRow from './MeasuresPanelIssueMeasureRow';
 import MeasuresPanelNoNewCode from './MeasuresPanelNoNewCode';
-import { getAppState, Store } from '../../../store/rootReducer'; 
-import { connect } from 'react-redux';
+
 
 export interface MeasuresPanelProps {
   appLeak?: ApplicationPeriod;
@@ -45,7 +44,7 @@ export interface MeasuresPanelProps {
   loading?: boolean;
   measures?: T.MeasureEnhanced[];
   period?: T.Period;
-  appState: T.AppState | undefined
+  grc:boolean
 }
 
 export enum MeasuresPanelTabs {
@@ -54,8 +53,7 @@ export enum MeasuresPanelTabs {
 }
 
 export function MeasuresPanel(props: MeasuresPanelProps) {
-  const { appLeak, branch, component, loading, measures = [], period, appState } = props;
-  const isGRC =  (appState?.grc !== undefined ? appState.grc : false);
+  const { appLeak, branch, component, loading, measures = [], period, grc } = props;
 
   const hasDiffMeasures = measures.some(m => isDiffMetric(m.metric.key));
   const isApp = component.qualifier === ComponentQualifier.Application;
@@ -75,8 +73,8 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [loading, hasDiffMeasures]);
 
-  const newCodeLabel = isGRC ?translate('grc.new_violations') :translate('overview.new_code');
-  const overallCodeLabel = isGRC ?translate('grc.existing_violations') :translate('overview.overall_code');
+  const newCodeLabel = grc ?translate('grc.new_violations') :translate('overview.new_code');
+  const overallCodeLabel = grc ?translate('grc.existing_violations') :translate('overview.overall_code');
 
   const tabs = [
     {
@@ -191,9 +189,4 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
   );
 }
 
-
-const mapStateToProps = (state: Store) => ({
-  appState: getAppState(state)
-});
-
-export default connect(mapStateToProps)(React.memo(MeasuresPanel));
+export default React.memo(MeasuresPanel);
