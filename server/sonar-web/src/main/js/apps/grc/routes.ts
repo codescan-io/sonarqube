@@ -21,7 +21,7 @@ import { lazyLoadComponent } from 'sonar-ui-common/components/lazyLoadComponent'
 
 const routes = [
   {
-    component: lazyLoadComponent(() => import('./components/GrcPage')),
+    component: lazyLoadComponent(() => import('./components/GrcNewPage')),
     childRoutes: [
       {
         indexRoute: { component: lazyLoadComponent(() => import('./create/CreateGRCProject')) }
@@ -54,6 +54,16 @@ const routes = [
       {
         path: 'activity',
         component: lazyLoadComponent(() => import('../projectActivity/components/ProjectActivityAppContainer'))
+      },
+      {
+        path: 'overview',
+        component: lazyLoadComponent(() => import('../overview/components/App')),
+
+      },
+      {
+        path: 'inventory',
+        component: lazyLoadComponent(() => import('../code/components/App')),
+
       }
     ]
   }
