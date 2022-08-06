@@ -96,19 +96,19 @@ export function BranchOverviewRenderer(props: BranchOverviewRendererProps) {
                   measures={measures}
                   period={period}
                   grc={grc}
-                />
-
-                <ActivityPanel
-                  analyses={analyses}
-                  branchLike={branch}
-                  component={component}
-                  graph={graph}
-                  leakPeriodDate={leakPeriod && parseDate(leakPeriod.date)}
-                  loading={loadingHistory}
-                  measuresHistory={measuresHistory}
-                  metrics={metrics}
-                  onGraphChange={onGraphChange}
-                />
+                />{ !grc ? (
+                  <ActivityPanel
+                    analyses={analyses}
+                    branchLike={branch}
+                    component={component}
+                    graph={graph}
+                    leakPeriodDate={leakPeriod && parseDate(leakPeriod.date)}
+                    loading={loadingHistory}
+                    measuresHistory={measuresHistory}
+                    metrics={metrics}
+                    onGraphChange={onGraphChange}
+                />):(<></>)
+                }
               </div>
             </div>
           </div>
