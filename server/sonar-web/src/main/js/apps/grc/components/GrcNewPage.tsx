@@ -46,6 +46,7 @@ import { ComponentContext } from '../../../app/components/ComponentContext';
 import PageUnavailableDueToIndexation from '../../../app/components/indexation/PageUnavailableDueToIndexation';
 import { setGrcUi } from '../../../store/appState';
 import getStore from '../../../app/utils/getStore';
+import "../styles.css";
 
 interface Props {
   children: React.ReactElement;
