@@ -31,7 +31,7 @@ import Suggestions from '../../../app/components/embed-docs-modal/Suggestions';
 import { isPullRequest, isSameBranchLike } from '../../../helpers/branch-like';
 import { getCodeUrl, getProjectUrl } from '../../../helpers/urls';
 import { fetchBranchStatus, fetchMetrics } from '../../../store/rootActions';
-import { getMetrics } from '../../../store/rootReducer';
+import { getAppState, getMetrics, Store } from '../../../store/rootReducer';
 import { BranchLike } from '../../../types/branch-like';
 import { addComponent, addComponentBreadcrumbs, clearBucket } from '../bucket';
 import '../code.css';
@@ -43,6 +43,7 @@ import SourceViewerWrapper from './SourceViewerWrapper';
 
 interface StateToProps {
   metrics: T.Dict<T.Metric>;
+  appState: Pick<T.AppState,'grc'>;
 }
 
 interface DispatchToProps {
@@ -74,6 +75,7 @@ interface State {
 export class App extends React.PureComponent<Props, State> {
   mounted = false;
   state: State;
+  grc: boolean;
 
   constructor(props: Props) {
     super(props);
@@ -84,6 +86,7 @@ export class App extends React.PureComponent<Props, State> {
       total: 0
     };
     this.refreshBranchStatus = debounce(this.refreshBranchStatus, 1000);
+    this.grc = props.appState.grc === undefined ? false : props.appState.grc;
   }
 
   componentDidMount() {
@@ -252,6 +255,7 @@ export class App extends React.PureComponent<Props, State> {
       searchResults,
       sourceViewer
     } = this.state;
+    const grc = this.grc;
 
     const showSearch = searchResults !== undefined;
 
@@ -291,6 +295,7 @@ export class App extends React.PureComponent<Props, State> {
               branchLike={branchLike}
               breadcrumbs={breadcrumbs}
               rootComponent={component}
+              grc={grc}
             />
           )}
 
@@ -309,6 +314,7 @@ export class App extends React.PureComponent<Props, State> {
                   onSelect={this.handleSelect}
                   rootComponent={component}
                   selected={highlighted}
+                  grc={grc}
                 />
               </div>
               <ListFooter count={components.length} loadMore={this.handleLoadMore} total={total} />
@@ -348,8 +354,9 @@ export class App extends React.PureComponent<Props, State> {
   }
 }
 
-const mapStateToProps = (state: any): StateToProps => ({
-  metrics: getMetrics(state)
+const mapStateToProps = (state: Store): StateToProps => ({
+  metrics: getMetrics(state),
+  appState: getAppState(state)
 });
 
 const mapDispatchToProps: DispatchToProps = {
