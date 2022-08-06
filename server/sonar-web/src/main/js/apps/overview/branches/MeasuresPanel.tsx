@@ -127,6 +127,7 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
                     key={type}
                     measures={measures}
                     type={type}
+                    grc={grc}
                   />
                 ))}
 
