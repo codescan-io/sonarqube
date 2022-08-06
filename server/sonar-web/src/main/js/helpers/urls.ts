@@ -87,13 +87,13 @@ export function getComponentBackgroundTaskUrl(componentKey: string, status?: str
   return { pathname: '/project/background_tasks', query: { id: componentKey, status } };
 }
 
-export function getBranchLikeUrl(project: string, branchLike?: BranchLike): Location {
+export function getBranchLikeUrl(project: string, branchLike?: BranchLike, grc?:boolean): Location {
   if (isPullRequest(branchLike)) {
     return getPullRequestUrl(project, branchLike.key);
   } else if (isBranch(branchLike) && !isMainBranch(branchLike)) {
     return getBranchUrl(project, branchLike.name);
   } else {
-    return getProjectUrl(project);
+    return grc? getGrcDashboardUrl(project) : getProjectUrl(project);
   }
 }
 
@@ -261,10 +261,12 @@ export function getCodeUrl(
   project: string,
   branchLike?: BranchLike,
   selected?: string,
-  line?: number
+  line?: number,
+  grc?:boolean
 ) {
+  const pathName = grc?"/grc/inventory":"/code"
   return {
-    pathname: '/code',
+    pathname: pathName,
     query: { id: project, ...getBranchLikeQuery(branchLike), selected, line }
   };
 }

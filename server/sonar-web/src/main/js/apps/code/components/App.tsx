@@ -331,6 +331,7 @@ export class App extends React.PureComponent<Props, State> {
                 onSelect={this.handleSelect}
                 rootComponent={component}
                 selected={highlighted}
+                grc={grc}
               />
             </div>
           )}
@@ -345,6 +346,7 @@ export class App extends React.PureComponent<Props, State> {
                 location={location}
                 onGoToParent={this.handleGoToParent}
                 onIssueChange={this.handleIssueChange}
+                grc={grc}
               />
             </div>
           )}

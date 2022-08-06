@@ -29,6 +29,9 @@ export const ISSUE_TYPES: T.IssueType[] = [
   IssueType.CodeSmell,
   IssueType.SecurityHotspot
 ];
+export const GRC_ISSUE_TYPES: T.IssueType[] = [
+  IssueType.SecurityHotspot
+];
 export const SOURCE_SCOPES = [
   { scope: IssueScope.Main, qualifier: ComponentQualifier.File },
   { scope: IssueScope.Test, qualifier: ComponentQualifier.TestFile }
