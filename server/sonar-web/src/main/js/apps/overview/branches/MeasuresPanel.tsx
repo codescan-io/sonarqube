@@ -63,6 +63,10 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
 
   const isNewCodeTab = tab === MeasuresPanelTabs.New;
 
+  const renderRows = grc
+    ? [IssueType.SecurityHotspot]
+    : [IssueType.Bug, IssueType.Vulnerability, IssueType.SecurityHotspot, IssueType.CodeSmell];
+
   React.useEffect(() => {
     // Open Overall tab by default if there are no new measures.
     if (loading === false && !hasDiffMeasures && isNewCodeTab) {
@@ -115,12 +119,7 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
               <MeasuresPanelNoNewCode branch={branch} component={component} period={period} />
             ) : (
               <>
-                {[
-                  IssueType.Bug,
-                  IssueType.Vulnerability,
-                  IssueType.SecurityHotspot,
-                  IssueType.CodeSmell
-                ].map((type: IssueType) => (
+                {renderRows.map((type: IssueType) => (
                   <MeasuresPanelIssueMeasureRow
                     branchLike={branch}
                     component={component}
