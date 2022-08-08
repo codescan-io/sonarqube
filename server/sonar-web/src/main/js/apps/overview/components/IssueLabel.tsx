@@ -69,7 +69,7 @@ export function IssueLabel(props: IssueLabelProps) {
           className="overview-measures-value text-light"
           to={
             type === IssueType.SecurityHotspot
-              ? getComponentSecurityHotspotsUrl(component.key, params)
+              ? getComponentSecurityHotspotsUrl(component.key, params, grc)
               : getComponentIssuesUrl(component.key, params)
           }>
           {formatMeasure(value, 'SHORT_INT')}
