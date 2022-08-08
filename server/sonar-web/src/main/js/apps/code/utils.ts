@@ -109,9 +109,9 @@ export function getCodeMetrics(
   qualifier: string,
   branchLike?: BranchLike,
   options: { includeQGStatus?: boolean } = {},
-  isGRC:boolean = false
+  grc:boolean = false
 ) {
-  if(isGRC){
+  if(grc){
     return [...GRC_METRICS]
   }
   if (['VW', 'SVW'].includes(qualifier)) {

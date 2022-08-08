@@ -35,6 +35,7 @@ interface Props {
   previous?: T.ComponentMeasure;
   rootComponent: T.ComponentMeasure;
   selected?: boolean;
+  grc:boolean
 }
 
 export class Component extends React.PureComponent<Props> {
@@ -47,7 +48,8 @@ export class Component extends React.PureComponent<Props> {
       metrics,
       previous,
       rootComponent,
-      selected = false
+      selected = false,
+      grc
     } = this.props;
 
     const isFile = component.qualifier === 'FIL' || component.qualifier === 'UTS';
@@ -79,6 +81,7 @@ export class Component extends React.PureComponent<Props> {
             component={component}
             previous={previous}
             rootComponent={rootComponent}
+            grc={grc}
           />
         </td>
 

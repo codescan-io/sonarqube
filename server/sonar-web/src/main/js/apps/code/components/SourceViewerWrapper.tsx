@@ -29,6 +29,7 @@ interface Props {
   component: string;
   componentMeasures: T.Measure[] | undefined;
   location: Pick<Location, 'query'>;
+  grc:boolean;
   onIssueChange?: (issue: T.Issue) => void;
 }
 
@@ -49,6 +50,7 @@ export class SourceViewerWrapper extends React.PureComponent<Props> {
     const { branchLike, component, componentMeasures, location } = this.props;
     const { line } = location.query;
     const finalLine = line ? Number(line) : undefined;
+    const grc = this.props.grc;
 
     return (
       <SourceViewer
@@ -60,6 +62,7 @@ export class SourceViewerWrapper extends React.PureComponent<Props> {
         onIssueChange={this.props.onIssueChange}
         onLoaded={this.scrollToLine}
         showMeasures={true}
+        grc = {grc}
       />
     );
   }

@@ -57,6 +57,7 @@ export interface Props {
   component: T.ComponentMeasure;
   previous?: T.ComponentMeasure;
   rootComponent: T.ComponentMeasure;
+  grc:boolean;
 }
 
 export default function ComponentName({
@@ -64,7 +65,8 @@ export default function ComponentName({
   component,
   rootComponent,
   previous,
-  canBrowse = false
+  canBrowse = false,
+  grc
 }: Props) {
   const areBothDirs = component.qualifier === 'DIR' && previous && previous.qualifier === 'DIR';
   const prefix =
@@ -91,11 +93,12 @@ export default function ComponentName({
     );
   } else if (canBrowse) {
     const query = { id: rootComponent.key, ...getBranchLikeQuery(branchLike) };
+    const pathName = grc?"/grc/inventory":"/code";
     if (component.key !== rootComponent.key) {
       Object.assign(query, { selected: component.key });
     }
     inner = (
-      <Link className="link-with-icon" to={{ pathname: '/code', query }}>
+      <Link className="link-with-icon" to={{ pathname: pathName, query }}>
         <QualifierIcon qualifier={component.qualifier} /> <span>{name}</span>
       </Link>
     );
