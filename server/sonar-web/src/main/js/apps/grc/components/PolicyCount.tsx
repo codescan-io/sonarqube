@@ -20,19 +20,24 @@
 import React from 'react';
 import '../grc-dashboard.css';
 
-export default function PolicyCount() {
+interface Props {
+  totalProfilesDefined:number,
+  totalProfilesEnforced:number
+}
+
+export default function PolicyCount({ totalProfilesDefined, totalProfilesEnforced}: Props) {
 
   return (
     <>
       <div className="widget policy-count">
         <div className='policy'>
             <label className='name'>Total Policies</label><br/>
-            <label className='value'>8</label> <br/>
+            <label className='value'>{totalProfilesDefined}</label> <br/>
         </div>
         <hr className="seperator"></hr>
         <div className='policy'>
             <label className='name'>Policies Consumed</label><br/>
-            <label className='value'>6</label>
+            <label className='value'>{totalProfilesEnforced}</label>
         </div>
       </div>
     </>
