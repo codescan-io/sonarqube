@@ -1,5 +1,7 @@
 
 import { RawHotspot, RiskExposure } from "../../../types/security-hotspots";
+import { groupBy } from 'lodash';
+import { groupByCategory, RISK_EXPOSURE_LEVELS } from "../../security-hotspots/utils";
 
 export function getReadableDateFormat(date:string){
     let t:Date = new Date(date);
@@ -30,4 +32,13 @@ export function getHotspotsBasedOnRiskExposure(hotspots:RawHotspot[]):{high:numb
         "medium": hotspots.filter((hotspot:RawHotspot)=>hotspot.vulnerabilityProbability === RiskExposure.MEDIUM).length,
         "low": hotspots.filter((hotspot:RawHotspot)=>hotspot.vulnerabilityProbability === RiskExposure.LOW).length
     };
+}
+
+export function getGroupHotspots(hotspots: RawHotspot[], securityCategories: T.StandardSecurityCategories){
+    const risks = groupBy(hotspots, h => h.vulnerabilityProbability);
+
+    return RISK_EXPOSURE_LEVELS.map(risk => ({
+        risk,
+        categories: groupByCategory(risks[risk], securityCategories)
+      })).filter(risk => risk.categories.length > 0);
 }

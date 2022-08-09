@@ -103,3 +103,7 @@ hr.seperator{
 label.value b{
     text-transform: capitalize;
 }
+.grc-total-violations-cntr{
+    padding: 5px 15px 5px 0;
+    font-size: 16px;
+}
