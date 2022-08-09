@@ -76,7 +76,7 @@ export default function IssuesByPriority({hotspots}:Props) {
   }
 
   if(processedHotspots.low>0){
-    data.push({ name: "Medium", value: processedHotspots.low });
+    data.push({ name: "Low", value: processedHotspots.low });
     COLORS.push(lowColorCode);
   }
 
