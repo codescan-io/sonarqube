@@ -18,24 +18,46 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import React from "react";
+import { getQualityGateInfo, getQualityProfileInfo, getReadableDateFormat, getVersionInfo } from "../dashboard/utils";
 import '../grc-dashboard.css';
 
-export default function LastAnalysis() {
+interface Props {
+  event: T.Analysis;
+}
 
-  const lastScanDate: string = "07/30/2022, 05:08 AM";
-  const qualityGate: string = "Red"
-  const qualityProfile: string = "Used IBM MO Profile(SF Metadata)"
-  const version: string = "1"
+export default function LastAnalysis({ event }: Props) {
+
+  const lastScanDate: string = getReadableDateFormat(event.date);
+  const qualityGate: string | undefined = getQualityGateInfo(event);
+  const qualityProfile: string | undefined = getQualityProfileInfo(event);
+  const version: string | undefined = getVersionInfo(event);
 
   return (
       <>
       <div className="widget last-analysis-cntr">
         <label>Last Analysis </label><br/><br/>
-        <label className="value first">Time: <b>{lastScanDate}</b></label><br/>
-        <label className="value">Quality Gate: <b>{qualityGate}</b></label><br/>
-        <label className="value">Quality Profile: <b>{qualityProfile}</b></label><br/>
-        <label className="value">Version: <b>{version}</b></label><br/>
-
+        <div><label className="value first">Time: <b>{lastScanDate}</b></label></div>
+        {
+          qualityGate? (
+            <div><label className="value">Quality Gate: <b>{qualityGate}</b></label></div>
+          ):(
+            <></>
+          )
+        }
+        {
+          qualityProfile? (
+            <div><label className="value">Quality Profile: <b>{qualityProfile}</b></label></div>
+          ):(
+            <></>
+          )
+        }
+        {
+          version? (
+            <div><label className="value">Version: <b>{version}</b></label></div>
+          ):(
+            <></>
+          )
+        }
       </div>
       </>
   );

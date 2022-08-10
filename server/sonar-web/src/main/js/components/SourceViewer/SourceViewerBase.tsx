@@ -53,6 +53,7 @@ import './styles.css';
 // TODO react-virtualized
 
 export interface Props {
+  grc?:boolean;
   aroundLine?: number;
   branchLike: BranchLike | undefined;
   component: string;
@@ -629,6 +630,7 @@ export default class SourceViewerBase extends React.PureComponent<Props, State> 
             openComponent={openComponent}
             showMeasures={this.props.showMeasures}
             sourceViewerFile={sourceViewerFile}
+            grc={this.props.grc}
           />
         )}
       </WorkspaceContext.Consumer>

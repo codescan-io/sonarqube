@@ -19,8 +19,7 @@
  */
 import { intersection } from 'lodash';
 import * as React from 'react';
-import { connect } from "react-redux";
-import { getAppState, Store } from '../../../store/rootReducer'; 
+
 import withKeyboardNavigation from '../../../components/hoc/withKeyboardNavigation';
 import { BranchLike } from '../../../types/branch-like';
 import { getCodeMetrics } from '../utils';
@@ -35,15 +34,14 @@ interface Props {
   metrics: T.Dict<T.Metric>;
   rootComponent: T.ComponentMeasure;
   selected?: T.ComponentMeasure;
-  appState: T.AppState | undefined
+  grc: boolean
 }
 
-export class Components extends React.PureComponent<Props> {
+export default class Components extends React.PureComponent<Props> {
   render() {
-    const isGRC =  this.props.appState?.grc !== undefined ? this.props.appState.grc : false;
-    const { baseComponent, branchLike, components, rootComponent, selected } = this.props;
+    const { baseComponent, branchLike, components, rootComponent, selected, grc } = this.props;
     const metricKeys = intersection(
-      getCodeMetrics(rootComponent.qualifier, branchLike, {}, isGRC),
+      getCodeMetrics(rootComponent.qualifier, branchLike, {}, grc),
       Object.keys(this.props.metrics)
     );
     const metrics = metricKeys.map(metric => this.props.metrics[metric]);
@@ -70,6 +68,7 @@ export class Components extends React.PureComponent<Props> {
                 key={baseComponent.key}
                 metrics={metrics}
                 rootComponent={rootComponent}
+                grc={grc}
               />
               <tr className="blank">
                 <td colSpan={3}>&nbsp;</td>
@@ -90,6 +89,7 @@ export class Components extends React.PureComponent<Props> {
                 previous={index > 0 ? list[index - 1] : undefined}
                 rootComponent={rootComponent}
                 selected={selected && component.key === selected.key}
+                grc={grc}
               />
             ))
           ) : (
@@ -106,9 +106,4 @@ export class Components extends React.PureComponent<Props> {
   }
 }
 
-const mapStateToProps = (state: Store) => ({
-  appState: getAppState(state)
-});
-
-
-export default connect(mapStateToProps)(withKeyboardNavigation(Components));
+withKeyboardNavigation(Components);

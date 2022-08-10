@@ -21,9 +21,15 @@ import React from 'react';
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import '../grc-dashboard.css';
 
-export default function RiskIndicator() {
-  const totalPolicies = 75;
-  const usedPolicies = 60;
+interface Props {
+  totalProfilesDefined:number,
+  totalProfilesEnforced:number
+}
+
+export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnforced}: Props) {
+  const usedPolicies = totalProfilesEnforced;
+  const totalPolicies = totalProfilesDefined?totalProfilesDefined:totalProfilesEnforced;
+  
 
   const policyCoverage = Math.ceil(((usedPolicies / totalPolicies)*100));
   const policyCoveragePercentage = policyCoverage ? policyCoverage+"%": "0%";

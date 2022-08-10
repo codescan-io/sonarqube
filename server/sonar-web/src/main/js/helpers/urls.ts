@@ -87,13 +87,13 @@ export function getComponentBackgroundTaskUrl(componentKey: string, status?: str
   return { pathname: '/project/background_tasks', query: { id: componentKey, status } };
 }
 
-export function getBranchLikeUrl(project: string, branchLike?: BranchLike): Location {
+export function getBranchLikeUrl(project: string, branchLike?: BranchLike, grc?:boolean): Location {
   if (isPullRequest(branchLike)) {
     return getPullRequestUrl(project, branchLike.key);
   } else if (isBranch(branchLike) && !isMainBranch(branchLike)) {
     return getBranchUrl(project, branchLike.name);
   } else {
-    return getProjectUrl(project);
+    return grc? getGrcDashboardUrl(project) : getProjectUrl(project);
   }
 }
 
@@ -123,10 +123,11 @@ export function getComponentIssuesUrl(componentKey: string, query?: Query): Loca
 /**
  * Generate URL for a component's security hotspot page
  */
-export function getComponentSecurityHotspotsUrl(componentKey: string, query: Query = {}): Location {
+export function getComponentSecurityHotspotsUrl(componentKey: string, query: Query = {}, grc?:boolean): Location {
   const { branch, pullRequest, sinceLeakPeriod, hotspots, assignedToMe, category } = query;
+  const pathName = grc?"/violations":'/security_hotspots';
   return {
-    pathname: '/security_hotspots',
+    pathname: pathName,
     query: {
       id: componentKey,
       branch,
@@ -261,10 +262,12 @@ export function getCodeUrl(
   project: string,
   branchLike?: BranchLike,
   selected?: string,
-  line?: number
+  line?: number,
+  grc?:boolean
 ) {
+  const pathName = grc?"/grc/inventory":"/code"
   return {
-    pathname: '/code',
+    pathname: pathName,
     query: { id: project, ...getBranchLikeQuery(branchLike), selected, line }
   };
 }

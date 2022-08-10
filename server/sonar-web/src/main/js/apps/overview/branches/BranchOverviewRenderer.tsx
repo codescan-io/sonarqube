@@ -45,6 +45,7 @@ export interface BranchOverviewRendererProps {
   period?: T.Period;
   projectIsEmpty?: boolean;
   qgStatuses?: QualityGateStatus[];
+  grc:boolean;
 }
 
 export function BranchOverviewRenderer(props: BranchOverviewRendererProps) {
@@ -62,7 +63,8 @@ export function BranchOverviewRenderer(props: BranchOverviewRendererProps) {
     onGraphChange,
     period,
     projectIsEmpty,
-    qgStatuses
+    qgStatuses,
+    grc
   } = props;
 
   const leakPeriod = component.qualifier === ComponentQualifier.Application ? appLeak : period;
@@ -93,19 +95,20 @@ export function BranchOverviewRenderer(props: BranchOverviewRendererProps) {
                   loading={loadingStatus}
                   measures={measures}
                   period={period}
-                />
-
-                <ActivityPanel
-                  analyses={analyses}
-                  branchLike={branch}
-                  component={component}
-                  graph={graph}
-                  leakPeriodDate={leakPeriod && parseDate(leakPeriod.date)}
-                  loading={loadingHistory}
-                  measuresHistory={measuresHistory}
-                  metrics={metrics}
-                  onGraphChange={onGraphChange}
-                />
+                  grc={grc}
+                />{ !grc ? (
+                  <ActivityPanel
+                    analyses={analyses}
+                    branchLike={branch}
+                    component={component}
+                    graph={graph}
+                    leakPeriodDate={leakPeriod && parseDate(leakPeriod.date)}
+                    loading={loadingHistory}
+                    measuresHistory={measuresHistory}
+                    metrics={metrics}
+                    onGraphChange={onGraphChange}
+                />):(<></>)
+                }
               </div>
             </div>
           </div>

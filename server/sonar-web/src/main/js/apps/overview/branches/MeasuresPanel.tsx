@@ -35,8 +35,6 @@ import { DrilldownMeasureValue } from './DrilldownMeasureValue';
 import { LeakPeriodInfo } from './LeakPeriodInfo';
 import MeasuresPanelIssueMeasureRow from './MeasuresPanelIssueMeasureRow';
 import MeasuresPanelNoNewCode from './MeasuresPanelNoNewCode';
-import { getAppState, Store } from '../../../store/rootReducer'; 
-import { connect } from 'react-redux';
 
 export interface MeasuresPanelProps {
   appLeak?: ApplicationPeriod;
@@ -45,7 +43,7 @@ export interface MeasuresPanelProps {
   loading?: boolean;
   measures?: T.MeasureEnhanced[];
   period?: T.Period;
-  appState: T.AppState | undefined
+  grc: boolean;
 }
 
 export enum MeasuresPanelTabs {
@@ -54,8 +52,7 @@ export enum MeasuresPanelTabs {
 }
 
 export function MeasuresPanel(props: MeasuresPanelProps) {
-  const { appLeak, branch, component, loading, measures = [], period, appState } = props;
-  const isGRC =  (appState?.grc !== undefined ? appState.grc : false);
+  const { appLeak, branch, component, loading, measures = [], period, grc } = props;
 
   const hasDiffMeasures = measures.some(m => isDiffMetric(m.metric.key));
   const isApp = component.qualifier === ComponentQualifier.Application;
@@ -64,6 +61,10 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
   const [tab, selectTab] = React.useState(MeasuresPanelTabs.New);
 
   const isNewCodeTab = tab === MeasuresPanelTabs.New;
+
+  const renderRows = grc
+    ? [IssueType.SecurityHotspot]
+    : [IssueType.Bug, IssueType.Vulnerability, IssueType.SecurityHotspot, IssueType.CodeSmell];
 
   React.useEffect(() => {
     // Open Overall tab by default if there are no new measures.
@@ -75,8 +76,10 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [loading, hasDiffMeasures]);
 
-  const newCodeLabel = isGRC ?translate('grc.new_violations') :translate('overview.new_code');
-  const overallCodeLabel = isGRC ?translate('grc.existing_violations') :translate('overview.overall_code');
+  const newCodeLabel = grc ? translate('grc.new_violations') : translate('overview.new_code');
+  const overallCodeLabel = grc
+    ? translate('grc.existing_violations')
+    : translate('overview.overall_code');
 
   const tabs = [
     {
@@ -110,90 +113,120 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
         </div>
       ) : (
         <>
-          <BoxedTabs onSelect={selectTab} selected={tab} tabs={tabs} />
-
-          <div className="overview-panel-content flex-1 bordered">
-            {!hasDiffMeasures && isNewCodeTab ? (
-              <MeasuresPanelNoNewCode branch={branch} component={component} period={period} />
-            ) : (
-              <>
-                {[
-                  IssueType.Bug,
-                  IssueType.Vulnerability,
-                  IssueType.SecurityHotspot,
-                  IssueType.CodeSmell
-                ].map((type: IssueType) => (
+          {grc ? (
+            <div className="grc-section">
+              <section>
+                <div className="tab">
+                  <span className="text-bold">{newCodeLabel}</span>
+                  {leakPeriod && <LeakPeriodInfo leakPeriod={leakPeriod} />}
+                </div>
+                {renderRows.map((type: IssueType) => (
                   <MeasuresPanelIssueMeasureRow
                     branchLike={branch}
                     component={component}
-                    isNewCodeTab={isNewCodeTab}
+                    isNewCodeTab={true}
                     key={type}
                     measures={measures}
                     type={type}
+                    grc={grc}
                   />
                 ))}
+                <div className="seperator"></div>
+                <div className="tab">
+                  <span className="text-bold">{overallCodeLabel}</span>
+                </div>
+                {renderRows.map((type: IssueType) => (
+                  <MeasuresPanelIssueMeasureRow
+                    branchLike={branch}
+                    component={component}
+                    isNewCodeTab={false}
+                    key={type}
+                    measures={measures}
+                    type={type}
+                    grc={grc}
+                  />
+                ))}
+              </section>
+            </div>
+          ) : (
+            <div className="normal-section">
+              <BoxedTabs onSelect={selectTab} selected={tab} tabs={tabs} />
 
-                <div className="display-flex-row overview-measures-row">
-                  {(findMeasure(measures, MetricKey.coverage) ||
-                    findMeasure(measures, MetricKey.new_coverage)) && (
-                    <div
-                      className="overview-panel-huge-padded flex-1 bordered-right display-flex-center"
-                      data-test="overview__measures-coverage">
-                      <MeasurementLabel
+              <div className="overview-panel-content flex-1 bordered">
+                {!hasDiffMeasures && isNewCodeTab ? (
+                  <MeasuresPanelNoNewCode branch={branch} component={component} period={period} />
+                ) : (
+                  <>
+                    {renderRows.map((type: IssueType) => (
+                      <MeasuresPanelIssueMeasureRow
                         branchLike={branch}
-                        centered={isNewCodeTab}
                         component={component}
+                        isNewCodeTab={isNewCodeTab}
+                        key={type}
                         measures={measures}
-                        type={MeasurementType.Coverage}
-                        useDiffMetric={isNewCodeTab}
+                        type={type}
+                        grc={grc}
                       />
+                    ))}
 
-                      {tab === MeasuresPanelTabs.Overall && (
-                        <div className="huge-spacer-left">
-                          <DrilldownMeasureValue
+                    <div className="display-flex-row overview-measures-row">
+                      {(findMeasure(measures, MetricKey.coverage) ||
+                        findMeasure(measures, MetricKey.new_coverage)) && (
+                        <div
+                          className="overview-panel-huge-padded flex-1 bordered-right display-flex-center"
+                          data-test="overview__measures-coverage">
+                          <MeasurementLabel
                             branchLike={branch}
+                            centered={isNewCodeTab}
                             component={component}
                             measures={measures}
-                            metric={MetricKey.tests}
+                            type={MeasurementType.Coverage}
+                            useDiffMetric={isNewCodeTab}
                           />
+
+                          {tab === MeasuresPanelTabs.Overall && (
+                            <div className="huge-spacer-left">
+                              <DrilldownMeasureValue
+                                branchLike={branch}
+                                component={component}
+                                measures={measures}
+                                metric={MetricKey.tests}
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
-                  )}
-                  <div className="overview-panel-huge-padded flex-1 display-flex-center">
-                    <MeasurementLabel
-                      branchLike={branch}
-                      centered={isNewCodeTab}
-                      component={component}
-                      measures={measures}
-                      type={MeasurementType.Duplication}
-                      useDiffMetric={isNewCodeTab}
-                    />
-
-                    {tab === MeasuresPanelTabs.Overall && (
-                      <div className="huge-spacer-left">
-                        <DrilldownMeasureValue
+                      <div className="overview-panel-huge-padded flex-1 display-flex-center">
+                        <MeasurementLabel
                           branchLike={branch}
+                          centered={isNewCodeTab}
                           component={component}
                           measures={measures}
-                          metric={MetricKey.duplicated_blocks}
+                          type={MeasurementType.Duplication}
+                          useDiffMetric={isNewCodeTab}
                         />
+
+                        {tab === MeasuresPanelTabs.Overall && (
+                          <div className="huge-spacer-left">
+                            <DrilldownMeasureValue
+                              branchLike={branch}
+                              component={component}
+                              measures={measures}
+                              metric={MetricKey.duplicated_blocks}
+                            />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
   );
 }
 
-
-const mapStateToProps = (state: Store) => ({
-  appState: getAppState(state)
-});
-
-export default connect(mapStateToProps)(React.memo(MeasuresPanel));
+export default React.memo(MeasuresPanel);

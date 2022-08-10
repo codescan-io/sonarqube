@@ -19,6 +19,8 @@
  */
 import React from 'react';
 import { Cell, Legend, Pie, PieChart, Tooltip } from 'recharts';
+import { RawHotspot } from '../../../types/security-hotspots';
+import { getHotspotsBasedOnRiskExposure } from '../dashboard/utils';
 import '../grc-dashboard.css';
 
 const RADIAN = Math.PI / 180;
@@ -47,18 +49,36 @@ const renderCustomizedLabel = ({
   );
 };
 
-export default function IssuesByPriority() {
-  const data = [
-    { name: "High", value: 100 },
-    { name: "Medium", value: 100 },
-    { name: "Low", value: 100 }
-  ];
+interface Props {
+  hotspots:RawHotspot[]
+}
+
+export default function IssuesByPriority({hotspots}:Props) {
+  const processedHotspots:{high:number,medium:number,low:number} = getHotspotsBasedOnRiskExposure(hotspots);
 
   const highColorCode = "#d4333f";
   const mediumColorCode = "#ed7d20";
   const lowColorCode = "#eabe06"
 
-  const COLORS = [highColorCode,mediumColorCode,lowColorCode];
+  const data = [
+  ];
+
+  const COLORS: string[] = [];
+
+  if(processedHotspots.high>0){
+    data.push({ name: "High", value: processedHotspots.high });
+    COLORS.push(highColorCode);
+  }
+
+  if(processedHotspots.medium>0){
+    data.push({ name: "Medium", value: processedHotspots.medium });
+    COLORS.push(mediumColorCode);
+  }
+
+  if(processedHotspots.low>0){
+    data.push({ name: "Low", value: processedHotspots.low });
+    COLORS.push(lowColorCode);
+  }
 
   return (
     <>

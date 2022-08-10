@@ -32,7 +32,7 @@ import { collapsedDirFromPath, fileFromPath } from 'sonar-ui-common/helpers/path
 import { omitNil } from 'sonar-ui-common/helpers/request';
 import { getBaseUrl, getPathUrlAsString } from 'sonar-ui-common/helpers/urls';
 import { getBranchLikeQuery } from '../../helpers/branch-like';
-import { ISSUE_TYPES } from '../../helpers/constants';
+import { GRC_ISSUE_TYPES, ISSUE_TYPES } from '../../helpers/constants';
 import { ISSUETYPE_METRIC_KEYS_MAP } from '../../helpers/issues';
 import { getBranchLikeUrl, getCodeUrl, getComponentIssuesUrl } from '../../helpers/urls';
 import { BranchLike } from '../../types/branch-like';
@@ -46,6 +46,7 @@ interface Props {
   openComponent: WorkspaceContextShape['openComponent'];
   showMeasures?: boolean;
   sourceViewerFile: T.SourceViewerFile;
+  grc?:boolean;
 }
 
 interface State {
@@ -72,13 +73,15 @@ export default class SourceViewerHeader extends React.PureComponent<Props, State
 
   renderIssueMeasures = () => {
     const { branchLike, componentMeasures, sourceViewerFile } = this.props;
+    const issueTypes = this.props.grc? GRC_ISSUE_TYPES : ISSUE_TYPES
     return (
       componentMeasures &&
       componentMeasures.length > 0 && (
         <>
           <div className="source-viewer-header-measure-separator" />
 
-          {ISSUE_TYPES.map((type: T.IssueType) => {
+          {issueTypes.map((type: T.IssueType) => {
+            const labelType = this.props.grc ? "VIOLATION":type;
             const params = {
               ...getBranchLikeQuery(branchLike),
               files: sourceViewerFile.path,
@@ -92,7 +95,7 @@ export default class SourceViewerHeader extends React.PureComponent<Props, State
             return (
               <div className="source-viewer-header-measure" key={type}>
                 <span className="source-viewer-header-measure-label">
-                  {translate('issue.type', type)}
+                  {translate('issue.type', labelType)}
                 </span>
                 <span className="source-viewer-header-measure-value">
                   <Link to={getComponentIssuesUrl(sourceViewerFile.project, params)}>
@@ -108,7 +111,7 @@ export default class SourceViewerHeader extends React.PureComponent<Props, State
   };
 
   render() {
-    const { showMeasures } = this.props;
+    const { showMeasures, grc } = this.props;
     const {
       key,
       measures,
@@ -134,7 +137,7 @@ export default class SourceViewerHeader extends React.PureComponent<Props, State
             <div className="component-name-parent">
               <a
                 className="link-with-icon"
-                href={getPathUrlAsString(getBranchLikeUrl(project, this.props.branchLike))}>
+                href={getPathUrlAsString(getBranchLikeUrl(project, this.props.branchLike,this.props.grc))}>
                 <QualifierIcon qualifier="TRK" /> <span>{projectName}</span>
               </a>
             </div>
@@ -220,7 +223,7 @@ export default class SourceViewerHeader extends React.PureComponent<Props, State
                   className="js-new-window"
                   rel="noopener noreferrer"
                   target="_blank"
-                  to={getCodeUrl(this.props.sourceViewerFile.project, this.props.branchLike, key)}>
+                  to={getCodeUrl(this.props.sourceViewerFile.project, this.props.branchLike, key, undefined, grc)}>
                   {translate('component_viewer.new_window')}
                 </Link>
               </li>

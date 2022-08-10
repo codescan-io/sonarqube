@@ -25,9 +25,10 @@ interface Props {
   branchLike?: BranchLike;
   breadcrumbs: T.Breadcrumb[];
   rootComponent: T.ComponentMeasure;
+  grc:boolean;
 }
 
-export default function Breadcrumbs({ branchLike, breadcrumbs, rootComponent }: Props) {
+export default function Breadcrumbs({ branchLike, breadcrumbs, rootComponent, grc }: Props) {
   return (
     <ul className="code-breadcrumbs">
       {breadcrumbs.map((component, index) => (
@@ -37,6 +38,7 @@ export default function Breadcrumbs({ branchLike, breadcrumbs, rootComponent }: 
             canBrowse={index < breadcrumbs.length - 1}
             component={component}
             rootComponent={rootComponent}
+            grc={grc}
           />
         </li>
       ))}
