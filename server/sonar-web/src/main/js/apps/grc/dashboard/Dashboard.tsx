@@ -29,13 +29,15 @@ import PolicyCount from "../components/PolicyCount";
 import RiskIndicator from "../components/RiskIndicator";
 import '../grc-dashboard.css';
 import { RawHotspot } from '../../../types/security-hotspots';
+import GrcViolations from '../components/GrcViolations';
+import { getStandards } from '../../../../js/helpers/security-standard';
+import ViolationDetails from '../components/ViloationDetails';
+import HotSpotSeries from '../components/HotSpotSeries';
 
 {/* <div className="row">
   <div className="col col-5"><SecurityHotSpots></SecurityHotSpots></div>
   <div className="col col-7  no-padding">
-    <ViolationDetails></ViolationDetails>
-    <hr className="seperator"></hr>
-    <HotSpotSeries></HotSpotSeries>
+    
   </div>
 </div> */}
 
@@ -49,10 +51,12 @@ interface Props {
 interface State {
   loadingAnalysis: boolean;
   lastAnalysisData: any;
-  lodingChartData:boolean
+  loadingChartData:boolean
   totalProfilesDefined:number;
   totalProfilesEnforced:number;
-  hotspots:RawHotspot[]
+  hotspots:RawHotspot[],
+  totalHotspots:number,
+  securityCategories:any
 }
 
 export class GRCDashboard extends React.PureComponent<Props, State> {
@@ -64,17 +68,18 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
            this.state = {
              loadingAnalysis: false,
              lastAnalysisData: undefined,
-             lodingChartData: false,
+             loadingChartData: false,
              totalProfilesDefined:0,
              totalProfilesEnforced:0,
-             hotspots:[]
+             hotspots:[],
+             totalHotspots:0,
+             securityCategories:{}
             };
          }
 
          componentDidMount() {
            this.mounted = true;
            const { location, router } = this.props;
-           console.log('componentDidMount :: ' + this.props);
 
            if (location.query.id) {
              this.loadAnalyses();
@@ -117,7 +122,6 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
           return searchRules(data);
          }
 
-         //{{APP_URL}}/api/qualityprofiles/search?defaults=true&languages=sfdeta&organization=<<org_id>>
          fetchRulesEnforced=()=>{
           const data = {
             defaults: true,
@@ -138,19 +142,26 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
 
          loadChartData = () =>{
           if (this.mounted) {
-            this.setState({ lodingChartData: true });
+            this.setState({ loadingChartData: true });
           }
-          return Promise.all([this.fetchRulesConfigured(),this.fetchRulesEnforced(),this.fetchHotspots()]).then(([rConfiguredResp,
+          return Promise.all([getStandards(),this.fetchRulesConfigured(),this.fetchRulesEnforced(),this.fetchHotspots()]).then(([standardsResp,
+            rConfiguredResp,
             rEnforcedResp,
             hotspotsResp])=>{
+            const securityCategories = standardsResp.sonarsourceSecurity;
             const totalRulesConfigured = rConfiguredResp?.total;
             const totalRulesEncorced = rEnforcedResp?.profiles?.length;
             const hotspots = hotspotsResp.hotspots;
+            const totalHotspots = hotspotsResp.paging.total;
+            console.log("standardsResp");
+            console.log(standardsResp);
             if (this.mounted) {
-              this.setState({ lodingChartData: false });
+              this.setState({ securityCategories })
               this.setState({ totalProfilesDefined: totalRulesConfigured });
               this.setState({ totalProfilesEnforced: totalRulesEncorced });
-              this.setState({ hotspots: hotspots });
+              this.setState({ hotspots });
+              this.setState({ totalHotspots });
+              this.setState({ loadingChartData: false });
             }
           }).catch((err)=>{
             console.log("Error Load Chart Data");
@@ -159,8 +170,7 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
          }
 
          render() {
-          
-           const { loadingAnalysis, lastAnalysisData,totalProfilesDefined, totalProfilesEnforced,hotspots } = this.state;
+           const { securityCategories, loadingChartData, loadingAnalysis, lastAnalysisData,totalProfilesDefined, totalProfilesEnforced,hotspots,totalHotspots } = this.state;
            return (
              <>
                {' '}
@@ -171,7 +181,13 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
                ) : (
                  <>
                    {lastAnalysisData ? (
-                     <div className="dashboard-page">
+                    <>{
+                      loadingChartData ? (
+                        <div className="page page-limited">
+                            <i className="spinner" />
+                        </div>
+                      ):(
+                        <div className="dashboard-page">
                        <div className="row">
                          <div className="col col-3 no-padding">
                            <PolicyCount totalProfilesDefined={totalProfilesDefined} totalProfilesEnforced={totalProfilesEnforced}></PolicyCount>
@@ -186,7 +202,22 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
                            <LastAnalysis event={lastAnalysisData}></LastAnalysis>
                          </div>
                        </div>
+                       <div className="row">
+                          <div className="col col-5">
+                            <GrcViolations hotspots={hotspots} 
+                                           totalHotspots={totalHotspots}
+                                          securityCategories={securityCategories}></GrcViolations>
+                          </div>
+                          <div className="col col-7  no-padding">
+                            <ViolationDetails></ViolationDetails>
+                            <hr className="seperator"></hr>
+                            <HotSpotSeries></HotSpotSeries>
+                          </div>
+                       </div>
                      </div>
+                      )
+                    }
+                    </>
                    ) : (
                      <div className="dashboard-page">
                        <div className="row">

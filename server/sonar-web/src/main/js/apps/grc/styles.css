@@ -18,7 +18,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 .grc-container {
-  width: 100%;
+  min-width: 1080px;
+  max-width: 1320px;
   margin-left: auto;
   margin-right: auto;
 }

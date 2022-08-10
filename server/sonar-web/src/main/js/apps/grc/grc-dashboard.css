@@ -80,7 +80,7 @@
 }
 hr.seperator{
     height: 15px;
-    background-color: #F3F3F3;
+    background-color: var(--barBackgroundColor);;
 }
 .policy-count .policy .value{
     font-size: 30px;
@@ -102,4 +102,11 @@ hr.seperator{
 }
 label.value b{
     text-transform: capitalize;
+}
+.grc-total-violations-cntr{
+    padding: 5px 15px 5px 0;
+    font-size: 16px;
+}
+.dashboard-page .hotspot-category-header{
+    background-color: var(--barBackgroundColor);;
 }
