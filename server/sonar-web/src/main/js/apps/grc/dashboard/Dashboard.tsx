@@ -29,24 +29,22 @@ import PolicyCount from "../components/PolicyCount";
 import RiskIndicator from "../components/RiskIndicator";
 import '../grc-dashboard.css';
 import { RawHotspot } from '../../../types/security-hotspots';
-import GrcViolations from '../components/GrcViolations';
 import { getStandards } from '../../../../js/helpers/security-standard';
-import ViolationDetails from '../components/ViloationDetails';
+import ViolationDetails from '../components/ViolationDetails';
 import HotSpotSeries from '../components/HotSpotSeries';
-
-{/* <div className="row">
-  <div className="col col-5"><SecurityHotSpots></SecurityHotSpots></div>
-  <div className="col col-7  no-padding">
-    
-  </div>
-</div> */}
+import GrcViolations from '../components/GrcViolations';
+import { BranchLike } from '../../../../js/types/branch-like';
+import { METRICS } from '../../overview/utils';
+import { getBranchLikeQuery } from '../../../../js/helpers/branch-like';
+import { enhanceMeasuresWithMetrics } from '../../../../js/helpers/measures';
+import { getMeasuresWithPeriodAndMetrics} from '../../../api/measures';
 
 interface Props {
   location: Pick<Location,'query'>;
   router: Pick<Router,'replace'>;
   component: T.Component;
+  branchLike: BranchLike
 }
-
 
 interface State {
   loadingAnalysis: boolean;
@@ -56,7 +54,8 @@ interface State {
   totalProfilesEnforced:number;
   hotspots:RawHotspot[],
   totalHotspots:number,
-  securityCategories:any
+  securityCategories:any,
+  measures:T.MeasureEnhanced[],
 }
 
 export class GRCDashboard extends React.PureComponent<Props, State> {
@@ -73,7 +72,8 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
              totalProfilesEnforced:0,
              hotspots:[],
              totalHotspots:0,
-             securityCategories:{}
+             securityCategories:{},
+             measures:[]
             };
          }
 
@@ -140,27 +140,46 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
           return getSecurityHotspots(data);
          }
 
+         fetchMeasures = ()=>{
+          const componentKey = this.props.component.key;
+          const branchLike = this.props.branchLike;
+          const metricKeys = METRICS;
+          return getMeasuresWithPeriodAndMetrics(
+            componentKey,
+            metricKeys.length > 0 ? metricKeys : METRICS,
+            getBranchLikeQuery(branchLike)
+          ).then(({ component: { measures }, metrics, period }) => {
+            return {
+              measures: enhanceMeasuresWithMetrics(measures || [], metrics || []),
+              metrics,
+              period
+            };
+          });
+         }
+
          loadChartData = () =>{
           if (this.mounted) {
             this.setState({ loadingChartData: true });
           }
-          return Promise.all([getStandards(),this.fetchRulesConfigured(),this.fetchRulesEnforced(),this.fetchHotspots()]).then(([standardsResp,
+          return Promise.all([getStandards(),this.fetchRulesConfigured(),this.fetchRulesEnforced(),this.fetchHotspots(),this.fetchMeasures()]).then(([standardsResp,
             rConfiguredResp,
             rEnforcedResp,
-            hotspotsResp])=>{
+            hotspotsResp,
+            measuresResp
+          ])=>{
             const securityCategories = standardsResp.sonarsourceSecurity;
             const totalRulesConfigured = rConfiguredResp?.total;
             const totalRulesEncorced = rEnforcedResp?.profiles?.length;
             const hotspots = hotspotsResp.hotspots;
             const totalHotspots = hotspotsResp.paging.total;
-            console.log("standardsResp");
-            console.log(standardsResp);
+            const measures = measuresResp.measures;
             if (this.mounted) {
               this.setState({ securityCategories })
               this.setState({ totalProfilesDefined: totalRulesConfigured });
               this.setState({ totalProfilesEnforced: totalRulesEncorced });
               this.setState({ hotspots });
               this.setState({ totalHotspots });
+              this.setState({ measures });
               this.setState({ loadingChartData: false });
             }
           }).catch((err)=>{
@@ -170,7 +189,8 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
          }
 
          render() {
-           const { securityCategories, loadingChartData, loadingAnalysis, lastAnalysisData,totalProfilesDefined, totalProfilesEnforced,hotspots,totalHotspots } = this.state;
+           const { measures, securityCategories, loadingChartData, loadingAnalysis, lastAnalysisData,totalProfilesDefined, totalProfilesEnforced,hotspots,totalHotspots } = this.state;
+           const { branchLike, component} = this.props;
            return (
              <>
                {' '}
@@ -203,13 +223,16 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
                          </div>
                        </div>
                        <div className="row">
-                          <div className="col col-5">
+                          <div className="col col-4">
                             <GrcViolations hotspots={hotspots} 
                                            totalHotspots={totalHotspots}
                                           securityCategories={securityCategories}></GrcViolations>
                           </div>
-                          <div className="col col-7  no-padding">
-                            <ViolationDetails></ViolationDetails>
+                          <div className="col col-8 no-padding">
+                            <ViolationDetails branchLike={branchLike}
+                                              measures={measures}
+                                              component={component}
+                            ></ViolationDetails>
                             <hr className="seperator"></hr>
                             <HotSpotSeries></HotSpotSeries>
                           </div>
