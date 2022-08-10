@@ -36,17 +36,8 @@ interface Props {
 export default function GrcViolations(props:Props) {
   const {totalHotspots,hotspots,securityCategories} = props;
 
-const groupedHotspots = getGroupHotspots(hotspots, securityCategories);
-console.log("hotspots");
-console.log(hotspots);
+  const groupedHotspots = getGroupHotspots(hotspots, securityCategories);
 
-console.log("securityCategories");
-console.log(securityCategories);
-
-
-  console.log("----------- groupedHotspots -----------------");
-  console.log(groupedHotspots);
-  
   return (
     <>
       <div className="widget grc-violations-cntr">
