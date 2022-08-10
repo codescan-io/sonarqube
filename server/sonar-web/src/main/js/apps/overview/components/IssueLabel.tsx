@@ -39,10 +39,11 @@ export interface IssueLabelProps {
   type: IssueType;
   useDiffMetric?: boolean;
   grc:boolean;
+  renderLink:boolean;
 }
 
 export function IssueLabel(props: IssueLabelProps) {
-  const { branchLike, component, helpTooltip, measures, type, useDiffMetric = false, grc } = props;
+  const { branchLike, component, helpTooltip, measures, type, useDiffMetric = false, grc, renderLink } = props;
   const metric = getIssueMetricKey(type, useDiffMetric);
   const grcMetric = metric===MetricKey.security_hotspots?"violations":"new_violations" 
   const measure = findMeasure(measures, metric);
@@ -64,8 +65,10 @@ export function IssueLabel(props: IssueLabelProps) {
     <>
       {value === undefined ? (
         <span aria-label={translate('no_data')} className="overview-measures-empty-value" />
-      ) : (
-        <Link
+      ) : (<>{
+        renderLink?(
+          <>
+          <Link
           className="overview-measures-value text-light"
           to={
             type === IssueType.SecurityHotspot
@@ -74,7 +77,15 @@ export function IssueLabel(props: IssueLabelProps) {
           }>
           {formatMeasure(value, 'SHORT_INT')}
         </Link>
-      )}
+
+        </>
+                ):(<span  className="overview-measures-value text-light">
+                  {formatMeasure(value, 'SHORT_INT')}
+                </span>
+        )
+      }
+        
+      </>)}
       {React.createElement(iconClass, { className: 'big-spacer-left little-spacer-right' })}
       {grc?localizeMetric(grcMetric):localizeMetric(metric)}
       {helpTooltip && <HelpTooltip className="little-spacer-left" overlay={helpTooltip} />}

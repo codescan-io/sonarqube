@@ -52,6 +52,7 @@ export default function ViolationDetails(props:Props) {
                     measures={measures}
                     type={type}
                     grc={grc}
+                    renderLink={false}
                   />
           </div>
         </div>
@@ -69,6 +70,7 @@ export default function ViolationDetails(props:Props) {
                     measures={measures}
                     type={type}
                     grc={grc}
+                    renderLink={false}
                   />
           </div>
         </div>

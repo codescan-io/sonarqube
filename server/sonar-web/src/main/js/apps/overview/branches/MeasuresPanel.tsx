@@ -129,6 +129,7 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
                     measures={measures}
                     type={type}
                     grc={grc}
+                    renderLink={true}
                   />
                 ))}
                 <div className="seperator"></div>
@@ -144,6 +145,7 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
                     measures={measures}
                     type={type}
                     grc={grc}
+                    renderLink={true}
                   />
                 ))}
               </section>
@@ -166,6 +168,7 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
                         measures={measures}
                         type={type}
                         grc={grc}
+                        renderLink={true}
                       />
                     ))}
 
