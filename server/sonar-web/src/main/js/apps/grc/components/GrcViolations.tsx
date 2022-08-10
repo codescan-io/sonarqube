@@ -74,7 +74,14 @@ console.log(securityCategories);
                     <ul>
                       {riskGroup.categories.map((cat, categoryIndex) => {
                        return( <li className="spacer-bottom">
-                          {cat.title} - {cat.hotspots.length}
+                          <div className={classNames('hotspot-category',riskGroup.risk)}>
+                          <div className="hotspot-category-header display-flex-space-between display-flex-center contains-selected-hotspot">
+                            <strong className="flex-1 spacer-right break-word">{cat.title}</strong>
+                            <span>
+                              <span className="counter-badge">{cat.hotspots.length}</span>
+                            </span>
+                          </div>
+                          </div>
                         </li>)
                       })}
                     </ul>
