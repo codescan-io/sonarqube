@@ -36,7 +36,7 @@ export default function PolicyCount({ totalProfilesDefined, totalProfilesEnforce
         </div>
         <hr className="seperator"></hr>
         <div className='policy'>
-            <label className='name'>Policies Consumed</label><br/>
+            <label className='name'>Policies Activated</label><br/>
             <label className='value'>{totalProfilesEnforced}</label>
         </div>
       </div>
