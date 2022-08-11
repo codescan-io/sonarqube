@@ -18,15 +18,18 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
+import { connect } from 'react-redux';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { HotspotStatusOption } from '../../../../types/security-hotspots';
+import { getAppState, Store } from '../../../../store/rootReducer';
 
 export interface StatusDescriptionProps {
   statusOption: HotspotStatusOption;
   showTitle?: boolean;
+  appState: T.AppState | undefined;
 }
 
-export default function StatusDescription(props: StatusDescriptionProps) {
+function StatusDescription(props: StatusDescriptionProps) {
   const { statusOption, showTitle } = props;
 
   return (
@@ -35,7 +38,13 @@ export default function StatusDescription(props: StatusDescriptionProps) {
         {showTitle && `${translate('status')}: `}
         {translate('hotspots.status_option', statusOption)}
       </h3>
-      <span>{translate('hotspots.status_option', statusOption, 'description')}</span>
+      <span>{props.appState?.grc ? translate('grc.hotspots.status_option', statusOption, 'description') : translate('hotspots.status_option', statusOption, 'description')}</span>
     </div>
   );
 }
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default connect(mapStateToProps)(StatusDescription);
