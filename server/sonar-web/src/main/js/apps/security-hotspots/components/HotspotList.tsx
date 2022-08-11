@@ -20,9 +20,11 @@
 import * as classNames from 'classnames';
 import { groupBy } from 'lodash';
 import * as React from 'react';
+import { connect } from 'react-redux';
 import ListFooter from 'sonar-ui-common/components/controls/ListFooter';
 import SecurityHotspotIcon from 'sonar-ui-common/components/icons/SecurityHotspotIcon';
 import { translate, translateWithParameters } from 'sonar-ui-common/helpers/l10n';
+import { getAppState, Store } from '../../../store/rootReducer';
 import { HotspotStatusFilter, RawHotspot, RiskExposure } from '../../../types/security-hotspots';
 import { groupByCategory, RISK_EXPOSURE_LEVELS } from '../utils';
 import HotspotCategory from './HotspotCategory';
@@ -38,6 +40,7 @@ interface Props {
   securityCategories: T.StandardSecurityCategories;
   selectedHotspot: RawHotspot;
   statusFilter: HotspotStatusFilter;
+  appState: T.AppState | undefined;
 }
 
 interface State {
@@ -48,7 +51,7 @@ interface State {
   }>;
 }
 
-export default class HotspotList extends React.Component<Props, State> {
+class HotspotList extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
 
@@ -111,7 +114,7 @@ export default class HotspotList extends React.Component<Props, State> {
         <h1 className="hotspot-list-header bordered-bottom">
           <SecurityHotspotIcon className="spacer-right" />
           {translateWithParameters(
-            isStaticListOfHotspots ? 'hotspots.list_title' : `hotspots.list_title.${statusFilter}`,
+            isStaticListOfHotspots ? (this.props.appState?.grc ? 'grc.hotspots.list_title' : 'hotspots.list_title') : (this.props.appState?.grc ? (`grc.hotspots.list_title.${statusFilter}`) : (`hotspots.list_title.${statusFilter}`)),
             hotspotsTotal
           )}
         </h1>
@@ -163,3 +166,9 @@ export default class HotspotList extends React.Component<Props, State> {
     );
   }
 }
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default connect(mapStateToProps)(HotspotList);

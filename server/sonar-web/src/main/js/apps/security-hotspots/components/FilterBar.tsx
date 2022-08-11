@@ -18,11 +18,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
+import { connect } from 'react-redux';
 import HelpTooltip from 'sonar-ui-common/components/controls/HelpTooltip';
 import RadioToggle from 'sonar-ui-common/components/controls/RadioToggle';
 import Select from 'sonar-ui-common/components/controls/Select';
 import DeferredSpinner from 'sonar-ui-common/components/ui/DeferredSpinner';
 import { translate } from 'sonar-ui-common/helpers/l10n';
+import { getAppState, Store } from '../../../store/rootReducer';
 import { withCurrentUser } from '../../../components/hoc/withCurrentUser';
 import Measure from '../../../components/measure/Measure';
 import CoverageRating from '../../../components/ui/CoverageRating';
@@ -40,6 +42,7 @@ export interface FilterBarProps {
   onBranch: boolean;
   onChangeFilters: (filters: Partial<HotspotFilters>) => void;
   onShowAllHotspots: () => void;
+  appState: T.AppState | undefined;
 }
 
 const statusOptions: Array<{ label: string; value: string }> = [
@@ -51,6 +54,11 @@ const statusOptions: Array<{ label: string; value: string }> = [
 const periodOptions = [
   { value: true, label: translate('hotspot.filters.period.since_leak_period') },
   { value: false, label: translate('hotspot.filters.period.overall') }
+];
+
+const grcPeriodOptions = [
+  { value: true, label: translate('grc.hotspot.filters.period.since_leak_period') },
+  { value: false, label: translate('grc.hotspot.filters.period.overall') }
 ];
 
 export enum AssigneeFilterOption {
@@ -125,7 +133,7 @@ export function FilterBar(props: FilterBarProps) {
                     onChange={(option: { value: boolean }) =>
                       props.onChangeFilters({ sinceLeakPeriod: option.value })
                     }
-                    options={periodOptions}
+                    options={props.appState?.grc ? grcPeriodOptions : periodOptions}
                     searchable={false}
                     value={filters.sinceLeakPeriod}
                   />
@@ -135,11 +143,11 @@ export function FilterBar(props: FilterBarProps) {
               {isProject && (
                 <div className="display-flex-center">
                   <span className="little-spacer-right">
-                    {translate('metric.security_hotspots_reviewed.name')}
+                    {props.appState?.grc ? translate('grc.metric.security_hotspots_reviewed.name') : translate('metric.security_hotspots_reviewed.name')}
                   </span>
                   <HelpTooltip
                     className="big-spacer-right"
-                    overlay={translate('hotspots.reviewed.tooltip')}
+                    overlay={props.appState?.grc ? translate('grc.hotspots.reviewed.tooltip') : translate('hotspots.reviewed.tooltip')}
                   />
                   <DeferredSpinner loading={loadingMeasure}>
                     {hotspotsReviewedMeasure && <CoverageRating value={hotspotsReviewedMeasure} />}
@@ -164,4 +172,8 @@ export function FilterBar(props: FilterBarProps) {
   );
 }
 
-export default withCurrentUser(FilterBar);
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default withCurrentUser(connect(mapStateToProps)(FilterBar));
