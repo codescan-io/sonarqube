@@ -50,7 +50,8 @@ export default function ViolationsSeries(props:Props) {
     measureSeries,
     graph,
     metrics,
-    getDisplayedHistoryMetrics(graph, selectedGraphs.split(","))
+    getDisplayedHistoryMetrics(graph, selectedGraphs.split(",")),
+    true
   );
 
   const graphs = splitSeriesInGraphs(series, MAX_GRAPH_NB, MAX_SERIES_PER_GRAPH)

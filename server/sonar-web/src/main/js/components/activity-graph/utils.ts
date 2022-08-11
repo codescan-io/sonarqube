@@ -107,7 +107,8 @@ export function generateSeries(
   measuresHistory: MeasureHistory[],
   graph: GraphType,
   metrics: T.Metric[] | T.Dict<T.Metric>,
-  displayedMetrics: string[]
+  displayedMetrics: string[],
+  grc:boolean = false
 ): Serie[] {
   if (displayedMetrics.length <= 0 || measuresHistory === undefined) {
     return [];
@@ -120,13 +121,23 @@ export function generateSeries(
           return generateCoveredLinesMetric(measure, measuresHistory);
         }
         const metric = findMetric(measure.metric, metrics);
+        let translatedName = "";
+        if(grc){
+          if( metric?.key === "security_hotspots"){
+            translatedName = translate("violations");
+          }else if( metric?.key === "security_hotspots_reviewed"){
+            translatedName = translate("violations_reviewed")
+          }
+        }else{
+          translatedName =  metric ? getLocalizedMetricName(metric) : localizeMetric(measure.metric)
+        }
         return {
           data: measure.history.map(analysis => ({
             x: analysis.date,
             y: metric && metric.type === 'LEVEL' ? analysis.value : Number(analysis.value)
           })),
           name: measure.metric,
-          translatedName: metric ? getLocalizedMetricName(metric) : localizeMetric(measure.metric),
+          translatedName: translatedName ,
           type: metric ? metric.type : 'INT'
         };
       }),
