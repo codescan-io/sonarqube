@@ -31,13 +31,17 @@ import '../grc-dashboard.css';
 import { RawHotspot } from '../../../types/security-hotspots';
 import { getStandards } from '../../../../js/helpers/security-standard';
 import ViolationDetails from '../components/ViolationDetails';
-import HotSpotSeries from '../components/HotSpotSeries';
 import GrcViolations from '../components/GrcViolations';
 import { BranchLike } from '../../../../js/types/branch-like';
 import { METRICS } from '../../overview/utils';
 import { getBranchLikeQuery } from '../../../../js/helpers/branch-like';
 import { enhanceMeasuresWithMetrics } from '../../../../js/helpers/measures';
 import { getMeasuresWithPeriodAndMetrics} from '../../../api/measures';
+import { getTimeMachineData } from '../../../api/time-machine';
+import { parseDate } from 'sonar-ui-common/helpers/dates';
+import { MeasureHistory } from '../../../types/project-activity';
+import ViolationsSeries from '../components/ViloationsSeries';
+import { getAllMetrics } from '../../../api/metrics';
 
 interface Props {
   location: Pick<Location,'query'>;
@@ -56,6 +60,10 @@ interface State {
   totalHotspots:number,
   securityCategories:any,
   measures:T.MeasureEnhanced[],
+  analyses:T.ParsedAnalysis[],
+  measureSeries:MeasureHistory[];
+  seriesMetrics:string;
+  metrics:T.Metric[];
 }
 
 export class GRCDashboard extends React.PureComponent<Props, State> {
@@ -73,7 +81,11 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
              hotspots:[],
              totalHotspots:0,
              securityCategories:{},
-             measures:[]
+             measures:[],
+             analyses:[],
+             measureSeries:[],
+             seriesMetrics:"security_hotspots,security_hotspots_reviewed",
+             metrics:[]
             };
          }
 
@@ -97,6 +109,12 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
          componentWillUnmount() {
            this.mounted = false;
          }
+
+         filterMetrics({ qualifier }: T.Component, metrics: T.Metric[]) {
+          return ['VW', 'SVW'].includes(qualifier)
+            ? metrics
+            : metrics.filter(metric => metric.key !== 'security_review_rating');
+        }
 
          loadAnalyses = () => {
            if (this.mounted) {
@@ -157,22 +175,55 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
           });
          }
 
+         fetchAnalyses=()=>{
+          const params:any = {};
+          params.project = this.props.component.key;
+          return getProjectActivity(params).then(({ analyses, paging }) => ({
+            analyses: analyses.map(analysis => ({
+              ...analysis,
+              date: parseDate(analysis.date)
+            })) as T.ParsedAnalysis[],
+            paging
+          }));
+         }
+
+         fetchSeries=()=>{
+          const params:any = {};
+          params.component = this.props.component.key;
+          params.metrics = this.state.seriesMetrics;
+          return getTimeMachineData(params).then(({ measures }) =>
+            measures.map(measure => ({
+              metric: measure.metric,
+              history: measure.history.map(analysis => ({
+                date: parseDate(analysis.date),
+                value: analysis.value!
+              }))
+            }))
+          );
+         }
+
          loadChartData = () =>{
           if (this.mounted) {
             this.setState({ loadingChartData: true });
           }
-          return Promise.all([getStandards(),this.fetchRulesConfigured(),this.fetchRulesEnforced(),this.fetchHotspots(),this.fetchMeasures()]).then(([standardsResp,
+          return Promise.all([getAllMetrics(),getStandards(),this.fetchRulesConfigured(),this.fetchRulesEnforced(),this.fetchHotspots(),this.fetchMeasures(),this.fetchAnalyses(),this.fetchSeries()]).then(([metricsResponse,
+            standardsResp,
             rConfiguredResp,
             rEnforcedResp,
             hotspotsResp,
-            measuresResp
+            measuresResp,
+            analysisResp,
+            seriesResp
           ])=>{
+            const component = this.props.component
             const securityCategories = standardsResp.sonarsourceSecurity;
             const totalRulesConfigured = rConfiguredResp?.total;
             const totalRulesEncorced = rEnforcedResp?.profiles?.length;
             const hotspots = hotspotsResp.hotspots;
             const totalHotspots = hotspotsResp.paging.total;
             const measures = measuresResp.measures;
+            const analyses = analysisResp.analyses;
+            const measureSeries = seriesResp;
             if (this.mounted) {
               this.setState({ securityCategories })
               this.setState({ totalProfilesDefined: totalRulesConfigured });
@@ -180,6 +231,9 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
               this.setState({ hotspots });
               this.setState({ totalHotspots });
               this.setState({ measures });
+              this.setState({ analyses });
+              this.setState({ measureSeries });
+              this.setState({ metrics : this.filterMetrics(component, metricsResponse)});
               this.setState({ loadingChartData: false });
             }
           }).catch((err)=>{
@@ -189,7 +243,7 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
          }
 
          render() {
-           const { measures, securityCategories, loadingChartData, loadingAnalysis, lastAnalysisData,totalProfilesDefined, totalProfilesEnforced,hotspots,totalHotspots } = this.state;
+           const { metrics, seriesMetrics, measureSeries, analyses, measures, securityCategories, loadingChartData, loadingAnalysis, lastAnalysisData,totalProfilesDefined, totalProfilesEnforced,hotspots,totalHotspots } = this.state;
            const { branchLike, component} = this.props;
            return (
              <>
@@ -234,7 +288,7 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
                                               component={component}
                             ></ViolationDetails>
                             <hr className="seperator"></hr>
-                            <HotSpotSeries></HotSpotSeries>
+                            <ViolationsSeries metrics={metrics} analyses={analyses} component={component} measureSeries={measureSeries} selectedGraphs={seriesMetrics}></ViolationsSeries>
                           </div>
                        </div>
                      </div>

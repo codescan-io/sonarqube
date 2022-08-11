@@ -64,7 +64,7 @@ export default function GrcViolations(props:Props) {
                     </div>
                     <ul>
                       {riskGroup.categories.map((cat, categoryIndex) => {
-                       return( <li className="spacer-bottom">
+                       return( <li className="spacer-bottom" key={cat.key}>
                           <div className={classNames('hotspot-category',riskGroup.risk)}>
                           <div className="hotspot-category-header display-flex-space-between display-flex-center contains-selected-hotspot">
                             <strong className="flex-1 spacer-right break-word">{cat.title}</strong>
