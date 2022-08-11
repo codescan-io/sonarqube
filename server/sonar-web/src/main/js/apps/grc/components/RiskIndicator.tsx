@@ -28,17 +28,26 @@ interface Props {
 
 export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnforced}: Props) {
   const usedPolicies = totalProfilesEnforced;
-  const totalPolicies = totalProfilesDefined?totalProfilesDefined:totalProfilesEnforced;
-  
+  const totalPolicies = totalProfilesDefined?totalProfilesDefined:20;
 
-  const policyCoverage = Math.ceil(((usedPolicies / totalPolicies)*100));
-  const policyCoveragePercentage = policyCoverage ? policyCoverage+"%": "0%";
-  const unusedPolicies = totalPolicies - usedPolicies;
+  const policyRisk = 100 - Math.ceil((usedPolicies / totalPolicies)*100);
+  const unusedPolicies = 100 - policyRisk;
 
   const data = [
-    { name: "Used Policies", value: usedPolicies },
-    { name: "Unused Policies", value: unusedPolicies }
+    { name: "Policy Risk Score", value: policyRisk },
+    { name: "Left Over", value: unusedPolicies }
   ];
+
+  let fillColor = "#57ACFB";
+  if(policyRisk<25){
+    fillColor = "green";
+  }else if(policyRisk>=25 && policyRisk<50){
+    fillColor = "yellow";
+  }else if(policyRisk>=50 && policyRisk<75){
+    fillColor = "orange";
+  }else if(policyRisk>=75){
+    fillColor = "red";
+  }
 
   return (
     <>
@@ -57,11 +66,11 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
               labelLine={false}
               blendStroke
               isAnimationActive={true}>
-              <Cell fill="#57ACFB" />
+              <Cell fill={fillColor} />
               <Cell fill="#DDDDDD" />
             </Pie>
           </PieChart>
-          <label className="value">{policyCoveragePercentage}</label>
+          <label className="value">{policyRisk}</label>
         </div>
       </div>
     </>

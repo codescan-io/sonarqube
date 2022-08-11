@@ -40,6 +40,9 @@
 .col-4{
     width:33.33%;
 }
+.col-8{
+    width:66.67%;
+}
 .col-5{
     width:40%;
 }
@@ -56,7 +59,7 @@
 .guage-chart-cntr .value{
     font-size: 20px;
     margin-top: 24px;
-    margin-left: 112px;
+    margin-left: 120px;
     position: absolute;
 }
 .widget.last-scan-cntr .value{
@@ -80,7 +83,14 @@
 }
 hr.seperator{
     height: 15px;
-    background-color: var(--barBackgroundColor);;
+    background-color: var(--barBackgroundColor);
+    margin:0;
+}
+
+hr.seperator-small{
+    height: 1px;
+    background-color: var(--barBackgroundColor);
+    margin:0px;
 }
 .policy-count .policy .value{
     font-size: 30px;
@@ -94,11 +104,11 @@ hr.seperator{
 .last-analysis-cntr .value.first{
     margin-top: 15px;
 }
-.violation-details-cntr{
-    padding: 15px;
-}
 .hot-spot-series-cntr{
     padding: 15px;
+}
+.hot-spot-series-cntr .activity-graph-container{
+    min-height: 200px;
 }
 label.value b{
     text-transform: capitalize;
@@ -109,4 +119,20 @@ label.value b{
 }
 .dashboard-page .hotspot-category-header{
     background-color: var(--barBackgroundColor);;
+}
+
+.dashboard-page .flex-parent{
+    display: flex;
+    flex-direction: row;
+} 
+.dashboard-page .flex-left-child{
+    flex-basis: 100px;
+    padding:15px;
+    padding-top: 35px;
+    text-align: left;
+    background: #e6e6e6;
+    font-weight: bold;
+}
+.dashboard-page .flex-right-child{
+    flex:1
 }

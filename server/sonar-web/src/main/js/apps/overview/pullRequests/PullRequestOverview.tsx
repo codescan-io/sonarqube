@@ -233,6 +233,8 @@ export class PullRequestOverview extends React.PureComponent<Props, State> {
                         measures={measures}
                         type={type}
                         useDiffMetric={true}
+                        grc={false}
+                        renderLink={true}
                       />
                     </div>
                     <div className="overview-panel-big-padded overview-measures-aside display-flex-center">
