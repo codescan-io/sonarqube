@@ -107,6 +107,9 @@ hr.seperator-small{
 .hot-spot-series-cntr{
     padding: 15px;
 }
+.hot-spot-series-cntr .activity-graph-container{
+    min-height: 200px;
+}
 label.value b{
     text-transform: capitalize;
 }
