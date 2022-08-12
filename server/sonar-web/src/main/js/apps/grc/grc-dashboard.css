@@ -136,3 +136,6 @@ label.value b{
 .dashboard-page .flex-right-child{
     flex:1
 }
+.error{
+    color:red;
+}
