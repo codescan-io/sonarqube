@@ -210,7 +210,7 @@ module.exports = ({ production = true, release = false }) => {
               // ignore source maps and documentation chunk
               assetFilter: assetFilename =>
                 !assetFilename.endsWith('.map') && !assetFilename.startsWith('js/docs'),
-              maxAssetSize: 400000,
+              maxAssetSize: 800000,
               hints: 'error'
             }
           : undefined

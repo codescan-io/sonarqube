@@ -28,7 +28,7 @@ interface Props {
 
 export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnforced}: Props) {
   const usedPolicies = totalProfilesEnforced;
-  const totalPolicies = totalProfilesDefined?totalProfilesDefined:20;
+  const totalPolicies = totalProfilesDefined;
 
   const policyRisk = 100 - Math.ceil((usedPolicies / totalPolicies)*100);
   const unusedPolicies = 100 - policyRisk;
@@ -38,15 +38,34 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
     { name: "Left Over", value: unusedPolicies }
   ];
 
+  const highColorCode = "#d4333f";
+  const mediumColorCode = "#ed7d20";
+  const lowColorCode = "#eabe06"
+
   let fillColor = "#57ACFB";
   if(policyRisk<25){
     fillColor = "green";
   }else if(policyRisk>=25 && policyRisk<50){
-    fillColor = "yellow";
+    fillColor = lowColorCode;
   }else if(policyRisk>=50 && policyRisk<75){
-    fillColor = "orange";
+    fillColor = mediumColorCode;
   }else if(policyRisk>=75){
-    fillColor = "red";
+    fillColor = highColorCode;
+  }
+  let isValidData = true;
+  let errorMsg = "";
+  if(usedPolicies>0 && totalPolicies>0 && usedPolicies<=totalPolicies){
+
+  }else{
+    isValidData = false;
+    if(totalPolicies<=0){
+      errorMsg = "Total Policies should be greater than Zero";
+    }else if(usedPolicies<=0){
+      errorMsg = "Policies Activated should be greater than Zero";
+    }else if(usedPolicies>totalPolicies){
+      errorMsg = "Total Policies should be greater than or equal to Policies Activated.";
+    }
+    console.log("Risk Indiator Error :: "+errorMsg);
   }
 
   return (
@@ -55,7 +74,8 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
         <label>Policy Risk Score</label>
         <br />
         <div className="guage-chart-cntr">
-          <PieChart height={300} width={260}>
+          {isValidData?(<>
+            <PieChart height={300} width={260}>
             <Tooltip/>
             <Pie
               startAngle={180}
@@ -71,6 +91,14 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
             </Pie>
           </PieChart>
           <label className="value">{policyRisk}</label>
+          </>):(
+            <>
+              <br/>
+              <label className='error'>
+                Invalid Data
+              </label>
+            </>
+          )}
         </div>
       </div>
     </>
