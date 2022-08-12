@@ -23,7 +23,8 @@ import '../grc-dashboard.css';
 
 interface Props {
   totalProfilesDefined:number,
-  totalProfilesEnforced:number
+  totalProfilesEnforced:number,
+  componentKey:string
 }
 
 export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnforced}: Props) {

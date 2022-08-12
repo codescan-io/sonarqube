@@ -25,22 +25,28 @@ import { RawHotspot } from '../../../types/security-hotspots';
 import { getGroupHotspots } from '../dashboard/utils';
 import '../grc-dashboard.css';
 import '../../security-hotspots/components/HotspotList.css';
+import LinkWidget from './LinkWidget';
+import { getGrcViolationsUrl } from '../../../../js/helpers/urls';
 
 
 interface Props {
   hotspots:RawHotspot[],
   totalHotspots:number,
-  securityCategories:T.StandardSecurityCategories
+  securityCategories:T.StandardSecurityCategories,
+  componentKey:string
 }
 
 export default function GrcViolations(props:Props) {
-  const {totalHotspots,hotspots,securityCategories} = props;
+  const {totalHotspots,hotspots,securityCategories, componentKey} = props;
 
   const groupedHotspots = getGroupHotspots(hotspots, securityCategories);
+
+  const redirectUrl = getGrcViolationsUrl(componentKey);
 
   return (
     <>
       <div className="widget grc-violations-cntr">
+        <LinkWidget link={redirectUrl}></LinkWidget>  
         {hotspots.length === 0 ?(
           <div className='grc-violations-empty-cntr'>
             <SecurityHotspotIcon className="spacer-right" /> No Violations Found

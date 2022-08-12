@@ -139,3 +139,13 @@ label.value b{
 .error{
     color:red;
 }
+.link-widget{
+    float: right;
+}
+.link-widget a{
+    border-bottom: none;
+}
+.link-widget img{
+    width: 20px;
+    height: 20px;
+}
