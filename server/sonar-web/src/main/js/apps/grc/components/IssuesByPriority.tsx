@@ -90,7 +90,9 @@ export default function IssuesByPriority({hotspots,componentKey}:Props) {
       <div className="widget">
         <label>Violations</label>
         <LinkWidget link={redirectUrl}></LinkWidget>
-        <div id="severity-pie-chart-cntr" className="pie-chart-cntr">
+        {
+          hotspots.length > 0 ?(
+<div id="severity-pie-chart-cntr" className="pie-chart-cntr">
           <PieChart width={200} height={300}>
             <Legend layout="horizontal" verticalAlign="bottom" align="center" />
             <Tooltip/>
@@ -111,6 +113,12 @@ export default function IssuesByPriority({hotspots,componentKey}:Props) {
             </Pie>
           </PieChart>
         </div>
+          ) :(<>
+          <br/><br/>
+            <div className="error">No Data</div>
+            </>
+          )
+        }
       </div>
     </>
   );

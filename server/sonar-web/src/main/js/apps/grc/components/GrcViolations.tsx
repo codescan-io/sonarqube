@@ -49,7 +49,7 @@ export default function GrcViolations(props:Props) {
         <LinkWidget link={redirectUrl}></LinkWidget>  
         {hotspots.length === 0 ?(
           <div className='grc-violations-empty-cntr'>
-            <SecurityHotspotIcon className="spacer-right" /> No Violations Found
+            <SecurityHotspotIcon className="spacer-right" /> <span className="error"> No Violations Found</span>
           </div>
         ):(
           <>
