@@ -78,10 +78,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
 
   componentDidMount() {
     this.mounted = true;
-    console.log('settting the state');
     getStore().dispatch(setGrcUi(true));
-
-    console.log(this.props.location);
     if(!this.props.location.query.id){
       this.loadGRCProjects();
     }else{
@@ -101,7 +98,6 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
 
   componentWillUnmount() {
     this.mounted = false;
-    console.log('un setting the state')
     getStore().dispatch(setGrcUi(false));
     window.clearTimeout(this.watchStatusTimer);
   }
@@ -141,9 +137,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
     Promise.all([
       getComponentNavigation({ component: key, branch, pullRequest }),
       getComponentData({ component: key, branch, pullRequest })
-    ])
-      .then(([nav, { component }]) => {
-        debugger;
+    ]).then(([nav, { component }]) => {
         const componentWithQualifier = this.addQualifier({ ...nav, ...component });
 
         this.props.fetchOrganization(component.organization);
