@@ -69,8 +69,6 @@ export class GRCProfiles extends React.PureComponent<Props, State> {
         })
         const {organization} = this.props.component;
         return searchQualityProfiles({ organization }).then((data)=>{
-            console.log(":: Fetch Profiles Response :: ")
-            console.log(data);
             if(!this.mounted){
                 return
             }

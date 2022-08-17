@@ -32,11 +32,14 @@ import ProfileRulesRowOfType from './ProfileRulesRowOfType';
 import ProfileRulesRowTotal from './ProfileRulesRowTotal';
 import ProfileRulesSonarWayComparison from './ProfileRulesSonarWayComparison';
 
-const TYPES = ['BUG', 'VULNERABILITY', 'CODE_SMELL', 'SECURITY_HOTSPOT'];
+const ALL_TYPES = ['BUG', 'VULNERABILITY', 'CODE_SMELL', 'SECURITY_HOTSPOT'];
+
+const GRC_TYPES = ['SECURITY_HOTSPOT'];
 
 interface Props {
   organization: string | null;
   profile: Profile;
+  grc?:boolean
 }
 
 interface ByType {
@@ -54,15 +57,15 @@ interface State {
 
 export default class ProfileRules extends React.PureComponent<Props, State> {
   mounted = false;
-
+  types = this.props.grc ? GRC_TYPES : ALL_TYPES; 
   state: State = {
     activatedTotal: null,
     activatedByType: keyBy(
-      TYPES.map(t => ({ val: t, count: null })),
+      this.types.map(t => ({ val: t, count: null })),
       'val'
     ),
     allByType: keyBy(
-      TYPES.map(t => ({ val: t, count: null })),
+      this.types.map(t => ({ val: t, count: null })),
       'val'
     ),
     compareToSonarWay: null,
@@ -143,13 +146,14 @@ export default class ProfileRules extends React.PureComponent<Props, State> {
   }
 
   render() {
-    const { organization, profile } = this.props;
+    const { organization, profile, grc } = this.props;
     const { compareToSonarWay } = this.state;
     const activateMoreUrl = getRulesUrl(
       { qprofile: profile.key, activation: 'false' },
       organization
     );
     const { actions = {} } = profile;
+    const TYPES = this.types;
 
     return (
       <div className="boxed-group quality-profile-rules">
@@ -165,12 +169,13 @@ export default class ProfileRules extends React.PureComponent<Props, State> {
               </tr>
             </thead>
             <tbody>
-              <ProfileRulesRowTotal
+              { grc ? (<></>):(<ProfileRulesRowTotal
                 count={this.state.activatedTotal}
                 organization={organization}
                 qprofile={profile.key}
                 total={this.state.total}
-              />
+              />)}
+              
               {TYPES.map(type => (
                 <ProfileRulesRowOfType
                   count={this.getRulesCountForType(type)}

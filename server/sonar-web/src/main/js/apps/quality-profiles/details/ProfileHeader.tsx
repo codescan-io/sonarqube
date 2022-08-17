@@ -31,6 +31,7 @@ interface Props {
   profile: Profile;
   organization: string | null;
   updateProfiles: () => Promise<void>;
+  grc?:boolean;
 }
 
 export default class ProfileHeader extends React.PureComponent<Props> {
