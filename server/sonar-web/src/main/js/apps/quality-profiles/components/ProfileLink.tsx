@@ -19,7 +19,7 @@
  */
 import * as React from 'react';
 import { Link } from 'react-router';
-import { getProfilePath } from '../utils';
+import { getProfilePath, getGRCProfilePath } from '../utils';
 
 interface Props {
   className?: string;
@@ -27,13 +27,18 @@ interface Props {
   language: string;
   name: string;
   organization: string | null;
+  grc?:boolean;
+  componentKey?:string
 }
 
-export default function ProfileLink({ name, language, organization, children, ...other }: Props) {
+export default function ProfileLink({ componentKey, grc, name, language, organization, children, ...other }: Props) {
+  const isGrc = grc !== undefined ? grc : false;
+  const id = componentKey!==undefined ? componentKey : '';
+  const link = isGrc? getGRCProfilePath(name,language,id) : getProfilePath(name, language, organization)
   return (
     <Link
       activeClassName="link-no-underline"
-      to={getProfilePath(name, language, organization)}
+      to={link}
       {...other}>
       {children}
     </Link>

@@ -234,8 +234,11 @@ export function getQualityGatesUrl(organization?: string | null): Location {
 /**
  * Generate URL for the rules page
  */
-export function getRulesUrl(query: Query, organization: string | null | undefined): Location {
-  const pathname = organization ? `/organizations/${organization}/rules` : '/coding_rules';
+export function getRulesUrl(query: Query, organization: string | null | undefined, grc:boolean = false): Location {
+  let pathname = organization ? `/organizations/${organization}/rules` : '/coding_rules';
+  if(grc){
+    pathname = "/grc/rules";
+  }
   return { pathname, query };
 }
 

@@ -37,6 +37,7 @@ function parseRules(rules: T.Rule[], actives?: T.Dict<T.RuleActivation[]>): Exte
 
 interface Props {
   organization: string | null;
+  grc?:boolean
 }
 
 interface ExtendedRule extends T.Rule {
@@ -99,7 +100,8 @@ export default class EvolutionRules extends React.PureComponent<Props, State> {
 
     const newRulesUrl = getRulesUrl(
       { available_since: this.periodStartDate },
-      this.props.organization
+      this.props.organization,
+      this.props.grc
     );
 
     return (
@@ -113,7 +115,7 @@ export default class EvolutionRules extends React.PureComponent<Props, State> {
               <div className="text-ellipsis">
                 <Link
                   className="link-no-underline"
-                  to={getRulesUrl({ rule_key: rule.key }, this.props.organization)}>
+                  to={getRulesUrl({ rule_key: rule.key }, this.props.organization, this.props.grc)}>
                   {' '}
                   {rule.name}
                 </Link>
