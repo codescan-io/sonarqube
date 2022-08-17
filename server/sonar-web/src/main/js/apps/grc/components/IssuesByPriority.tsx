@@ -19,9 +19,11 @@
  */
 import React from 'react';
 import { Cell, Legend, Pie, PieChart, Tooltip } from 'recharts';
+import { getGrcViolationsUrl } from '../../../../js/helpers/urls';
 import { RawHotspot } from '../../../types/security-hotspots';
 import { getHotspotsBasedOnRiskExposure } from '../dashboard/utils';
 import '../grc-dashboard.css';
+import LinkWidget from './LinkWidget';
 
 const RADIAN = Math.PI / 180;
 const renderCustomizedLabel = ({
@@ -50,15 +52,18 @@ const renderCustomizedLabel = ({
 };
 
 interface Props {
-  hotspots:RawHotspot[]
+  hotspots:RawHotspot[],
+  componentKey:string
 }
 
-export default function IssuesByPriority({hotspots}:Props) {
+export default function IssuesByPriority({hotspots,componentKey}:Props) {
   const processedHotspots:{high:number,medium:number,low:number} = getHotspotsBasedOnRiskExposure(hotspots);
 
   const highColorCode = "#d4333f";
   const mediumColorCode = "#ed7d20";
   const lowColorCode = "#eabe06"
+
+  const redirectUrl = getGrcViolationsUrl(componentKey);
 
   const data = [
   ];
@@ -84,6 +89,7 @@ export default function IssuesByPriority({hotspots}:Props) {
     <>
       <div className="widget">
         <label>Violations</label>
+        <LinkWidget link={redirectUrl}></LinkWidget>
         <div id="severity-pie-chart-cntr" className="pie-chart-cntr">
           <PieChart width={200} height={300}>
             <Legend layout="horizontal" verticalAlign="bottom" align="center" />

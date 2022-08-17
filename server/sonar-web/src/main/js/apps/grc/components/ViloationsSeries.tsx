@@ -24,20 +24,23 @@ import { generateSeries } from '../../../components/activity-graph/utils';
 import GraphsHistory from '../../../../js/components/activity-graph/GraphsHistory';
 import { GraphType, MeasureHistory } from '../../../types/project-activity';
 import '../grc-dashboard.css';
+import { getGrcActivityUrl } from '../../../../js/helpers/urls';
+import LinkWidget from './LinkWidget';
 
 interface Props {
   analyses: T.ParsedAnalysis[];
   measureSeries: MeasureHistory[];
   component: T.Component,
   selectedGraphs:string,
-  metrics: T.Metric[]
+  metrics: T.Metric[],
+  componentKey:string
 }
 
 
 
 export default function ViolationsSeries(props:Props) {
 
-  const {analyses,measureSeries,component,selectedGraphs,metrics} = props;
+  const {analyses,measureSeries,component,selectedGraphs,metrics,componentKey} = props;
 
   const MAX_GRAPH_NB = 2;
   const MAX_SERIES_PER_GRAPH = 3;
@@ -56,9 +59,12 @@ export default function ViolationsSeries(props:Props) {
 
   const graphs = splitSeriesInGraphs(series, MAX_GRAPH_NB, MAX_SERIES_PER_GRAPH)
 
+  const redirectUrl = getGrcActivityUrl(componentKey)
+
   return (
     <>
       <div className="widget hot-spot-series-cntr">
+      <LinkWidget link={redirectUrl}></LinkWidget>
       <GraphsHistory
           analyses={analyses}
           leakPeriodDate = {leakPeriodDate}

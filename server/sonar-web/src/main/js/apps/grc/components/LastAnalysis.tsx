@@ -18,23 +18,27 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import React from "react";
+import { getGrcActivityUrl } from "../../../../js/helpers/urls";
 import { getQualityGateInfo, getQualityProfileInfo, getReadableDateFormat, getVersionInfo } from "../dashboard/utils";
 import '../grc-dashboard.css';
+import LinkWidget from "./LinkWidget";
 
 interface Props {
   event: T.Analysis;
+  componentKey:string;
 }
 
-export default function LastAnalysis({ event }: Props) {
+export default function LastAnalysis({ event, componentKey }: Props) {
 
   const lastScanDate: string = getReadableDateFormat(event.date);
   const qualityGate: string | undefined = getQualityGateInfo(event);
   const qualityProfile: string | undefined = getQualityProfileInfo(event);
   const version: string | undefined = getVersionInfo(event);
-
+  const redirectUrl = getGrcActivityUrl(componentKey)
   return (
       <>
       <div className="widget last-analysis-cntr">
+        <LinkWidget link={redirectUrl}></LinkWidget>
         <label>Last Analysis </label><br/><br/>
         <div><label className="value first">Time: <b>{lastScanDate}</b></label></div>
         {

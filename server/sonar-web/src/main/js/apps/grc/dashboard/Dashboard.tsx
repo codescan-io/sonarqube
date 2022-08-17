@@ -245,6 +245,7 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
          render() {
            const { metrics, seriesMetrics, measureSeries, analyses, measures, securityCategories, loadingChartData, loadingAnalysis, lastAnalysisData,totalProfilesDefined, totalProfilesEnforced,hotspots,totalHotspots } = this.state;
            const { branchLike, component} = this.props;
+           const componentKey = component.key;
            return (
              <>
                {' '}
@@ -264,31 +265,31 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
                         <div className="dashboard-page">
                        <div className="row">
                          <div className="col col-3 no-padding">
-                           <PolicyCount totalProfilesDefined={totalProfilesDefined} totalProfilesEnforced={totalProfilesEnforced}></PolicyCount>
+                           <PolicyCount componentKey={componentKey} totalProfilesDefined={totalProfilesDefined} totalProfilesEnforced={totalProfilesEnforced}></PolicyCount>
                          </div>
                          <div className="col col-3">
-                           <RiskIndicator totalProfilesDefined={totalProfilesDefined} totalProfilesEnforced={totalProfilesEnforced}></RiskIndicator>
+                           <RiskIndicator componentKey={componentKey} totalProfilesDefined={totalProfilesDefined} totalProfilesEnforced={totalProfilesEnforced}></RiskIndicator>
                          </div>
                          <div className="col col-3">
-                           <IssuesByPriority hotspots={hotspots}></IssuesByPriority>
+                           <IssuesByPriority componentKey={componentKey} hotspots={hotspots}></IssuesByPriority>
                          </div>
                          <div className="col col-3">
-                           <LastAnalysis event={lastAnalysisData}></LastAnalysis>
+                           <LastAnalysis componentKey={componentKey} event={lastAnalysisData}></LastAnalysis>
                          </div>
                        </div>
                        <div className="row">
                           <div className="col col-4">
-                            <GrcViolations hotspots={hotspots} 
+                            <GrcViolations componentKey={componentKey} hotspots={hotspots} 
                                            totalHotspots={totalHotspots}
                                           securityCategories={securityCategories}></GrcViolations>
                           </div>
                           <div className="col col-8 no-padding">
-                            <ViolationDetails branchLike={branchLike}
+                            <ViolationDetails componentKey={componentKey} branchLike={branchLike}
                                               measures={measures}
                                               component={component}
                             ></ViolationDetails>
                             <hr className="seperator"></hr>
-                            <ViolationsSeries metrics={metrics} analyses={analyses} component={component} measureSeries={measureSeries} selectedGraphs={seriesMetrics}></ViolationsSeries>
+                            <ViolationsSeries componentKey={componentKey} metrics={metrics} analyses={analyses} component={component} measureSeries={measureSeries} selectedGraphs={seriesMetrics}></ViolationsSeries>
                           </div>
                        </div>
                      </div>

@@ -18,24 +18,31 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import React from 'react';
+import { getGrcProfilesUrl } from '../../../helpers/urls';
 import '../grc-dashboard.css';
+import LinkWidget from './LinkWidget';
 
 interface Props {
   totalProfilesDefined:number,
-  totalProfilesEnforced:number
+  totalProfilesEnforced:number,
+  componentKey:string
 }
 
-export default function PolicyCount({ totalProfilesDefined, totalProfilesEnforced}: Props) {
+export default function PolicyCount({ componentKey, totalProfilesDefined, totalProfilesEnforced}: Props) {
+
+  const redirectUrl = getGrcProfilesUrl(componentKey);
 
   return (
     <>
       <div className="widget policy-count">
         <div className='policy'>
+            <LinkWidget link={redirectUrl}></LinkWidget>
             <label className='name'>Total Policies</label><br/>
             <label className='value'>{totalProfilesDefined}</label> <br/>
         </div>
         <hr className="seperator"></hr>
         <div className='policy'>
+        <LinkWidget link={redirectUrl}></LinkWidget>
             <label className='name'>Policies Activated</label><br/>
             <label className='value'>{totalProfilesEnforced}</label>
         </div>

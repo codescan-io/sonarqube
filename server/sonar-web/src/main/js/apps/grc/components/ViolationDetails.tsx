@@ -24,23 +24,29 @@ import { BranchLike } from '../../../types/branch-like';
 import MeasuresPanelIssueMeasureRow from '../../overview/branches/MeasuresPanelIssueMeasureRow';
 import '../grc-dashboard.css';
 import '../../overview/styles.css';
+import { getGrcOverviewUrl } from '../../../../js/helpers/urls';
+import LinkWidget from './LinkWidget';
 
 interface Props {
   branchLike: BranchLike,
   component: T.Component,
-  measures: T.MeasureEnhanced[]
+  measures: T.MeasureEnhanced[],
+  componentKey:string
 }
 
 export default function ViolationDetails(props:Props) {
-  const {branchLike,component,measures} =  props;
+  const {branchLike,component,measures,componentKey} =  props;
   const type = IssueType.SecurityHotspot
   const grc = true;
+  const redirectUrl = getGrcOverviewUrl(componentKey)
 
   return (
     <>
       <div className="widget violation-details-cntr">
+        
         <div className="flex-parent">
           <div className="flex-left-child">
+          <LinkWidget link={redirectUrl}></LinkWidget>
             New <br/>Viloations
           </div>
           <div className="flex-right-child">
