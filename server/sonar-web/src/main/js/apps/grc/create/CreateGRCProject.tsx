@@ -1,17 +1,17 @@
 import React from "react";
 import { Link } from 'react-router';
+import { translate } from "sonar-ui-common/helpers/l10n";
 import './Create.css';
 
 export default function CreateGRCProject() {
-    //this.props.router.replace('/home');
-
+  
   return (
         <div className="create-container">
-          <span className="info">You have no GRC Projects yet, start by creating a new one and connecting it to your Salesforce Organization.</span>
+          <span className="info">{translate('grc.no_projects')}</span>
           <div className="create">
             <Link to="/grc/create">
             <img src='/images/scanner-logos/msbuild.svg' alt="" />
-            Create GRC Project</Link>
+            {translate('grc.create_project')}</Link>
           </div>
         </div>
   );
