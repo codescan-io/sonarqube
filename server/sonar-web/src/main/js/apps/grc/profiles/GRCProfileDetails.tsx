@@ -84,7 +84,8 @@ export class GRCProfileDetails extends React.PureComponent<Props, State> {
     render(){
         const {loading, profiles} = this.state
         const { name, language } = this.props.location.query;
-        const {organization} = this.props.component;
+        const {key, organization} = this.props.component;
+        
         const profile = profiles.find(
             profile => profile.language === language && profile.name === name
         );
@@ -104,6 +105,7 @@ export class GRCProfileDetails extends React.PureComponent<Props, State> {
                                 organization={organization}
                                 profile={profile}
                                 updateProfiles={this.props.updateProfiles}
+                                componentKey={key}
                             />
                             <div>
                                 <div className="quality-profile-grid">

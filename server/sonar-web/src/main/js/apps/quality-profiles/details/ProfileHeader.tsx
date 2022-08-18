@@ -21,6 +21,7 @@ import * as React from 'react';
 import { IndexLink, Link } from 'react-router';
 import DateFromNow from 'sonar-ui-common/components/intl/DateFromNow';
 import { translate } from 'sonar-ui-common/helpers/l10n';
+import { getGrcProfilesUrl } from '../../../../js/helpers/urls';
 import BuiltInQualityProfileBadge from '../components/BuiltInQualityProfileBadge';
 import ProfileActions from '../components/ProfileActions';
 import ProfileLink from '../components/ProfileLink';
@@ -32,35 +33,55 @@ interface Props {
   organization: string | null;
   updateProfiles: () => Promise<void>;
   grc?:boolean;
+  componentKey?:string
 }
 
 export default class ProfileHeader extends React.PureComponent<Props> {
   render() {
-    const { organization, profile } = this.props;
+    const {componentKey, organization, profile, grc } = this.props;
+    let description = translate('quality_profiles.built_in.description');
+    let pageTitle = translate('quality_profiles.page');
+    if(grc){
+      description =  translate('grc.quality_profiles.built_in.description');
+      pageTitle = translate('grc.quality_profiles.page');
+    }
 
     return (
       <header className="page-header quality-profile-header">
         <div className="note spacer-bottom">
-          <IndexLink className="text-muted" to={getProfilesPath(organization)}>
-            {translate('quality_profiles.page')}
-          </IndexLink>
-          {' / '}
-          <Link
-            className="text-muted"
-            to={getProfilesForLanguagePath(profile.language, organization)}>
-            {profile.languageName}
-          </Link>
+        {
+            grc && componentKey ? (
+              <>
+              <IndexLink className="text-muted" to={getGrcProfilesUrl(componentKey)}>
+                {pageTitle}
+              </IndexLink>
+              </>
+            ) :(
+              <>
+              <IndexLink className="text-muted" to={getProfilesPath(organization)}>
+                {pageTitle}
+              </IndexLink>
+              {' / '}
+              <Link
+                className="text-muted"
+                to={getProfilesForLanguagePath(profile.language, organization)}>
+                {profile.languageName}
+              </Link>
+              </>
+            )
+          }
         </div>
 
         <h1 className="page-title">
-          <ProfileLink
-            className="link-base-color"
-            language={profile.language}
-            name={profile.name}
-            organization={organization}>
-            <span>{profile.name}</span>
-          </ProfileLink>
-          {profile.isBuiltIn && (
+        { grc ? (<span>{profile.name}</span>):(
+           <ProfileLink
+           className="link-base-color"
+           language={profile.language}
+           name={profile.name}
+           organization={organization}>
+           <span>{profile.name}</span>
+         </ProfileLink>
+        )}{profile.isBuiltIn && (
             <BuiltInQualityProfileBadge className="spacer-left" tooltip={false} />
           )}
         </h1>
@@ -73,7 +94,9 @@ export default class ProfileHeader extends React.PureComponent<Props> {
             <li className="small big-spacer-right">
               {translate('quality_profiles.used_')} <DateFromNow date={profile.lastUsed} />
             </li>
-            <li>
+            {
+              grc ? (<></>):(<>
+              <li>
               <Link
                 className="button"
                 to={getProfileChangelogPath(profile.name, profile.language, organization)}>
@@ -87,13 +110,14 @@ export default class ProfileHeader extends React.PureComponent<Props> {
                 profile={profile}
                 updateProfiles={this.props.updateProfiles}
               />
-            </li>
+            </li></>)
+            }
           </ul>
         </div>
 
         {profile.isBuiltIn && (
           <div className="page-description">
-            {translate('quality_profiles.built_in.description')}
+            {description}
           </div>
         )}
       </header>
