@@ -81,9 +81,8 @@ export class GRCProfiles extends React.PureComponent<Props, State> {
 
     render(){
         const {loading, languages, profiles} = this.state
-        const {organization} = this.props.component;
+        const {organization,key} = this.props.component;
         const {location, updateProfiles} = this.props;
-
         return (<div className="page page-limited">{ 
             loading ? (
                 <>
@@ -98,7 +97,7 @@ export class GRCProfiles extends React.PureComponent<Props, State> {
                                     <ProfilesList grc={true} updateProfiles={updateProfiles} languages={languages} location={location} organization={organization} profiles={profiles} />
                                     </div>
                                     <div className="page-sidebar">
-                                    <Evolution grc={true} updateProfiles={updateProfiles} languages={languages} location={location} organization={organization} profiles={profiles} />
+                                    <Evolution componentKey={key} grc={true} updateProfiles={updateProfiles} languages={languages} location={location} organization={organization} profiles={profiles} />
                                     </div>
                             </div>
                         </>

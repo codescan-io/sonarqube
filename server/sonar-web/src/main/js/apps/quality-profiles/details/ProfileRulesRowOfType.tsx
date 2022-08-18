@@ -30,16 +30,29 @@ interface Props {
   qprofile: string;
   total: number | null;
   type: string;
+  grc?:boolean;
+  componentKey?:string;
 }
 
 export default function ProfileRulesRowOfType(props: Props) {
+
+  let activeParams : any = { qprofile: props.qprofile, activation: 'true', types: props.type };
+  let inActiveParams : any = { qprofile: props.qprofile, activation: 'false', types: props.type };
+  if(props.grc && props.componentKey && props.componentKey.length ){
+    activeParams.id = props.componentKey;
+    inActiveParams.id = props.componentKey
+  }
+
   const activeRulesUrl = getRulesUrl(
-    { qprofile: props.qprofile, activation: 'true', types: props.type },
-    props.organization
+    activeParams,
+    props.organization,
+    props.grc
   );
+
   const inactiveRulesUrl = getRulesUrl(
-    { qprofile: props.qprofile, activation: 'false', types: props.type },
-    props.organization
+    inActiveParams,
+    props.organization,
+    props.grc
   );
   let inactiveCount = null;
   if (props.count != null && props.total != null) {

@@ -110,7 +110,9 @@ export class GRCProfileDetails extends React.PureComponent<Props, State> {
                             <div>
                                 <div className="quality-profile-grid">
                                     <div className="quality-profile-grid-left">
-                                        <ProfileRules grc={grc} organization={organization} profile={profile} />
+                                        <ProfileRules
+                                        componentKey={key}
+                                         grc={grc} organization={organization} profile={profile} />
                                     </div>
                                     <div className="quality-profile-grid-right">
                                         <ProfileInheritance grc={grc}

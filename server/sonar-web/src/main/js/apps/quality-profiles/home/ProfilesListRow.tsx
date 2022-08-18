@@ -40,21 +40,29 @@ export function ProfilesListRow(props: ProfilesListRowProps) {
   const { componentKey, organization, profile, grc } = props;
 
   const offset = 25 * (profile.depth - 1);
+  let queryParams:any = {
+    qprofile: profile.key,
+    activation: 'true'
+  }
+  let dQueryParams:any = {
+    qprofile: profile.key,
+    activation: 'true',
+    statuses: 'DEPRECATED'
+  };
+  if(grc){
+    queryParams.id = componentKey;
+    dQueryParams.id = componentKey;
+  }
   const activeRulesUrl = getRulesUrl(
-    {
-      qprofile: profile.key,
-      activation: 'true'
-    },
+    queryParams,
     organization,
     grc
   );
+ 
   const deprecatedRulesUrl = getRulesUrl(
-    {
-      qprofile: profile.key,
-      activation: 'true',
-      statuses: 'DEPRECATED'
-    },
-    organization
+    dQueryParams,
+    organization,
+    grc
   );
 
   return (

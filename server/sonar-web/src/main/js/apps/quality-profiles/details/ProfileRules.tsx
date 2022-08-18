@@ -39,7 +39,8 @@ const GRC_TYPES = ['SECURITY_HOTSPOT'];
 interface Props {
   organization: string | null;
   profile: Profile;
-  grc?:boolean
+  grc?:boolean,
+  componentKey?:string
 }
 
 interface ByType {
@@ -146,7 +147,7 @@ export default class ProfileRules extends React.PureComponent<Props, State> {
   }
 
   render() {
-    const { organization, profile, grc } = this.props;
+    const { organization, profile, grc, componentKey } = this.props;
     const { compareToSonarWay } = this.state;
     const activateMoreUrl = getRulesUrl(
       { qprofile: profile.key, activation: 'false' },
@@ -178,6 +179,8 @@ export default class ProfileRules extends React.PureComponent<Props, State> {
               
               {TYPES.map(type => (
                 <ProfileRulesRowOfType
+                  grc={grc}
+                  componentKey={componentKey}
                   count={this.getRulesCountForType(type)}
                   key={type}
                   organization={organization}
