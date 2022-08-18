@@ -78,10 +78,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
 
   componentDidMount() {
     this.mounted = true;
-    console.log('settting the state');
     getStore().dispatch(setGrcUi(true));
-
-    console.log(this.props.location);
     if(!this.props.location.query.id){
       this.loadGRCProjects();
     }else{
@@ -90,18 +87,24 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
   }
 
   componentDidUpdate(prevProps: Props) {
-    if (
-      prevProps.location.query.id !== this.props.location.query.id ||
-      prevProps.location.query.branch !== this.props.location.query.branch ||
-      prevProps.location.query.pullRequest !== this.props.location.query.pullRequest
-    ) {
-      this.fetchComponent();
+    const {pathname,query} = this.props.location;
+    if (prevProps.location.query.id !== this.props.location.query.id) {
+      if(!pathname.includes("create")){
+        if(!query.id){
+          this.loadGRCProjects();
+        }else{
+          this.fetchComponent();
+        }
+      }
+    } else if(!this.props.location.query.id && !prevProps.location.query.id) {
+      if(!pathname.includes("create")){
+        this.loadGRCProjects();
+      }
     }
   }
 
   componentWillUnmount() {
     this.mounted = false;
-    console.log('un setting the state')
     getStore().dispatch(setGrcUi(false));
     window.clearTimeout(this.watchStatusTimer);
   }
@@ -141,9 +144,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
     Promise.all([
       getComponentNavigation({ component: key, branch, pullRequest }),
       getComponentData({ component: key, branch, pullRequest })
-    ])
-      .then(([nav, { component }]) => {
-        debugger;
+    ]).then(([nav, { component }]) => {
         const componentWithQualifier = this.addQualifier({ ...nav, ...component });
 
         this.props.fetchOrganization(component.organization);
