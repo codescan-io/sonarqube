@@ -26,6 +26,8 @@ import { translate } from 'sonar-ui-common/helpers/l10n';
 import { createProject, setProjectTags } from '../../../api/components';
 import VisibilitySelector from '../../../components/common/VisibilitySelector';
 import { getGrcDashboardUrl } from '../../../helpers/urls';
+import AddProjectForm from '../AddProject/AddProjectForm';
+import AuthorizeForm from '../AddProject/AuthorizeForm';
 import './CreateProject.css';
 
 interface Props {
@@ -42,6 +44,9 @@ interface State {
   visibility?: T.Visibility;
   // add index declaration to be able to do `this.setState({ [name]: value });`
   [x: string]: any;
+  openRunAnalysis: boolean;
+  openAuthorize: boolean;
+  hashState: any;
 }
 
 export default class CreateProjectPage extends React.PureComponent<Props & WithRouterProps, State> {
@@ -54,13 +59,32 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
       key: '',
       loading: false,
       name: '',
-      visibility: props.organization?.projectVisibility
+      visibility: props.organization?.projectVisibility,
+      openRunAnalysis: false,
+      openAuthorize: false,
+      hashState: ''
     };
   }
 
   componentDidMount() {
     this.mounted = true;
     document.body.classList.add('white-page');
+    if (window.location.hash) {
+      const params = (window.location.hash.substr(1)).split("&");
+      const state: any = {};
+      for (let i = 0; i < params.length; i++)
+      {
+          const a: any = params[i].split("=");
+          // Now every parameter from the hash is beind handled this way
+          state[a[0]] = decodeURIComponent(a[1]);
+      }
+      if ( typeof(state['action']) == 'string' && state['action'] === "integrations_create" ){
+        this.setState({
+          hashState: state,
+          openAuthorize: true
+        });
+      }
+    }
   }
 
   componentDidUpdate() {
@@ -102,6 +126,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
         if (this.mounted) {
           this.setState({ createdProject: response.project, loading: false });
           setProjectTags({ project: data.project, tags: "grc" });
+          //TODO associate project
           // associateProject({ language: “sfmeta”, name: “GRC”, organization}, project);
           //this.props.onProjectCreated();
         }
@@ -118,13 +143,26 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
     this.props.router.replace('/grc/dashboard');
   }
 
+  openAnalysisForm = () => {
+    this.setState({ openRunAnalysis: true });
+  }
+
+  closeAnalysisForm = () => {
+    this.setState({ openRunAnalysis: false });
+  }
+
+  onAuthorizeDone() {
+  }
+
   render() {
     const { organization } = this.props;
-    const { createdProject } = this.state;
+    const { createdProject, openAuthorize, hashState } = this.state;
 
     return (
       <div>
-        {createdProject ? (
+        { openAuthorize && (<AuthorizeForm organization={organization} hashState={hashState} onModified={this.onAuthorizeDone} originalProject={null} />) }
+        {createdProject ?
+        (
           <div className="create-hdr">
             <header>
               <h2>{translate('qualifiers.create.TRK')}</h2>
@@ -132,7 +170,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
 
             <div className="success-msg">
               <Alert variant="success">
-                <FormattedMessage
+                {<FormattedMessage
                   defaultMessage={translate(
                     'projects_management.project_has_been_successfully_created'
                   )}
@@ -142,16 +180,21 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
                       <Link to={getGrcDashboardUrl(createdProject.key)}>{createdProject.name}</Link>
                     )
                   }}
-                />
+                />}
               </Alert>
+              <ResetButtonLink
+                id="add-project-analysis"
+                onClick={()=> this.props.router.replace('/grc/dashboard')}>
+                {translate('close')}
+              </ResetButtonLink>
             </div>
-
+            {this.state.openRunAnalysis && <AddProjectForm organization={organization} projectKey={this.state.key} closeForm={this.closeAnalysisForm}/>}      
             <footer>
               <ResetButtonLink
                 id="create-project-close"
                 innerRef={node => (this.closeButton = node)}
-                onClick={()=> this.props.router.replace('/grc/dashboard')}>
-                {translate('close')}
+                onClick={this.openAnalysisForm}>
+                {translate('grc.add_analysis_project')}
               </ResetButtonLink>
             </footer>
           </div>
@@ -214,7 +257,8 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
               </ResetButtonLink>
             </footer>
           </form>
-        )}
+        )
+        }
       </div>
     );
   }

@@ -70,3 +70,6 @@ export function getProjectAnalysis(organizationId: string, projectKey: string): 
     .catch(throwGlobalError);
 }
 
+export function updateIntegration(options: any): Promise<any> {
+  return post('/_codescan/integrations/update', options);
+}
