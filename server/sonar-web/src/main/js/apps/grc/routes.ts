@@ -63,7 +63,14 @@ const routes = [
       {
         path: 'inventory',
         component: lazyLoadComponent(() => import('../code/components/App')),
-
+      },
+      {
+        path: 'profiles',
+        component: lazyLoadComponent(() => import('./profiles/GRCProfiles'))
+      },
+      {
+        path: 'profiles/show',
+        component: lazyLoadComponent(() => import('./profiles/GRCProfileDetails'))
       }
     ]
   }

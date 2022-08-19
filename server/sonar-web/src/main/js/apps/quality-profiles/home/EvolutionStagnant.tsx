@@ -27,11 +27,14 @@ import { isStagnant } from '../utils';
 interface Props {
   organization: string | null;
   profiles: Profile[];
+  grc?:boolean,
+  componentKey?:string
 }
 
 export default function EvolutionStagnant(props: Props) {
   const outdated = props.profiles.filter(profile => !profile.isBuiltIn && isStagnant(profile));
-
+  const grc = props.grc!==undefined? props.grc : false;
+  const componentKey = props.componentKey;
   if (outdated.length === 0) {
     return null;
   }
@@ -49,6 +52,8 @@ export default function EvolutionStagnant(props: Props) {
           <li className="spacer-top" key={profile.key}>
             <div className="text-ellipsis">
               <ProfileLink
+                componentKey={componentKey}
+                grc={grc}
                 className="link-no-underline"
                 language={profile.language}
                 name={profile.name}

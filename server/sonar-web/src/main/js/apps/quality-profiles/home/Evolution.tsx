@@ -26,14 +26,16 @@ import EvolutionStagnant from './EvolutionStagnant';
 interface Props {
   organization: string | null;
   profiles: Profile[];
+  grc?:boolean;
+  componentKey?:string
 }
 
-export default function Evolution({ organization, profiles }: Props) {
+export default function Evolution({ componentKey, grc, organization, profiles }: Props) {
   return (
     <div className="quality-profiles-evolution">
-      <EvolutionDeprecated organization={organization} profiles={profiles} />
-      <EvolutionStagnant organization={organization} profiles={profiles} />
-      <EvolutionRules organization={organization} />
+      <EvolutionDeprecated  componentKey={componentKey} grc={grc} organization={organization} profiles={profiles} />
+      <EvolutionStagnant componentKey={componentKey} grc={grc} organization={organization} profiles={profiles} />
+      <EvolutionRules componentKey={componentKey} grc={grc} organization={organization} />
     </div>
   );
 }

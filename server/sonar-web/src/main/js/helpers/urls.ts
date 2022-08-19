@@ -234,8 +234,11 @@ export function getQualityGatesUrl(organization?: string | null): Location {
 /**
  * Generate URL for the rules page
  */
-export function getRulesUrl(query: Query, organization: string | null | undefined): Location {
-  const pathname = organization ? `/organizations/${organization}/rules` : '/coding_rules';
+export function getRulesUrl(query: Query, organization: string | null | undefined, grc:boolean = false): Location {
+  let pathname = organization ? `/organizations/${organization}/rules` : '/coding_rules';
+  if(grc){
+    pathname = "/grc/rules";
+  }
   return { pathname, query };
 }
 
@@ -244,14 +247,15 @@ export function getRulesUrl(query: Query, organization: string | null | undefine
  */
 export function getDeprecatedActiveRulesUrl(
   query: Query = {},
-  organization: string | null | undefined
+  organization: string | null | undefined,
+  grc:boolean = false
 ): Location {
   const baseQuery = { activation: 'true', statuses: 'DEPRECATED' };
-  return getRulesUrl({ ...query, ...baseQuery }, organization);
+  return getRulesUrl({ ...query, ...baseQuery }, organization, grc);
 }
 
-export function getRuleUrl(rule: string, organization: string | undefined) {
-  return getRulesUrl({ open: rule, rule_key: rule }, organization);
+export function getRuleUrl(rule: string, organization: string | undefined,grc:boolean=false) {
+  return getRulesUrl({ open: rule, rule_key: rule }, organization, grc);
 }
 
 export function getMarkdownHelpUrl(): string {

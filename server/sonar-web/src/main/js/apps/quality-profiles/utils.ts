@@ -82,6 +82,15 @@ export const getProfilePath = (
   query: { name, language }
 });
 
+export const getGRCProfilePath = (
+  name: string,
+  language: string,
+  component: string
+) => ({
+  pathname: '/grc/profiles/show',
+  query: { name, language, id:component }
+});
+
 export const getProfileComparePath = (
   name: string,
   language: string,

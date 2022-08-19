@@ -31,6 +31,7 @@ interface Props {
   profile: Profile;
   profiles: Profile[];
   updateProfiles: () => Promise<void>;
+  grc?:boolean;
 }
 
 interface State {

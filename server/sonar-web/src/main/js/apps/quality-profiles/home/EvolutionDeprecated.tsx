@@ -28,6 +28,8 @@ import { Profile } from '../types';
 interface Props {
   organization: string | null;
   profiles: Profile[];
+  grc?:boolean,
+  componentKey?:string
 }
 
 interface InheritedRulesInfo {
@@ -36,6 +38,15 @@ interface InheritedRulesInfo {
 }
 
 export default class EvolutionDeprecated extends React.PureComponent<Props> {
+
+  getParams(profileKey:string):any{
+    let params:any ={qprofile:profileKey}
+    if(this.props.grc && this.props.componentKey && this.props.componentKey.length){
+      params.id = this.props.componentKey
+    }
+    return params;
+  }
+
   getDeprecatedRulesInheritanceChain = (profile: Profile, profilesWithDeprecations: Profile[]) => {
     let rules: InheritedRulesInfo[] = [];
     let count = profile.activeDeprecatedRuleCount;
@@ -122,6 +133,8 @@ export default class EvolutionDeprecated extends React.PureComponent<Props> {
             <li className="spacer-top" key={profile.key}>
               <div className="text-ellipsis">
                 <ProfileLink
+                  grc={this.props.grc}
+                  componentKey = {this.props.componentKey}
                   className="link-no-underline"
                   language={profile.language}
                   name={profile.name}
@@ -135,8 +148,9 @@ export default class EvolutionDeprecated extends React.PureComponent<Props> {
                 <Link
                   className="text-muted"
                   to={getDeprecatedActiveRulesUrl(
-                    { qprofile: profile.key },
-                    this.props.organization
+                    this.getParams(profile.key),
+                    this.props.organization,
+                    this.props.grc
                   )}>
                   {translateWithParameters(
                     'quality_profile.x_rules',

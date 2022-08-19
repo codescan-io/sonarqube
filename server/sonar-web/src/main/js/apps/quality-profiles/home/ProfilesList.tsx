@@ -17,7 +17,6 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Location } from 'history';
 import { groupBy, pick, sortBy } from 'lodash';
 import * as React from 'react';
 import HelpTooltip from 'sonar-ui-common/components/controls/HelpTooltip';
@@ -26,23 +25,28 @@ import { translate, translateWithParameters } from 'sonar-ui-common/helpers/l10n
 import { Profile } from '../types';
 import ProfilesListHeader from './ProfilesListHeader';
 import ProfilesListRow from './ProfilesListRow';
+import {Location} from '../../../components/hoc/withRouter';
 
 interface Props {
   languages: T.Language[];
-  location: Pick<Location, 'query'>;
+  location: Location;
   organization: string | null;
   profiles: Profile[];
   updateProfiles: () => Promise<void>;
+  grc?:boolean;
 }
 
 export default class ProfilesList extends React.PureComponent<Props> {
   renderProfiles(profiles: Profile[]) {
+    const componentKey = this.props.location.query.id;
     return profiles.map(profile => (
       <ProfilesListRow
         key={profile.key}
         organization={this.props.organization}
         profile={profile}
         updateProfiles={this.props.updateProfiles}
+        grc={this.props.grc}
+        componentKey={componentKey}
       />
     ));
   }
