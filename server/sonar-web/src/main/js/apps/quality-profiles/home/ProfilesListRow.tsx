@@ -32,26 +32,37 @@ export interface ProfilesListRowProps {
   organization: string | null;
   profile: Profile;
   updateProfiles: () => Promise<void>;
+  grc?:boolean;
+  componentKey?:string;
 }
 
 export function ProfilesListRow(props: ProfilesListRowProps) {
-  const { organization, profile } = props;
+  const { componentKey, organization, profile, grc } = props;
 
   const offset = 25 * (profile.depth - 1);
+  let queryParams:any = {
+    qprofile: profile.key,
+    activation: 'true'
+  }
+  let dQueryParams:any = {
+    qprofile: profile.key,
+    activation: 'true',
+    statuses: 'DEPRECATED'
+  };
+  if(grc){
+    queryParams.id = componentKey;
+    dQueryParams.id = componentKey;
+  }
   const activeRulesUrl = getRulesUrl(
-    {
-      qprofile: profile.key,
-      activation: 'true'
-    },
-    organization
+    queryParams,
+    organization,
+    grc
   );
+ 
   const deprecatedRulesUrl = getRulesUrl(
-    {
-      qprofile: profile.key,
-      activation: 'true',
-      statuses: 'DEPRECATED'
-    },
-    organization
+    dQueryParams,
+    organization,
+    grc
   );
 
   return (
@@ -63,6 +74,8 @@ export function ProfilesListRow(props: ProfilesListRowProps) {
         <div className="display-flex-center" style={{ paddingLeft: offset }}>
           <div>
             <ProfileLink
+              componentKey={componentKey}
+              grc={grc}
               language={profile.language}
               name={profile.name}
               organization={organization}>
@@ -105,16 +118,20 @@ export function ProfilesListRow(props: ProfilesListRowProps) {
 
       <td className="quality-profiles-table-date thin nowrap text-middle text-right">
         <DateFromNow date={profile.lastUsed} />
-      </td>
+      </td>{
+        grc ? (<td></td>) : (
+          <td className="quality-profiles-table-actions thin nowrap text-middle text-right">
+            <ProfileActions
+              fromList={true}
+              organization={organization}
+              profile={profile}
+              updateProfiles={props.updateProfiles}
+            />
+          </td>
+        )
+      }
 
-      <td className="quality-profiles-table-actions thin nowrap text-middle text-right">
-        <ProfileActions
-          fromList={true}
-          organization={organization}
-          profile={profile}
-          updateProfiles={props.updateProfiles}
-        />
-      </td>
+      
     </tr>
   );
 }
