@@ -67,12 +67,14 @@ export default function ProjectActivityApp(props: Props) {
         from={query.from}
         project={props.project}
         to={query.to}
+        grc={props.grc}
         updateQuery={props.updateQuery}
       />
 
       <div className="layout-page project-activity-page">
         <div className="layout-page-side-outer project-activity-page-side-outer boxed-group">
           <ProjectActivityAnalysesList
+            grc={grc}
             addCustomEvent={props.addCustomEvent}
             addVersion={props.addVersion}
             analyses={analyses}

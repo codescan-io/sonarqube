@@ -26,9 +26,10 @@ import { isRichQualityGateEvent, RichQualityGateEventInner } from './RichQuality
 
 export interface EventInnerProps {
   event: T.AnalysisEvent;
+  grc:boolean;
 }
 
-export default function EventInner({ event }: EventInnerProps) {
+export default function EventInner({ event,grc }: EventInnerProps) {
   if (isRichQualityGateEvent(event)) {
     return <RichQualityGateEventInner event={event} />;
   } else if (isDefinitionChangeEvent(event)) {
@@ -38,10 +39,14 @@ export default function EventInner({ event }: EventInnerProps) {
       </ComponentContext.Consumer>
     );
   } else {
+    let label = translate('event.category', event.category)
+    if(grc && (event.category === "QUALITY_GATE" || event.category === "QUALITY_PROFILE") ){
+      label = translate('event.category.grc', event.category)
+    }
     const content = (
       <span className="text-middle">
         <span className="note little-spacer-right">
-          {translate('event.category', event.category)}:
+          {label}:
         </span>
         <strong className="spacer-right">{event.name}</strong>
       </span>

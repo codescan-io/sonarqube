@@ -48,6 +48,7 @@ export interface ProjectActivityAnalysisProps {
   isFirst: boolean;
   parentScrollContainer?: HTMLElement | null;
   selected: boolean;
+  grc:boolean;
   updateSelectedDate: (date: Date) => void;
 }
 
@@ -88,6 +89,10 @@ export function ProjectActivityAnalysis(props: ProjectActivityAnalysisProps) {
   const canDeleteAnalyses =
     props.canDeleteAnalyses && !isFirst && !analysis.manualNewCodePeriodBaseline;
 
+  let codePeriodStartLabel =   translate('project_activity.new_code_period_start')
+  if(props.grc){
+    codePeriodStartLabel =  translate('project_activity.grc.new_code_period_start')
+  }
   return (
     <li
       className={classNames('project-activity-analysis bordered-top bordered-bottom', {
@@ -179,6 +184,7 @@ export function ProjectActivityAnalysis(props: ProjectActivityAnalysisProps) {
 
       {analysis.events.length > 0 && (
         <Events
+          grc={props.grc}
           analysisKey={analysis.key}
           canAdmin={canAdmin}
           events={analysis.events}
@@ -193,7 +199,7 @@ export function ProjectActivityAnalysis(props: ProjectActivityAnalysisProps) {
           <div className="wedge" />
           <hr />
           <div className="label display-flex-center">
-            {translate('project_activity.new_code_period_start')}
+            {codePeriodStartLabel}
             <HelpTooltip
               className="little-spacer-left"
               overlay={translate('project_activity.new_code_period_start.help')}
