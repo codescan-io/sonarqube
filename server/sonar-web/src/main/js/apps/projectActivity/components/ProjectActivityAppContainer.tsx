@@ -21,6 +21,7 @@ import { Location } from 'history';
 import * as React from 'react';
 import { InjectedRouter } from 'react-router';
 import { parseDate } from 'sonar-ui-common/helpers/dates';
+import { getAppState, Store } from '../../../store/rootReducer';
 import { getAllMetrics } from '../../../api/metrics';
 import * as api from '../../../api/projectActivity';
 import { getAllTimeMachineData } from '../../../api/time-machine';
@@ -42,12 +43,14 @@ import {
   serializeUrlQuery
 } from '../utils';
 import ProjectActivityApp from './ProjectActivityApp';
+import { connect } from 'react-redux';
 
 interface Props {
   branchLike?: BranchLike;
   component: T.Component;
   location: Location;
   router: Pick<InjectedRouter, 'push' | 'replace'>;
+  appState: T.AppState | undefined;
 }
 
 export interface State {
@@ -62,7 +65,7 @@ export interface State {
 
 export const PROJECT_ACTIVITY_GRAPH = 'sonar_project_activity.graph';
 
-export default class ProjectActivityAppContainer extends React.PureComponent<Props, State> {
+class ProjectActivityAppContainer extends React.PureComponent<Props, State> {
   mounted = false;
 
   constructor(props: Props) {
@@ -334,9 +337,11 @@ export default class ProjectActivityAppContainer extends React.PureComponent<Pro
     if (this.shouldRedirect()) {
       return null;
     }
+    const grc = this.props.appState?.grc !== undefined ? this.props.appState.grc : false
 
     return (
       <ProjectActivityApp
+        grc={grc}
         addCustomEvent={this.addCustomEvent}
         addVersion={this.addVersion}
         analyses={this.state.analyses}
@@ -355,3 +360,9 @@ export default class ProjectActivityAppContainer extends React.PureComponent<Pro
     );
   }
 }
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default connect(mapStateToProps)(ProjectActivityAppContainer);

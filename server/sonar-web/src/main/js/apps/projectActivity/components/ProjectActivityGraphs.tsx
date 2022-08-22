@@ -36,6 +36,7 @@ import { datesQueryChanged, historyQueryChanged, Query } from '../utils';
 import { PROJECT_ACTIVITY_GRAPH } from './ProjectActivityAppContainer';
 
 interface Props {
+  grc:boolean,
   analyses: T.ParsedAnalysis[];
   leakPeriodDate?: Date;
   loading: boolean;
@@ -188,21 +189,26 @@ export default class ProjectActivityGraphs extends React.PureComponent<Props, St
   };
 
   render() {
-    const { leakPeriodDate, loading, metrics, query } = this.props;
+    const { leakPeriodDate, loading, metrics, query, grc } = this.props;
     const { graphEndDate, graphStartDate, series } = this.state;
 
     return (
       <div className="project-activity-layout-page-main-inner boxed-group boxed-group-inner">
-        <GraphsHeader
-          addCustomMetric={this.addCustomMetric}
-          className="big-spacer-bottom"
-          graph={query.graph}
-          metrics={metrics}
-          metricsTypeFilter={this.getMetricsTypeFilter()}
-          removeCustomMetric={this.removeCustomMetric}
-          selectedMetrics={this.props.query.customMetrics}
-          updateGraph={this.updateGraph}
-        />
+        {
+          grc? (<>
+          </>) : (<>
+            <GraphsHeader
+              addCustomMetric={this.addCustomMetric}
+              className="big-spacer-bottom"
+              graph={query.graph}
+              metrics={metrics}
+              metricsTypeFilter={this.getMetricsTypeFilter()}
+              removeCustomMetric={this.removeCustomMetric}
+              selectedMetrics={this.props.query.customMetrics}
+              updateGraph={this.updateGraph}
+            />
+          </>)
+        }
         <GraphsHistory
           analyses={this.props.analyses}
           graph={query.graph}
