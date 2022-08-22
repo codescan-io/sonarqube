@@ -64,7 +64,8 @@ export default class ProjectActivityGraphs extends React.PureComponent<Props, St
       props.measuresHistory,
       props.query.graph,
       props.metrics,
-      getDisplayedHistoryMetrics(props.query.graph, props.query.customMetrics)
+      getDisplayedHistoryMetrics(props.query.graph, props.query.customMetrics),
+      props.grc
     );
     this.state = {
       series,
@@ -85,7 +86,8 @@ export default class ProjectActivityGraphs extends React.PureComponent<Props, St
         this.props.measuresHistory,
         this.props.query.graph,
         this.props.metrics,
-        getDisplayedHistoryMetrics(this.props.query.graph, this.props.query.customMetrics)
+        getDisplayedHistoryMetrics(this.props.query.graph, this.props.query.customMetrics),
+        this.props.grc
       );
       newGraphs = splitSeriesInGraphs(newSeries, MAX_GRAPH_NB, MAX_SERIES_PER_GRAPH);
     }
@@ -209,7 +211,25 @@ export default class ProjectActivityGraphs extends React.PureComponent<Props, St
             />
           </>)
         }
-        <GraphsHistory
+        {
+          grc ? (<>
+          <GraphsHistory
+          analyses={this.props.analyses}
+          graph={query.graph}
+          graphEndDate={graphEndDate}
+          graphStartDate={graphStartDate}
+          graphs={this.state.graphs}
+          leakPeriodDate={leakPeriodDate}
+          loading={loading}
+          measuresHistory={this.props.measuresHistory}
+          selectedDate={this.props.query.selectedDate}
+          series={series}
+          updateGraphZoom={this.updateGraphZoom}
+          updateSelectedDate={this.updateSelectedDate}
+        />
+          </>) :(
+            <>
+            <GraphsHistory
           analyses={this.props.analyses}
           graph={query.graph}
           graphEndDate={graphEndDate}
@@ -224,6 +244,9 @@ export default class ProjectActivityGraphs extends React.PureComponent<Props, St
           updateGraphZoom={this.updateGraphZoom}
           updateSelectedDate={this.updateSelectedDate}
         />
+            </>
+          )
+        }
         <GraphsZoom
           graphEndDate={graphEndDate}
           graphStartDate={graphStartDate}
