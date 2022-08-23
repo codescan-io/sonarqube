@@ -47,7 +47,7 @@ export class GRCProfileDetails extends React.PureComponent<Props, State> {
         if (id && name && language) {
           this.fetchProfiles();
         } else {
-          router.replace('/grc');
+          router.replace('/grc/dashboard');
         }
     }
 

@@ -96,7 +96,7 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
            if (location.query.id) {
              this.loadAnalyses();
            } else {
-             router.replace('/grc');
+             router.replace('/grc/dashboard');
            }
          }
 

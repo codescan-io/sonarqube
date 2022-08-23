@@ -32,7 +32,7 @@ const home = ()=> {
                     Codescan App</Link>
             </div>
             <div className="block">
-                <Link to="/grc">
+                <Link to="/grc/dashboard">
                 <img src='/images/scanner-logos/msbuild.svg' alt="" />
                 GRC App</Link>
             </div>

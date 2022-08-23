@@ -49,7 +49,7 @@ export class GRCProfiles extends React.PureComponent<Props, State> {
         if (location.query.id) {
           this.fetchProfiles();
         } else {
-          router.replace('/grc');
+          router.replace('/grc/profiles');
         }
     }
 

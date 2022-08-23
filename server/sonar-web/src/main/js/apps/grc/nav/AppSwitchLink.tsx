@@ -20,7 +20,7 @@ const AppSwitchLink = ({appState, currentUser, router}: Props & WithRouterProps)
               router.replace('/projects');
             }
           } else {
-            router.replace('/grc');
+            router.replace('/grc/dashboard');
           }
         }}>
           {appState.grc ? 'Open Codescan' : 'Open GRC'}

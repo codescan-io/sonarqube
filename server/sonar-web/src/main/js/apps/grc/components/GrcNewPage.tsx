@@ -116,11 +116,10 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
   loadGRCProjects(){
     searchProjects({filter: 'tags=grc'})
     .then(({components}) => {
-      if (!components.length) {
-        return Promise.reject();
+      if (components.length) {
+        this.props.router.replace('/grc/no-projects');
       }else{
         const id = components[0].key;
-       
         let pathName = this.props.location.pathname;
         if(!pathName || pathName==="/grc"){
           pathName = '/grc/dashboard';
@@ -379,7 +378,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
   render() {
     const { component, loading } = this.state;
     const organization:string = component ? component.organization : "Default";
-    const showGRCNav:boolean = this.props.location.pathname !== "/grc/create" && this.props.location.pathname !== "/grc";
+    const showGRCNav:boolean = this.props.location.pathname !== "/grc/create" && this.props.location.pathname !== "/grc" && this.props.location.pathname !== "/grc/no-projects";
 
     if (!loading && !component) {
       return <ComponentContainerNotFound />;

@@ -3,8 +3,8 @@ import { Link } from 'react-router';
 import { translate } from "sonar-ui-common/helpers/l10n";
 import './Create.css';
 
-export default function CreateGRCProject() {
-  
+export default function GRCNoProjects() {
+  console.log("Inside No Projects Route");
   return (
         <div className="create-container">
           <span className="info">{translate('grc.no_projects')}</span>
