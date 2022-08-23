@@ -45,8 +45,6 @@ interface State {
   // add index declaration to be able to do `this.setState({ [name]: value });`
   [x: string]: any;
   openRunAnalysis: boolean;
-  openAuthorize: boolean;
-  hashState: any;
 }
 
 export default class CreateProjectPage extends React.PureComponent<Props & WithRouterProps, State> {
@@ -60,31 +58,13 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
       loading: false,
       name: '',
       visibility: props.organization?.projectVisibility,
-      openRunAnalysis: false,
-      openAuthorize: false,
-      hashState: ''
+      openRunAnalysis: false
     };
   }
 
   componentDidMount() {
     this.mounted = true;
     document.body.classList.add('white-page');
-    if (window.location.hash) {
-      const params = (window.location.hash.substr(1)).split("&");
-      const state: any = {};
-      for (let i = 0; i < params.length; i++)
-      {
-          const a: any = params[i].split("=");
-          // Now every parameter from the hash is beind handled this way
-          state[a[0]] = decodeURIComponent(a[1]);
-      }
-      if ( typeof(state['action']) == 'string' && state['action'] === "integrations_create" ){
-        this.setState({
-          hashState: state,
-          openAuthorize: true
-        });
-      }
-    }
   }
 
   componentDidUpdate() {
@@ -151,16 +131,12 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
     this.setState({ openRunAnalysis: false });
   }
 
-  onAuthorizeDone() {
-  }
-
   render() {
     const { organization } = this.props;
-    const { createdProject, openAuthorize, hashState } = this.state;
+    const { createdProject } = this.state;
 
     return (
       <div>
-        { openAuthorize && (<AuthorizeForm organization={organization} hashState={hashState} onModified={this.onAuthorizeDone} originalProject={null} />) }
         {createdProject ?
         (
           <div className="create-hdr">
@@ -182,20 +158,17 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
                   }}
                 />}
               </Alert>
-              <ResetButtonLink
-                id="add-project-analysis"
-                onClick={()=> this.props.router.replace('/grc/dashboard')}>
-                {translate('close')}
-              </ResetButtonLink>
             </div>
-            {this.state.openRunAnalysis && <AddProjectForm organization={organization} projectKey={this.state.key} closeForm={this.closeAnalysisForm}/>}      
             <footer>
               <ResetButtonLink
-                id="create-project-close"
-                innerRef={node => (this.closeButton = node)}
+                id="add-project-analysis"
                 onClick={this.openAnalysisForm}>
                 {translate('grc.add_analysis_project')}
               </ResetButtonLink>
+              {/* <ResetButtonLink
+                onClick={()=> this.props.router.replace('/grc/dashboard')}>
+                {translate('close')}
+              </ResetButtonLink> */}
             </footer>
           </div>
         ) : (
@@ -259,6 +232,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
           </form>
         )
         }
+        {this.state.openRunAnalysis && <AddProjectForm organization={organization} projectKey={this.state.key} closeForm={this.closeAnalysisForm}/>}
       </div>
     );
   }

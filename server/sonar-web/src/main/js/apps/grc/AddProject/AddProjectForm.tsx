@@ -85,7 +85,7 @@ export default class AddProjectForm extends React.PureComponent<Props, State> {
     if(this.state.disabled ) { return; }
     const { organization, projectKey } = this.props;
     this.setState({ disabled: true });
-    new Salesforce().authorize(organization.key, projectKey, salesforceDomain);
+    new Salesforce(this.props).authorize(organization.key, projectKey, salesforceDomain);
   };
 
   renderModal() {

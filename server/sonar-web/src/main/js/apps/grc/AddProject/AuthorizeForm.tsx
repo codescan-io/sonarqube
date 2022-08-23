@@ -1,14 +1,9 @@
+/* eslint-disable jsx-a11y/no-onchange */
 import React from 'react';
-//import { parseError, parseErrorObject } from '../../common/utils.js'
-/* import {
-  authorizeToken,
-  createProject,
-  renameProjectBranch,
-  updateIntegration
-} from '../../../api.js' */
-//import Salesforce from './Salesforce';
-//import AbstractType from '../../common/AbstractType.js';
-//import RepoSearch from '../../common/RepoSearch.js';
+import Modal from 'sonar-ui-common/components/controls/Modal';
+import { authorizeToken, updateIntegration } from '../../../api/codescan';
+import Salesforce, {parseError, parseErrorObject} from './Salesforce';
+
 
 const imgOnlyStyles = {
   maxHeight: '1em',
@@ -19,50 +14,45 @@ interface Props {
     organization: T.Organization;
     hashState: any;
     //closeForm: () => any;
-    onModified: () => any;
+    onModified: (data: any) => any;
     originalProject: any;
 }
 
-export default class AuthorizeForm extends React.PureComponent<Props> {
+interface State {
+  disabled: boolean;
+  valid: boolean;
+  scheduling: any,
+  scheduling_hour: any;
+  loading: boolean;
+  errorMsg: any;
+  projectVersion: string;
+  testmode: string;
+  repoName: string;
+  repoUrl: string;
+  repoUsername: string;
+  repoPassword: string;
+  pullRequests: boolean;
+  projectKey: any;
+  projectName: any;
+  auth: any;
+  open: boolean;
+  authHandler: any;
+  branchName: any;
+  branchType: any;
+}
+
+export default class AuthorizeForm extends React.PureComponent<Props, State> {
 
   constructor(props: Props) {
     super(props);
-    this.state =  {
-      //open: true,
-      //disabled: false,
-      //valid: false
-    };
   }
-
-  render() {
-    return (
-        <div>Hello welcome back to GRC to run analysis</div>
-    )
-  }
-
-  /* handleChange = (event) => {
-    let value = event.target.value;
-    if ( event.target.type == 'checkbox' ){
-      value = event.target.checked;
-    }
-
-    let d = {};
-    d[event.target.dataset.field] = value;
-    this.setState(d);
-  }
-
-  closeForm = () => {
-    this.setState({ open: false });
-  };
 
   componentDidMount() {
     this.setState({
-      open: true,
       loading: true,
       disabled: true,
       valid: false,
       errorMsg: "",
-
       projectVersion: "",
       testmode: "",
       scheduling: "0",
@@ -71,9 +61,8 @@ export default class AuthorizeForm extends React.PureComponent<Props> {
       repoUrl: "",
       repoUsername: "",
       repoPassword: "",
-      repoBranch: "",
+      //repoBranch: "",
       pullRequests: true
-
     });
 
     const { organization, hashState } = this.props;
@@ -91,9 +80,9 @@ export default class AuthorizeForm extends React.PureComponent<Props> {
       return;
     }
 
-    let authHandler = AbstractType.create(hashState.authType);
+    const authHandler = new Salesforce(this.props);
     this.setState(authHandler.getDefaultState())
-    if ( authHandler.requiresAuthorizeToken() ){
+    if (authHandler.requiresAuthorizeToken()){
       authorizeToken({
         code: hashState.code,
         authType: hashState.authType,
@@ -101,41 +90,58 @@ export default class AuthorizeForm extends React.PureComponent<Props> {
         organization: organization.key,
       }).then((response)=>{
         window.location.hash = ''; //remove hash
-        let errorMsg = parseErrorObject(response);
-        if ( errorMsg != null){
-          this.setState({
-            errorMsg: errorMsg
-          });
+        const errorMsg = parseErrorObject(response);
+        if ( errorMsg != null) {
+          this.setState({errorMsg});
         }else{
           this.setState({
             projectKey: response.projectKey,
             projectName: response.projectName,
             auth: response.auth,
-            authHandler: authHandler,
-            branchName: hashState.branchName,
-            branchType: hashState.branchType
+            //authHandler,
+            //branchName: hashState.branchName,
+            //branchType: hashState.branchType
           });
           authHandler.onAuthorizeToken(this);
         }
 
       }).catch(e => {
-        return parseError(e).then(message => this.setState({
-          errorMsg: message
-        }));
+        return parseError(e).then((message: any) => {
+          if(message) { 
+            this.setState({errorMsg: message});
+          }
+        })      
       });
-    }else{
+    }
+    else {
       window.location.hash = ''; //remove hash
+      if(hashState) {
       this.setState({
         auth: {
-          authType: hashState.authType
-        },
-        authHandler: authHandler
+          authType: hashState?.authType
+        }
+       //authHandler
       });
+    }
       authHandler.onAuthorizeToken(this);
     }
   }
 
-  handleSubmit = (e) => {
+  handleChange = (event: any) => {
+    let {value} = event.target;
+    if ( event.target.type === 'checkbox' ){
+      value = event.target.checked;
+    }
+    const d: any = {};
+    d[event.target.dataset.field] = value;
+    this.setState(d);
+  }
+
+  closeForm = () => {
+    this.setState({ open: false });
+  };
+
+  handleSubmit = (e: any) => {
     e.preventDefault();
     const { organization } = this.props;
     this.setState({
@@ -144,28 +150,29 @@ export default class AuthorizeForm extends React.PureComponent<Props> {
     });
 
     //calculate scheduling
-    let scheduling = this.state.scheduling;
-    if ( scheduling == "-1" ){
+    let {scheduling} = this.state;
+    if ( scheduling === "-1" ){
       scheduling = this.state.scheduling_hour;
     }
 
-    let createData = {
+    const createData: any = {
       organizationId: organization.key,
       testmode: this.state.testmode,
-      scheduling: scheduling,
+      scheduling,
       projectVersion: this.state.projectVersion,
       repoName: this.state.repoName,
       pullRequests: this.state.pullRequests,
       repoUrl: this.state.repoUrl,
       repoUsername: this.state.repoUsername,
       repoPassword: this.state.repoPassword,
-
+      projectKey: '',
+      projectName: '',
       auth: JSON.stringify(this.state.auth)
     };
 
-    if ( this.props.originalProject == null ){
+    /* if ( this.props.originalProject == null ){
       //create a new project first.
-      let projectData = {
+      const projectData = {
         name: this.state.projectName,
         organization: this.props.organization.key,
         project: this.state.projectKey,
@@ -201,219 +208,46 @@ export default class AuthorizeForm extends React.PureComponent<Props> {
         }));
       });
 
-    }else{
+    } else { */
       //link to existing project...
       createData.projectKey = this.props.originalProject.key;
       createData.projectName = this.props.originalProject.name;
 
-      updateIntegration(createData).then((response2)=>{
+      updateIntegration(createData).then(()=>{
         this.props.onModified(createData);
         this.closeForm();
       }).catch(e => {
-        return parseError(e).then(message => this.setState({ errorMsg: message }));
+        return parseError(e).then((message: any) => this.setState({ errorMsg: message }));
       });
-    }
+    //}
 
   };
 
-  onRepoUrlBlur = (event) => {
-    let url = event.target.value;
-
-    if ( url.includes("//") ){
-      url = url.substring(url.indexOf("//")+2);
-
-      if ( url.includes("/") ){
-        url = url.substring(url.indexOf("/")+1);
-        if ( url.endsWith(".git") )
-          url = url.substring(0, url.lastIndexOf(".git") ); //get rid of ending .git
-
-        let projectName = url;
-        let projectKey = url;
-        if ( url.includes("/") ){
-          projectName = url.substring(url.lastIndexOf("/")+1);
-        }
-
-        //set key if applicable
-        if (this.state.projectKey == '' || typeof this.state.projectKey == 'undefined') {
-          projectKey = projectKey.replace(/[^a-zA-Z0-9 ]/g, "-"); //replace - with dash
-          projectKey = projectKey.trim();
-          projectKey = projectKey.replace(/--+/g, '-'); //remove multiple spaces
-          this.setState({
-              projectKey: projectKey
-          });
-        }
-
-        //set name if applicable
-        if (this.state.projectName == '' || typeof this.state.projectName == 'undefined') {
-          projectName = projectName.replace(/[^a-zA-Z0-9 ]/g, " "); //replace - with dash
-          projectName = projectName.trim();
-          projectName = projectName.replace(/\s\s+/g, ' '); //remove multiple spaces
-          this.setState({
-              projectName: projectName
-          });
-        }
-
-      }
-    }else{
-      this.setState({
-        repoUrl: ''
-      })
-    }
-  }
-  onRepoNameChange = (data) => {
-    if ( typeof data == 'undefined' ){
-      this.setState({
-        valid: false
-      });
-    }else{
-      this.setState({
-        repoName: data.key,
-        valid: true
-      });
-
-      //set key/name if applicable
-      if (this.state.projectKey == '' || typeof this.state.projectKey == 'undefined') {
-        this.setState({
-            projectKey: data.key.replace(/\//g, '-')
-        });
-      }
-      if (this.state.projectName == '' || typeof this.state.projectName == 'undefined') {
-          this.setState({
-              projectName: data.name.replace(/\//g, '-')
-          });
-      }
-    }
-  } */
-
-  /* render() {
-    const canAddBranch = this.props.originalProject == null && this.props.organization.actions.admin
+  render() {
     const { errorMsg, loading, open } = this.state;
-    const authHandler = typeof(this.state.auth) == 'undefined' ? undefined : AbstractType.create(this.state.auth.authType, this);
+    const authHandler = typeof(this.state.auth) == 'undefined' ? undefined : new Salesforce(this.props);
     return (
       <Modal
-        isOpen={open}
         contentLabel="modal form"
         className="modal"
-        overlayClassName="modal-overlay"
-        onRequestClose={this.closeForm}>
+        overlayClassName="modal-overlay">
         <header className="modal-head">
           <h2>
             {this.state.loading && <i className="spinner" />}
             { this.props.originalProject == null && (<span>Add a new project</span>) }
-            { this.props.originalProject !== null && (<span>Attach analysis to project</span>) }
-            { typeof(authHandler) !== 'undefined' && <img src={ authHandler.imageUrl() } style={imgOnlyStyles} /> }
+            { typeof(authHandler) !== 'undefined' && <img src={authHandler.imageUrl()} style={imgOnlyStyles} alt="" /> }
           </h2>
         </header>
         <form onSubmit={this.handleSubmit}>
           <div className="modal-body">
-            { this.state.auth && this.state.auth.authType == Git.TYPE && (
-              <div>
-                <div className="modal-field">
-                  <label htmlFor="project-repoUrl">Git URL</label>
-                  <input
-                      required
-                      type="text"
-                      name="project-repoUrl"
-                      maxLength="250"
-                      data-field="repoUrl"
-                      value={this.state.repoUrl}
-                      onChange={this.handleChange}
-                      onBlur={this.onRepoUrlBlur}
-                      />
-                  <div className="modal-field-description">The git URL. The URL must start with http(s)://, not git@</div>
-                </div>
-
-                <div className="modal-field">
-                  <label htmlFor="project-repoUsername">Git Username</label>
-                  <input
-                      type="text"
-                      name="project-repoUsername"
-                      maxLength="250"
-                      data-field="repoUsername"
-                      value={this.state.repoUsername}
-                      onChange={this.handleChange}
-                      />
-                  <div className="modal-field-description">The git repo username.</div>
-                </div>
-
-                <div className="modal-field">
-                  <label htmlFor="project-repoPassword">Git Password</label>
-                  <input
-                      type="password"
-                      name="project-repoPassword"
-                      maxLength="250"
-                      data-field="repoPassword"
-                      value={this.state.repoPassword}
-                      onChange={this.handleChange}
-                      />
-                  <div className="modal-field-description">The git repo password</div>
-                </div>
-
-                <div className="modal-field">
-                  <label htmlFor="project-repoBranch">Project Branch</label>
-                  <input
-                      type="text"
-                      name="project-repoBranch"
-                      maxLength="120"
-                      data-field="repoBranch"
-                      value={this.state.repoBranch}
-                      onChange={this.handleChange}
-                      disabled={!canAddBranch}
-                      />
-                  <div className="modal-field-description">
-                    {canAddBranch && ("The branch that the project is linked to")}
-                    {!canAddBranch && ("Custom branch not enabled as you are not an admin user")}
-                  </div>
-                </div>
-              </div>
-            )}
-            { this.state.auth && (this.state.auth.authType == Github.TYPE || this.state.auth.authType == Gitlab.TYPE
-              || this.state.auth.authType == Bitbucket.TYPE) && (
-              <div>
-                <RepoSearch
-                  name="repoName"
-                  label="Choose a repository"
-                  auth={this.state.auth}
-                  onChange={this.onRepoNameChange}
-                />
-
-                { this.props.originalProject == null && (
-                <div className="modal-field">
-                  <label htmlFor="project-repoBranch">Project Branch</label>
-                  <input
-                      type="text"
-                      name="project-repoBranch"
-                      maxLength="120"
-                      data-field="repoBranch"
-                      value={this.state.repoBranch}
-                      onChange={this.handleChange}
-                      />
-                  <div className="modal-field-description">The branch that the project is linked to</div>
-                </div>
-                )}
-
-                <div className="modal-field">
-                  <label htmlFor="project-pullRequests">Check Pull Requests</label>
-                  <input
-                      type="checkbox"
-                      name="project-pullRequests"
-                      data-field="pullRequests"
-                      checked={this.state.pullRequests}
-                      value="true"
-                      onChange={this.handleChange}
-                      />
-                  <div className="modal-field-description">Automatically start scans for new pull requests</div>
-                </div>
-              </div>
-            )}
             { this.props.originalProject == null && (<div>
               <div className="modal-field">
                 <label htmlFor="project-projectKey">Key</label>
                 <input
-                    required
+                    required={true}
                     type="text"
                     name="project-projectKey"
-                    maxLength="20"
+                    maxLength={20}
                     data-field="projectKey"
                     value={this.state.projectKey}
                     onChange={this.handleChange}
@@ -425,10 +259,10 @@ export default class AuthorizeForm extends React.PureComponent<Props> {
               <div className="modal-field">
                 <label htmlFor="project-projectName">Name</label>
                 <input
-                    required
+                    required={true}
                     type="text"
                     name="project-projectName"
-                    maxLength="20"
+                    maxLength={20}
                     data-field="projectName"
                     value={this.state.projectName}
                     onChange={this.handleChange}
@@ -438,15 +272,15 @@ export default class AuthorizeForm extends React.PureComponent<Props> {
               </div>
             </div>)}
 
-            { this.state.auth && this.state.auth.authType == Salesforce.TYPE && (
+            { this.state.auth && this.state.auth.authType === 'metadata_api' && (
               <div>
                 <div className="modal-field">
                   <label htmlFor="project-projectVersion">Default Project Version</label>
                   <input
-                      required
+                      required={true}
                       type="text"
                       name="project-projectVersion"
-                      maxLength="20"
+                      maxLength={20}
                       data-field="projectVersion"
                       value={this.state.projectVersion}
                       onChange={this.handleChange}
@@ -471,7 +305,7 @@ export default class AuthorizeForm extends React.PureComponent<Props> {
               </div>
             )}
 
-            { this.state.auth && (this.state.auth.authType ==  Salesforce.TYPE || this.state.auth.authType == Git.TYPE ) && (
+            { this.state.auth && (this.state.auth.authType ===  'metadata_api') && (
             <div className="modal-field">
               <label htmlFor="project-scheduling">Scheduling</label>
               <select
@@ -481,32 +315,11 @@ export default class AuthorizeForm extends React.PureComponent<Props> {
                   onChange={this.handleChange}
               >
                   <option value="">Manual</option>
-                  <option value="-1">Daily</option>
               </select>
 
               <div className="modal-field-description">Run analysis on a regular basis</div>
             </div>
             )}
-
-
-            { this.state.auth && this.state.scheduling == "-1" && (
-              <div className="modal-field">
-                <label htmlFor="project-scheduling-hour">Schedule</label>
-                <select
-                    name="project-scheduling-hour"
-                    data-field="scheduling_hour"
-                    value={this.state.scheduling_hour}
-                    onChange={this.handleChange}
-                >
-                  <option value="-1">Any time</option>
-                  { [...Array(24).keys()].map( (hour) => {
-                    return (<option key={hour+1} value={hour+1}>
-                      After {new Date("1970-01-01T" + (hour < 10 ? "0" : "") + hour + ":00+0000").toTimeString().replace(/:00:00.*\(/, ":00 (")}
-                    </option>)
-                   } ) }
-                </select>
-              </div>
-              )}
             <div className="text-danger">{ errorMsg }</div>
           </div>
 
@@ -515,10 +328,6 @@ export default class AuthorizeForm extends React.PureComponent<Props> {
               NOTE: by continuing you agree that we will store your {this.state.auth && this.state.auth.authType}
               credentials on our system
             </div>
-            { this.state.auth && (this.state.auth.authType == Github.TYPE || this.state.auth.authType == Gitlab.TYPE
-              || this.state.auth.authType == Bitbucket.TYPE ) && (
-              <div className="modal-field-description">Analysis will be automatically started whenever there is a commit to the tracked branch</div>
-            )}
             <div>
               <button className="button" type="submit" disabled={this.state.disabled || !this.state.valid}>
               Add and Run Now
@@ -531,6 +340,6 @@ export default class AuthorizeForm extends React.PureComponent<Props> {
         </form>
       </Modal>
     );
-  } */
+  }
 
 }

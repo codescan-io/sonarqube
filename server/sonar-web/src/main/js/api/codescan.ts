@@ -73,3 +73,11 @@ export function getProjectAnalysis(organizationId: string, projectKey: string): 
 export function updateIntegration(options: any): Promise<any> {
   return post('/_codescan/integrations/update', options);
 }
+
+export function authorizeToken(options: any) {
+  return postJSON('/_codescan/integrations/authorize', options);
+}
+
+export function runIntegration(options: any) {
+  return post('/_codescan/integrations/queue', options);
+}

@@ -90,7 +90,7 @@ export default class Salesforce extends React.PureComponent {
 }
 
 
-function parseError(error: any) {
+export function parseError(error: any) {
     const DEFAULT_MESSAGE = 'An unknown error occurred';
     try {
       if ( typeof(error) == 'undefined' ){
@@ -111,7 +111,7 @@ function parseError(error: any) {
     }
   }
 
-  function parseErrorObject(r: any){
+export function parseErrorObject(r: any){
     if ( typeof(r.error_description) == 'string' ){
       return r.error_description 
     }else if ( typeof(r.error) == 'string' ){
