@@ -27,6 +27,7 @@ import ChangeEventForm from './forms/ChangeEventForm';
 import RemoveEventForm from './forms/RemoveEventForm';
 
 export interface EventProps {
+  grc:boolean;
   analysisKey: string;
   canAdmin?: boolean;
   event: T.AnalysisEvent;
@@ -36,7 +37,7 @@ export interface EventProps {
 }
 
 export function Event(props: EventProps) {
-  const { analysisKey, event, canAdmin, isFirst } = props;
+  const { analysisKey, event, canAdmin, isFirst, grc } = props;
 
   const [changing, setChanging] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
@@ -56,7 +57,7 @@ export function Event(props: EventProps) {
         )}
       />
 
-      <EventInner event={event} />
+      <EventInner event={event} grc={grc} />
 
       {showActions && (
         <span className="nowrap">

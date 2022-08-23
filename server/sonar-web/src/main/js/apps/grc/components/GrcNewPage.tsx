@@ -117,7 +117,12 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
         return Promise.reject();
       }else{
         const id = components[0].key;
-        this.props.router.replace('/grc/dashboard?id='+id);
+       
+        let pathName = this.props.location.pathname;
+        if(!pathName || pathName==="/grc"){
+          pathName = '/grc/dashboard';
+        }
+        this.props.router.replace(pathName+'?id='+id);
       }
     })
   }

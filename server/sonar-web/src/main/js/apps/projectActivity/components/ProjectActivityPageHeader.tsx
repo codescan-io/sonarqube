@@ -31,6 +31,7 @@ interface Props {
   from?: Date;
   project: Pick<T.Component, 'qualifier'>;
   to?: Date;
+  grc:boolean;
   updateQuery: (changes: Partial<Query>) => void;
 }
 
@@ -38,11 +39,20 @@ export default class ProjectActivityPageHeader extends React.PureComponent<Props
   handleCategoryChange = (option: { value: string } | null) =>
     this.props.updateQuery({ category: option ? option.value : '' });
 
+  getLabel(category:string):string{
+    if(this.props.grc){
+      if(category === "QUALITY_GATE" || category === "QUALITY_PROFILE"){
+        return translate('event.category.grc', category)
+      }
+    }
+    return translate('event.category', category)
+  }
+
   render() {
     const isApp = this.props.project.qualifier === 'APP';
     const eventTypes = isApp ? APPLICATION_EVENT_TYPES : EVENT_TYPES;
     const options = eventTypes.map(category => ({
-      label: translate('event.category', category),
+      label: this.getLabel(category),
       value: category
     }));
 

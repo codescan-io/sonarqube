@@ -33,6 +33,7 @@ import ProjectActivityPageHeader from './ProjectActivityPageHeader';
 interface Props {
   addCustomEvent: (analysis: string, name: string, category?: string) => Promise<void>;
   addVersion: (analysis: string, version: string) => Promise<void>;
+  grc:boolean,
   analyses: T.ParsedAnalysis[];
   analysesLoading: boolean;
   changeEvent: (event: string, name: string) => Promise<void>;
@@ -48,7 +49,7 @@ interface Props {
 }
 
 export default function ProjectActivityApp(props: Props) {
-  const { analyses, measuresHistory, query } = props;
+  const { analyses, measuresHistory, query, grc } = props;
   const { configuration } = props.project;
   const canAdmin =
     (props.project.qualifier === 'TRK' || props.project.qualifier === 'APP') &&
@@ -66,12 +67,14 @@ export default function ProjectActivityApp(props: Props) {
         from={query.from}
         project={props.project}
         to={query.to}
+        grc={props.grc}
         updateQuery={props.updateQuery}
       />
 
       <div className="layout-page project-activity-page">
         <div className="layout-page-side-outer project-activity-page-side-outer boxed-group">
           <ProjectActivityAnalysesList
+            grc={grc}
             addCustomEvent={props.addCustomEvent}
             addVersion={props.addVersion}
             analyses={analyses}
@@ -92,6 +95,7 @@ export default function ProjectActivityApp(props: Props) {
         </div>
         <div className="project-activity-layout-page-main">
           <ProjectActivityGraphs
+            grc={grc}
             analyses={analyses}
             leakPeriodDate={
               props.project.leakPeriodDate ? parseDate(props.project.leakPeriodDate) : undefined
