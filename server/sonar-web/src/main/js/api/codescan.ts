@@ -81,3 +81,21 @@ export function authorizeToken(options: any) {
 export function runIntegration(options: any) {
   return post('/_codescan/integrations/queue', options);
 }
+
+export function findCiProjects(options: any) {
+  return getJSON('/_codescan/integrations/projects', options);
+}
+
+export function findCiQueues(options: any) {
+  return getJSON('/_codescan/integrations/list_queue', options).then((response) => {
+     return response.queues;
+  });
+}
+
+export function getBillingCheck(organization: any) {
+  return getJSON('/_codescan/billing/check', {organization});
+}
+
+export function getQueueStatus(ids: any) {
+  return getJSON('/_codescan/integrations/queue', {'id': ids});
+}

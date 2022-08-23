@@ -3,12 +3,6 @@ import React from 'react';
 import Modal from 'sonar-ui-common/components/controls/Modal';
 import Salesforce from './Salesforce';
 
-const modalStyles = {
-  content : {
-    marginLeft: -440,
-    width: 880
-  }
-};
 const imgOnlyStyles = {
     maxHeight: '60px',
     paddingRight: '50px',
