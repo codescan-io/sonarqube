@@ -18,6 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import React from "react";
+import HelpTooltip from "sonar-ui-common/components/controls/HelpTooltip";
+import HelpIcon from "sonar-ui-common/components/icons/HelpIcon";
+import { translate } from "sonar-ui-common/helpers/l10n";
+import { colors } from "../../../app/theme";
 import { getGrcActivityUrl } from "../../../../js/helpers/urls";
 import { getQualityGateInfo, getQualityProfileInfo, getReadableDateFormat, getVersionInfo } from "../dashboard/utils";
 import '../grc-dashboard.css';
@@ -35,11 +39,22 @@ export default function LastAnalysis({ event, componentKey }: Props) {
   const qualityProfile: string | undefined = getQualityProfileInfo(event);
   const version: string | undefined = getVersionInfo(event);
   const redirectUrl = getGrcActivityUrl(componentKey)
+  const helpIcon = <HelpIcon fill={colors.gray71} size={12} />
+  
   return (
       <>
       <div className="widget last-analysis-cntr">
         <LinkWidget link={redirectUrl}></LinkWidget>
-        <label>Last Analysis </label><br/><br/>
+        <label className="name">{translate('grc.dashboard.last.analysis')}</label>
+        <HelpTooltip
+            overlay={
+              <>
+                <p>{translate('grc.dashboard.last.analysis.description')}</p>
+              </>
+            }>
+           {helpIcon}
+          </HelpTooltip>
+        <br/><br/>
         <div><label className="value first">Time: <b>{lastScanDate}</b></label></div>
         {
           qualityGate? (

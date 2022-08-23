@@ -47,6 +47,9 @@ import PageUnavailableDueToIndexation from '../../../app/components/indexation/P
 import { setGrcUi } from '../../../store/appState';
 import getStore from '../../../app/utils/getStore';
 import "../styles.css";
+import QualifierIcon from 'sonar-ui-common/components/icons/QualifierIcon';
+import GenericAvatar from 'sonar-ui-common/components/ui/GenericAvatar';
+import "../grc-dashboard.css";
 
 interface Props {
   children: React.ReactElement;
@@ -375,6 +378,8 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
 
   render() {
     const { component, loading } = this.state;
+    const organization:string = component ? component.organization : "Default";
+    const showGRCNav:boolean = this.props.location.pathname !== "/grc/create" && this.props.location.pathname !== "/grc";
 
     if (!loading && !component) {
       return <ComponentContainerNotFound />;
@@ -385,13 +390,22 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
     }
     const { branchLike, branchLikes, currentTask, isPending, tasksInProgress, comparisonBranchesEnabled } = this.state;
     const isInProgress = tasksInProgress && tasksInProgress.length > 0;
-    return (
+    return (<>
+      {showGRCNav ? (
+        <div className='grc-nav'>
+        <GenericAvatar name={organization} size={30} />
+        <span className='grc-nav-details'><span className='org-name' title="Organization Name"> {organization} </span> <span className='nav-seperator'>/</span> <span className='qualifier-icon'><QualifierIcon qualifier={component?.qualifier} /></span> <span className="project-name" title="Project Name">{component?.name}</span> 
+        </span>
+      </div>
+      ) : (<></>)
+      }
       <div className="grc-container">
         {loading ? (
           <div className="page page-limited">
             <i className="spinner" />
           </div>
         ) : (
+          <>
           <ComponentContext.Provider value={{ branchLike, component }}>
             {React.cloneElement(this.props.children, {
               branchLike,
@@ -404,8 +418,10 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
               onComponentChange: this.handleComponentChange
             })}
           </ComponentContext.Provider>
+          </>
         )}
       </div>
+      </>
     );
   }
 }

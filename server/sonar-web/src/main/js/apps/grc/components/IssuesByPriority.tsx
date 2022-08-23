@@ -24,6 +24,10 @@ import { RawHotspot } from '../../../types/security-hotspots';
 import { getHotspotsBasedOnRiskExposure } from '../dashboard/utils';
 import '../grc-dashboard.css';
 import LinkWidget from './LinkWidget';
+import { colors } from '../../../app/theme';
+import { translate } from 'sonar-ui-common/helpers/l10n';
+import HelpIcon from 'sonar-ui-common/components/icons/HelpIcon';
+import HelpTooltip from 'sonar-ui-common/components/controls/HelpTooltip';
 
 const RADIAN = Math.PI / 180;
 const renderCustomizedLabel = ({
@@ -65,6 +69,8 @@ export default function IssuesByPriority({hotspots,componentKey}:Props) {
 
   const redirectUrl = getGrcViolationsUrl(componentKey);
 
+  const helpIcon = <HelpIcon fill={colors.gray71} size={12} />
+
   const data = [
   ];
 
@@ -88,7 +94,15 @@ export default function IssuesByPriority({hotspots,componentKey}:Props) {
   return (
     <>
       <div className="widget">
-        <label>Violations</label>
+        <label className='name'>{translate('grc.dashboard.violations')}Violations</label>
+        <HelpTooltip
+            overlay={
+              <>
+                <p>{translate('grc.dashboard.violations.description')}</p>
+              </>
+            }>
+           {helpIcon}
+          </HelpTooltip>
         <LinkWidget link={redirectUrl}></LinkWidget>
         {
           hotspots.length > 0 ?(
