@@ -66,7 +66,10 @@ export function getGrcProfilesUrl(project: string, branch?: string): Location {
   return { pathname: '/grc/profiles', query: { id: project, branch } };
 }
 export function getGrcRulesUrl(project: string, branch?: string): Location {
-  return { pathname: '/grc/rules', query: { id: project, branch } };
+  return { pathname: '/grc/rules', query: {
+  languages:"sfmeta",
+  repositories:"grc",
+  id: project, branch } };
 }
 export function getGrcProjectSettingsUrl(project: string, branch?: string): Location {
   return { pathname: '/grc/settings', query: { id: project, branch } };
