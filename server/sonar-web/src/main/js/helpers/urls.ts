@@ -53,7 +53,10 @@ export function getGrcOverviewUrl(project: string, branch?: string): Location {
 }
 
 export function getGrcActivityUrl(project: string, branch?: string): Location {
-  return { pathname: '/grc/activity', query: { id: project, branch } };
+  return { pathname: '/grc/activity', query: { 
+    custom_metrics: "security_hotspots,security_hotspots_reviewed",
+    graph:"custom",
+    id: project, branch } };
 }
 
 export function getGrcInventoryUrl(project: string, branch?: string): Location {

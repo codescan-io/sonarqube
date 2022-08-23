@@ -30,6 +30,7 @@ import { activityQueryChanged, getAnalysesByVersionByDay, Query } from '../utils
 import ProjectActivityAnalysis from './ProjectActivityAnalysis';
 
 interface Props {
+  grc:boolean;
   addCustomEvent: (analysis: string, name: string, category?: string) => Promise<void>;
   addVersion: (analysis: string, version: string) => Promise<void>;
   analyses: T.ParsedAnalysis[];
@@ -140,6 +141,7 @@ export default class ProjectActivityAnalysesList extends React.PureComponent<Pro
 
     return (
       <ProjectActivityAnalysis
+        grc={this.props.grc}
         addCustomEvent={this.props.addCustomEvent}
         addVersion={this.props.addVersion}
         analysis={analysis}

@@ -47,7 +47,7 @@ export default function ViolationDetails(props:Props) {
         <div className="flex-parent">
           <div className="flex-left-child">
           <LinkWidget link={redirectUrl}></LinkWidget>
-            New <br/>Viloations
+            New <br/>Violations
           </div>
           <div className="flex-right-child">
           <MeasuresPanelIssueMeasureRow
@@ -65,7 +65,7 @@ export default function ViolationDetails(props:Props) {
         <hr className="seperator-small"/>
         <div className="flex-parent">
           <div className="flex-left-child">
-          Existing <br/> Viloations
+          Existing <br/> Violations
           </div>
           <div className="flex-right-child">
           <MeasuresPanelIssueMeasureRow

@@ -22,6 +22,7 @@ import * as React from 'react';
 import Event from './Event';
 
 export interface EventsProps {
+  grc:boolean;
   analysisKey: string;
   canAdmin?: boolean;
   events: T.AnalysisEvent[];
@@ -31,7 +32,7 @@ export interface EventsProps {
 }
 
 export function Events(props: EventsProps) {
-  const { analysisKey, canAdmin, events, isFirst } = props;
+  const { analysisKey, canAdmin, events, isFirst, grc } = props;
 
   const sortedEvents = sortBy(
     events,
@@ -50,6 +51,7 @@ export function Events(props: EventsProps) {
           event={event}
           isFirst={isFirst}
           key={event.key}
+          grc={grc}
           onChange={props.onChange}
           onDelete={props.onDelete}
         />

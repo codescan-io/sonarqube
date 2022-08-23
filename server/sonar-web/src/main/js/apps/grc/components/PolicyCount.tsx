@@ -18,35 +18,62 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import React from 'react';
+import HelpTooltip from 'sonar-ui-common/components/controls/HelpTooltip';
 import { getGrcProfilesUrl } from '../../../helpers/urls';
 import '../grc-dashboard.css';
 import LinkWidget from './LinkWidget';
+import { colors } from '../../../app/theme';
+import { translate } from 'sonar-ui-common/helpers/l10n';
+import HelpIcon from 'sonar-ui-common/components/icons/HelpIcon';
+
 
 interface Props {
-  totalProfilesDefined:number,
-  totalProfilesEnforced:number,
-  componentKey:string
+  totalProfilesDefined: number;
+  totalProfilesEnforced: number;
+  componentKey: string;
 }
 
-export default function PolicyCount({ componentKey, totalProfilesDefined, totalProfilesEnforced}: Props) {
-
+export default function PolicyCount({
+  componentKey,
+  totalProfilesDefined,
+  totalProfilesEnforced
+}: Props) {
   const redirectUrl = getGrcProfilesUrl(componentKey);
-
+  const helpIcon = <HelpIcon fill={colors.gray71} size={12} />
   return (
     <>
       <div className="widget policy-count">
-        <div className='policy'>
-            <LinkWidget link={redirectUrl}></LinkWidget>
-            <label className='name'>Total Policies</label><br/>
-            <label className='value'>{totalProfilesDefined}</label> <br/>
+        <div className="policy">
+          <LinkWidget link={redirectUrl}></LinkWidget>
+          <label className="name">{translate('grc.dashboard.total.policies')}</label>
+          
+          <HelpTooltip
+            overlay={
+              <>
+                <p>{translate('grc.dashboard.total.policies.description')}</p>
+              </>
+            }>
+           {helpIcon}
+          </HelpTooltip>
+          <br />
+          <label className="value">{totalProfilesDefined}</label> <br />
         </div>
         <hr className="seperator"></hr>
-        <div className='policy'>
-        <LinkWidget link={redirectUrl}></LinkWidget>
-            <label className='name'>Policies Activated</label><br/>
-            <label className='value'>{totalProfilesEnforced}</label>
+        <div className="policy">
+          <LinkWidget link={redirectUrl}></LinkWidget>
+          <label className="name">{translate('grc.dashboard.activated.policies')}</label>
+          <HelpTooltip
+            overlay={
+              <>
+                <p>{translate('grc.dashboard.activated.policies.description')}</p>
+              </>
+            }>
+           {helpIcon}
+          </HelpTooltip>
+          <br />
+          <label className="value">{totalProfilesEnforced}</label>
         </div>
       </div>
     </>
   );
-  }
+}
