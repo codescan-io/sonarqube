@@ -20,6 +20,11 @@
 import React from 'react';
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import '../grc-dashboard.css';
+import HelpIcon from 'sonar-ui-common/components/icons/HelpIcon';
+import HelpTooltip from 'sonar-ui-common/components/controls/HelpTooltip';
+import { translate } from 'sonar-ui-common/helpers/l10n';
+import { colors } from '../../../app/theme';
+ 
 
 interface Props {
   totalProfilesDefined:number,
@@ -30,6 +35,7 @@ interface Props {
 export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnforced}: Props) {
   const usedPolicies = totalProfilesEnforced;
   const totalPolicies = totalProfilesDefined;
+  const helpIcon = <HelpIcon fill={colors.gray71} size={12} />
 
   const policyRisk = 100 - Math.ceil((usedPolicies / totalPolicies)*100);
   const unusedPolicies = 100 - policyRisk;
@@ -72,7 +78,15 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
   return (
     <>
       <div className="widget">
-        <label>Policy Risk Score</label>
+        <label className="name">{translate('grc.dashboard.policy.risk.score')}</label>
+        <HelpTooltip
+            overlay={
+              <>
+                <p>{translate('grc.dashboard.policy.risk.score.description')}</p>
+              </>
+            }>
+           {helpIcon}
+          </HelpTooltip>
         <br />
         <div className="guage-chart-cntr">
           {isValidData?(<>

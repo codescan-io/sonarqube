@@ -149,3 +149,9 @@ label.value b{
     width: 20px;
     height: 20px;
 }
+.name{
+    margin-right: 3px;
+}
+.help-tooltip{
+    margin-top: -2px;
+}
