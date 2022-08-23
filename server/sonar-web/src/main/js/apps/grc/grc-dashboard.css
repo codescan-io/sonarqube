@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 .dashboard-page{
-    padding: 15px 15px 15px 30px;
+    padding: 15px 15px 15px 20px;
 }
 .row{
     width: 100%;
@@ -154,4 +154,27 @@ label.value b{
 }
 .help-tooltip{
     margin-top: -2px;
+}
+.grc-nav{
+    background: white;
+    padding: 15px 15px 15px 35px;
+    border-bottom: 1px solid var(--barBackgroundColor);
+}
+.org-name{
+
+}
+.nav-seperator{
+    padding-left: 3px;
+    padding-right: 3px;
+}
+.qualifier-icon{
+
+}
+.project-name{
+    padding-left: 5px;
+}
+.grc-nav-details{
+    padding-left: 10px;
+    display: inline-block;
+    padding-top: 7px;
 }
