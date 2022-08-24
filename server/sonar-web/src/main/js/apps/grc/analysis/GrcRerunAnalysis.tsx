@@ -30,7 +30,7 @@ export class GRCRerunAnalysis extends React.PureComponent<Props> {
         }
 
         render(){
-            const {location, branchLike, component} = this.props;
+            const {branchLike, component} = this.props;
             const extension =
             component.extensions &&
             component.extensions.find(p => p.key === "developer/project");
