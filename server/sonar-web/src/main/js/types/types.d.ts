@@ -750,7 +750,7 @@ declare namespace T {
     key: string;
     multiValues?: boolean;
     name?: string;
-    options: string[];
+    options?: string[];
     type?: SettingType;
   }
 

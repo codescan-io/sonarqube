@@ -37,16 +37,16 @@ export interface Actions {
 
 export interface Profile {
   actions?: ProfileActions;
-  key: string;
+  key?: string;
   name: string;
   language: string;
-  languageName: string;
+  languageName?: string;
   isInherited?: boolean;
   parentKey?: string;
   parentName?: string;
   isDefault?: boolean;
-  activeRuleCount: number;
-  activeDeprecatedRuleCount: number;
+  activeRuleCount?: number;
+  activeDeprecatedRuleCount?: number;
   rulesUpdatedAt?: string;
   lastUsed?: string;
   userUpdatedAt?: string;
