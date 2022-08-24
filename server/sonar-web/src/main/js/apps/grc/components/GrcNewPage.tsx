@@ -116,8 +116,8 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
   loadGRCProjects(){
     searchProjects({filter: 'tags=grc'})
     .then(({components}) => {
-      if (components.length) {
-        this.props.router.replace('/grc/no-projects');
+      if (!components.length) {
+        this.props.router.replace('/grc-no-projects');
       }else{
         const id = components[0].key;
         let pathName = this.props.location.pathname;
