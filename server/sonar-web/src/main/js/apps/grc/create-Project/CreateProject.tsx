@@ -9,6 +9,7 @@ import AuthorizeForm from "../AddProject/AuthorizeForm";
 import { parseError } from "../AddProject/Salesforce";
 import CreateProjectPage from "./CreateProjectPage";
 import StatusMonitor from "../run-analysis/StatusMonitor";
+import { addGlobalErrorMessage } from "../../../store/globalMessages";
 
 interface Props {
     appState: T.AppState | undefined;
@@ -19,17 +20,20 @@ interface Props {
 
 const CreateProject = (props: Props & WithRouterProps) => {
     const [org, setOrg] = useState(props.organization);
+    const [hideCreateProjectPage, setHideCreateProjectPage] = useState(true);
     const [openAuthorize, setOpenAuthorize] = useState(false);
     const [hashState, setHashState] = useState();
     const [organizationKey, setOrganizationKey] = useState('');
     const [projectKey, setProjectKey] = useState('');
     const [showWaiting, setShowWaiting] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [status, setStatus] = useState('preparing');
     
     const componentMounted = useRef(true);
 
     const nextClick = (data: T.Organization) => {
         setOrg(data);
+        setHideCreateProjectPage(false);
     }
 
     useEffect(() => {
@@ -59,9 +63,15 @@ const CreateProject = (props: Props & WithRouterProps) => {
     const onRefreshQueue = () => {
       const findQueues = findCiQueues({organizationId: organizationKey});
       findQueues.then( queues => {
+        setStatus(queues[0].status);
           if(queues[0].status === 'done') {
             setShowWaiting(false);
             props.router.replace('/grc/dashboard?id='+projectKey);
+          }
+          if(queues[0].status === 'failed') {
+            setShowWaiting(false);
+            addGlobalErrorMessage('Analysis failed. Try again later.');
+            props.router.replace('/grc/dashboard');
           }
           new StatusMonitor(props).start(queues, onRefreshQueue);
         }
@@ -98,6 +108,11 @@ const CreateProject = (props: Props & WithRouterProps) => {
     const closeAuthorize = () => {
       setOpenAuthorize(false);
     }
+
+    const hideProjectPage = () => {
+      setOrg(props.organization);
+      setHideCreateProjectPage(true);
+    }
     
   return (
     <div>
@@ -107,7 +122,7 @@ const CreateProject = (props: Props & WithRouterProps) => {
       className="modal"
       overlayClassName="modal-overlay">
       <header className="modal-head">
-        <h2>Please Wait...</h2>
+        <h2>Please Wait... Status: {status}</h2>
       </header>
       <div className="modal-body">
         <label htmlFor="Analysis-waiting">Analysis is in progress, this will take some time. Once it is completed you will be automatically redirected to dashboard.</label>
@@ -117,9 +132,9 @@ const CreateProject = (props: Props & WithRouterProps) => {
     }
     {<div className="text-danger">{ errorMsg }</div>}
       { openAuthorize && (<AuthorizeForm organization={props.organization} hashState={hashState} onModified={onAuthorizeDone} closeForm={closeAuthorize}/>) }
-      {!org && <CreateProjectPageSonarCloud {...props} onNextClick={nextClick} />}
-      {org && <CreateProjectPage {...props} onOrganizationUpgrade={props.onOrganizationUpgrade}
-          organization={org}/>}
+      {!org && hideCreateProjectPage && <CreateProjectPageSonarCloud {...props} onNextClick={nextClick} />}
+      {org && !hideCreateProjectPage && <CreateProjectPage {...props} onOrganizationUpgrade={props.onOrganizationUpgrade}
+          organization={org} closeCreateForm={hideProjectPage}/>}
     </div>
   );
 }

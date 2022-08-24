@@ -23,17 +23,19 @@ import { Link, WithRouterProps } from 'react-router';
 import { ResetButtonLink, SubmitButton } from 'sonar-ui-common/components/controls/buttons';
 import { Alert } from 'sonar-ui-common/components/ui/Alert';
 import { translate } from 'sonar-ui-common/helpers/l10n';
+import { associateProject } from '../../../api/quality-profiles';
 import { createProject, setProjectTags } from '../../../api/components';
 import VisibilitySelector from '../../../components/common/VisibilitySelector';
 import { getGrcDashboardUrl } from '../../../helpers/urls';
 import AddProjectForm from '../AddProject/AddProjectForm';
-import AuthorizeForm from '../AddProject/AuthorizeForm';
 import './CreateProject.css';
+import { setSettingValue } from '../../../api/settings';
 
 interface Props {
   //onProjectCreated: () => void;
   onOrganizationUpgrade: () => void;
   organization: T.Organization;
+  closeCreateForm: () => any;
 }
 
 interface State {
@@ -92,7 +94,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
   handleFormSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const data = {
+    const data: any = {
       name: this.state.name,
       organization: this.props.organization && this.props.organization.key,
       project: this.state.key,
@@ -106,8 +108,8 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
         if (this.mounted) {
           this.setState({ createdProject: response.project, loading: false });
           setProjectTags({ project: data.project, tags: "grc" });
-          //TODO associate project
-          // associateProject({ language: “sfmeta”, name: “GRC”, organization}, project);
+          setSettingValue({key:"codescan.cloud.packageTypes"}, ["Profile","PermissionSet","ProfilePasswordPolicy","ProfileSessionSettings","Settings"], data.project);
+          associateProject({ language: "sfmeta", name: "GRC", organization: this.props.organization.key}, data.project);
           //this.props.onProjectCreated();
         }
       },
@@ -120,7 +122,8 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
   };
 
   handleClose = () => {
-    this.props.router.replace('/grc/dashboard');
+    //this.props.router.replace('/grc/dashboard');
+    this.props.closeCreateForm();
   }
 
   openAnalysisForm = () => {
