@@ -71,6 +71,10 @@ const routes = [
       {
         path: 'profiles/show',
         component: lazyLoadComponent(() => import('./profiles/GRCProfileDetails'))
+      },
+      {
+        path: 'run-analysis',
+        component: lazyLoadComponent(() => import('./run-analysis/RunAnalysis'))
       }
     ]
   }

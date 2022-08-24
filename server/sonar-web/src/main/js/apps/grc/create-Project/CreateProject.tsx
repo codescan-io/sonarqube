@@ -8,7 +8,7 @@ import CreateProjectPageSonarCloud from "../../create/project/CreateProjectPageS
 import AuthorizeForm from "../AddProject/AuthorizeForm";
 import { parseError } from "../AddProject/Salesforce";
 import CreateProjectPage from "./CreateProjectPage";
-import StatusMonitor from "./StatusMonitor";
+import StatusMonitor from "../run-analysis/StatusMonitor";
 
 interface Props {
     appState: T.AppState | undefined;
