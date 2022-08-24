@@ -30,10 +30,11 @@ export interface QualityGatePanelProps {
   component: Pick<T.Component, 'key' | 'qualifier'>;
   loading?: boolean;
   qgStatuses?: QualityGateStatus[];
+  grc:boolean;
 }
 
 export function QualityGatePanel(props: QualityGatePanelProps) {
-  const { component, loading, qgStatuses = [] } = props;
+  const { grc, component, loading, qgStatuses = [] } = props;
 
   if (qgStatuses === undefined) {
     return null;
@@ -109,6 +110,7 @@ export function QualityGatePanel(props: QualityGatePanelProps) {
                     component={component}
                     key={qgStatus.key}
                     qgStatus={qgStatus}
+                    grc={grc}
                   />
                 ))}
               </div>

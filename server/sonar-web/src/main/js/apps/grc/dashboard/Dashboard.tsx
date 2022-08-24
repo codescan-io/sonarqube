@@ -143,7 +143,7 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
          fetchRulesEnforced=()=>{
           const data = {
             defaults: true,
-            languages:"sfmeta",
+            language:"sfmeta",
             organization:this.props.component.organization
           };
           return searchQualityProfiles(data);
@@ -218,7 +218,7 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
             const component = this.props.component
             const securityCategories = standardsResp.sonarsourceSecurity;
             const totalRulesConfigured = rConfiguredResp?.total;
-            const totalRulesEncorced = rEnforcedResp?.profiles?.length;
+            const totalRulesEncorced = rEnforcedResp?.profiles[0]?.activeRuleCount;
             const hotspots = hotspotsResp.hotspots;
             const totalHotspots = hotspotsResp.paging.total;
             const measures = measuresResp.measures;
