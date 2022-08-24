@@ -107,7 +107,7 @@
 .global-navbar-menu > li.re-run-button > a:hover,
 .global-navbar-menu > li.re-run-button > a:focus{
   background-color: var(--darkBlue);
-  color: var(--transparentWhite)
+  color: #FFFFFF;
 }
 
 .global-navbar-menu > li > a.active {
