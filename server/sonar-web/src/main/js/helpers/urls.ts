@@ -136,7 +136,7 @@ export function getComponentIssuesUrl(componentKey: string, query?: Query): Loca
  */
 export function getComponentSecurityHotspotsUrl(componentKey: string, query: Query = {}, grc?:boolean): Location {
   const { branch, pullRequest, sinceLeakPeriod, hotspots, assignedToMe, category } = query;
-  const pathName = grc?"/violations":'/security_hotspots';
+  const pathName = grc?"/grc/violations":'/security_hotspots';
   return {
     pathname: pathName,
     query: {

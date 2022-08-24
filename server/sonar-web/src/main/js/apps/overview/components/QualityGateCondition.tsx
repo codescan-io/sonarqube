@@ -35,6 +35,7 @@ interface Props {
   branchLike?: BranchLike;
   component: Pick<T.Component, 'key'>;
   condition: QualityGateStatusConditionEnhanced;
+  grc:boolean;
 }
 
 export default class QualityGateCondition extends React.PureComponent<Props> {
@@ -78,7 +79,7 @@ export default class QualityGateCondition extends React.PureComponent<Props> {
   }
 
   wrapWithLink(children: React.ReactNode) {
-    const { branchLike, component, condition } = this.props;
+    const { branchLike, component, condition, grc } = this.props;
 
     const className = classNames(
       'overview-quality-gate-condition',
@@ -97,23 +98,35 @@ export default class QualityGateCondition extends React.PureComponent<Props> {
     };
 
     return RATING_METRICS_MAPPING[metricKey] ? (
-      <Link className={className} to={this.getUrlForType(...RATING_METRICS_MAPPING[metricKey])}>
-        {children}
-      </Link>
+      <>
+        {grc ? (
+          <>{children}</>
+        ) : (
+          <Link className={className} to={this.getUrlForType(...RATING_METRICS_MAPPING[metricKey])}>
+            {children}
+          </Link>
+        )}
+      </>
     ) : (
-      <DrilldownLink
-        branchLike={branchLike}
-        className={className}
-        component={component.key}
-        metric={condition.measure.metric.key}
-        sinceLeakPeriod={condition.period != null}>
-        {children}
-      </DrilldownLink>
+      <>
+        {grc ? (
+          <>{children}</>
+        ) : (
+          <DrilldownLink
+            branchLike={branchLike}
+            className={className}
+            component={component.key}
+            metric={condition.measure.metric.key}
+            sinceLeakPeriod={condition.period != null}>
+            {children}
+          </DrilldownLink>
+        )}
+      </>
     );
   }
 
   render() {
-    const { condition } = this.props;
+    const { condition, grc } = this.props;
     const { measure } = condition;
     const { metric } = measure;
 

@@ -83,6 +83,7 @@ export function BranchOverviewRenderer(props: BranchOverviewRendererProps) {
                 component={component}
                 loading={loadingStatus}
                 qgStatuses={qgStatuses}
+                grc={grc}
               />
             </div>
 
