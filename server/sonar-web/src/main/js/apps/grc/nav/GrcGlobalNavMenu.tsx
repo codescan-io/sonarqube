@@ -4,8 +4,7 @@ import {Link} from 'react-router';
 import Dropdown from 'sonar-ui-common/components/controls/Dropdown';
 import DropdownIcon from 'sonar-ui-common/components/icons/DropdownIcon';
 import {translate} from 'sonar-ui-common/helpers/l10n';
-import {Button} from "sonar-ui-common/components/controls/buttons";
-import { getGrcActivityUrl, getGrcDashboardUrl, getGrcInventoryUrl, getGrcOverviewUrl, getGrcProfilesUrl, getGrcProjectSettingsUrl, getGrcRulesUrl, getGrcViolationsUrl } from '../../../helpers/urls';
+import { getGrcActivityUrl, getGrcDashboardUrl, getGrcInventoryUrl, getGrcOverviewUrl, getGrcProfilesUrl, getGrcProjectSettingsUrl, getGrcRerunAnalysisUrl, getGrcRulesUrl, getGrcViolationsUrl } from '../../../helpers/urls';
 import { searchProjects } from '../../../api/components';
 
 interface Props {
@@ -53,12 +52,16 @@ export default function GrcGlobalNavMenu(props: Props) {
   }
 
   function renderRerunAnalysis() {
+    const active =  location.pathname === '/grc/analysis';
     return (
-        <li>
-          <Button>Rerun Analysis</Button>
+        <li className='re-run-button'>
+           <Link className={classNames({active})}  to={getGrcRerunAnalysisUrl(projectKey)}>
+           Rerun Analysis
+          </Link>
         </li>
     );
   }
+
 
   function renderMoreMenu() {
     const morePages = [

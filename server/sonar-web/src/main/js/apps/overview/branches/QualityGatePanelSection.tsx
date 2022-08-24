@@ -29,10 +29,11 @@ export interface QualityGatePanelSectionProps {
   branchLike?: BranchLike;
   component: Pick<T.Component, 'key' | 'qualifier'>;
   qgStatus: QualityGateStatus;
+  grc:boolean;
 }
 
 export function QualityGatePanelSection(props: QualityGatePanelSectionProps) {
-  const { component, qgStatus } = props;
+  const { component, qgStatus, grc } = props;
   const newCodeFailedConditions = qgStatus.failedConditions.filter(c => isDiffMetric(c.metric));
   const overallFailedConditions = qgStatus.failedConditions.filter(c => !isDiffMetric(c.metric));
 
@@ -57,6 +58,7 @@ export function QualityGatePanelSection(props: QualityGatePanelSectionProps) {
             component={qgStatus}
             branchLike={qgStatus.branchLike}
             failedConditions={newCodeFailedConditions}
+            grc={grc}
           />
         </>
       )}
@@ -67,6 +69,7 @@ export function QualityGatePanelSection(props: QualityGatePanelSectionProps) {
             {translate('quality_gates.conditions.overall_code')}
           </h4>
           <QualityGateConditions
+            grc={grc}
             component={qgStatus}
             branchLike={qgStatus.branchLike}
             failedConditions={overallFailedConditions}
