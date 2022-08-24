@@ -48,6 +48,11 @@ export function getGrcViolationsUrl(project: string, branch?: string): Location 
   return { pathname: '/grc/violations', query: { id: project, branch } };
 }
 
+
+export function getGrcRerunAnalysisUrl(project: string, branch?: string): Location {
+  return { pathname: '/grc/analysis', query: { id: project, branch } };
+}
+
 export function getGrcOverviewUrl(project: string, branch?: string): Location {
   return { pathname: '/grc/overview', query: { id: project, branch } };
 }
