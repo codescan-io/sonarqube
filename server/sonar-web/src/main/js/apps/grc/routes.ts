@@ -27,10 +27,6 @@ const routes = [
         indexRoute: { component: lazyLoadComponent(() => import('./components/GrcLoading')) }
       },
       {
-        path: 'no-projects',
-        indexRoute: { component: lazyLoadComponent(() => import('./create/GrcNoProjects')) }
-      },
-      {
         path: 'create',
         indexRoute: { component: lazyLoadComponent(() => import('./create-project/CreateProject')) }
       },
