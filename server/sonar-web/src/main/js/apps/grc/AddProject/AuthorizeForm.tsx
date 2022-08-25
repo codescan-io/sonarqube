@@ -7,8 +7,15 @@ import Salesforce, {parseError, parseErrorObject} from './Salesforce';
 
 
 const imgOnlyStyles = {
-  maxHeight: '1em',
-  paddingLeft: '1em',
+  height: '50px'
+};
+
+const noteStyles = {
+  padding: '0 0.5rem'
+};
+
+const btnStyles = {
+  padding: '1rem 0'
 };
 
 interface Props {
@@ -251,11 +258,11 @@ export default class AuthorizeForm extends React.PureComponent<Props, State> {
           </div>
 
           <footer className="modal-foot">
-            <div className="modal-field-description">
+            <div className="modal-field-description" style={noteStyles}>
               NOTE: by continuing you agree that we will store your {this.state?.auth && this.state?.auth?.authType}
               credentials on our system
             </div>
-            <div>
+            <div style={btnStyles}>
               <button className="button" type="submit" disabled={this.state?.disabled || !this.state?.valid}>
               Add and Run Now
               </button>
