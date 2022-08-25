@@ -390,37 +390,51 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
     }
     const { branchLike, branchLikes, currentTask, isPending, tasksInProgress, comparisonBranchesEnabled } = this.state;
     const isInProgress = tasksInProgress && tasksInProgress.length > 0;
-    return (<>
-      {showGRCNav ? (
-        <div className='grc-nav'>
-        <GenericAvatar name={organization} size={30} />
-        <span className='grc-nav-details'><span className='org-name' title="Organization Name"> {organization} </span> <span className='nav-seperator'>/</span> <span className='qualifier-icon'><QualifierIcon qualifier={component?.qualifier} /></span> <span className="project-name" title="Project Name">{component?.name}</span> 
-        </span>
-      </div>
-      ) : (<></>)
-      }
-      <div className="grc-container">
-        {loading ? (
-          <div className="page page-limited">
-            <i className="spinner" />
+    return (
+      <>
+        {showGRCNav ? (
+          <div className="grc-nav-cntr">
+            <div className="grc-nav">
+              <GenericAvatar name={organization} size={30} />
+              <span className="grc-nav-details">
+                <span className="org-name" title="Organization Name">
+                  {organization}
+                </span>
+                <span className="nav-seperator">/</span>
+                <span className="qualifier-icon">
+                  <QualifierIcon qualifier={component?.qualifier} />
+                </span>
+                <span className="project-name" title="Project Name">
+                  {component?.name}
+                </span>
+              </span>
+            </div>
           </div>
         ) : (
-          <>
-          <ComponentContext.Provider value={{ branchLike, component }}>
-            {React.cloneElement(this.props.children, {
-              branchLike,
-              branchLikes,
-              component,
-              comparisonBranchesEnabled,
-              isInProgress,
-              isPending,
-              onBranchesChange: this.handleBranchesChange,
-              onComponentChange: this.handleComponentChange
-            })}
-          </ComponentContext.Provider>
-          </>
+          <></>
         )}
-      </div>
+        <div className="grc-container">
+          {loading ? (
+            <div className="page page-limited">
+              <i className="spinner" />
+            </div>
+          ) : (
+            <>
+              <ComponentContext.Provider value={{ branchLike, component }}>
+                {React.cloneElement(this.props.children, {
+                  branchLike,
+                  branchLikes,
+                  component,
+                  comparisonBranchesEnabled,
+                  isInProgress,
+                  isPending,
+                  onBranchesChange: this.handleBranchesChange,
+                  onComponentChange: this.handleComponentChange
+                })}
+              </ComponentContext.Provider>
+            </>
+          )}
+        </div>
       </>
     );
   }
