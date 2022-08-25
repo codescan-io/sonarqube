@@ -22,6 +22,8 @@
   max-width: 1320px;
   margin-left: auto;
   margin-right: auto;
+  margin-top: 60px;
+  z-index: 10000;
 }
 
 .data-box {

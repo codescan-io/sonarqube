@@ -155,17 +155,26 @@ label.value b{
 .help-tooltip{
     margin-top: -2px;
 }
-.grc-nav{
+.grc-nav-cntr{
     background: white;
-    padding: 15px 15px 15px 35px;
     border-bottom: 1px solid var(--barBackgroundColor);
+    padding: 15px 15px 15px 20px;
+    height: 30px;
+    width: 100%;
+    position: fixed;
+    z-index: 100;
+}
+.grc-nav{
+    max-width: 1320px;
+    min-width: 1080px;
+    margin: 0 auto;
 }
 .org-name{
 
 }
 .nav-seperator{
-    padding-left: 3px;
-    padding-right: 3px;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 .qualifier-icon{
 

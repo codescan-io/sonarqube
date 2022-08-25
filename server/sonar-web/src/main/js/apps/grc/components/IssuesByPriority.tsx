@@ -94,7 +94,7 @@ export default function IssuesByPriority({hotspots,componentKey}:Props) {
   return (
     <>
       <div className="widget">
-        <label className='name'>{translate('grc.dashboard.violations')}Violations</label>
+        <label className='name'>{translate('grc.dashboard.violations')}</label>
         <HelpTooltip
             overlay={
               <>
