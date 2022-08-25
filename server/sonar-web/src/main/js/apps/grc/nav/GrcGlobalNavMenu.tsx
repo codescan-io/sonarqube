@@ -83,7 +83,7 @@ export default function GrcGlobalNavMenu(props: Props) {
       {
         key: 'rules',
         path: getGrcRulesUrl(projectKey),
-        name: 'Rules'
+        name: 'Policies'
       },
       {
         key: 'inventory',

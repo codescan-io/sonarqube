@@ -37,6 +37,7 @@ export interface Query {
   availableSince: Date | undefined;
   compareToProfile: string | undefined;
   cwe: string[];
+  id: string | undefined;
   inheritance: T.RuleInheritance | undefined;
   languages: string[];
   owaspTop10: string[];
@@ -81,6 +82,7 @@ export function parseQuery(query: T.RawQuery): Query {
     availableSince: parseAsDate(query.available_since),
     compareToProfile: parseAsOptionalString(query.compareToProfile),
     cwe: parseAsArray(query.cwe, parseAsString),
+    id: parseAsOptionalString(query.id),
     inheritance: parseAsInheritance(query.inheritance),
     languages: parseAsArray(query.languages, parseAsString),
     owaspTop10: parseAsArray(query.owaspTop10, parseAsString),
@@ -105,6 +107,7 @@ export function serializeQuery(query: Query): T.RawQuery {
     available_since: serializeDateShort(query.availableSince),
     compareToProfile: serializeString(query.compareToProfile),
     cwe: serializeStringArray(query.cwe),
+    id: serializeString(query.id),
     inheritance: serializeInheritance(query.inheritance),
     is_template: serializeOptionalBoolean(query.template),
     languages: serializeStringArray(query.languages),

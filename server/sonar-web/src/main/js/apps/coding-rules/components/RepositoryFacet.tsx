@@ -28,6 +28,7 @@ interface StateProps {
 
 interface Props extends BasicProps, StateProps {
   referencedRepositories: T.Dict<{ key: string; language: string; name: string }>;
+  appState: T.AppState;
 }
 
 class RepositoryFacet extends React.PureComponent<Props> {
@@ -57,6 +58,7 @@ class RepositoryFacet extends React.PureComponent<Props> {
   };
 
   render() {
+    
     const { referencedLanguages, referencedRepositories, ...facetProps } = this.props;
     return (
       <Facet
@@ -64,6 +66,7 @@ class RepositoryFacet extends React.PureComponent<Props> {
         property="repositories"
         renderName={this.renderName}
         renderTextName={this.renderTextName}
+        hideClear={this.props.appState.grc}
       />
     );
   }

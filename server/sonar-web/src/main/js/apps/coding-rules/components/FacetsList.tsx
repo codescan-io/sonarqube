@@ -18,6 +18,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
+import { connect } from 'react-redux';
+import { getAppState, Store } from '../../../store/rootReducer';
 import { Profile } from '../../../api/quality-profiles';
 import StandardFacet from '../../issues/sidebar/StandardFacet';
 import { Facets, OpenFacets, Query } from '../query';
@@ -44,9 +46,10 @@ interface Props {
   referencedProfiles: T.Dict<Profile>;
   referencedRepositories: T.Dict<{ key: string; language: string; name: string }>;
   selectedProfile?: Profile;
+  appState: T.AppState;
 }
 
-export default function FacetsList(props: Props) {
+function FacetsList(props: Props) {
   const languageDisabled = !props.hideProfileFacet && props.query.profile !== undefined;
 
   const inheritanceDisabled =
@@ -90,6 +93,7 @@ export default function FacetsList(props: Props) {
         referencedRepositories={props.referencedRepositories}
         stats={props.facets && props.facets.repositories}
         values={props.query.repositories}
+        appState={props.appState}
       />
       <DefaultSeverityFacet
         onChange={props.onFilterChange}
@@ -127,18 +131,22 @@ export default function FacetsList(props: Props) {
         sonarsourceSecurityOpen={!!props.openFacets.sonarsourceSecurity}
         sonarsourceSecurityStats={props.facets && props.facets.sonarsourceSecurity}
       />
-      <AvailableSinceFacet
-        onChange={props.onFilterChange}
-        onToggle={props.onFacetToggle}
-        open={!!props.openFacets.availableSince}
-        value={props.query.availableSince}
-      />
-      <TemplateFacet
-        onChange={props.onFilterChange}
-        onToggle={props.onFacetToggle}
-        open={!!props.openFacets.template}
-        value={props.query.template}
-      />
+      {!props.appState.grc && (
+        <>
+          <AvailableSinceFacet
+            onChange={props.onFilterChange}
+            onToggle={props.onFacetToggle}
+            open={!!props.openFacets.availableSince}
+            value={props.query.availableSince}
+          />
+          <TemplateFacet
+            onChange={props.onFilterChange}
+            onToggle={props.onFacetToggle}
+            open={!!props.openFacets.template}
+            value={props.query.template}
+          />
+        </>
+      )}
       {!props.hideProfileFacet && (
         <>
           <ProfileFacet
@@ -171,3 +179,9 @@ export default function FacetsList(props: Props) {
     </>
   );
 }
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default connect(mapStateToProps)(FacetsList);

@@ -33,6 +33,7 @@ interface Props {
   onClick?: () => void;
   open: boolean;
   values?: string[];
+  hideClearBtn?: boolean;
 }
 
 export default class FacetHeader extends React.PureComponent<Props> {
@@ -98,7 +99,7 @@ export default class FacetHeader extends React.PureComponent<Props> {
           </span>
         )}
 
-        {showClearButton && (
+        {showClearButton && !this.props.hideClearBtn && (
           <Button
             className="search-navigator-facet-header-button button-small button-red"
             onClick={this.props.onClear}>
