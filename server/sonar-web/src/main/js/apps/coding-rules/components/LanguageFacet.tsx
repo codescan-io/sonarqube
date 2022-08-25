@@ -23,7 +23,7 @@ import { connect } from 'react-redux';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { highlightTerm } from 'sonar-ui-common/helpers/search';
 import ListStyleFacet from '../../../components/facet/ListStyleFacet';
-import { getLanguages, Store } from '../../../store/rootReducer';
+import { getAppState, getLanguages, Store } from '../../../store/rootReducer';
 import { BasicProps } from './Facet';
 
 interface InstalledLanguage {
@@ -34,6 +34,7 @@ interface InstalledLanguage {
 interface Props extends BasicProps {
   disabled?: boolean;
   installedLanguages: InstalledLanguage[];
+  appState: T.AppState;
 }
 
 class LanguageFacet extends React.PureComponent<Props> {
@@ -75,8 +76,8 @@ class LanguageFacet extends React.PureComponent<Props> {
         facetHeader={translate('coding_rules.facet.languages')}
         fetching={false}
         getFacetItemText={this.getLanguageName}
-        getSearchResultKey={language => language.key}
-        getSearchResultText={language => language.name}
+        getSearchResultKey={(language: any) => language.key}
+        getSearchResultText={(language: any) => language.name}
         minSearchLength={1}
         onChange={this.props.onChange}
         onSearch={this.handleSearch}
@@ -88,13 +89,15 @@ class LanguageFacet extends React.PureComponent<Props> {
         searchPlaceholder={translate('search.search_for_languages')}
         stats={this.props.stats}
         values={this.props.values}
+        hideClear={this.props?.appState?.grc}
       />
     );
   }
 }
 
 const mapStateToProps = (state: Store) => ({
-  installedLanguages: Object.values(getLanguages(state))
+  installedLanguages: Object.values(getLanguages(state)),
+  appState: getAppState(state)
 });
 
 export default connect(mapStateToProps)(LanguageFacet);

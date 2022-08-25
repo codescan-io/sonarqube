@@ -43,7 +43,7 @@ const routes = [
         component: lazyLoadComponent(() => import('./violations/Violations'))
       },
       {
-        path: 'rules',
+        path: 'policies',
         component: lazyLoadComponent(() => import('../coding-rules/components/App'))
       },
       {
@@ -76,10 +76,6 @@ const routes = [
         path: 'analysis',
         component: lazyLoadComponent(() => import('./analysis/GrcRerunAnalysis'))
       }
-      /* {
-        path: 'run-analysis',
-        component: lazyLoadComponent(() => import('./run-analysis/RunAnalysis'))
-      } */
     ]
   }
 ];

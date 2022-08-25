@@ -266,6 +266,9 @@ export class App extends React.PureComponent<Props, State> {
         const actives = rawActives && parseActives(rawActives);
         const facets = rawFacets && parseFacets(rawFacets);
         const paging = { pageIndex: p, pageSize: ps, total };
+        if(facets?.repositories && this.props.appState.grc){
+          facets['repositories'] = {grc: facets?.repositories?.grc};
+        }
         return { actives, facets, paging, rules };
       }
     );
@@ -452,9 +455,13 @@ export class App extends React.PureComponent<Props, State> {
   };
 
   handleFilterChange = (changes: Partial<Query>) => {
+    const grcId: any = {};
+    if(this.props.appState.grc) {
+        grcId.id = this.props.location.query.id
+    }
     this.props.router.push({
       pathname: this.props.location.pathname,
-      query: serializeQuery({ ...this.state.query, ...changes })
+      query: serializeQuery({ ...grcId, ...this.state.query, ...changes })
     });
 
     this.setState(({ openFacets }) => ({
@@ -596,15 +603,15 @@ export class App extends React.PureComponent<Props, State> {
                       label={translate('coding_rules.skip_to_filters')}
                       weight={10}
                     />
-                    <FiltersHeader displayReset={this.isFiltered()} onReset={this.handleReset} />
-                    <SearchBox
+                    <FiltersHeader displayReset={this.isFiltered() && !this.props.appState.grc} onReset={this.handleReset} />
+                    {!this.props.appState.grc && (<SearchBox
                       className="spacer-bottom"
                       id="coding-rules-search"
                       minLength={2}
                       onChange={this.handleSearch}
                       placeholder={translate('search.search_for_rules')}
                       value={this.state.query.searchQuery || ''}
-                    />
+                    />)}
                     <FacetsList
                       facets={this.state.facets}
                       hideProfileFacet={hideQualityProfiles}

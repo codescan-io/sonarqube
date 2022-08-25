@@ -20,6 +20,7 @@
 import * as classNames from 'classnames';
 import { sortBy, without } from 'lodash';
 import * as React from 'react';
+import { connect } from 'react-redux';
 import ListFooter from 'sonar-ui-common/components/controls/ListFooter';
 import SearchBox from 'sonar-ui-common/components/controls/SearchBox';
 import Tooltip from 'sonar-ui-common/components/controls/Tooltip';
@@ -27,6 +28,7 @@ import { Alert } from 'sonar-ui-common/components/ui/Alert';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { formatMeasure } from 'sonar-ui-common/helpers/measures';
 import { queriesEqual } from 'sonar-ui-common/helpers/query';
+import { getAppState, Store } from '../../store/rootReducer';
 import FacetBox from './FacetBox';
 import FacetHeader from './FacetHeader';
 import FacetItem from './FacetItem';
@@ -67,6 +69,8 @@ export interface Props<S> {
   getSortedItems?: () => string[];
   stats: T.Dict<number> | undefined;
   values: string[];
+  appState: T.AppState;
+  hideClear?: boolean;
 }
 
 interface State<S> {
@@ -80,7 +84,7 @@ interface State<S> {
   showFullList: boolean;
 }
 
-export default class ListStyleFacet<S> extends React.Component<Props<S>, State<S>> {
+class ListStyleFacet<S> extends React.Component<Props<S>, State<S>> {
   mounted = false;
 
   static defaultProps = {
@@ -132,19 +136,19 @@ export default class ListStyleFacet<S> extends React.Component<Props<S>, State<S
   }
 
   handleItemClick = (itemValue: string, multiple: boolean) => {
-    if (this.props.onItemClick) {
-      this.props.onItemClick(itemValue, multiple);
-    } else {
-      const { values } = this.props;
-      if (multiple) {
-        const newValue = sortBy(
-          values.includes(itemValue) ? without(values, itemValue) : [...values, itemValue]
-        );
-        this.props.onChange({ [this.props.property]: newValue });
+    if(!this.props.appState.grc || this.props.property !== 'languages') {
+      if (this.props.onItemClick) {
+        this.props.onItemClick(itemValue, multiple);
       } else {
-        this.props.onChange({
-          [this.props.property]: values.includes(itemValue) && values.length < 2 ? [] : [itemValue]
-        });
+        const { values } = this.props;
+        if (multiple) {
+          const newValue = sortBy(values.includes(itemValue) ? without(values, itemValue) : [...values, itemValue]);
+          this.props.onChange({ [this.props.property]: newValue });
+        } else {
+          this.props.onChange({
+            [this.props.property]: values.includes(itemValue) && values.length < 2 ? [] : [itemValue]
+          });
+        }
       }
     }
   };
@@ -244,14 +248,20 @@ export default class ListStyleFacet<S> extends React.Component<Props<S>, State<S
       return null;
     }
 
-    const sortedItems = this.props.getSortedItems
+    let sortedItems = [];
+    if(this.props.appState.grc && this.props.property === 'languages') {
+      sortedItems = ['sfmeta'];
+    } else if(this.props.appState.grc && this.props.property === 'tags') {
+      sortedItems = ['grc'];
+    } else {
+      sortedItems = this.props.getSortedItems
       ? this.props.getSortedItems()
       : sortBy(
           Object.keys(stats),
           key => -stats[key],
           key => this.props.getFacetItemText(key)
         );
-
+    }
     const limitedList = this.state.showFullList
       ? sortedItems
       : sortedItems.slice(0, this.props.maxInitialItems);
@@ -314,7 +324,7 @@ export default class ListStyleFacet<S> extends React.Component<Props<S>, State<S
   }
 
   renderSearch() {
-    if (!this.props.stats || !Object.keys(this.props.stats).length) {
+    if (!this.props.stats || !Object.keys(this.props.stats).length || this.props.appState.grc) {
       return null;
     }
 
@@ -409,6 +419,7 @@ export default class ListStyleFacet<S> extends React.Component<Props<S>, State<S
           onClick={disabled ? undefined : this.handleHeaderClick}
           open={this.props.open && !disabled}
           values={values}
+          hideClearBtn={this.props.hideClear}
         />
 
         {this.props.open && !disabled && (
@@ -422,6 +433,12 @@ export default class ListStyleFacet<S> extends React.Component<Props<S>, State<S
     );
   }
 }
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state),
+});
+
+export default connect(mapStateToProps)(ListStyleFacet);
 
 function formatFacetStat(stat: number | undefined) {
   return stat && formatMeasure(stat, 'SHORT_INT');

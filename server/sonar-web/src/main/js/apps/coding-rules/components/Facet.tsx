@@ -48,10 +48,12 @@ interface Props extends BasicProps {
   renderName?: (value: string) => React.ReactNode;
   renderTextName?: (value: string) => string;
   singleSelection?: boolean;
+  hideClear?: boolean;
 }
 
 export default class Facet extends React.PureComponent<Props> {
   handleItemClick = (itemValue: string, multiple: boolean) => {
+    if(!this.props.hideClear) {
     const { values } = this.props;
     let newValue;
     if (this.props.singleSelection) {
@@ -65,6 +67,7 @@ export default class Facet extends React.PureComponent<Props> {
       newValue = values.includes(itemValue) && values.length < 2 ? [] : [itemValue];
     }
     this.props.onChange({ [this.props.property]: newValue });
+  }
   };
 
   handleHeaderClick = () => this.props.onToggle(this.props.property);
@@ -118,7 +121,8 @@ export default class Facet extends React.PureComponent<Props> {
           onClear={this.handleClear}
           onClick={disabled ? undefined : this.handleHeaderClick}
           open={this.props.open && !disabled}
-          values={values}>
+          values={values}
+          hideClearBtn={this.props.hideClear}>
           {this.props.children}
         </FacetHeader>
 
