@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { Router, WithRouterProps } from "react-router";
 import Modal from "sonar-ui-common/components/controls/Modal";
 import { findCiProjects, findCiQueues, getBillingCheck, runIntegration } from "../../../api/codescan";
-import { getAppState, Store } from '../../../store/rootReducer';
+import { getAppState, getCurrentUser, Store } from '../../../store/rootReducer';
 import CreateProjectPageSonarCloud from "../../create/project/CreateProjectPageSonarCloud";
 import AuthorizeForm from "../AddProject/AuthorizeForm";
 import { parseError } from "../AddProject/Salesforce";
@@ -16,6 +16,7 @@ interface Props {
     onNextClick: (org: string) => any;
     onOrganizationUpgrade: () => void;
     organization: T.Organization;
+    currentUser: T.CurrentUser | undefined;
 }
 
 const CreateProject = (props: Props & WithRouterProps) => {
@@ -37,6 +38,8 @@ const CreateProject = (props: Props & WithRouterProps) => {
     }
 
     useEffect(() => {
+      const { currentUser } = props;
+      //TODO need to get org key from current user.
         if (componentMounted.current && window.location.hash) {
           const params = (window.location.hash.substr(1)).split("&");
           const state: any = {};
@@ -142,7 +145,8 @@ const CreateProject = (props: Props & WithRouterProps) => {
 }
 
 const mapStateToProps = (state: Store) => ({
-    appState: getAppState(state)
+    appState: getAppState(state),
+    currentUser: getCurrentUser(state)
 });
 
 export default connect(mapStateToProps)(CreateProject);

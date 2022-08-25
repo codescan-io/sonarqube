@@ -1,22 +1,8 @@
 /* eslint-disable object-shorthand */
 /* eslint-disable jsx-a11y/no-onchange */
 import React from 'react';
-import Modal from 'sonar-ui-common/components/controls/Modal';
 import { authorizeToken, updateIntegration } from '../../../api/codescan';
 import Salesforce, {parseError, parseErrorObject} from './Salesforce';
-
-
-const imgOnlyStyles = {
-  height: '50px'
-};
-
-const noteStyles = {
-  padding: '0 0.5rem'
-};
-
-const btnStyles = {
-  padding: '1rem 0'
-};
 
 interface Props {
     organization: T.Organization;
@@ -71,23 +57,14 @@ export default class AuthorizeForm extends React.PureComponent<Props, State> {
       repoPassword: "",
       pullRequests: true
     });
-    const { organization, hashState } = this.props;
+    const { hashState } = this.props;
 
     if ( typeof(this.props.hashState.error) != 'undefined' ){
-      /* if ( typeof(this.props.hashState.error_description) == 'string' ){
-        this.setState({
-          errorMsg: decodeURI(this.props.hashState.error_description).replace(/\+/g, " ")
-        });
-      }else if ( typeof(this.props.hashState.error) == 'string' ) {
-        this.setState({
-          errorMsg: decodeURI(this.props.hashState.error).replace("+", " ")
-        });
-      } */
       return;
     } 
 
     const authHandler = new Salesforce(this.props);
-    //this.setState(authHandler.getDefaultState())
+
     if (authHandler.requiresAuthorizeToken()){
       authorizeToken({
         code: hashState.code,
@@ -131,29 +108,11 @@ export default class AuthorizeForm extends React.PureComponent<Props, State> {
     }
       authHandler.onAuthorizeToken(this);
     }
+    this.handleSubmit(Event);
   }
-
-  handleChange = (event: any) => {
-    let {value} = event.target;
-    if ( event.target.type === 'checkbox' ){
-      value = event.target.checked;
-    }
-    const d: any = {};
-    d[event.target.dataset.field] = value;
-    this.setState(d);
-  }
-
-  closeForm = () => {
-    this.props.closeForm();
-  };
 
   handleSubmit = (e: any) => {
     e.preventDefault();
-    const { organization } = this.props;
-    this.setState({
-      disabled: true
-      //errorMsg: ''
-    });
 
     //calculate scheduling
     let scheduling = this.state?.scheduling;
@@ -182,98 +141,14 @@ export default class AuthorizeForm extends React.PureComponent<Props, State> {
 
       updateIntegration(createData).then(()=>{
         this.props.onModified(createData);
-        //this.closeForm();
       }).catch(e => {
-        return parseError(e).then((message: any) => {
-          //this.setState({ errorMsg: message })
-        });
+        return parseError(e).then((message: any) => {});
       });
 
   };
 
   render() {
-   // const authHandler = new Salesforce(this.props);
-    return (
-      <Modal
-        contentLabel="modal form"
-        className="modal"
-        overlayClassName="modal-overlay">
-        <header className="modal-head">
-          <h2>
-            {this.state?.loading && <i className="spinner" />}
-            <img src="/static/developer/salesforce.png" style={imgOnlyStyles} alt="" />
-          </h2>
-        </header>
-        <form onSubmit={this.handleSubmit}>
-          <div className="modal-body">
-            {(
-              <div>
-                <div className="modal-field">
-                  <label htmlFor="project-projectVersion">Default Project Version</label>
-                  <input
-                      required={true}
-                      type="text"
-                      name="project-projectVersion"
-                      maxLength={20}
-                      data-field="projectVersion"
-                      value={this.state?.projectVersion}
-                      onChange={this.handleChange}
-                      />
-                  <div className="modal-field-description">The default project version to run analysis with </div>
-                </div>
-
-                <div className="modal-field">
-                  <label htmlFor="project-testmode">Unit Test Mode</label>
-                  <select
-                      name="project-testmode"
-                      data-field="testmode"
-                      value={this.state?.testmode}
-                      onChange={this.handleChange}
-                      >
-                      <option value="async">Run Unit Tests (this can take a long time)</option>
-                      <option value="history">Use previous run (if another tool has already run the unit tests)</option>
-                      <option value="disabled">Disabled</option>
-                  </select>
-                  <div className="modal-field-description">Unit Testing mode allows you to configure which unit tests are run by the analysis</div>
-                </div>
-              </div>
-            )}
-
-            {(
-            <div className="modal-field">
-              <label htmlFor="project-scheduling">Scheduling</label>
-              <select
-                  name="project-scheduling"
-                  data-field="scheduling"
-                  value={this.state?.scheduling}
-                  onChange={this.handleChange}
-              >
-                  <option value="">Manual</option>
-              </select>
-
-              <div className="modal-field-description">Run analysis on a regular basis</div>
-            </div>
-            )}
-           {/*  <div className="text-danger">{ errorMsg }</div> */}
-          </div>
-
-          <footer className="modal-foot">
-            <div className="modal-field-description" style={noteStyles}>
-              NOTE: by continuing you agree that we will store your {this.state?.auth && this.state?.auth?.authType}
-              credentials on our system
-            </div>
-            <div style={btnStyles}>
-              <button className="button" type="submit" disabled={this.state?.disabled || !this.state?.valid}>
-              Add and Run Now
-              </button>
-              <button type="reset" className="button button-link" onClick={this.closeForm}>
-              Cancel
-              </button>
-            </div>
-          </footer>
-        </form>
-      </Modal>
-    );
+    return ({});
   }
 
 }
