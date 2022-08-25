@@ -32,6 +32,8 @@ interface Props {
   organization: string | null;
   profile: T.ProfileInheritanceDetails;
   type?: string;
+  grc?: boolean;
+  componentKey?: string;
 }
 
 export default function ProfileInheritanceBox(props: Props) {
@@ -43,7 +45,9 @@ export default function ProfileInheritanceBox(props: Props) {
     organization,
     profile,
     displayLink = true,
-    type = 'current'
+    type = 'current',
+    grc,
+    componentKey
   } = props;
   const offset = 25 * depth;
 
@@ -56,6 +60,8 @@ export default function ProfileInheritanceBox(props: Props) {
               className="text-middle"
               language={language}
               name={profile.name}
+              grc={grc}
+              componentKey={componentKey}
               organization={organization}>
               {profile.name}
             </ProfileLink>

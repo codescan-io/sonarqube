@@ -51,7 +51,13 @@ export function ProfilesListRow(props: ProfilesListRowProps) {
   };
   if(grc){
     queryParams.id = componentKey;
+    queryParams.languages = 'sfmeta';
+    queryParams.repositories = 'grc';
+
     dQueryParams.id = componentKey;
+    dQueryParams.languages = 'sfmeta';
+    dQueryParams.repositories = 'grc';
+
   }
   const activeRulesUrl = getRulesUrl(
     queryParams,

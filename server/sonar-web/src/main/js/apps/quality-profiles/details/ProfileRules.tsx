@@ -147,11 +147,24 @@ export default class ProfileRules extends React.PureComponent<Props, State> {
   }
 
   render() {
-    const { organization, profile, grc, componentKey } = this.props;
+    const { profile, grc, componentKey } = this.props;
     const { compareToSonarWay } = this.state;
+
+    let {organization} = this.props;
+    let params:any = { qprofile: profile.key, activation: 'false' };
+
+    if(grc && componentKey){
+      params.languages = "sfmeta";
+      params.repositories = "grc";
+      params.id = componentKey;
+      organization = null;
+      
+    }
+
     const activateMoreUrl = getRulesUrl(
-      { qprofile: profile.key, activation: 'false' },
-      organization
+      params,
+      organization,
+      grc
     );
     const { actions = {} } = profile;
     const TYPES = this.types;

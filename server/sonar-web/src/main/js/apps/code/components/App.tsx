@@ -273,8 +273,10 @@ export class App extends React.PureComponent<Props, State> {
         ? translate('projects.page')
         : translate('code.page');
 
+    const pageClassNames = grc ? "page page-limited small" : "page page-limited";
+
     return (
-      <div className="page page-limited">
+      <div className={pageClassNames}>
         <Suggestions suggestions="code" />
         <Helmet
           defer={false}

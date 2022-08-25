@@ -41,6 +41,12 @@ export default function ProfileRulesRowOfType(props: Props) {
   if(props.grc && props.componentKey && props.componentKey.length ){
     activeParams.id = props.componentKey;
     inActiveParams.id = props.componentKey
+
+    activeParams.languages = "sfmeta";
+    activeParams.repositories = "grc";
+
+    inActiveParams.languages = "sfmeta";
+    inActiveParams.repositories = "grc";
   }
 
   const activeRulesUrl = getRulesUrl(
