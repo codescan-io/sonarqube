@@ -52,9 +52,9 @@ export class GRCProfileDetails extends React.PureComponent<Props, State> {
     }
 
     componentDidUpdate(prevProps: Props) {
-        // if (prevProps.location.query.id !== this.props.location.query.id) {
-        //     this.fetchProfiles();
-        // }
+        if (prevProps.location.query.name !== this.props.location.query.name) {
+            this.fetchProfiles();
+        }
     }
 
     componentWillUnmount() {
@@ -116,6 +116,7 @@ export class GRCProfileDetails extends React.PureComponent<Props, State> {
                                     </div>
                                     <div className="quality-profile-grid-right">
                                         <ProfileInheritance grc={grc}
+                                            componentKey={key}
                                             organization={organization}
                                             profile={profile}
                                             profiles={profiles}

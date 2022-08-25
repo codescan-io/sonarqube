@@ -187,3 +187,6 @@ label.value b{
     display: inline-block;
     padding-top: 7px;
 }
+.page.page-limited.small{
+    max-width: 800px !important;
+}

@@ -100,6 +100,8 @@ export default class EvolutionRules extends React.PureComponent<Props, State> {
     }
     if(this.props.grc && this.props.componentKey && this.props.componentKey.length){
       params.id = this.props.componentKey
+      params.languages = 'sfmeta';
+      params.repositories = 'grc';
     }
     return params;
   }
@@ -113,6 +115,8 @@ export default class EvolutionRules extends React.PureComponent<Props, State> {
 
     if(this.props.grc && this.props.componentKey && this.props.componentKey.length){
       moreParams.id = this.props.componentKey
+      moreParams.languages = 'sfmeta';
+      moreParams.repositories = 'grc';
     }
     
     const newRulesUrl = getRulesUrl(

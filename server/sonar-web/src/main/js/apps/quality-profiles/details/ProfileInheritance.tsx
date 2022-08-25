@@ -32,6 +32,7 @@ interface Props {
   profiles: Profile[];
   updateProfiles: () => Promise<void>;
   grc?:boolean;
+  componentKey?:string;
 }
 
 interface State {
@@ -107,7 +108,7 @@ export default class ProfileInheritance extends React.PureComponent<Props, State
   };
 
   render() {
-    const { profile, profiles } = this.props;
+    const { profile, profiles, grc , componentKey} = this.props;
     const { ancestors } = this.state;
 
     const highlightCurrent =
@@ -147,6 +148,8 @@ export default class ProfileInheritance extends React.PureComponent<Props, State
                       organization={this.props.organization}
                       profile={ancestor}
                       type="ancestor"
+                      grc={grc}
+                      componentKey = {componentKey}
                     />
                   ))}
 
@@ -161,6 +164,8 @@ export default class ProfileInheritance extends React.PureComponent<Props, State
                     language={profile.language}
                     organization={this.props.organization}
                     profile={this.state.profile}
+                    grc={grc}
+                    componentKey = {componentKey}
                   />
                 )}
 
@@ -173,6 +178,8 @@ export default class ProfileInheritance extends React.PureComponent<Props, State
                       organization={this.props.organization}
                       profile={child}
                       type="child"
+                      grc={grc}
+                      componentKey = {componentKey}
                     />
                   ))}
               </tbody>
