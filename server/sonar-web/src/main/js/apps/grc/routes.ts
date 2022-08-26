@@ -40,7 +40,7 @@ const routes = [
       },
       {
         path: 'violations',
-        component: lazyLoadComponent(() => import('./violations/Violations'))
+        component: lazyLoadComponent(() => import('../../apps/security-hotspots/SecurityHotspotsApp'))
       },
       {
         path: 'policies',
