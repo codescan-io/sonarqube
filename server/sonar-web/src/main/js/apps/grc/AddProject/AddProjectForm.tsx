@@ -92,14 +92,14 @@ export default class AddProjectForm extends React.PureComponent<Props, State> {
         onRequestClose={this.closeForm}>
         <header className="modal-head">
           <h2>
-            <span>Add a new project</span>
+            <span>Add Analysis</span>
           </h2>
         </header>
 
         <div className="modal-body">
           <div className="text-danger">{ errorMsg }</div>
             <div className="modal-large-field">
-              <label>Click continue to add a new Analysis Project</label>
+              <label>Click continue to add a new Analysis</label>
               <div>You will be redirected to an authentication page to authorize us to access your source code</div>
               <div>&nbsp;</div>
             </div>

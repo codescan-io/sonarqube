@@ -123,7 +123,6 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
   };
 
   handleClose = () => {
-    //this.props.router.replace('/grc/dashboard');
     this.props.closeCreateForm();
   }
 
