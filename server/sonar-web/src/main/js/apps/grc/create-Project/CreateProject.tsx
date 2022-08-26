@@ -49,7 +49,6 @@ const CreateProject = (props: Props & WithRouterProps) => {
           }
           if ( typeof(state['action']) == 'string' && state['action'] === "integrations_create" ){
             setHashState(state)
-            setOpenAuthorize(true);
           }
           if(state['organization']) {
             setOrganizationKey(state['organization']);
@@ -57,6 +56,7 @@ const CreateProject = (props: Props & WithRouterProps) => {
           if(state['projectKey']) {
             setProjectKey(state['projectKey']);
           }
+          setOpenAuthorize(true);
         }
       return () => { // This code runs when component is unmounted
           componentMounted.current = false;
