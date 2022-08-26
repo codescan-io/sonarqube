@@ -589,7 +589,7 @@ export class App extends React.PureComponent<Props, State> {
     return (
       <>
         <Suggestions suggestions="coding_rules" />
-        <Helmet defer={false} title={translate('coding_rules.page')}>
+        <Helmet defer={false} title={translate(this.props.appState?.grc ? 'grc.coding_rules.page' : 'coding_rules.page')}>
           <meta content="noindex" name="robots" />
         </Helmet>
         <div className="layout-page" id="coding-rules-page">

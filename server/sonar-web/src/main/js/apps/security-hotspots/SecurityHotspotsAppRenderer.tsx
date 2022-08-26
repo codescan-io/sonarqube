@@ -19,6 +19,7 @@
  */
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { connect } from 'react-redux';
 import DeferredSpinner from 'sonar-ui-common/components/ui/DeferredSpinner';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { scrollToElement } from 'sonar-ui-common/helpers/scrolling';
@@ -26,6 +27,7 @@ import A11ySkipTarget from '../../app/components/a11y/A11ySkipTarget';
 import Suggestions from '../../app/components/embed-docs-modal/Suggestions';
 import ScreenPositionHelper from '../../components/common/ScreenPositionHelper';
 import { isBranch } from '../../helpers/branch-like';
+import { getAppState, Store } from '../../store/rootReducer';
 import { BranchLike } from '../../types/branch-like';
 import { HotspotFilters, HotspotStatusFilter, RawHotspot } from '../../types/security-hotspots';
 import EmptyHotspotsPage from './components/EmptyHotspotsPage';
@@ -52,9 +54,10 @@ export interface SecurityHotspotsAppRendererProps {
   onUpdateHotspot: (hotspotKey: string) => Promise<void>;
   selectedHotspot: RawHotspot | undefined;
   securityCategories: T.StandardSecurityCategories;
+  appState: T.AppState | undefined;
 }
 
-export default function SecurityHotspotsAppRenderer(props: SecurityHotspotsAppRendererProps) {
+function SecurityHotspotsAppRenderer(props: SecurityHotspotsAppRendererProps) {
   const {
     branchLike,
     component,
@@ -84,7 +87,7 @@ export default function SecurityHotspotsAppRenderer(props: SecurityHotspotsAppRe
   return (
     <div id="security_hotspots">
       <Suggestions suggestions="security_hotspots" />
-      <Helmet title={translate('hotspots.page')} />
+      <Helmet title={translate(props.appState?.grc ? 'grc.hotspots.page' : 'hotspots.page')} />
       <A11ySkipTarget anchor="security_hotspots_main" />
 
       <FilterBar
@@ -146,3 +149,9 @@ export default function SecurityHotspotsAppRenderer(props: SecurityHotspotsAppRe
     </div>
   );
 }
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default connect(mapStateToProps)(SecurityHotspotsAppRenderer);
