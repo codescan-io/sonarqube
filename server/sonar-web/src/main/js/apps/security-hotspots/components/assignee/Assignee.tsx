@@ -19,7 +19,9 @@
  */
 
 import * as React from 'react';
+import { connect } from 'react-redux';
 import { translateWithParameters } from 'sonar-ui-common/helpers/l10n';
+import { getAppState, Store } from '../../../../store/rootReducer';
 import { assignSecurityHotspot } from '../../../../api/security-hotspots';
 import addGlobalSuccessMessage from '../../../../app/utils/addGlobalSuccessMessage';
 import { withCurrentUser } from '../../../../components/hoc/withCurrentUser';
@@ -31,7 +33,7 @@ interface Props {
   currentUser: T.CurrentUser;
   hotspot: Hotspot;
   organization?: string;
-
+  appState: T.AppState | undefined;
   onAssigneeChange: () => void;
 }
 
@@ -77,7 +79,7 @@ export class Assignee extends React.PureComponent<Props, State> {
         })
         .then(() =>
           addGlobalSuccessMessage(
-            translateWithParameters('hotspots.assign.success', newAssignee.name)
+            translateWithParameters(this.props.appState?.grc ? 'grc.hotspots.assign.success' : 'hotspots.assign.success', newAssignee.name)
           )
         )
         .catch(() => this.setState({ loading: false }));
@@ -110,4 +112,8 @@ export class Assignee extends React.PureComponent<Props, State> {
   }
 }
 
-export default withCurrentUser(Assignee);
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default withCurrentUser(connect(mapStateToProps)(Assignee));

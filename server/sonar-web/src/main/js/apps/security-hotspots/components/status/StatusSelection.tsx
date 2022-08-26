@@ -18,7 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
+import { connect } from 'react-redux';
 import { translate, translateWithParameters } from 'sonar-ui-common/helpers/l10n';
+import { getAppState, Store } from '../../../../store/rootReducer';
 import { setSecurityHotspotStatus } from '../../../../api/security-hotspots';
 import addGlobalSuccessMessage from '../../../../app/utils/addGlobalSuccessMessage';
 import { Hotspot, HotspotStatusOption } from '../../../../types/security-hotspots';
@@ -31,6 +33,7 @@ import StatusSelectionRenderer from './StatusSelectionRenderer';
 interface Props {
   hotspot: Hotspot;
   onStatusOptionChange: (statusOption: HotspotStatusOption) => void;
+  appState: T.AppState | undefined;
 }
 
 interface State {
@@ -40,7 +43,7 @@ interface State {
   selectedStatus: HotspotStatusOption;
 }
 
-export default class StatusSelection extends React.PureComponent<Props, State> {
+class StatusSelection extends React.PureComponent<Props, State> {
   mounted = false;
 
   constructor(props: Props) {
@@ -91,7 +94,7 @@ export default class StatusSelection extends React.PureComponent<Props, State> {
         .then(() =>
           addGlobalSuccessMessage(
             translateWithParameters(
-              'hotspots.update.success',
+              this.props.appState?.grc ? 'grc.hotspots.update.success' : 'hotspots.update.success',
               translate('hotspots.status_option', selectedStatus)
             )
           )
@@ -117,3 +120,9 @@ export default class StatusSelection extends React.PureComponent<Props, State> {
     );
   }
 }
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default connect(mapStateToProps)(StatusSelection);
