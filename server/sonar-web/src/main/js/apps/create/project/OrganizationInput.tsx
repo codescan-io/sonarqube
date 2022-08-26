@@ -68,11 +68,11 @@ export class OrganizationInput extends React.PureComponent<Props & WithRouterPro
               organization={organization}
               organizations={organizations}
           />
-          <a className="big-spacer-left js-new-org" href="#" onClick={this.handleLinkClick}>
+          {!this.props.appState?.grc && (<a className="big-spacer-left js-new-org" href="#" onClick={this.handleLinkClick}>
             {autoImport
                 ? translate('onboarding.create_project.import_new_org')
                 : translate('onboarding.create_project.create_new_org')}
-          </a>
+          </a>)}
         </div>
     );
   }

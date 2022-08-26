@@ -18,16 +18,19 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
+import { connect } from 'react-redux';
 import { Link } from 'react-router';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { getBaseUrl } from 'sonar-ui-common/helpers/urls';
+import { getAppState, Store } from '../../../store/rootReducer';
 
 export interface EmptyHotspotsPageProps {
   filtered: boolean;
   isStaticListOfHotspots: boolean;
+  appState: T.AppState | undefined;
 }
 
-export default function EmptyHotspotsPage(props: EmptyHotspotsPageProps) {
+function EmptyHotspotsPage(props: EmptyHotspotsPageProps) {
   const { filtered, isStaticListOfHotspots } = props;
 
   let translationRoot;
@@ -47,7 +50,7 @@ export default function EmptyHotspotsPage(props: EmptyHotspotsPageProps) {
         height={100}
         src={`${getBaseUrl()}/images/${filtered ? 'filter-large' : 'hotspot-large'}.svg`}
       />
-      <h1 className="huge-spacer-top">{translate(`hotspots.${translationRoot}.title`)}</h1>
+      <h1 className="huge-spacer-top">{translate(props.appState?.grc ? `grc.hotspots.${translationRoot}.title` : `hotspots.${translationRoot}.title`)}</h1>
       <div className="abs-width-400 text-center big-spacer-top">
         {translate(`hotspots.${translationRoot}.description`)}
       </div>
@@ -56,9 +59,15 @@ export default function EmptyHotspotsPage(props: EmptyHotspotsPageProps) {
           className="big-spacer-top"
           target="_blank"
           to={{ pathname: '/documentation/user-guide/security-hotspots/' }}>
-          {translate('hotspots.learn_more')}
+          {translate(props.appState?.grc ? 'grc.hotspots.learn_more' : 'hotspots.learn_more')}
         </Link>
       )}
     </div>
   );
 }
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default connect(mapStateToProps)(EmptyHotspotsPage);

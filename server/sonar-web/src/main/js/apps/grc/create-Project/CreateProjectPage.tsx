@@ -108,9 +108,10 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
         if (this.mounted) {
           this.setState({ createdProject: response.project, loading: false });
           setProjectTags({ project: data.project, tags: "grc" });
+          //need to check these
           setSettingValue({key:"codescan.cloud.packageTypes"}, ["Profile","PermissionSet","ProfilePasswordPolicy","ProfileSessionSettings","Settings"], data.project);
           associateProject({ language: "sfmeta", name: "GRC", organization: this.props.organization.key}, data.project);
-          //this.props.onProjectCreated();
+          this.openAnalysisForm();
         }
       },
       () => {
@@ -162,17 +163,6 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
                 />}
               </Alert>
             </div>
-            <footer>
-              <ResetButtonLink
-                id="add-project-analysis"
-                onClick={this.openAnalysisForm}>
-                {translate('grc.add_analysis_project')}
-              </ResetButtonLink>
-              {/* <ResetButtonLink
-                onClick={()=> this.props.router.replace('/grc/dashboard')}>
-                {translate('close')}
-              </ResetButtonLink> */}
-            </footer>
           </div>
         ) : (
           <form id="create-project-form" onSubmit={this.handleFormSubmit}>
