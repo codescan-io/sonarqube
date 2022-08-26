@@ -64,7 +64,8 @@ export default class AuthorizeForm extends React.PureComponent<Props, State> {
     } 
 
     const authHandler = new Salesforce(this.props);
-
+    let authTemp:any;
+    console.log("hashState:", hashState);
     if (authHandler.requiresAuthorizeToken()){
       authorizeToken({
         code: hashState.code,
@@ -72,6 +73,8 @@ export default class AuthorizeForm extends React.PureComponent<Props, State> {
         host: hashState.host,
         organization: hashState.organization
       }).then((response)=>{
+        console.log("response", response);
+        authTemp = response.auth;
         window.location.hash = ''; //remove hash
         const errorMsg = parseErrorObject(response);
         if ( errorMsg != null) {
@@ -87,6 +90,8 @@ export default class AuthorizeForm extends React.PureComponent<Props, State> {
           });
           authHandler.onAuthorizeToken(this);
         }
+
+        this.handleSubmit(authTemp);
 
       }).catch(e => {
         return parseError(e).then((message: any) => {
@@ -108,31 +113,36 @@ export default class AuthorizeForm extends React.PureComponent<Props, State> {
     }
       authHandler.onAuthorizeToken(this);
     }
-    this.handleSubmit(Event);
+    
   }
 
-  handleSubmit = (e: any) => {
-    e.preventDefault();
+  handleSubmit = (authT: any) => {
+    // e.preventDefault();
 
     //calculate scheduling
     let scheduling = this.state?.scheduling;
     if ( scheduling === "-1" ){
       scheduling = this.state?.scheduling_hour;
     }
-    
+    console.log("authT", authT);
     const createData: any = {
+      projectVersion: 1,
+      testmode: "disabled",
+      scheduling: "-1",
       organizationId: this.props.hashState.organization,
-      testmode: this.state?.testmode,
-      scheduling: scheduling,
-      projectVersion: this.state?.projectVersion,
-      repoName: this.state?.repoName,
-      pullRequests: this.state?.pullRequests,
-      repoUrl: this.state?.repoUrl,
-      repoUsername: this.state?.repoUsername,
-      repoPassword: this.state?.repoPassword,
+      repoName: "",
+      repoUrl: "",
+      // testmode: this.state?.testmode,
+      // scheduling: scheduling,
+      // projectVersion: this.state?.projectVersion,
+      // repoName: this.state?.repoName,
+      pullRequests: true,
+      // repoUrl: this.state?.repoUrl,
+      repoUsername: "",
+      repoPassword: "this.state?.repoPassword",
       projectKey: '',
       projectName: '',
-      auth: JSON.stringify(this.state?.auth)
+      auth: JSON.stringify(authT)
     };
     
       //link to existing project...
@@ -148,7 +158,9 @@ export default class AuthorizeForm extends React.PureComponent<Props, State> {
   };
 
   render() {
-    return ({});
+    return (
+      <div></div>
+    );
   }
 
 }
