@@ -24,7 +24,7 @@ import { connect } from 'react-redux';
 import { WithRouterProps } from 'react-router';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import Suggestions from '../../../app/components/embed-docs-modal/Suggestions';
-import { getSettingsAppDefaultCategory, Store } from '../../../store/rootReducer';
+import { getAppState, getSettingsAppDefaultCategory, Store } from '../../../store/rootReducer';
 import '../side-tabs.css';
 import { fetchSettings } from '../store/actions';
 import '../styles.css';
@@ -32,11 +32,13 @@ import { ADDITIONAL_CATEGORIES } from './AdditionalCategories';
 import AllCategoriesList from './AllCategoriesList';
 import CategoryDefinitionsList from './CategoryDefinitionsList';
 import CATEGORY_OVERRIDES from './CategoryOverrides';
+import GrcDeAssocciate from './GrcDeAssocciate';
 import PageHeader from './PageHeader';
 
 interface Props {
   component?: T.Component;
   defaultCategory: string;
+  appState: T.AppState | undefined;
   fetchSettings(component?: string): Promise<void>;
 }
 
@@ -64,7 +66,7 @@ export class App extends React.PureComponent<Props & WithRouterProps, State> {
   }
 
   fetchSettings = () => {
-    const { component } = this.props;
+    const { component} = this.props;
     this.props.fetchSettings(component && component.key).then(this.stopLoading, this.stopLoading);
   };
 
@@ -78,6 +80,7 @@ export class App extends React.PureComponent<Props & WithRouterProps, State> {
     if (this.state.loading) {
       return null;
     }
+    const grc = this.props.appState?.grc !== undefined ? this.props.appState.grc : false
 
     const { query } = this.props.location;
     const originalCategory = (query.category as string) || this.props.defaultCategory;
@@ -96,13 +99,13 @@ export class App extends React.PureComponent<Props & WithRouterProps, State> {
         <Helmet defer={false} title={translate('settings.page')} />
 
         <PageHeader component={this.props.component} />
-
         <div className="side-tabs-layout settings-layout">
           <div className="side-tabs-side">
             <AllCategoriesList
               component={this.props.component}
               defaultCategory={this.props.defaultCategory}
               selectedCategory={selectedCategory}
+              grc={grc}
             />
           </div>
           <div className="side-tabs-main">
@@ -115,17 +118,22 @@ export class App extends React.PureComponent<Props & WithRouterProps, State> {
               <CategoryDefinitionsList
                 category={selectedCategory}
                 component={this.props.component}
+                
               />
             )}
           </div>
         </div>
-      </div>
+        {
+          grc ? (<><GrcDeAssocciate component={this.props.component} grc={grc} /></>) :(<></>)
+        }
+     </div>
     );
   }
 }
 
 const mapStateToProps = (state: Store) => ({
-  defaultCategory: getSettingsAppDefaultCategory(state)
+  defaultCategory: getSettingsAppDefaultCategory(state),
+  appState: getAppState(state)
 });
 
 const mapDispatchToProps = { fetchSettings: fetchSettings as any };

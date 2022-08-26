@@ -38,12 +38,16 @@ export interface CategoriesListProps {
   component?: T.Component;
   defaultCategory: string;
   selectedCategory: string;
+  grc:boolean;
 }
 
 export class CategoriesList extends React.PureComponent<CategoriesListProps> {
   renderLink(category: Category) {
-    const { component, defaultCategory, selectedCategory } = this.props;
-    const pathname = this.props.component ? '/project/settings' : '/settings';
+    const { component, defaultCategory, selectedCategory, grc } = this.props;
+    let pathname = this.props.component ? '/project/settings' : '/settings';
+    if(grc){
+      pathname = "/grc/settings"
+    }
     const query = {
       category: category.key !== defaultCategory ? category.key.toLowerCase() : undefined,
       id: component && component.key

@@ -48,8 +48,7 @@ const routes = [
       },
       {
         path: 'settings',
-        //TODO need to update the below component to project settings accordingly. 
-        component: lazyLoadComponent(() => import('./organization/MyOrganization'))
+        component: lazyLoadComponent(() => import('../settings/components/AppContainer'))
       },
       {
         path: 'activity',

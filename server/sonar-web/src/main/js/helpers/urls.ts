@@ -248,7 +248,7 @@ export function getQualityGatesUrl(organization?: string | null): Location {
 export function getRulesUrl(query: Query, organization: string | null | undefined, grc:boolean = false): Location {
   let pathname = organization ? `/organizations/${organization}/rules` : '/coding_rules';
   if(grc){
-    pathname = "/grc/rules";
+    pathname = "/grc/policies";
   }
   return { pathname, query };
 }
