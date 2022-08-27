@@ -2,3 +2,11 @@
 .button-group{
     display:none;
 }
+a.link-action{
+    cursor: default;
+    text-decoration: none;
+    pointer-events: none;
+    color: black;
+    border-bottom: none;
+    font-weight: bold;
+}
