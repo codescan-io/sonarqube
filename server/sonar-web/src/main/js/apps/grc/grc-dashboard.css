@@ -82,7 +82,7 @@
 }
 .policy-count .policy{
     padding: 15px;
-    padding-bottom: 50px;
+    padding-bottom: 15px;
 }
 hr.seperator{
     height: 15px;
@@ -195,4 +195,10 @@ label.value b{
 }
 .p-15{
     padding: 15px;
+}
+#gauge-chart2{
+    margin-top: 15px;
+}
+#gauge-chart2 .text-group text{
+    fill: black !important;
 }

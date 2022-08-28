@@ -18,12 +18,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import React from 'react';
-import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import '../grc-dashboard.css';
 import HelpIcon from 'sonar-ui-common/components/icons/HelpIcon';
 import HelpTooltip from 'sonar-ui-common/components/controls/HelpTooltip';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { colors } from '../../../app/theme';
+import GaugeChart from 'react-gauge-chart';
  
 
 interface Props {
@@ -38,6 +38,7 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
   const helpIcon = <HelpIcon fill={colors.gray71} size={12} />
 
   const policyRisk = 100 - Math.ceil((usedPolicies / totalPolicies)*100);
+  const policyRisk2 = policyRisk/100
   const unusedPolicies = 100 - policyRisk;
 
   const data = [
@@ -90,7 +91,7 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
         <br />
         <div className="guage-chart-cntr">
           {isValidData?(<>
-            <PieChart height={300} width={260}>
+            {/* <PieChart height={300} width={260}>
             <Tooltip/>
             <Pie
               startAngle={180}
@@ -105,7 +106,12 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
               <Cell fill="#DDDDDD" />
             </Pie>
           </PieChart>
-          <label className="value">{policyRisk}</label>
+          <label className="value">{policyRisk}</label> */}
+          <GaugeChart id="gauge-chart2"
+              nrOfLevels={20}
+              percent={policyRisk2}
+              css="custom-guage-chart"
+            />
           </>):(
             <>
               <br/>
