@@ -43,6 +43,9 @@
 .col-8{
     width:66.67%;
 }
+.col-9{
+    width:75%;
+}
 .col-5{
     width:40%;
 }
@@ -189,4 +192,7 @@ label.value b{
 }
 .page.page-limited.small{
     max-width: 800px !important;
+}
+.p-15{
+    padding: 15px;
 }
