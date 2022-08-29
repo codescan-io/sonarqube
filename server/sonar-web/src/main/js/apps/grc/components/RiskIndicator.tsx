@@ -18,12 +18,15 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import React from 'react';
-import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import '../grc-dashboard.css';
 import HelpIcon from 'sonar-ui-common/components/icons/HelpIcon';
 import HelpTooltip from 'sonar-ui-common/components/controls/HelpTooltip';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { colors } from '../../../app/theme';
+import GaugeChart from 'react-gauge-chart';
+import LinkWidget from './LinkWidget';
+import { getGrcProfilesUrl } from '../../../helpers/urls';
+import { render } from 'enzyme';
  
 
 interface Props {
@@ -32,18 +35,24 @@ interface Props {
   componentKey:string
 }
 
-export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnforced}: Props) {
+export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnforced, componentKey}: Props) {
   const usedPolicies = totalProfilesEnforced;
   const totalPolicies = totalProfilesDefined;
+  const redirectUrl = getGrcProfilesUrl(componentKey);
   const helpIcon = <HelpIcon fill={colors.gray71} size={12} />
 
   const policyRisk = 100 - Math.ceil((usedPolicies / totalPolicies)*100);
+  const policyRisk2 = policyRisk/100
   const unusedPolicies = 100 - policyRisk;
 
   const data = [
     { name: "Policy Risk Score", value: policyRisk },
     { name: "Left Over", value: unusedPolicies }
   ];
+
+  const formatValue = (x:any) => {
+    return x;
+  }
 
   const highColorCode = "#d4333f";
   const mediumColorCode = "#ed7d20";
@@ -75,7 +84,8 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
     console.log("Risk Indiator Error :: "+errorMsg);
   }
 
-  return (
+
+     return (
     <>
       <div className="widget">
         <label className="name">{translate('grc.dashboard.policy.risk.score')}</label>
@@ -87,25 +97,21 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
             }>
            {helpIcon}
           </HelpTooltip>
+          <LinkWidget link={redirectUrl}></LinkWidget>
         <br />
         <div className="guage-chart-cntr">
           {isValidData?(<>
-            <PieChart height={300} width={260}>
-            <Tooltip/>
-            <Pie
-              startAngle={180}
-              endAngle={0}
-              innerRadius="56%"
-              data={data}
-              dataKey="value"
-              labelLine={false}
-              blendStroke
-              isAnimationActive={true}>
-              <Cell fill={fillColor} />
-              <Cell fill="#DDDDDD" />
-            </Pie>
-          </PieChart>
-          <label className="value">{policyRisk}</label>
+          <div>
+            <br/>
+            Total Policies: <b>{totalPolicies}</b> <br/>
+            Used Policies: <b>{usedPolicies}</b>
+          </div>
+          <GaugeChart id="gauge-chart2"
+              nrOfLevels={20}
+              percent={policyRisk2}
+              css="custom-guage-chart"
+              formatTextValue={formatValue}
+            />
           </>):(
             <>
               <br/>
