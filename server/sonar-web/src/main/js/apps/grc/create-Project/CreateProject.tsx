@@ -131,10 +131,11 @@ const CreateProject = (props: Props & WithRouterProps) => {
       className="modal"
       overlayClassName="modal-overlay">
       <header className="modal-head">
-        <h2>Please Wait... Status: {status}</h2>
+        <h2>Your analysis has started</h2>
+        {/* <label>Status: {status}</label> */}
       </header>
       <div className="modal-body">
-        <label htmlFor="Analysis-waiting">Analysis is in progress, this will take some time. Once it is completed you will be automatically redirected to dashboard.</label>
+        <label htmlFor="Analysis-waiting">Please note that the analysis will run ~ 30 - 60 minutes. Once completed, your results dashboard will open automatically.</label>
       </div>
       </Modal>
       )

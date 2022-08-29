@@ -1,7 +1,14 @@
+.create-project-page {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #e6e6e6 !important;
+}
+
 .modal-foot {
     padding: 0 24px;
     border: none;
-    background-color: #fff;
     text-align: left;
 }
 
@@ -13,6 +20,6 @@ input {
     margin: 20px 0;
 }
 
-.create-hdr{
+.create-hdr {
     margin-top: 20px;
 }

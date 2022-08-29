@@ -148,7 +148,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
     const { createdProject } = this.state;
 
     return (
-      <div>
+      <div className='create-project-page'>
         {createdProject ?
         (
           <div className="create-hdr">
