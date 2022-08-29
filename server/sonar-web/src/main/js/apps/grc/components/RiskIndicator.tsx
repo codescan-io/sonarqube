@@ -101,10 +101,9 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
         <br />
         <div className="guage-chart-cntr">
           {isValidData?(<>
-          <div>
-            <br/>
-            Total Policies: <b>{totalPolicies}</b> <br/>
-            Used Policies: <b>{usedPolicies}</b>
+          <div><br/>
+            Policies Enforced: <b>{usedPolicies}</b><br/>
+            Total Policies: <b>{totalPolicies}</b>
           </div>
           <GaugeChart id="gauge-chart2"
               nrOfLevels={20}
