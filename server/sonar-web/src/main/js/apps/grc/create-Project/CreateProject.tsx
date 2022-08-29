@@ -10,6 +10,7 @@ import { parseError } from "../AddProject/Salesforce";
 import CreateProjectPage from "./CreateProjectPage";
 import StatusMonitor from "../run-analysis/StatusMonitor";
 import { addGlobalErrorMessage } from "../../../store/globalMessages";
+import { getOrganizationNavigation } from "../../../api/organizations";
 
 interface Props {
     appState: T.AppState | undefined;
@@ -21,7 +22,7 @@ interface Props {
 
 const CreateProject = (props: Props & WithRouterProps) => {
     const [org, setOrg] = useState(props.organization);
-    const [hideCreateProjectPage, setHideCreateProjectPage] = useState(true);
+    const [hideCreateProjectPage, setHideCreateProjectPage] = useState(false);
     const [openAuthorize, setOpenAuthorize] = useState(false);
     const [hashState, setHashState] = useState();
     const [organizationKey, setOrganizationKey] = useState('');
@@ -32,15 +33,8 @@ const CreateProject = (props: Props & WithRouterProps) => {
     
     const componentMounted = useRef(true);
 
-    const nextClick = (data: T.Organization) => {
-        setOrg(data);
-        setHideCreateProjectPage(false);
-    }
-
-    useEffect(() => {
-      const { currentUser } = props;
-      //TODO need to get org key from current user.
-        if (componentMounted.current && window.location.hash) {
+    useEffect(() => { 
+        if (window.location.hash) {
           const params = (window.location.hash.substr(1)).split("&");
           const state: any = {};
           for (let i = 0; i < params.length; i++) {
@@ -58,10 +52,25 @@ const CreateProject = (props: Props & WithRouterProps) => {
           }
           setOpenAuthorize(true);
         }
-      return () => { // This code runs when component is unmounted
-          componentMounted.current = false;
-      }
     }, []);
+
+    useEffect(() => {
+      const { currentUser } = props;
+      let key: string;
+      if(currentUser?.homepage?.type === 'ORGANIZATION') {
+        key = currentUser?.homepage?.organization;
+      } else {
+        key = currentUser?.orgGroups[0]?.organizationKey
+      }
+      if(!org) {
+        getOrganizationNavigation(key).then((res: any) => {
+          if(res) {
+            res.key = key;
+            setOrg(res);
+          } 
+        }).catch(() => {});
+      }
+    }, [org, props]);
 
     const onRefreshQueue = () => {
       const findQueues = findCiQueues({organizationId: organizationKey});
@@ -113,11 +122,6 @@ const CreateProject = (props: Props & WithRouterProps) => {
     const closeAuthorize = () => {
       setOpenAuthorize(false);
     }
-
-    const hideProjectPage = () => {
-      setOrg(props.organization);
-      setHideCreateProjectPage(true);
-    }
     
   return (
     <div>
@@ -137,9 +141,8 @@ const CreateProject = (props: Props & WithRouterProps) => {
     }
     {<div className="text-danger">{ errorMsg }</div>}
       { openAuthorize && (<AuthorizeForm organization={props.organization} hashState={hashState} onModified={onAuthorizeDone} closeForm={closeAuthorize}/>) }
-      {!org && hideCreateProjectPage && <CreateProjectPageSonarCloud {...props} onNextClick={nextClick} />}
-      {org && !hideCreateProjectPage && <CreateProjectPage {...props} onOrganizationUpgrade={props.onOrganizationUpgrade}
-          organization={org} closeCreateForm={hideProjectPage}/>}
+      {org && <CreateProjectPage {...props} onOrganizationUpgrade={props.onOrganizationUpgrade}
+          organization={org} />}
     </div>
   );
 }
