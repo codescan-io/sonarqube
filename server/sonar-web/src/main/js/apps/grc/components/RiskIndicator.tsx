@@ -104,7 +104,7 @@ export default function RiskIndicator({ totalProfilesDefined, totalProfilesEnfor
           <div>
             <br/>
             Total Policies: <b>{totalPolicies}</b> <br/>
-            Used Policies: <b>{usedPolicies}</b>
+            Policies Enforced: <b>{usedPolicies}</b>
           </div>
           <GaugeChart id="gauge-chart2"
               nrOfLevels={20}

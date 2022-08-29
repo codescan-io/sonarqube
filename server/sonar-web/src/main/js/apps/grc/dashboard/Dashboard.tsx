@@ -289,18 +289,18 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
                            </div>
                            <div className="row">
                              
-                             <div className="col col-4">
+                             <div className="col col-30">
                              <IssuesByPriority
                                  componentKey={componentKey}
                                  hotspots={hotspots}></IssuesByPriority>
                              </div>
-                             <div className="col col-4">
+                             <div className="col col-40">
                                 <RiskIndicator
                                   componentKey={componentKey}
                                   totalProfilesDefined={totalProfilesDefined}
                                   totalProfilesEnforced={totalProfilesEnforced}></RiskIndicator>
                              </div>
-                             <div className="col col-4">
+                             <div className="col col-30">
                                <LastAnalysis
                                  componentKey={componentKey}
                                  event={lastAnalysisData}></LastAnalysis>
