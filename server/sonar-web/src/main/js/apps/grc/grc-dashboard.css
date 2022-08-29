@@ -30,6 +30,10 @@
     background-color: white;
     padding: 15px;
     margin-right: 15px;
+    box-shadow: 4px 0px 6px #b6b6b6;
+}
+.no-shadow{
+box-shadow: none;
 }
 .col-12{
     width: 100%;
@@ -37,11 +41,23 @@
 .col-3{
     width: 25%;
 }
+.col-30{
+    width: 30%;
+}
+.col-40{
+    width: 40%;
+}
 .col-4{
     width:33.33%;
 }
+.col-6{
+    width:50%;
+}
 .col-8{
     width:66.67%;
+}
+.col-9{
+    width:75%;
 }
 .col-5{
     width:40%;
@@ -69,17 +85,26 @@
 }
 .pie-chart-cntr .recharts-wrapper{
     height: 250px !important;
+    width: 100% !important;
 }
+
+.pie-chart-cntr .recharts-wrapper svg{
+    margin-top: 30px;
+    margin-left: 35px;
+}
+
 .pie-chart-cntr .recharts-wrapper .recharts-legend-wrapper{
     position: absolute !important;
-    width: 250px !important;
+    width: 325px !important;
     height: auto !important;
-    left: 15px !important;
-    bottom: 10px !important;
+}
+.pie-chart-cntr .recharts-wrapper .recharts-surface{
+    margin-top: 0px;
 }
 .policy-count .policy{
     padding: 15px;
-    padding-bottom: 50px;
+    padding-bottom: 28px;
+    box-shadow: 4px 0px 6px #b6b6b6;
 }
 hr.seperator{
     height: 15px;
@@ -189,4 +214,13 @@ label.value b{
 }
 .page.page-limited.small{
     max-width: 800px !important;
+}
+.p-15{
+    padding: 15px;
+}
+#gauge-chart2{
+    margin-top: -60px;
+}
+#gauge-chart2 .text-group text{
+    fill: black !important;
 }

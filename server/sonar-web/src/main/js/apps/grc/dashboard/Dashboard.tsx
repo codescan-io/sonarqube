@@ -256,46 +256,60 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
                ) : (
                  <>
                    {lastAnalysisData ? (
-                    <>{
-                      loadingChartData ? (
-                        <div className="page page-limited">
-                            <i className="spinner" />
-                        </div>
-                      ):(
-                        <div className="dashboard-page">
-                       <div className="row">
-                         <div className="col col-3 no-padding">
-                           <PolicyCount componentKey={componentKey} totalProfilesDefined={totalProfilesDefined} totalProfilesEnforced={totalProfilesEnforced}></PolicyCount>
+                     <>
+                       {loadingChartData ? (
+                         <div className="page page-limited">
+                           <i className="spinner" />
                          </div>
-                         <div className="col col-3">
-                           <RiskIndicator componentKey={componentKey} totalProfilesDefined={totalProfilesDefined} totalProfilesEnforced={totalProfilesEnforced}></RiskIndicator>
+                       ) : (
+                         <div className="dashboard-page">
+                           <div className="row">
+                             <div className="col col-3 no-padding">
+                               <GrcViolations
+                                 componentKey={componentKey}
+                                 hotspots={hotspots}
+                                 totalHotspots={totalHotspots}
+                                 securityCategories={securityCategories}></GrcViolations>
+                             </div>
+                             <div className="col col-9 no-padding">
+                               <ViolationDetails
+                                 componentKey={componentKey}
+                                 branchLike={branchLike}
+                                 measures={measures}
+                                 component={component}></ViolationDetails>
+                               <hr className="seperator"></hr>
+                               <ViolationsSeries
+                                 componentKey={componentKey}
+                                 metrics={metrics}
+                                 analyses={analyses}
+                                 component={component}
+                                 measureSeries={measureSeries}
+                                 selectedGraphs={seriesMetrics}></ViolationsSeries>
+                             </div>
+                           </div>
+                           <div className="row">
+                             
+                             <div className="col col-30">
+                             <IssuesByPriority
+                                 componentKey={componentKey}
+                                 hotspots={hotspots}></IssuesByPriority>
+                             </div>
+                             <div className="col col-40">
+                                <RiskIndicator
+                                  componentKey={componentKey}
+                                  totalProfilesDefined={totalProfilesDefined}
+                                  totalProfilesEnforced={totalProfilesEnforced}></RiskIndicator>
+                             </div>
+                             <div className="col col-30">
+                               <LastAnalysis
+                                 componentKey={componentKey}
+                                 event={lastAnalysisData}></LastAnalysis>
+                             </div>
+                           </div>
+
                          </div>
-                         <div className="col col-3">
-                           <IssuesByPriority componentKey={componentKey} hotspots={hotspots}></IssuesByPriority>
-                         </div>
-                         <div className="col col-3">
-                           <LastAnalysis componentKey={componentKey} event={lastAnalysisData}></LastAnalysis>
-                         </div>
-                       </div>
-                       <div className="row">
-                          <div className="col col-4">
-                            <GrcViolations componentKey={componentKey} hotspots={hotspots} 
-                                           totalHotspots={totalHotspots}
-                                          securityCategories={securityCategories}></GrcViolations>
-                          </div>
-                          <div className="col col-8 no-padding">
-                            <ViolationDetails componentKey={componentKey} branchLike={branchLike}
-                                              measures={measures}
-                                              component={component}
-                            ></ViolationDetails>
-                            <hr className="seperator"></hr>
-                            <ViolationsSeries componentKey={componentKey} metrics={metrics} analyses={analyses} component={component} measureSeries={measureSeries} selectedGraphs={seriesMetrics}></ViolationsSeries>
-                          </div>
-                       </div>
-                     </div>
-                      )
-                    }
-                    </>
+                       )}
+                     </>
                    ) : (
                      <div className="dashboard-page">
                        <div className="row">

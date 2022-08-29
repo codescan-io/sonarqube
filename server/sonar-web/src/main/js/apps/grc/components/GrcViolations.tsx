@@ -45,7 +45,7 @@ export default function GrcViolations(props:Props) {
 
   return (
     <>
-      <div className="widget grc-violations-cntr">
+      <div className="widget grc-violations-cntr p-15">
         <LinkWidget link={redirectUrl}></LinkWidget>  
         {hotspots.length === 0 ?(
           <div className='grc-violations-empty-cntr'>
