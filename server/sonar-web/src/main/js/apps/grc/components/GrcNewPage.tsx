@@ -127,7 +127,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
         }
         this.props.router.replace(pathName+'?id='+id);
       }
-    })
+    }).catch(() => {});
   }
 
   addQualifier = (component: T.Component) => ({

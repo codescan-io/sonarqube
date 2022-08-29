@@ -24,7 +24,7 @@ import { ResetButtonLink, SubmitButton } from 'sonar-ui-common/components/contro
 import { Alert } from 'sonar-ui-common/components/ui/Alert';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { associateProject } from '../../../api/quality-profiles';
-import { createProject, setProjectTags } from '../../../api/components';
+import { createProject, searchProjects, setProjectTags } from '../../../api/components';
 import VisibilitySelector from '../../../components/common/VisibilitySelector';
 import { getGrcDashboardUrl } from '../../../helpers/urls';
 import AddProjectForm from '../AddProject/AddProjectForm';
@@ -35,7 +35,6 @@ interface Props {
   //onProjectCreated: () => void;
   onOrganizationUpgrade: () => void;
   organization: T.Organization;
-  closeCreateForm: () => any;
 }
 
 interface State {
@@ -47,6 +46,7 @@ interface State {
   // add index declaration to be able to do `this.setState({ [name]: value });`
   [x: string]: any;
   openRunAnalysis: boolean;
+  hasProjects: any;
 }
 
 export default class CreateProjectPage extends React.PureComponent<Props & WithRouterProps, State> {
@@ -60,13 +60,19 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
       loading: false,
       name: '',
       visibility: props.organization?.projectVisibility,
-      openRunAnalysis: false
+      openRunAnalysis: false,
+      hasProjects: []
     };
   }
 
   componentDidMount() {
     this.mounted = true;
     document.body.classList.add('white-page');
+    searchProjects({filter: 'tags=grc'}).then(({components}) => {
+      if (components.length) {
+        this.setState({hasProjects: components});
+      }
+    }).catch(() => {});
   }
 
   componentDidUpdate() {
@@ -123,7 +129,9 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
   };
 
   handleClose = () => {
-    this.props.closeCreateForm();
+    if(this.state.hasProjects.length) {
+      this.props.router.replace('/grc/dashboard?id='+this.state.hasProjects[0].key);
+    }
   }
 
   openAnalysisForm = () => {
@@ -132,6 +140,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
 
   closeAnalysisForm = () => {
     this.setState({ openRunAnalysis: false });
+    this.props.router.replace('/grc/dashboard?id='+this.state.hasProjects[0].key);
   }
 
   render() {
@@ -217,9 +226,9 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
               <SubmitButton disabled={this.state.loading} id="create-project-submit">
                 {translate('create')}
               </SubmitButton>
-              <ResetButtonLink id="create-project-cancel" onClick={this.handleClose}>
+              {this.state.hasProjects.length && <ResetButtonLink id="create-project-cancel" onClick={this.handleClose}>
                 {translate('cancel')}
-              </ResetButtonLink>
+              </ResetButtonLink>}
             </footer>
           </form>
         )
