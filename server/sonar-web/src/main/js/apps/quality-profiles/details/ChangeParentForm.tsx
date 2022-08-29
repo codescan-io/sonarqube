@@ -31,6 +31,7 @@ interface Props {
   onClose: () => void;
   profile: Profile;
   profiles: Profile[];
+  grc: boolean;
 }
 
 interface State {
@@ -64,7 +65,13 @@ export default class ChangeParentForm extends React.PureComponent<Props, State> 
 
     this.setState({ loading: true });
     changeProfileParent(this.props.profile, parent)
-      .then(this.props.onChange)
+      .then(()=>{
+        if(this.props.grc){
+          window.location.reload();
+        }else{
+          this.props.onChange
+        }
+      })
       .catch(() => {
         if (this.mounted) {
           this.setState({ loading: false });
