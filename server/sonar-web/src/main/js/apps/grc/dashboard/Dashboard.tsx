@@ -263,25 +263,6 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
                          </div>
                        ) : (
                          <div className="dashboard-page">
-                          <div className="row">
-                             <div className="col col-4 no-padding no-shadow">
-                               <PolicyCount
-                                 componentKey={componentKey}
-                                 totalProfilesDefined={totalProfilesDefined}
-                                 totalProfilesEnforced={totalProfilesEnforced}></PolicyCount>
-                             </div>
-                             <div className="col col-4">
-                               <RiskIndicator
-                                 componentKey={componentKey}
-                                 totalProfilesDefined={totalProfilesDefined}
-                                 totalProfilesEnforced={totalProfilesEnforced}></RiskIndicator>
-                             </div>
-                             <div className="col col-4">
-                               <LastAnalysis
-                                 componentKey={componentKey}
-                                 event={lastAnalysisData}></LastAnalysis>
-                             </div>
-                           </div>
                            <div className="row">
                              <div className="col col-3 no-padding">
                                <GrcViolations
@@ -289,11 +270,6 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
                                  hotspots={hotspots}
                                  totalHotspots={totalHotspots}
                                  securityCategories={securityCategories}></GrcViolations>
-
-                               <hr className="seperator"></hr>
-                               <IssuesByPriority
-                                 componentKey={componentKey}
-                                 hotspots={hotspots}></IssuesByPriority>
                              </div>
                              <div className="col col-9 no-padding">
                                <ViolationDetails
@@ -311,6 +287,26 @@ export class GRCDashboard extends React.PureComponent<Props, State> {
                                  selectedGraphs={seriesMetrics}></ViolationsSeries>
                              </div>
                            </div>
+                           <div className="row">
+                             
+                             <div className="col col-4">
+                             <IssuesByPriority
+                                 componentKey={componentKey}
+                                 hotspots={hotspots}></IssuesByPriority>
+                             </div>
+                             <div className="col col-4">
+                                <RiskIndicator
+                                  componentKey={componentKey}
+                                  totalProfilesDefined={totalProfilesDefined}
+                                  totalProfilesEnforced={totalProfilesEnforced}></RiskIndicator>
+                             </div>
+                             <div className="col col-4">
+                               <LastAnalysis
+                                 componentKey={componentKey}
+                                 event={lastAnalysisData}></LastAnalysis>
+                             </div>
+                           </div>
+
                          </div>
                        )}
                      </>

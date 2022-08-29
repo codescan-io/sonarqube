@@ -86,7 +86,6 @@ export default function GrcViolations(props:Props) {
                 );
               })}
             </ul>
-
           </>
         )}
       </div>

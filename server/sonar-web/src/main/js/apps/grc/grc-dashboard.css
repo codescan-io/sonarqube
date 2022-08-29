@@ -76,13 +76,21 @@ box-shadow: none;
 }
 .pie-chart-cntr .recharts-wrapper{
     height: 250px !important;
+    width: 100% !important;
 }
+
+.pie-chart-cntr .recharts-wrapper svg{
+    margin-left: 50px;
+    margin-top: 10px;
+}
+
 .pie-chart-cntr .recharts-wrapper .recharts-legend-wrapper{
     position: absolute !important;
-    width: 250px !important;
+    width: 325px !important;
     height: auto !important;
-    left: 15px !important;
-    bottom: 10px !important;
+}
+.pie-chart-cntr .recharts-wrapper .recharts-surface{
+    margin-top: 0px;
 }
 .policy-count .policy{
     padding: 15px;
