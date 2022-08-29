@@ -22,19 +22,28 @@ import React from "react";
 import { Link } from 'react-router';
 import "./home.css"
 
-const home = ()=> {
+const home = () => {
 
     return (
-        <div className="home">
-            <div className="block" style={{marginRight:"20px"}}>
-                <Link to="/projects">
-                    <img src='/images/scanner-logos/ant.svg' alt="" />
-                    Codescan App</Link>
-            </div>
-            <div className="block">
-                <Link to="/grc">
-                <img src='/images/scanner-logos/msbuild.svg' alt="" />
-                GRC App</Link>
+        <div className="landing">
+            <div className="home">
+                <h1>Welcome to CodeScan Shield</h1>
+                <div className="welcome-block">
+                    <div className="block" style={{ marginRight: "20px" }}>
+                        <Link to="/projects">
+                            <img className="grc-icon" src='/images/grc/codescan-dashboard.svg' alt="" />
+                            <img className="grc-logo" src='/images/grc/codescan-logo.svg' alt="" />
+                            <p>Application Security Testing</p>
+                        </Link>
+                    </div>
+                    <div className="block">
+                        <Link to="/grc">
+                            <img className="grc-icon" src='/images/grc/orgscan-dashboard.svg' alt="" />
+                            <img className="grc-logo" src='/images/grc/orgscan-logo.svg' alt="" />
+                            <p>Policy Management</p>
+                        </Link>
+                    </div>
+                </div>
             </div>
         </div>
     );

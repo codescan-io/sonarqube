@@ -1,17 +1,54 @@
+.landing {
+    background-image: url('/images/grc/grc-bg.jpg');
+    width: 100%;
+    height: calc(100% - 100px);
+    position: absolute;
+}
+
 .home {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    align-items: center;
+}
+
+h1 {
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.welcome-block {
+    display: flex;
+    flex-direction: row;
 }
 
 .block {
-    width: 200px;
-    height: 200px;
-    background-color: #fff;
+    width: 250px;
+    height: 250px;
+    background-color: #e6e6e6;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.block a {
+    text-align: center;
+    border: none;
+}
+
+.grc-icon {
+    width: 160px;
+    margin-bottom: 2rem;
+}
+
+.grc-logo {
+    width: 100px;
+    margin-bottom: 1.5rem;
+}
+
+body {
+    overflow-y: auto;
 }
