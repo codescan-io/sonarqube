@@ -90,6 +90,7 @@ box-shadow: none;
 
 .pie-chart-cntr .recharts-wrapper svg{
     margin-top: 30px;
+    margin-left: 35px;
 }
 
 .pie-chart-cntr .recharts-wrapper .recharts-legend-wrapper{
@@ -218,7 +219,7 @@ label.value b{
     padding: 15px;
 }
 #gauge-chart2{
-    margin-top: -45px;
+    margin-top: -60px;
 }
 #gauge-chart2 .text-group text{
     fill: black !important;
