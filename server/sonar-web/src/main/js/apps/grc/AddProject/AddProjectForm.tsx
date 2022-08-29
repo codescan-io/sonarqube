@@ -88,8 +88,7 @@ export default class AddProjectForm extends React.PureComponent<Props, State> {
       <Modal
         contentLabel="modal form"
         className="modal"
-        overlayClassName="modal-overlay"
-        onRequestClose={this.closeForm}>
+        overlayClassName="modal-overlay">
         <header className="modal-head">
           <h2>
             <span>Add Analysis</span>

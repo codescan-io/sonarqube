@@ -215,6 +215,8 @@ declare namespace T {
     isLoggedIn: boolean;
     permissions?: { global: string[] };
     showOnboardingTutorial?: boolean;
+    homepage?: any;
+    orgGroups?: any;
   }
 
   export interface CurrentUserSetting {

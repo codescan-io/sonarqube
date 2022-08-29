@@ -193,6 +193,7 @@ export default class ProfileInheritance extends React.PureComponent<Props, State
             onClose={this.closeForm}
             profile={profile}
             profiles={profiles.filter(p => p !== profile && p.language === profile.language)}
+            grc={grc}
           />
         )}
       </div>

@@ -4,6 +4,8 @@ import Extension from "../../../app/components/extensions/Extension";
 import { Location, Router, withRouter } from "../../../components/hoc/withRouter";
 import { BranchLike } from "../../../types/branch-like";
 
+import "./styles.css";
+
 interface Props {
     location: Location;
     component: T.Component;

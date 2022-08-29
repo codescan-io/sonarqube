@@ -88,8 +88,8 @@ export default class AuthorizeForm extends React.PureComponent<Props, State> {
     };
     
       //link to existing project...
-      createData.projectKey = this.props.hashState.projectKey;
-      createData.projectName = this.props.hashState.projectName;
+      createData.projectKey = this.props.hashState?.projectKey;
+      createData.projectName = this.props.hashState?.projectName;
 
       updateIntegration(createData).then(()=>{
         this.props.onModified(createData);
