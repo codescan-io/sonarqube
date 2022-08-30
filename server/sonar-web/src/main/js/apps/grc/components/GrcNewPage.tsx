@@ -390,6 +390,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
     }
     const { branchLike, branchLikes, currentTask, isPending, tasksInProgress, comparisonBranchesEnabled } = this.state;
     const isInProgress = tasksInProgress && tasksInProgress.length > 0;
+    const projectName = "Project Name :: "+component?.name;
     return (
       <>
         {showGRCNav ? (
@@ -404,7 +405,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
                 <span className="qualifier-icon">
                   <QualifierIcon qualifier={component?.qualifier} />
                 </span>
-                <span className="project-name" title="Project Name">
+                <span className="project-name text-ellipsis" title={projectName}>
                   {component?.name}
                 </span>
               </span>
