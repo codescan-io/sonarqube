@@ -148,7 +148,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
     const { createdProject } = this.state;
 
     return (
-      <div>
+      <div className='create-project-page'>
         {createdProject ?
         (
           <div className="create-hdr">
@@ -173,8 +173,11 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
             </div>
           </div>
         ) : (
-          <form id="create-project-form" onSubmit={this.handleFormSubmit}>
+          <form id="create-project-form" className="create-form" onSubmit={this.handleFormSubmit}>
             <header className="modal-head">
+              <img className="modal-img" src='/images/grc/CloudIllustration.svg' alt="" />
+              <p> Create a project to render your dashboard.</p>
+              <p>Your project’s name and key can have the same value or be different.</p>
               <h2>{translate('qualifiers.create.TRK')}</h2>
             </header>
 

@@ -91,14 +91,14 @@ export default class AddProjectForm extends React.PureComponent<Props, State> {
         overlayClassName="modal-overlay">
         <header className="modal-head">
           <h2>
-            <span>Add Analysis</span>
+            <span>Scan your Org for Policy Violations</span>
           </h2>
         </header>
 
         <div className="modal-body">
           <div className="text-danger">{ errorMsg }</div>
             <div className="modal-large-field">
-              <label>Click continue to add a new Analysis</label>
+              <label>Click continue to start a new analysis</label>
               <div>You will be redirected to an authentication page to authorize us to access your source code</div>
               <div>&nbsp;</div>
             </div>

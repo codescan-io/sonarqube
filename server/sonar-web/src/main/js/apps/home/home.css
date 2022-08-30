@@ -1,5 +1,7 @@
 .landing {
     background-image: url('/images/grc/grc-bg.jpg');
+    background-position: center center;
+    background-repeat: no-repeat;
     width: 100%;
     height: calc(100% - 100px);
     position: absolute;

@@ -1,7 +1,49 @@
+.create-project-page {
+    background-image: url('/images/grc/grc-bg.jpg');
+    background-position: center center;
+    background-repeat: no-repeat;
+    width: 100%;
+    height: calc(100% - 60px);
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.create-form {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -45%);
+    background: #f3f3f3 !important;
+}
+
+.modal-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.modal-head h2 {
+    margin-top: 1.5rem;
+}
+
+.status {
+    margin-top: 1rem;
+}
+
+.modal-img {
+    width: 100px;
+    height: 100px;
+}
+
+.emblem {
+    width: 80px;
+    height: 80px;
+}
+
 .modal-foot {
-    padding: 0 24px;
+    padding: 0 24px 32px 24px;
     border: none;
-    background-color: #fff;
     text-align: left;
 }
 
@@ -13,6 +55,6 @@ input {
     margin: 20px 0;
 }
 
-.create-hdr{
+.create-hdr {
     margin-top: 20px;
 }
