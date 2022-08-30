@@ -71,13 +71,13 @@ function FacetsList(props: Props) {
         stats={props.facets && props.facets.languages}
         values={props.query.languages}
       />
-      <TypeFacet
+      {!props.appState.grc && <TypeFacet
         onChange={props.onFilterChange}
         onToggle={props.onFacetToggle}
         open={!!props.openFacets.types}
         stats={props.facets && props.facets.types}
         values={props.query.types}
-      />
+      />}
       <TagFacet
         onChange={props.onFilterChange}
         onToggle={props.onFacetToggle}
@@ -109,7 +109,7 @@ function FacetsList(props: Props) {
         stats={props.facets && props.facets.statuses}
         values={props.query.statuses}
       />
-      <StandardFacet
+      {!props.appState.grc && <StandardFacet
         cwe={props.query.cwe}
         cweOpen={!!props.openFacets.cwe}
         cweStats={props.facets && props.facets.cwe}
@@ -130,7 +130,7 @@ function FacetsList(props: Props) {
         sonarsourceSecurity={props.query.sonarsourceSecurity}
         sonarsourceSecurityOpen={!!props.openFacets.sonarsourceSecurity}
         sonarsourceSecurityStats={props.facets && props.facets.sonarsourceSecurity}
-      />
+      />}
       {!props.appState.grc && (
         <>
           <AvailableSinceFacet

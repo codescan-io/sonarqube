@@ -27,6 +27,7 @@ const home = () => {
     return (
         <div className="landing">
             <div className="home">
+                <img className="light-emblem" src='/images/grc/CodeScanShieldEmblem.svg' alt="" />
                 <h1>Welcome to CodeScan Shield</h1>
                 <div className="welcome-block">
                     <div className="block" style={{ marginRight: "20px" }}>

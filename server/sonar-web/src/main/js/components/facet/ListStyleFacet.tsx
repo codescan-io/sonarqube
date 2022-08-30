@@ -251,8 +251,6 @@ class ListStyleFacet<S> extends React.Component<Props<S>, State<S>> {
     let sortedItems = [];
     if(this.props.appState.grc && this.props.property === 'languages') {
       sortedItems = ['sfmeta'];
-    } else if(this.props.appState.grc && this.props.property === 'tags') {
-      sortedItems = ['grc'];
     } else {
       sortedItems = this.props.getSortedItems
       ? this.props.getSortedItems()

@@ -14,7 +14,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -45%);
-    background: #f3f3f3 !important;
+    background: #e5e7ea !important;
 }
 
 .modal-head {
@@ -41,10 +41,33 @@
     height: 80px;
 }
 
-.modal-foot {
+.modal-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.modal-body .huge-spacer-right {
+    margin-right: 30px !important;
+}
+
+.create-foot {
     padding: 0 24px 32px 24px;
+    background-color: #e5e7ea;
+}
+
+.text-align-center {
+    text-align: center;
+}
+
+.modal-foot {
     border: none;
-    text-align: left;
+    text-align: right;
+}
+
+.add-proj-foot {
+    background-color: #fff;
+    padding-bottom: 0;
 }
 
 input {

@@ -95,11 +95,10 @@ export default class AddProjectForm extends React.PureComponent<Props, State> {
           </h2>
         </header>
 
-        <div className="modal-body">
+        <div className="modal-body text-align-center">
           <div className="text-danger">{ errorMsg }</div>
             <div className="modal-large-field">
-              <label>Click continue to start a new analysis</label>
-              <div>You will be redirected to an authentication page to authorize us to access your source code</div>
+              <label>Click continue to start a new analysis. You will be redirected to an authentication page to authorize us to access your source code.</label>
               <div>&nbsp;</div>
             </div>
 
@@ -146,7 +145,7 @@ export default class AddProjectForm extends React.PureComponent<Props, State> {
             </div>
           )}
         </div>
-        <footer className="modal-foot">
+        <footer className="modal-foot add-proj-foot">
           <div style={btnStyles}>
             <button className="button button-link" type="button" onClick={this.closeForm}>
             Cancel

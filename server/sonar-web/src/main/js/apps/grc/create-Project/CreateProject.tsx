@@ -135,7 +135,7 @@ const CreateProject = (props: Props & WithRouterProps) => {
         <h2>Your analysis has started</h2>
         <p className="status">Status: {status}</p>
       </header>
-      <div className="modal-body">
+      <div className="modal-body text-align-center">
         <label htmlFor="Analysis-waiting">Please note that the analysis is in progress. Once completed, your results dashboard will open automatically.</label>
       </div>
       </Modal>
