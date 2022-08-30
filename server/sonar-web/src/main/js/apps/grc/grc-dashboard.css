@@ -224,3 +224,10 @@ label.value b{
 #gauge-chart2 .text-group text{
     fill: black !important;
 }
+.risk-indicator-label{
+    padding-top: 8px;
+    display: inline-block;
+}
+.new-code-legend{
+    display: none;
+}
