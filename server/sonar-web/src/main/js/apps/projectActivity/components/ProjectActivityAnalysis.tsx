@@ -88,10 +88,11 @@ export function ProjectActivityAnalysis(props: ProjectActivityAnalysisProps) {
   const canAddEvent = canAdmin;
   const canDeleteAnalyses =
     props.canDeleteAnalyses && !isFirst && !analysis.manualNewCodePeriodBaseline;
-
-  let codePeriodStartLabel =   translate('project_activity.new_code_period_start')
+  let helpTooltip = translate('project_activity.new_code_period_start.help');
+  let codePeriodStartLabel =   translate('project_activity.new_code_period_start');
   if(props.grc){
-    codePeriodStartLabel =  translate('project_activity.grc.new_code_period_start')
+    codePeriodStartLabel =  translate('project_activity.grc.new_code_period_start');
+    helpTooltip = translate('grc.project_activity.new_code_period_start.help');
   }
   return (
     <li
@@ -202,7 +203,7 @@ export function ProjectActivityAnalysis(props: ProjectActivityAnalysisProps) {
             {codePeriodStartLabel}
             <HelpTooltip
               className="little-spacer-left"
-              overlay={translate('project_activity.new_code_period_start.help')}
+              overlay={helpTooltip}
               placement="top"
             />
           </div>
