@@ -63,14 +63,14 @@ function FacetsList(props: Props) {
     !props.query.activation;
   return (
     <>
-      <LanguageFacet
+      {!props.appState.grc && <LanguageFacet
         disabled={languageDisabled}
         onChange={props.onFilterChange}
         onToggle={props.onFacetToggle}
         open={!!props.openFacets.languages}
         stats={props.facets && props.facets.languages}
         values={props.query.languages}
-      />
+      />}
       {!props.appState.grc && <TypeFacet
         onChange={props.onFilterChange}
         onToggle={props.onFacetToggle}
@@ -86,7 +86,7 @@ function FacetsList(props: Props) {
         stats={props.facets && props.facets.tags}
         values={props.query.tags}
       />
-      <RepositoryFacet
+      {!props.appState.grc && <RepositoryFacet
         onChange={props.onFilterChange}
         onToggle={props.onFacetToggle}
         open={!!props.openFacets.repositories}
@@ -94,7 +94,7 @@ function FacetsList(props: Props) {
         stats={props.facets && props.facets.repositories}
         values={props.query.repositories}
         appState={props.appState}
-      />
+      />}
       <DefaultSeverityFacet
         onChange={props.onFilterChange}
         onToggle={props.onFacetToggle}

@@ -46,6 +46,10 @@ h1 {
     border: none;
 }
 
+.block p {
+    color: #041847;
+}
+
 .grc-icon {
     width: 160px;
     margin-bottom: 1rem;
