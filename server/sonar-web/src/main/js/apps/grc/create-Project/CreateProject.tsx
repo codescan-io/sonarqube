@@ -125,14 +125,15 @@ const CreateProject = (props: Props & WithRouterProps) => {
     
   return (
     <div>
-      {showWaiting && 
+      { showWaiting &&
       (<Modal
       contentLabel="modal form"
       className="modal"
       overlayClassName="modal-overlay">
       <header className="modal-head">
+        <img className="emblem" src='/images/grc/CodeScanShieldEmblem.svg' alt="" />
         <h2>Your analysis has started</h2>
-        {/* <label>Status: {status}</label> */}
+        <p className="status">Status: {status}</p>
       </header>
       <div className="modal-body">
         <label htmlFor="Analysis-waiting">Please note that the analysis will run ~ 30 - 60 minutes. Once completed, your results dashboard will open automatically.</label>

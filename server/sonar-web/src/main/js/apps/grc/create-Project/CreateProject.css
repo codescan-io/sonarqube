@@ -27,9 +27,18 @@
     margin-top: 1.5rem;
 }
 
+.status {
+    margin-top: 1rem;
+}
+
 .modal-img {
     width: 100px;
     height: 100px;
+}
+
+.emblem {
+    width: 80px;
+    height: 80px;
 }
 
 .modal-foot {
