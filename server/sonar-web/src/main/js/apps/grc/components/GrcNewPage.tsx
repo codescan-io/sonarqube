@@ -117,7 +117,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
     searchProjects({filter: 'tags=grc'})
     .then(({components}) => {
       if (!components.length) {
-        return Promise.reject();
+        this.props.router.replace('/grc-create');
       }else{
         const id = components[0].key;
        

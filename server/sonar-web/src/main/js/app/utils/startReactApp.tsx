@@ -303,6 +303,9 @@ export default function startReactApp(
                     <Route path="home"
                       component={lazyLoadComponent(() => import('../../apps/home/home'))}
                     />
+                    <Route path="grc-create" 
+                      component={lazyLoadComponent(() => import('../../apps/grc/create-project/CreateProject'))}
+                      />
                     <Route
                       path="extension/:pluginKey/:extensionKey"
                       component={lazyLoadComponent(() =>

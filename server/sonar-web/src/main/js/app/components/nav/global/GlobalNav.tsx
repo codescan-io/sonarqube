@@ -197,7 +197,7 @@ export class GlobalNav extends React.PureComponent<Props, State> {
           )}
           {!this.props.location.pathname.includes('/home') && isLoggedIn(currentUser) && appState.grc && (
             <li>
-              <Link to='/grc/create' className="navbar-icon navbar-plus">
+              <Link to='/grc-create' className="navbar-icon navbar-plus">
                 <PlusIcon />
               </Link>
             </li>
