@@ -38,7 +38,7 @@ const home = () => {
                         </Link>
                     </div>
                     <div className="block">
-                        <Link to="/grc">
+                        <Link to="/grc/dashboard">
                             <img className="grc-icon" src='/images/grc/orgscan-dashboard.svg' alt="" />
                             <img className="grc-logo" src='/images/grc/orgscan-logo.svg' alt="" />
                             <p>Policy Management</p>
