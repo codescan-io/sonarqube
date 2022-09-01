@@ -130,14 +130,16 @@ function getMaintainabilityRatingTooltip(rating: number): string {
   );
 }
 
-export function getRatingTooltip(metricKey: MetricKey | string, value: number | string): string {
+export function getRatingTooltip(metricKey: MetricKey | string, value: number | string, grc?:boolean): string {
   const ratingLetter = formatMeasure(value, 'RATING');
 
   const finalMetricKey = isDiffMetric(metricKey) ? metricKey.substr(4) : metricKey;
 
+  const metricLabel = grc? "grc.metric":"metric"
+
   return finalMetricKey === 'sqale_rating' || finalMetricKey === 'maintainability_rating'
     ? getMaintainabilityRatingTooltip(Number(value))
-    : translate('metric', finalMetricKey, 'tooltip', ratingLetter);
+    : translate(metricLabel, finalMetricKey, 'tooltip', ratingLetter);
 }
 
 export function getDisplayMetrics(metrics: T.Metric[]) {

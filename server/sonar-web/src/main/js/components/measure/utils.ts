@@ -39,10 +39,10 @@ export function getLeakValue(measure: T.MeasureIntern | undefined): string | und
   return measure?.period?.value;
 }
 
-export function getRatingTooltip(metricKey: string, value: number): string | undefined {
+export function getRatingTooltip(metricKey: string, value: number, grc:boolean): string | undefined {
   const finalMetricKey = isDiffMetric(metricKey) ? metricKey.substr(4) : metricKey;
   if (KNOWN_RATINGS.includes(finalMetricKey)) {
-    return nextGetRatingTooltip(finalMetricKey, value);
+    return nextGetRatingTooltip(finalMetricKey, value, grc);
   }
   return undefined;
 }

@@ -30,7 +30,7 @@
     background-color: white;
     padding: 15px;
     margin-right: 15px;
-    box-shadow: 4px 0px 6px #b6b6b6;
+    box-shadow: 1px 0px 4px #b6b6b6;
 }
 .no-shadow{
 box-shadow: none;
@@ -129,8 +129,12 @@ hr.seperator-small{
 .last-analysis-cntr .value.first{
     margin-top: 15px;
 }
+.violation-details-cntr{
+    box-shadow: 1px 0px 4px #b6b6b6;
+}
 .hot-spot-series-cntr{
     padding: 15px;
+    box-shadow: 1px 0px 4px #b6b6b6;
 }
 .hot-spot-series-cntr .activity-graph-container{
     min-height: 200px;
@@ -195,11 +199,15 @@ label.value b{
     margin: 0 auto;
 }
 .org-name{
-
+    display: inline-block;
+    position: relative;
+    top: -4px;
 }
 .nav-seperator{
     padding-left: 10px;
     padding-right: 10px;
+    position: relative;
+    top: -4px;
 }
 .qualifier-icon{
 
