@@ -11,6 +11,8 @@ import CreateProjectPage from "./CreateProjectPage";
 import StatusMonitor from "../run-analysis/StatusMonitor";
 import { addGlobalErrorMessage } from "../../../store/globalMessages";
 import { getOrganizationNavigation } from "../../../api/organizations";
+import getStore from "../../../app/utils/getStore";
+import { setGrcUi } from "../../../store/appState";
 
 interface Props {
     appState: T.AppState | undefined;
@@ -33,7 +35,8 @@ const CreateProject = (props: Props & WithRouterProps) => {
     
     const componentMounted = useRef(true);
 
-    useEffect(() => { 
+    useEffect(() => {
+      getStore().dispatch(setGrcUi(true));
         if (window.location.hash) {
           const params = (window.location.hash.substr(1)).split("&");
           const state: any = {};
@@ -52,6 +55,10 @@ const CreateProject = (props: Props & WithRouterProps) => {
           }
           setOpenAuthorize(true);
         }
+        return () => { // This code runs when component is unmounted
+          getStore().dispatch(setGrcUi(false));
+      }
+
     }, []);
 
     useEffect(() => {

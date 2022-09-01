@@ -95,7 +95,7 @@ export class CreateOrganization extends React.PureComponent<Props & WithRouterPr
         if (this.isStoredTimestampValid(ORGANIZATION_IMPORT_REDIRECT_TO_PROJECT_TIMESTAMP)) {
             if(this.props.appState?.grc) {
                 this.props.router.push({
-                    pathname: '/grc/create',
+                    pathname: '/grc-create',
                     state: {organization}
                 });
             } else {
