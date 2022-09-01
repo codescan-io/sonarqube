@@ -99,6 +99,7 @@ export default function MeasuresPanelIssueMeasureRow(props: MeasuresPanelIssueMe
             measures={measures}
             type={type}
             useDiffMetric={isNewCodeTab}
+            grc={grc}
           />
         </div>
       )}
