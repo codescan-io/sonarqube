@@ -67,7 +67,6 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
 
   componentDidMount() {
     this.mounted = true;
-    document.body.classList.add('white-page');
     searchProjects({filter: 'tags=grc'}).then(({components}) => {
       if (components.length) {
         this.setState({hasProjects: components});
@@ -114,8 +113,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
         if (this.mounted) {
           this.setState({ createdProject: response.project, loading: false });
           setProjectTags({ project: data.project, tags: "grc" });
-          //need to check these
-          setSettingValue({key:"codescan.cloud.packageTypes", multiValues: true}, ["Profile","PermissionSet","ProfilePasswordPolicy","ProfileSessionSettings","Settings"], data.project);
+          setSettingValue({key:"codescan.cloud.packageTypes", multiValues: true, fields: []}, ["Profile","PermissionSet","ProfilePasswordPolicy","ProfileSessionSettings","Settings"], data.project);
           associateProject({ language: "sfmeta", name: "GRC", organization: this.props.organization.key}, data.project);
           this.openAnalysisForm();
         }

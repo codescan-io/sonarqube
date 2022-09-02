@@ -70,7 +70,7 @@ export function HotspotViewerRenderer(props: HotspotViewerRendererProps) {
     getComponentSecurityHotspotsUrl(component.key, {
       ...getBranchLikeQuery(branchLike),
       hotspots: hotspot?.key
-    }),
+    }, props.appState?.grc),
     false
   );
 
