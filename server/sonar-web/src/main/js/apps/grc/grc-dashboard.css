@@ -241,3 +241,6 @@ label.value b{
 .new-code-legend{
     display: none;
 }
+.overview-measures-aside{
+    flex-basis: 230px !important;
+}
