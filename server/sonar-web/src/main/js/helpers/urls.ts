@@ -136,7 +136,7 @@ export function getComponentIssuesUrl(componentKey: string, query?: Query): Loca
  */
 export function getComponentSecurityHotspotsUrl(componentKey: string, query: Query = {}, grc?:boolean): Location {
   const { branch, pullRequest, sinceLeakPeriod, hotspots, assignedToMe, category } = query;
-  const pathName = grc?"/grc/violations":'/security_hotspots';
+  const pathName = grc ? '/grc/violations' : '/security_hotspots';
   return {
     pathname: pathName,
     query: {
@@ -251,6 +251,12 @@ export function getRulesUrl(query: Query, organization: string | null | undefine
     pathname = "/grc/policies";
   }
   return { pathname, query };
+}
+
+export function getGrcRulePermaLink(project: any, query: Query): Location {
+    const pathname = "/grc/policies";
+    query = {...query, ...{languages:"sfmeta", repositories:"grc", id: project}}
+    return { pathname, query };
 }
 
 /**

@@ -18,7 +18,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
-import { Link } from 'react-router';
+import { connect } from 'react-redux';
+import { Link, withRouter, WithRouterProps } from 'react-router';
 import { ButtonLink } from 'sonar-ui-common/components/controls/buttons';
 import Dropdown from 'sonar-ui-common/components/controls/Dropdown';
 import HelpTooltip from 'sonar-ui-common/components/controls/HelpTooltip';
@@ -28,14 +29,15 @@ import LinkIcon from 'sonar-ui-common/components/icons/LinkIcon';
 import DateFormatter from 'sonar-ui-common/components/intl/DateFormatter';
 import { PopupPlacement } from 'sonar-ui-common/components/ui/popups';
 import { translate, translateWithParameters } from 'sonar-ui-common/helpers/l10n';
+import { getAppState, Store } from '../../../store/rootReducer';
 import SeverityHelper from '../../../components/shared/SeverityHelper';
 import TagsList from '../../../components/tags/TagsList';
-import { getRuleUrl } from '../../../helpers/urls';
+import { getRuleUrl, getGrcRulePermaLink } from '../../../helpers/urls';
 import { Query } from '../query';
 import RuleDetailsTagsPopup from './RuleDetailsTagsPopup';
 import SimilarRulesFilter from './SimilarRulesFilter';
 
-interface Props {
+interface Props extends WithRouterProps {
   canWrite: boolean | undefined;
   hideSimilarRulesFilter?: boolean;
   onFilterChange: (changes: Partial<Query>) => void;
@@ -43,11 +45,12 @@ interface Props {
   organization: string | undefined;
   referencedRepositories: T.Dict<{ key: string; language: string; name: string }>;
   ruleDetails: T.RuleDetails;
+  appState: T.AppState;
 }
 
 const EXTERNAL_RULE_REPO_PREFIX = 'external_';
 
-export default class RuleDetailsMeta extends React.PureComponent<Props> {
+class RuleDetailsMeta extends React.PureComponent<Props> {
   renderType = () => {
     const { ruleDetails } = this.props;
     return (
@@ -225,6 +228,7 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
 
   render() {
     const { ruleDetails } = this.props;
+    const id: any = this.props.location?.query?.id;
     const hasTypeData = !ruleDetails.isExternal || ruleDetails.type !== 'UNKNOWN';
     return (
       <div className="js-rule-meta">
@@ -235,7 +239,7 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
               <Link
                 className="coding-rules-detail-permalink link-no-underline spacer-left text-middle"
                 title={translate('permalink')}
-                to={getRuleUrl(ruleDetails.key, this.props.organization)}>
+                to={this.props.appState?.grc ? getGrcRulePermaLink(id, { open: ruleDetails.key, rule_key: ruleDetails.key }) : getRuleUrl(ruleDetails.key, this.props.organization)}>
                 <LinkIcon />
               </Link>
             )}
@@ -270,3 +274,9 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
     );
   }
 }
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default withRouter(connect(mapStateToProps)(RuleDetailsMeta));
