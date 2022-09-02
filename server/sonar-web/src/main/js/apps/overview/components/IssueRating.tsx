@@ -68,11 +68,11 @@ function renderRatingLink(props: IssueRatingProps) {
 }
 
 export function IssueRating(props: IssueRatingProps) {
-  const { type } = props;
+  const { type, grc } = props;
 
   return (
     <>
-      <span className="flex-1 big-spacer-right text-right">{getIssueRatingName(type)}</span>
+      <span className="flex-1 big-spacer-right text-right">{getIssueRatingName(type, grc)}</span>
       {renderRatingLink(props)}
     </>
   );
