@@ -127,8 +127,9 @@ export function getIssuesUrl(query: Query, organization?: string): Location {
 /**
  * Generate URL for a component's issues page
  */
-export function getComponentIssuesUrl(componentKey: string, query?: Query): Location {
-  return { pathname: '/project/issues', query: { ...(query || {}), id: componentKey } };
+export function getComponentIssuesUrl(componentKey: string, query?: Query, grc?:boolean): Location {
+  const path = grc? '/grc/violations':'/project/issues'
+  return { pathname: path, query: { ...(query || {}), id: componentKey } };
 }
 
 /**

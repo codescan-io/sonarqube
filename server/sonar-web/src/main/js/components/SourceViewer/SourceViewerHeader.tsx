@@ -72,7 +72,7 @@ export default class SourceViewerHeader extends React.PureComponent<Props, State
   };
 
   renderIssueMeasures = () => {
-    const { branchLike, componentMeasures, sourceViewerFile } = this.props;
+    const { branchLike, componentMeasures, sourceViewerFile, grc } = this.props;
     const issueTypes = this.props.grc? GRC_ISSUE_TYPES : ISSUE_TYPES
     return (
       componentMeasures &&
@@ -98,7 +98,7 @@ export default class SourceViewerHeader extends React.PureComponent<Props, State
                   {translate('issue.type', labelType)}
                 </span>
                 <span className="source-viewer-header-measure-value">
-                  <Link to={getComponentIssuesUrl(sourceViewerFile.project, params)}>
+                  <Link to={getComponentIssuesUrl(sourceViewerFile.project, params, grc)}>
                     {formatMeasure((measure && measure.value) || 0, 'INT')}
                   </Link>
                 </span>
@@ -213,11 +213,11 @@ export default class SourceViewerHeader extends React.PureComponent<Props, State
           className="source-viewer-header-actions flex-0"
           overlay={
             <ul className="menu">
-              <li>
+              {grc?(<></>):(<li>
                 <a className="js-measures" href="#" onClick={this.handleShowMeasuresClick}>
                   {translate('component_viewer.show_details')}
                 </a>
-              </li>
+              </li>)}
               <li>
                 <Link
                   className="js-new-window"
@@ -227,7 +227,7 @@ export default class SourceViewerHeader extends React.PureComponent<Props, State
                   {translate('component_viewer.new_window')}
                 </Link>
               </li>
-              {!workspace && (
+              {!workspace && !grc && (
                 <li>
                   <a className="js-workspace" href="#" onClick={this.openInWorkspace}>
                     {translate('component_viewer.open_in_workspace')}
