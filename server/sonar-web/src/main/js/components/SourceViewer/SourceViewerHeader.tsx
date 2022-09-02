@@ -72,7 +72,7 @@ export default class SourceViewerHeader extends React.PureComponent<Props, State
   };
 
   renderIssueMeasures = () => {
-    const { branchLike, componentMeasures, sourceViewerFile } = this.props;
+    const { branchLike, componentMeasures, sourceViewerFile, grc } = this.props;
     const issueTypes = this.props.grc? GRC_ISSUE_TYPES : ISSUE_TYPES
     return (
       componentMeasures &&
@@ -98,7 +98,7 @@ export default class SourceViewerHeader extends React.PureComponent<Props, State
                   {translate('issue.type', labelType)}
                 </span>
                 <span className="source-viewer-header-measure-value">
-                  <Link to={getComponentIssuesUrl(sourceViewerFile.project, params)}>
+                  <Link to={getComponentIssuesUrl(sourceViewerFile.project, params, grc)}>
                     {formatMeasure((measure && measure.value) || 0, 'INT')}
                   </Link>
                 </span>
