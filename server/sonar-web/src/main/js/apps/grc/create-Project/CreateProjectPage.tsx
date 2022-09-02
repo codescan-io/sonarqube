@@ -67,7 +67,6 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
 
   componentDidMount() {
     this.mounted = true;
-    document.body.classList.add('white-page');
     searchProjects({filter: 'tags=grc'}).then(({components}) => {
       if (components.length) {
         this.setState({hasProjects: components});
