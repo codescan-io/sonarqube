@@ -50,6 +50,7 @@ import "../styles.css";
 import QualifierIcon from 'sonar-ui-common/components/icons/QualifierIcon';
 import GenericAvatar from 'sonar-ui-common/components/ui/GenericAvatar';
 import "../grc-dashboard.css";
+import { getOrganization } from '../../../api/organizations';
 
 interface Props {
   children: React.ReactElement;
@@ -70,6 +71,7 @@ interface State {
   tasksInProgress?: Task[];
   warnings: TaskWarning[];
   comparisonBranchesEnabled: boolean;
+  organization: T.Organization;
 }
 
 const FETCH_STATUS_WAIT_TIME = 3000;
@@ -154,7 +156,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
       getComponentData({ component: key, branch, pullRequest })
     ]).then(([nav, { component }]) => {
         const componentWithQualifier = this.addQualifier({ ...nav, ...component });
-
+        this.getOrganizationData(component);
         this.props.fetchOrganization(component.organization);
 
         this.fetchProjectProperties(component);
@@ -296,6 +298,12 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
     }
   };
 
+  getOrganizationData =(component: T.Component) => {
+    getOrganization(component.organization).then((organization: T.Organization) => {
+      this.setState({organization});
+    }).catch(()=> {});
+  };
+
   getCurrentBranchLike = (branchLikes: BranchLike[]) => {
     const { query } = this.props.location;
     return query.pullRequest
@@ -378,7 +386,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
 
   render() {
     const { component, loading } = this.state;
-    const organization:string = component ? component.organization : "Default";
+    const organizationKey:string = component ? component.organization : "Default";
     const showGRCNav:boolean = this.props.location.pathname !== "/grc/create" && this.props.location.pathname !== "/grc";
 
     if (!loading && !component) {
@@ -388,7 +396,7 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
     if (component?.needIssueSync) {
       return <PageUnavailableDueToIndexation component={component} />;
     }
-    const { branchLike, branchLikes, currentTask, isPending, tasksInProgress, comparisonBranchesEnabled } = this.state;
+    const { branchLike, branchLikes, currentTask, isPending, tasksInProgress, comparisonBranchesEnabled, organization } = this.state;
     const isInProgress = tasksInProgress && tasksInProgress.length > 0;
     const projectName = "Project Name :: "+component?.name;
     return (
@@ -396,10 +404,10 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
         {showGRCNav ? (
           <div className="grc-nav-cntr">
             <div className="grc-nav">
-              <GenericAvatar name={organization} size={30} />
+              <GenericAvatar name={organizationKey} size={30} />
               <span className="grc-nav-details">
                 <span className="org-name" title="Organization Name">
-                  {organization}
+                  {organizationKey}
                 </span>
                 <span className="nav-seperator">/</span>
                 <span className="qualifier-icon">
@@ -420,7 +428,6 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
               <i className="spinner" />
             </div>
           ) : (
-            <>
               <ComponentContext.Provider value={{ branchLike, component }}>
                 {React.cloneElement(this.props.children, {
                   branchLike,
@@ -429,11 +436,11 @@ export class GRCNewPage extends React.PureComponent<Props, State> {
                   comparisonBranchesEnabled,
                   isInProgress,
                   isPending,
+                  organization,
                   onBranchesChange: this.handleBranchesChange,
                   onComponentChange: this.handleComponentChange
                 })}
               </ComponentContext.Provider>
-            </>
           )}
         </div>
       </>
