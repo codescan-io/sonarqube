@@ -54,6 +54,7 @@ const CreateProject = (props: Props & WithRouterProps) => {
             setProjectKey(state['projectKey']);
           }
           setOpenAuthorize(true);
+          setShowWaiting(true);
         }
         return () => { // This code runs when component is unmounted
           getStore().dispatch(setGrcUi(false));
@@ -84,12 +85,12 @@ const CreateProject = (props: Props & WithRouterProps) => {
       findQueues.then( queues => {
         setStatus(queues[0].status);
           if(queues[0].status === 'done') {
-            setShowWaiting(false);
+
             props.router.replace('/grc/dashboard?id='+projectKey);
             return;
           }
           if(queues[0].status === 'failed') {
-            setShowWaiting(false);
+
             addGlobalErrorMessage('Analysis failed. Try again later.');
             props.router.replace('/grc/dashboard');
             return;
@@ -103,7 +104,6 @@ const CreateProject = (props: Props & WithRouterProps) => {
 
     const onRefresh = () => {
       setOpenAuthorize(false);
-      setShowWaiting(true);
       const findQueues = findCiQueues({organizationId: organizationKey});
       //const billing = getBillingCheck(organizationKey);
       Promise.all([findQueues]).then(
