@@ -25,7 +25,6 @@ import { Alert } from 'sonar-ui-common/components/ui/Alert';
 import { translate } from 'sonar-ui-common/helpers/l10n';
 import { associateProject } from '../../../api/quality-profiles';
 import { createProject, searchProjects, setProjectTags } from '../../../api/components';
-import VisibilitySelector from '../../../components/common/VisibilitySelector';
 import { getGrcDashboardUrl } from '../../../helpers/urls';
 import AddProjectForm from '../AddProject/AddProjectForm';
 import './CreateProject.css';
@@ -42,7 +41,6 @@ interface State {
   key: string;
   loading: boolean;
   name: string;
-  visibility?: T.Visibility;
   // add index declaration to be able to do `this.setState({ [name]: value });`
   [x: string]: any;
   openRunAnalysis: boolean;
@@ -59,7 +57,6 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
       key: '',
       loading: false,
       name: '',
-      visibility: props.organization?.projectVisibility,
       openRunAnalysis: false,
       hasProjects: []
     };
@@ -92,10 +89,6 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
     this.setState({ [name]: value });
   };
 
-  handleVisibilityChange = (visibility: T.Visibility) => {
-    this.setState({ visibility });
-  };
-
   handleFormSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -103,7 +96,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
       name: this.state.name,
       organization: this.props.organization && this.props.organization.key,
       project: this.state.key,
-      visibility: this.state.visibility
+      visibility: 'private'
     };
 
     this.setState({ loading: true });
@@ -211,15 +204,6 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
                   value={this.state.key}
                 />
               </div>
-              <div className="modal-field">
-                <label>{translate('visibility')}</label>
-                <VisibilitySelector
-                  canTurnToPrivate={organization?.canUpdateProjectsVisibilityToPrivate}
-                  className="little-spacer-top"
-                  onChange={this.handleVisibilityChange}
-                  visibility={this.state.visibility}
-                />
-              </div>
             </div>
 
             <footer className="modal-foot create-foot">
@@ -227,7 +211,7 @@ export default class CreateProjectPage extends React.PureComponent<Props & WithR
               <SubmitButton disabled={this.state.loading} id="create-project-submit">
                 {translate('create')}
               </SubmitButton>
-              {this.state.hasProjects.length && <ResetButtonLink id="create-project-cancel" onClick={this.handleClose}>
+              {(this.state.hasProjects.length > 0) && <ResetButtonLink id="create-project-cancel" onClick={this.handleClose}>
                 {translate('cancel')}
               </ResetButtonLink>}
             </footer>
