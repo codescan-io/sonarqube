@@ -85,13 +85,11 @@ const CreateProject = (props: Props & WithRouterProps) => {
       findQueues.then( queues => {
         setStatus(queues[0].status);
           if(queues[0].status === 'done') {
-
             props.router.replace('/grc/dashboard?id='+projectKey);
             return;
           }
           if(queues[0].status === 'failed') {
-
-            addGlobalErrorMessage('Analysis failed. Try again later.');
+            getStore().dispatch(addGlobalErrorMessage('Analysis failed. Try again later.'));
             props.router.replace('/grc/dashboard');
             return;
           }
