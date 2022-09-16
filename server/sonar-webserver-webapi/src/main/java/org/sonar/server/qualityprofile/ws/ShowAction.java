@@ -74,22 +74,22 @@ public class ShowAction implements QProfileWsAction {
   @Override
   public void define(WebService.NewController controller) {
     NewAction show = controller.createAction(ACTION_SHOW)
-      .setDescription("Show a quality profile")
-      .setSince("6.5")
-      .setResponseExample(getClass().getResource("show-example.json"))
-      .setInternal(true)
-      .setHandler(this);
+            .setDescription("Show a quality profile")
+            .setSince("6.5")
+            .setResponseExample(getClass().getResource("show-example.json"))
+            .setInternal(true)
+            .setHandler(this);
 
     show.createParam(PARAM_KEY)
-      .setDescription("Quality profile key")
-      .setExampleValue(UUID_EXAMPLE_01)
-      .setRequired(true);
+            .setDescription("Quality profile key")
+            .setExampleValue(UUID_EXAMPLE_01)
+            .setRequired(true);
 
     show.createParam(PARAM_COMPARE_TO_SONAR_WAY)
-      .setDescription("Add the number of missing rules from the related Sonar way profile in the response")
-      .setInternal(true)
-      .setDefaultValue("false")
-      .setBooleanPossibleValues();
+            .setDescription("Add the number of missing rules from the related Sonar way profile in the response")
+            .setInternal(true)
+            .setDefaultValue("false")
+            .setBooleanPossibleValues();
   }
 
   @Override
@@ -129,42 +129,46 @@ public class ShowAction implements QProfileWsAction {
       return null;
     }
     QProfileDto sonarWay = Stream.of(SONAR_WAY, SONARQUBE_WAY)
-      .map(name -> dbClient.qualityProfileDao().selectByNameAndLanguage(dbSession, organization, name, profile.getLanguage()))
-      .filter(Objects::nonNull)
-      .filter(QProfileDto::isBuiltIn)
-      .findFirst()
-      .orElse(null);
+            .map(name -> dbClient.qualityProfileDao().selectByNameAndLanguage(dbSession, organization, name, profile.getLanguage()))
+            .filter(Objects::nonNull)
+            .filter(QProfileDto::isBuiltIn)
+            .findFirst()
+            .orElse(null);
 
     if (sonarWay == null) {
       return null;
     }
 
+    OrganizationDto organizationDto = new OrganizationDto();
+    organizationDto.setUuid(profile.getOrganizationUuid());
+    organizationDto.setKey(profile.getKee());
+
     long missingRuleCount = ruleIndex.search(
-      new RuleQuery().setQProfile(profile).setActivation(false).setCompareToQProfile(sonarWay),
-      new SearchOptions().setLimit(1))
-      .getTotal();
+                    new RuleQuery().setQProfile(profile).setActivation(false).setCompareToQProfile(sonarWay).setOrganization(organizationDto),
+                    new SearchOptions().setLimit(1))
+            .getTotal();
 
     return CompareToSonarWay.newBuilder()
-      .setProfile(sonarWay.getKee())
-      .setProfileName(sonarWay.getName())
-      .setMissingRuleCount(missingRuleCount)
-      .build();
+            .setProfile(sonarWay.getKee())
+            .setProfileName(sonarWay.getName())
+            .setMissingRuleCount(missingRuleCount)
+            .build();
   }
 
   private static ShowResponse buildResponse(QProfileDto profile, boolean isDefault, Language language, long activeRules, long deprecatedActiveRules, long projects,
                                             @Nullable CompareToSonarWay compareToSonarWay) {
     ShowResponse.Builder showResponseBuilder = Qualityprofiles.ShowResponse.newBuilder();
     QualityProfile.Builder profileBuilder = QualityProfile.newBuilder()
-      .setKey(profile.getKee())
-      .setName(profile.getName())
-      .setLanguage(profile.getLanguage())
-      .setLanguageName(language.getName())
-      .setIsBuiltIn(profile.isBuiltIn())
-      .setIsDefault(isDefault)
-      .setIsInherited(profile.getParentKee() != null)
-      .setActiveRuleCount(activeRules)
-      .setActiveDeprecatedRuleCount(deprecatedActiveRules)
-      .setProjectCount(projects);
+            .setKey(profile.getKee())
+            .setName(profile.getName())
+            .setLanguage(profile.getLanguage())
+            .setLanguageName(language.getName())
+            .setIsBuiltIn(profile.isBuiltIn())
+            .setIsDefault(isDefault)
+            .setIsInherited(profile.getParentKee() != null)
+            .setActiveRuleCount(activeRules)
+            .setActiveDeprecatedRuleCount(deprecatedActiveRules)
+            .setProjectCount(projects);
     ofNullable(profile.getRulesUpdatedAt()).ifPresent(profileBuilder::setRulesUpdatedAt);
     ofNullable(profile.getLastUsed()).ifPresent(last -> profileBuilder.setLastUsed(formatDateTime(last)));
     ofNullable(profile.getUserUpdatedAt()).ifPresent(userUpdatedAt -> profileBuilder.setUserUpdatedAt(formatDateTime(userUpdatedAt)));
