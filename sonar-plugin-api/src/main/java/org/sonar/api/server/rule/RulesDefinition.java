@@ -498,6 +498,40 @@ public interface RulesDefinition {
     boolean isExternal();
   }
 
+  enum CweVersion {
+    Y2020("2020"), Y2021("2021"), Y2022("2022");
+
+    private final String label;
+
+    CweVersion(String label) {
+      this.label = label;
+    }
+
+    public String label() {
+      return label;
+    }
+  }
+
+  enum OwaspTop10Version {
+    Y2017("2017", "owaspTop10"), Y2021("2021", "owaspTop10-2021");
+
+    private final String label;
+    private final String prefix;
+
+    OwaspTop10Version(String label, String prefix) {
+      this.label = label;
+      this.prefix = prefix;
+    }
+
+    public String label() {
+      return label;
+    }
+
+    public String prefix() {
+      return prefix;
+    }
+  }
+
   enum OwaspTop10 {
     A1, A2, A3, A4, A5, A6, A7, A8, A9, A10
   }

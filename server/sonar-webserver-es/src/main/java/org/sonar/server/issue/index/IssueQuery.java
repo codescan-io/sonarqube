@@ -80,6 +80,7 @@ public class IssueQuery {
   private final Collection<String> tags;
   private final Collection<String> types;
   private final Collection<String> owaspTop10;
+  private final Collection<String> owaspTop10For2021;
   private final Collection<String> sansTop25;
   private final Collection<String> cwe;
   private final Collection<String> sonarsourceSecurity;
@@ -117,6 +118,7 @@ public class IssueQuery {
     this.tags = defaultCollection(builder.tags);
     this.types = defaultCollection(builder.types);
     this.owaspTop10 = defaultCollection(builder.owaspTop10);
+    this.owaspTop10For2021 = defaultCollection(builder.owaspTop10For2021);
     this.sansTop25 = defaultCollection(builder.sansTop25);
     this.cwe = defaultCollection(builder.cwe);
     this.sonarsourceSecurity = defaultCollection(builder.sonarsourceSecurity);
@@ -209,6 +211,10 @@ public class IssueQuery {
 
   public Collection<String> owaspTop10() {
     return owaspTop10;
+  }
+
+  public Collection<String> owaspTop10For2021() {
+    return owaspTop10For2021;
   }
 
   public Collection<String> sansTop25() {
@@ -314,6 +320,7 @@ public class IssueQuery {
     private Collection<String> tags;
     private Collection<String> types;
     private Collection<String> owaspTop10;
+    private Collection<String> owaspTop10For2021;
     private Collection<String> sansTop25;
     private Collection<String> cwe;
     private Collection<String> sonarsourceSecurity;
@@ -427,6 +434,11 @@ public class IssueQuery {
 
     public Builder owaspTop10(@Nullable Collection<String> o) {
       this.owaspTop10 = o;
+      return this;
+    }
+
+    public Builder owaspTop10For2021(@Nullable Collection<String> o) {
+      this.owaspTop10For2021 = o;
       return this;
     }
 
