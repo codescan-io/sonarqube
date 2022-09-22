@@ -19,7 +19,6 @@
  */
 import * as React from 'react';
 import { translate } from 'sonar-ui-common/helpers/l10n';
-import { getBaseUrl } from 'sonar-ui-common/helpers/urls';
 import GlobalMessagesContainer from '../../../app/components/GlobalMessagesContainer';
 import './Login.css';
 import LoginForm from './LoginForm';
@@ -34,25 +33,15 @@ interface Props {
 export default function Login({ identityProviders, onSubmit, returnTo }: Props) {
   return (
     <div className="login-page" id="login_form">
-      <img
-        height={40}
-        src={`${getBaseUrl()}/images/codescan-shield.svg`}
-        className="logo"
-      />
+      <h1 className="login-title text-center">{translate('login.login_to_sonarqube')}</h1>
 
-      <div className="login-wrapper">
-        <h1 className="login-title text-center">
-          Log into<br/>CodeScan Shield
-        </h1>
+      <GlobalMessagesContainer />
 
-        <GlobalMessagesContainer />
+      {identityProviders.length > 0 && (
+        <OAuthProviders identityProviders={identityProviders} returnTo={returnTo} />
+      )}
 
-        {identityProviders.length > 0 && (
-          <OAuthProviders identityProviders={identityProviders} returnTo={returnTo} />
-        )}
-
-        <LoginForm collapsed={identityProviders.length > 0} onSubmit={onSubmit} returnTo={returnTo} />
-      </div>
+      <LoginForm collapsed={identityProviders.length > 0} onSubmit={onSubmit} returnTo={returnTo} />
     </div>
   );
 }
