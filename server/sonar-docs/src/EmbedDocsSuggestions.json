@@ -35,7 +35,7 @@
   ],
   "global_permissions": [
     {
-      "link": "https://knowledgebase.autorabit.com/codescan/docs/add-members-to-a-codescan-cloud-organisation",
+      "link": "https://knowledgebase.autorabit.com/codescan/docs/add-users-to-a-codescan-cloud-organisation",
       "text": "Manage a Team",
       "scope": "sonarcloud"
     }
@@ -44,14 +44,14 @@
   "marketplace": [],
   "organization_members": [
     {
-      "link": "https://knowledgebase.autorabit.com/codescan/docs/add-members-to-a-codescan-cloud-organisation",
+      "link": "https://knowledgebase.autorabit.com/codescan/docs/add-users-to-a-codescan-cloud-organisation",
       "text": "Manage a Team",
       "scope": "sonarcloud"
     }
   ],
   "organization_projects": [
     {
-      "link": "https://knowledgebase.autorabit.com/codescan/docs/add-members-to-a-codescan-cloud-organisation",
+      "link": "https://knowledgebase.autorabit.com/codescan/docs/add-users-to-a-codescan-cloud-organisation",
       "text": "Manage a Team",
       "scope": "sonarcloud"
     }
@@ -105,14 +105,14 @@
   ],
   "projects_management": [
     {
-      "link": "https://knowledgebase.autorabit.com/codescan/docs/getting-started-with-codescan-cloud",
+      "link": "https://knowledgebase.autorabit.com/codescan/docs/codescan-getting-started",
       "text": "Get Started with CodeScan Cloud",
       "scope": "sonarcloud"
     }
   ],
   "projects": [
     {
-      "link": "https://knowledgebase.autorabit.com/codescan/docs/getting-started-with-codescan-cloud",
+      "link": "https://knowledgebase.autorabit.com/codescan/docs/codescan-getting-started",
       "text": "Get Started with CodeScan Cloud",
       "scope": "sonarcloud"
     }
@@ -143,7 +143,7 @@
   "system_info": [],
   "user_groups": [
     {
-      "link": "https://knowledgebase.autorabit.com/codescan/docs/add-members-to-a-codescan-cloud-organisation",
+      "link": "https://knowledgebase.autorabit.com/codescan/docs/add-users-to-a-codescan-cloud-organisation",
       "text": "Manage a Team",
       "scope": "sonarcloud"
     }
