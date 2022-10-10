@@ -55,7 +55,7 @@ export default function GlobalFooterSonarCloud() {
         	<a rel="noopener noreferrer" target="_blank" href="https://www.codescan.io/contact/">{translate('footer.help')}</a>
         </li>
         <li className="page-footer-menu-item">
-        	<a rel="noopener noreferrer" target="_blank" href="https://knowledgebase.autorabit.com/codescan/docs/getting-started-with-codescan-cloud">{translate('footer.about')}</a>
+        	<a rel="noopener noreferrer" target="_blank" href="https://knowledgebase.autorabit.com/codescan/docs/codescan-getting-started">{translate('footer.about')}</a>
         </li>
       </ul>
     </div>

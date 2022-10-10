@@ -221,7 +221,7 @@ export class EmbedDocsPopup extends React.PureComponent<Props, State> {
         <ul className="menu abs-width-240">
           <SuggestionsContext.Consumer>{this.renderSuggestions}</SuggestionsContext.Consumer>
           <li>
-            <Link onClick={this.props.onClose} target="_blank" to="https://knowledgebase.autorabit.com/codescan/docs">
+            <Link onClick={this.props.onClose} target="_blank" to="https://knowledgebase.autorabit.com/codescan">
               {translate('embed_docs.documentation')}
             </Link>
           </li>
