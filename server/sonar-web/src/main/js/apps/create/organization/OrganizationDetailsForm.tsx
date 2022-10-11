@@ -157,7 +157,7 @@ export default class OrganizationDetailsForm extends React.PureComponent<Props, 
               <input
                 className="input-super-large text-middle"
                 id="organization-display-name"
-                maxLength={255}
+                maxLength={80}
                 onChange={this.handleNameUpdate}
                 type="text"
                 value={this.state.name}
