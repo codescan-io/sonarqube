@@ -124,7 +124,7 @@ export default class OrganizationKeyInput extends React.PureComponent<Props, Sta
               'is-valid': isValid
             })}
             id="organization-key"
-            maxLength={255}
+            maxLength={50}
             onChange={this.handleChange}
             type="text"
             value={this.state.value}

@@ -145,7 +145,7 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
                 className="input-super-large"
                 disabled={this.state.loading}
                 id="organization-name"
-                maxLength={255}
+                maxLength={80}
                 name="name"
                 onChange={e => this.setState({ name: e.target.value })}
                 required={true}
