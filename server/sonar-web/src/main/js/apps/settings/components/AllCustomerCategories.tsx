@@ -17,9 +17,14 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-export const ALM_INTEGRATION = 'almintegration';
-export const ANALYSIS_SCOPE_CATEGORY = 'exclusions';
-export const LANGUAGES_CATEGORY = 'languages';
-export const NEW_CODE_PERIOD_CATEGORY = 'new_code_period';
-export const PULL_REQUEST_DECORATION_BINDING_CATEGORY = 'pull_request_decoration_binding';
-export const CUSTOMER_CATEGORY = 'customer';
+import { CUSTOMER_CATEGORY, LANGUAGES_CATEGORY, NEW_CODE_PERIOD_CATEGORY } from "./AdditionalCategoryKeys";
+
+const ALL_CUSTOMER_CATEGORIES: T.Dict<String> = {
+  'codescan': CUSTOMER_CATEGORY,
+  'housekeeping': CUSTOMER_CATEGORY,
+  'exclusions': CUSTOMER_CATEGORY,
+  'languages': LANGUAGES_CATEGORY,
+  'new_code_period': NEW_CODE_PERIOD_CATEGORY
+};
+
+export default ALL_CUSTOMER_CATEGORIES;

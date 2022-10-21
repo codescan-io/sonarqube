@@ -92,7 +92,7 @@ const RouteWithChildRoutes = Route as React.ComponentClass<
   RouteProps & { childRoutes: RouteConfig }
 >;
 
-function renderRedirects() {
+function renderRedirects(canAdmin?: boolean, canCustomerAdmin?: boolean) {
   return (
     <>
       <Route
@@ -123,7 +123,8 @@ function renderRedirects() {
         }}
       />
 
-      <Redirect from="/admin" to="/admin/settings" />
+      {canAdmin && (<Redirect from="/admin" to="/admin/settings" />)}
+      {!canAdmin && canCustomerAdmin && (<Redirect from="/admin" to="/admin/background_tasks" />)}
       <Redirect from="/background_tasks" to="/admin/background_tasks" />
       <Redirect from="/component/index" to="/component" />
       <Redirect from="/component_issues" to="/project/issues" />
@@ -228,7 +229,7 @@ function renderComponentRoutes() {
   );
 }
 
-function renderAdminRoutes() {
+function renderAdminRoutes(canAdmin?: boolean, canCustomerAdmin?: boolean) {
   return (
     <Route component={lazyLoadComponent(() => import('../components/AdminContainer'))} path="admin">
       <Route
@@ -237,17 +238,33 @@ function renderAdminRoutes() {
           import('../components/extensions/GlobalAdminPageExtension')
         )}
       />
+
+      {canAdmin && (
+        <>
+          <RouteWithChildRoutes path="custom_metrics" childRoutes={customMetricsRoutes} />
+          <RouteWithChildRoutes path="groups" childRoutes={groupsRoutes} />
+          <RouteWithChildRoutes path="permission_templates" childRoutes={permissionTemplatesRoutes} />
+          <RouteWithChildRoutes path="permissions" childRoutes={globalPermissionsRoutes} />
+          <RouteWithChildRoutes path="projects_management" childRoutes={projectsManagementRoutes} />
+          <RouteWithChildRoutes path="system" childRoutes={systemRoutes} />
+          <RouteWithChildRoutes path="marketplace" childRoutes={marketplaceRoutes} />
+          <RouteWithChildRoutes path="users" childRoutes={usersRoutes} />
+          <RouteWithChildRoutes path="webhooks" childRoutes={webhooksRoutes} />
+        </>
+      )
+      }
+
+      <RouteWithChildRoutes path="settings" childRoutes={settingsRoutes}
+        onEnter={({ location: { query } }, replace) => {
+          if (!canAdmin && canCustomerAdmin && query.category !== 'codescan' && query.category !== 'housekeeping' && query.category !== 'exclusions' &&
+            query.category !== 'languages' && query.category !== 'new_code_period') {
+            replace({
+              pathname: '/admin/settings',
+              query: { category: 'codescan' }
+            });
+          }
+        }} />
       <RouteWithChildRoutes path="background_tasks" childRoutes={backgroundTasksRoutes} />
-      <RouteWithChildRoutes path="custom_metrics" childRoutes={customMetricsRoutes} />
-      <RouteWithChildRoutes path="groups" childRoutes={groupsRoutes} />
-      <RouteWithChildRoutes path="permission_templates" childRoutes={permissionTemplatesRoutes} />
-      <RouteWithChildRoutes path="permissions" childRoutes={globalPermissionsRoutes} />
-      <RouteWithChildRoutes path="projects_management" childRoutes={projectsManagementRoutes} />
-      <RouteWithChildRoutes path="settings" childRoutes={settingsRoutes} />
-      <RouteWithChildRoutes path="system" childRoutes={systemRoutes} />
-      <RouteWithChildRoutes path="marketplace" childRoutes={marketplaceRoutes} />
-      <RouteWithChildRoutes path="users" childRoutes={usersRoutes} />
-      <RouteWithChildRoutes path="webhooks" childRoutes={webhooksRoutes} />
     </Route>
   );
 }
@@ -261,14 +278,15 @@ export default function startReactApp(
 
   const history = getHistory();
   const store = getStore(currentUser, appState);
-
+  const canAdmin = store.getState().appState.canAdmin;
+  const canCustomerAdmin = store.getState().appState.canCustomerAdmin;
   render(
     <HelmetProvider>
       <Provider store={store}>
         <IntlProvider defaultLocale={lang} locale={lang}>
           <ThemeProvider theme={theme}>
             <Router history={history} onUpdate={handleUpdate}>
-              {renderRedirects()}
+              {renderRedirects(canAdmin, canCustomerAdmin)}
 
               <Route
                 path="markdown/help"
@@ -332,7 +350,7 @@ export default function startReactApp(
 
                     {renderComponentRoutes()}
 
-                    {renderAdminRoutes()}
+                    {renderAdminRoutes(canAdmin, canCustomerAdmin)}
                   </Route>
                   <Route
                     path="not_found"
