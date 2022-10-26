@@ -241,14 +241,9 @@ public class UserDto {
   }
 
   /**
-   * Setters is not accessible as MyBatis doesn't need setter to set the field and dedicated SQL requests must be used
-   * to update the root flag of a user:
-   * <ul>
-   *   <li>a user can not be created root</li>
-   *   <li>the generic update method of a user can not change its root flag</li>
-   * </ul>
+   * Setters accessible to support customer admin feature
    */
-  protected void setRoot(boolean root) {
+  public void setRoot(boolean root) {
     this.root = root;
   }
 

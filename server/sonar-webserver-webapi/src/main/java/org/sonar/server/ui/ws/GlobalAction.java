@@ -38,6 +38,7 @@ import org.sonar.core.platform.PlatformEditionProvider;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.dialect.H2;
+import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.server.almsettings.MultipleAlmFeatureProvider;
 import org.sonar.server.branch.BranchFeatureProxy;
 import org.sonar.server.issue.index.IssueIndexSyncProgressChecker;
@@ -159,6 +160,7 @@ public class GlobalAction implements NavigationWsAction, Startable {
 
   private void writeActions(JsonWriter json) {
     json.prop("canAdmin", userSession.isSystemAdministrator());
+    json.prop("canCustomerAdmin", userSession.hasPermission(OrganizationPermission.ADMINISTER_CUSTOMER, defaultOrganizationProvider.get().getUuid()));
   }
 
   private void writePages(JsonWriter json) {

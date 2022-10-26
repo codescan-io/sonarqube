@@ -25,6 +25,7 @@ import { IndexLink } from 'react-router';
 import { getAppState, getSettingsAppAllCategories, Store } from '../../../store/rootReducer';
 import { getCategoryName } from '../utils';
 import { ADDITIONAL_CATEGORIES } from './AdditionalCategories';
+import ALL_CUSTOMER_CATEGORIES from './AllCustomerCategories';
 import CATEGORY_OVERRIDES from './CategoryOverrides';
 
 interface Category {
@@ -38,6 +39,7 @@ export interface CategoriesListProps {
   component?: T.Component;
   defaultCategory: string;
   selectedCategory: string;
+  appState?: Pick<T.AppState, 'canAdmin'>;
 }
 
 export class CategoriesList extends React.PureComponent<CategoriesListProps> {
@@ -61,9 +63,10 @@ export class CategoriesList extends React.PureComponent<CategoriesListProps> {
   }
 
   render() {
-    const { branchesEnabled } = this.props;
-
-    const categoriesWithName = this.props.categories
+    const { branchesEnabled, appState } = this.props;
+    let categoriesWithName;
+    if (appState?.canAdmin) {
+      categoriesWithName = this.props.categories
       .filter(key => !CATEGORY_OVERRIDES[key.toLowerCase()])
       .map(key => ({
         key,
@@ -80,6 +83,18 @@ export class CategoriesList extends React.PureComponent<CategoriesListProps> {
           )
           .filter(c => branchesEnabled || !c.requiresBranchesEnabled)
       );
+    } else {
+      categoriesWithName = this.props.categories
+        .filter(key => ALL_CUSTOMER_CATEGORIES[key.toLowerCase()])
+        .map(key => ({
+          key,
+          name: getCategoryName(key)
+        }))
+        .concat(
+          ADDITIONAL_CATEGORIES.filter(c => c.displayTab)
+            .filter(c => ALL_CUSTOMER_CATEGORIES[c.key.toLowerCase()])
+        );
+    }
     const sortedCategories = sortBy(categoriesWithName, category => category.name.toLowerCase());
     return (
       <ul className="side-tabs-menu">
@@ -93,7 +108,8 @@ export class CategoriesList extends React.PureComponent<CategoriesListProps> {
 
 const mapStateToProps = (state: Store) => ({
   categories: getSettingsAppAllCategories(state),
-  branchesEnabled: getAppState(state).branchesEnabled
+  branchesEnabled: getAppState(state).branchesEnabled,
+  appState: getAppState(state),
 });
 
 export default connect(mapStateToProps)(CategoriesList);

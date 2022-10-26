@@ -39,6 +39,8 @@ interface Props {
   organizationsEnabled?: boolean;
   pendingPlugins: PendingPluginResult;
   systemStatus: T.SysStatus;
+  canAdmin?: boolean;
+  canCustomerAdmin?: boolean;
 }
 
 export default class SettingsNav extends React.PureComponent<Props> {
@@ -87,7 +89,7 @@ export default class SettingsNav extends React.PureComponent<Props> {
   };
 
   renderConfigurationTab() {
-    const { organizationsEnabled } = this.props;
+    const { organizationsEnabled, canAdmin } = this.props;
     const extensionsWithoutSupport = this.props.extensions.filter(
       extension => extension.key !== 'license/support'
     );
@@ -96,26 +98,31 @@ export default class SettingsNav extends React.PureComponent<Props> {
         overlay={
           <ul className="menu">
             <li>
-              <IndexLink activeClassName="active" to="/admin/settings">
+              <IndexLink activeClassName="active" to={canAdmin ? "/admin/settings" : "/admin/settings?category=codescan"}>
                 {translate('settings.page')}
               </IndexLink>
             </li>
-            <li>
-              <IndexLink activeClassName="active" to="/admin/settings/encryption">
-                {translate('property.category.security.encryption')}
-              </IndexLink>
-            </li>
-            <li>
-              <IndexLink activeClassName="active" to="/admin/custom_metrics">
-                {translate('custom_metrics.page')}
-              </IndexLink>
-            </li>
-            {!organizationsEnabled && (
-              <li>
-                <IndexLink activeClassName="active" to="/admin/webhooks">
-                  {translate('webhooks.page')}
-                </IndexLink>
-              </li>
+            {canAdmin && (
+              <>
+                <li>
+                  <IndexLink activeClassName="active" to="/admin/settings/encryption">
+                    {translate('property.category.security.encryption')}
+                  </IndexLink>
+                </li>
+                <li>
+                  <IndexLink activeClassName="active" to="/admin/custom_metrics">
+                    {translate('custom_metrics.page')}
+                  </IndexLink>
+                </li>
+
+                {!organizationsEnabled && (
+                  <li>
+                    <IndexLink activeClassName="active" to="/admin/webhooks">
+                      {translate('webhooks.page')}
+                    </IndexLink>
+                  </li>
+                )}
+              </>
             )}
             {extensionsWithoutSupport.map(this.renderExtension)}
           </ul>
@@ -232,7 +239,7 @@ export default class SettingsNav extends React.PureComponent<Props> {
   }
 
   render() {
-    const { extensions, pendingPlugins } = this.props;
+    const { extensions, pendingPlugins, canAdmin, canCustomerAdmin } = this.props;
     const hasSupportExtension = extensions.find(extension => extension.key === 'license/support');
     const totalPendingPlugins =
       pendingPlugins.installing.length +
@@ -263,23 +270,27 @@ export default class SettingsNav extends React.PureComponent<Props> {
         </header>
 
         <NavBarTabs>
-          {this.renderConfigurationTab()}
-          {this.renderSecurityTab()}
-          {this.renderProjectsTab()}
+          {(canAdmin || canCustomerAdmin) && this.renderConfigurationTab()}
+          {canAdmin && this.renderSecurityTab()}
+          {(canAdmin || canCustomerAdmin) && this.renderProjectsTab()}
 
-          <li>
-            <IndexLink activeClassName="active" to="/admin/system">
-              {translate('sidebar.system')}
-            </IndexLink>
-          </li>
+          {canAdmin &&
+            (<li>
+              <IndexLink activeClassName="active" to="/admin/system">
+                {translate('sidebar.system')}
+              </IndexLink>
+            </li>)}
 
-          <li>
-            <IndexLink activeClassName="active" to="/admin/marketplace">
-              {translate('marketplace.page')}
-            </IndexLink>
-          </li>
+          {canAdmin &&
+            (<li>
+              <IndexLink activeClassName="active" to="/admin/marketplace">
+                {translate('marketplace.page')}
+              </IndexLink>
+            </li>)
+          }
 
-          {hasSupportExtension && (
+
+          {canAdmin && hasSupportExtension && (
             <li>
               <IndexLink activeClassName="active" to="/admin/extension/license/support">
                 {translate('support')}

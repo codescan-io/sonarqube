@@ -32,7 +32,7 @@ import AdminContext, { defaultPendingPlugins, defaultSystemStatus } from './Admi
 import SettingsNav from './nav/settings/SettingsNav';
 
 interface Props {
-  appState: Pick<T.AppState, 'adminPages' | 'canAdmin' | 'organizationsEnabled'>;
+  appState: Pick<T.AppState, 'adminPages' | 'canAdmin' | 'organizationsEnabled' | 'canCustomerAdmin'>;
   location: {};
   setAdminPages: (adminPages: T.Extension[]) => void;
 }
@@ -51,9 +51,12 @@ export class AdminContainer extends React.PureComponent<Props, State> {
 
   componentDidMount() {
     this.mounted = true;
-    if (!this.props.appState.canAdmin) {
+    if (!this.props.appState.canAdmin && !this.props.appState.canCustomerAdmin) {
       handleRequiredAuthorization();
-    } else {
+    } else if (this.props.appState.canCustomerAdmin) {
+      this.fetchNavigationSettings();
+    }
+    else {
       this.fetchNavigationSettings();
       this.fetchPendingPlugins();
       this.fetchSystemStatus();
@@ -109,7 +112,7 @@ export class AdminContainer extends React.PureComponent<Props, State> {
   };
 
   render() {
-    const { adminPages, organizationsEnabled } = this.props.appState;
+    const { adminPages, organizationsEnabled, canAdmin, canCustomerAdmin } = this.props.appState;
 
     // Check that the adminPages are loaded
     if (!adminPages) {
@@ -130,6 +133,8 @@ export class AdminContainer extends React.PureComponent<Props, State> {
           organizationsEnabled={organizationsEnabled}
           pendingPlugins={pendingPlugins}
           systemStatus={systemStatus}
+          canAdmin={canAdmin}
+          canCustomerAdmin={canCustomerAdmin}
         />
         <AdminContext.Provider
           value={{

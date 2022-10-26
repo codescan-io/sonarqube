@@ -96,6 +96,7 @@ declare namespace T {
     authorizationError?: boolean;
     branchesEnabled?: boolean;
     canAdmin?: boolean;
+    canCustomerAdmin?: boolean;
     defaultOrganization: string;
     edition: 'community' | 'developer' | 'enterprise' | 'datacenter' | undefined;
     globalPages?: Extension[];
