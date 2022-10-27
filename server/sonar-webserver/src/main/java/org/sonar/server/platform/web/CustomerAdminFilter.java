@@ -46,7 +46,7 @@ import java.util.Set;
 
 public class CustomerAdminFilter implements Filter {
 
-    private static final Set<String> includeUrls = new HashSet<>(Arrays.asList("/api/system/info",
+    private static final Set<String> includeUrls = new HashSet<>(Arrays.asList("/api/system/info", "/api/ce/task",
             "/api/ce/task_types", "/api/ce/worker_count", "/api/ce/activity", "/api/organizations/search",
             "/api/ce/activity_status", "/api/settings/set", "/api/settings/reset", "/api/new_code_periods/set"));
     private final Platform platform;
