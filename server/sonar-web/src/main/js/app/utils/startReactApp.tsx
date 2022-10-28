@@ -123,8 +123,7 @@ function renderRedirects(canAdmin?: boolean, canCustomerAdmin?: boolean) {
         }}
       />
 
-      {canAdmin && (<Redirect from="/admin" to="/admin/settings" />)}
-      {!canAdmin && canCustomerAdmin && (<Redirect from="/admin" to="/admin/background_tasks" />)}
+      <Redirect from="/admin" to="/admin/settings" />
       <Redirect from="/background_tasks" to="/admin/background_tasks" />
       <Redirect from="/component/index" to="/component" />
       <Redirect from="/component_issues" to="/project/issues" />
