@@ -58,7 +58,7 @@
   ],
   "organization_space": [
     {
-      "link": "https://knowledgebase.autorabit.com/codescan/docs/organizations",
+      "link": "https://knowledgebase.autorabit.com/codescan/docs/codescan-cloud-organizations",
       "text": "Organizations",
       "scope": "sonarcloud"
     }
