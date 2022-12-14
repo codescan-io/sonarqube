@@ -78,7 +78,7 @@ export function ProjectInformationRenderer(props: ProjectInformationRendererProp
             (component.qualityProfiles && component.qualityProfiles.length > 0)) && (
             <>
               <div className="big-padded bordered-bottom">
-                {component.qualityGate && <MetaQualityGate qualityGate={component.qualityGate} />}
+                {component.qualityGate && <MetaQualityGate qualityGate={component.qualityGate} organizationKey={component.organization} />}
 
                 {component.qualityProfiles && component.qualityProfiles.length > 0 && (
                   <MetaQualityProfiles

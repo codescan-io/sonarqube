@@ -24,9 +24,10 @@ import { getQualityGateUrl } from '../../../../../../helpers/urls';
 
 interface Props {
   qualityGate: { isDefault?: boolean; key: string; name: string };
+  organizationKey: string;
 }
 
-export default function MetaQualityGate({ qualityGate }: Props) {
+export default function MetaQualityGate({ qualityGate,  organizationKey}: Props) {
   return (
     <>
       <h3>{translate('project.info.quality_gate')}</h3>
@@ -36,7 +37,7 @@ export default function MetaQualityGate({ qualityGate }: Props) {
           {qualityGate.isDefault && (
             <span className="note spacer-right">({translate('default')})</span>
           )}
-          <Link to={getQualityGateUrl(qualityGate.key)}>{qualityGate.name}</Link>
+          <Link to={getQualityGateUrl(qualityGate.key, organizationKey)}>{qualityGate.name}</Link>
         </li>
       </ul>
     </>
