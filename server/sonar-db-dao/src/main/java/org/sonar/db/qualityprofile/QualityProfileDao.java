@@ -155,7 +155,7 @@ public class QualityProfileDao implements Dao {
   }
 
   @CheckForNull
-  public String selectDefaultProfileUuid(DbSession dbSession, String language) {
+  public List<String> selectDefaultProfileUuid(DbSession dbSession, String language) {
     return mapper(dbSession).selectDefaultProfileUuid(language);
   }
 

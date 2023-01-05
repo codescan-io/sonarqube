@@ -19,9 +19,11 @@
  */
 import * as React from 'react';
 import { CurrentUser, HomePage, NoticeType } from '../../../types/users';
+import { Organization } from "../../../types/types";
 
 export interface CurrentUserContextInterface {
   currentUser: CurrentUser;
+  userOrganizations: Organization[];
   updateCurrentUserHomepage: (homepage: HomePage) => void;
   updateDismissedNotices: (key: NoticeType, value: boolean) => void;
 }

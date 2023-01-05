@@ -312,9 +312,9 @@ export function getQualityGateUrl(key: string): To {
   };
 }
 
-export function getQualityGatesUrl(): To {
+export function getQualityGatesUrl(organization?: string | null): To {
   return {
-    pathname: '/quality_gates',
+    pathname: (organization ? '/organizations/' + encodeURIComponent(organization) : '') + '/quality_gates',
   };
 }
 
@@ -375,6 +375,10 @@ export function getCodeUrl(
   };
 }
 
+export function getOrganizationUrl(organization: string) {
+  return `/organizations/${organization}`;
+}
+
 export function getHomePageUrl(homepage: HomePage) {
   switch (homepage.type) {
     case 'APPLICATION':
@@ -385,6 +389,8 @@ export function getHomePageUrl(homepage: HomePage) {
       return homepage.branch
         ? getBranchUrl(homepage.component, homepage.branch)
         : getProjectUrl(homepage.component);
+    case 'ORGANIZATION':
+      return getOrganizationUrl(homepage.organization);
     case 'PORTFOLIO':
       return getPortfolioUrl(homepage.component);
     case 'PORTFOLIOS':

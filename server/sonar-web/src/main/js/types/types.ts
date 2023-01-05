@@ -815,3 +815,37 @@ export namespace WebApi {
     since?: string;
   }
 }
+
+export interface CodeScanNotification {
+  message: string;
+  type: 'error' | 'warning' | 'success' | 'info';
+}
+
+export interface OrganizationActions {
+  admin?: boolean;
+  delete?: boolean;
+  provision?: boolean;
+  executeAnalysis?: boolean;
+}
+
+export interface Organization extends OrganizationBase {
+  actions?: OrganizationActions;
+  adminPages?: Extension[];
+  canUpdateProjectsVisibilityToPrivate?: boolean;
+  isDefault?: boolean;
+  pages?: Extension[];
+  projectVisibility?: Visibility;
+  notifications?: CodeScanNotification[];
+}
+
+export interface OrganizationBase {
+  kee: string;
+  name: string;
+  avatar?: string;
+  description?: string;
+  url?: string;
+}
+
+export interface OrganizationMember extends UserActive {
+  groupCount?: number;
+}

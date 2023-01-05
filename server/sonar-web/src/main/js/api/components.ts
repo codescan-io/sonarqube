@@ -83,6 +83,7 @@ export function deletePortfolio(portfolio: string): Promise<void | Response> {
 
 export function createProject(data: {
   name: string;
+  organization: string;
   project: string;
   mainBranch: string;
   visibility?: Visibility;

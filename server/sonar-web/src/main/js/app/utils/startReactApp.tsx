@@ -94,6 +94,8 @@ import SonarLintConnection from '../components/SonarLintConnection';
 import exportModulesAsGlobals from './exportModulesAsGlobals';
 import NavigateWithParams from './NavigateWithParams';
 import NavigateWithSearchAndHash from './NavigateWithSearchAndHash';
+import organizationsRoutes from '../../apps/organizations/routes';
+import { Organization } from "../../types/types";
 
 function renderRedirect({ from, to }: { from: string; to: string }) {
   return <Route path={from} element={<Navigate to={{ pathname: to }} replace={true} />} />;
@@ -235,6 +237,7 @@ function renderAdminRoutes() {
 export default function startReactApp(
   lang: string,
   currentUser?: CurrentUser,
+  userOrganizations?: Organization[],
   appState?: AppState,
   availableFeatures?: Feature[]
 ) {
@@ -246,7 +249,7 @@ export default function startReactApp(
     <HelmetProvider>
       <AppStateContextProvider appState={appState ?? DEFAULT_APP_STATE}>
         <AvailableFeaturesContext.Provider value={availableFeatures ?? DEFAULT_AVAILABLE_FEATURES}>
-          <CurrentUserContextProvider currentUser={currentUser}>
+          <CurrentUserContextProvider currentUser={currentUser} userOrganizations={userOrganizations}>
             <IntlProvider defaultLocale={lang} locale={lang}>
               <GlobalMessagesContainer />
               <BrowserRouter basename={getBaseUrl()}>
@@ -273,6 +276,8 @@ export default function startReactApp(
                         />
 
                         {globalIssuesRoutes()}
+
+                        {organizationsRoutes()}
 
                         {projectsRoutes()}
 

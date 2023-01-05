@@ -19,20 +19,23 @@
  */
 import * as React from 'react';
 import { CurrentUser, HomePage, NoticeType } from '../../../types/users';
+import { Organization } from "../../../types/types";
 import { CurrentUserContext } from './CurrentUserContext';
 
 interface Props {
   currentUser?: CurrentUser;
+  userOrganizations?: Organization[];
 }
 
 interface State {
   currentUser: CurrentUser;
+  userOrganizations: Organization[];
 }
 
 export default class CurrentUserContextProvider extends React.PureComponent<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { currentUser: props.currentUser ?? { isLoggedIn: false, dismissedNotices: {} } };
+    this.state = { currentUser: props.currentUser ?? { isLoggedIn: false, dismissedNotices: {} }, userOrganizations: props.userOrganizations ?? [] };
   }
 
   updateCurrentUserHomepage = (homepage: HomePage) => {
@@ -55,6 +58,7 @@ export default class CurrentUserContextProvider extends React.PureComponent<Prop
       <CurrentUserContext.Provider
         value={{
           currentUser: this.state.currentUser,
+          userOrganizations: this.state.userOrganizations,
           updateCurrentUserHomepage: this.updateCurrentUserHomepage,
           updateDismissedNotices: this.updateDismissedNotices,
         }}
