@@ -22,7 +22,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
 import { OrganizationContextProps } from "../OrganizationContext";
 import { Organization } from "../../../types/types";
-import { getOrganization } from "../../../api/organizations";
+import { getOrganization, getOrganizationNavigation } from "../../../api/organizations";
 import { throwGlobalError } from "../../../helpers/error";
 import { Helmet } from "react-helmet-async";
 import Suggestions from "../../../components/embed-docs-modal/Suggestions";
@@ -42,15 +42,18 @@ const OrganizationApp: React.FC<OrganizationAppProps> = ({ userOrganizations, lo
   const { organizationKey } = useParams();
   const [organization, setOrganization] = useState<Organization>();
 
-  useEffect(() => {
-    if (organizationKey != null) {
-      getOrganization(organizationKey)
-          .then((organization) => {
-            setOrganization(organization);
-          })
-          .catch(throwGlobalError)
-    }
-  }, [organizationKey]);
+    useEffect(() => {
+      if (organizationKey != null) {
+        Promise.all([getOrganization(organizationKey), getOrganizationNavigation(organizationKey)]).then(
+            ([organization, navigation]) => {
+              if (organization) {
+                const organizationWithPermissions = { ...organization, ...navigation };
+                setOrganization(organizationWithPermissions);
+              }
+            }
+        ).catch(throwGlobalError);
+      }
+    }, [organizationKey]);
 
   const renderChildren = (organization: Organization) => {
     const context: OrganizationContextProps = {
