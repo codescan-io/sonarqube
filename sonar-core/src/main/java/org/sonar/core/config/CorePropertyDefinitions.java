@@ -82,7 +82,8 @@ public class CorePropertyDefinitions {
         .build(),
       PropertyDefinition.builder(CoreProperties.SERVER_BASE_URL)
         .name("Server base URL")
-        .description("HTTP(S) URL of this SonarQube server, such as <i>https://yourhost.yourdomain/sonar</i>. This value is used outside SonarQube itself, e.g. for PR decoration, emails, etc.")
+        .description(
+          "HTTP(S) URL of this SonarQube server, such as <i>https://yourhost.yourdomain/sonar</i>. This value is used outside SonarQube itself, e.g. for PR decoration, emails, etc.")
         .category(CoreProperties.CATEGORY_GENERAL)
         .build(),
       PropertyDefinition.builder(SONAR_PROJECTCREATION_MAINBRANCHNAME)
@@ -205,7 +206,7 @@ public class CorePropertyDefinitions {
         .name("Duplication Exclusions")
         .description("Patterns used to exclude some source files from the duplication detection mechanism. " +
           "See below to know how to use wildcards to specify this property.")
-        .onQualifiers(Qualifiers.PROJECT, Qualifiers.MODULE)
+        .onQualifiers(Qualifiers.PROJECT)
         .category(CoreProperties.CATEGORY_EXCLUSIONS)
         .subCategory(CoreProperties.SUBCATEGORY_DUPLICATIONS_EXCLUSIONS)
         .multiValues(true)
