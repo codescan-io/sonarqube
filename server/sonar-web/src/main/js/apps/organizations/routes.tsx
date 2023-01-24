@@ -37,9 +37,9 @@ import UsersApp from "../users/UsersApp";
 import ChangelogContainer from '../quality-profiles/changelog/ChangelogContainer';
 import ComparisonContainer from '../quality-profiles/compare/ComparisonContainer';
 import ProfileContainer from '../quality-profiles/components/ProfileContainer';
-import QualityProfilesApp from '../quality-profiles/components/QualityProfilesApp';
 import ProfileDetails from '../quality-profiles/details/ProfileDetails';
 import HomeContainer from '../quality-profiles/home/HomeContainer';
+import OrganizationPageExtension from "../../app/components/extensions/OrganizationPageExtension";
 
 const routes = () => (
     <Route path="organizations">
@@ -65,6 +65,7 @@ const routes = () => (
         </Route>
         <Route path="rules" element={<RulesApp />}/>
         <Route path="members" element={<UsersApp />}/>
+        <Route path="extension/:pluginKey/:extensionKey" element={<OrganizationPageExtension />} />
       </Route>
       <Route path="create" element={<CreateOrganizationPage/>}/>
     </Route>
