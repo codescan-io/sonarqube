@@ -60,7 +60,6 @@ public class IssuesAction implements BatchWsAction {
   private static final Logger LOGGER = Loggers.get(IssuesAction.class);
   private static final String PARAM_KEY = "key";
   private static final String PARAM_BRANCH = "branch";
-  private static final Splitter MODULE_PATH_SPLITTER = Splitter.on('.').trimResults().omitEmptyStrings();
 
   private final DbClient dbClient;
   private final UserSession userSession;

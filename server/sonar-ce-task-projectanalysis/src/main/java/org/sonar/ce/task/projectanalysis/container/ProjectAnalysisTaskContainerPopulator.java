@@ -39,7 +39,6 @@ import org.sonar.ce.task.projectanalysis.component.FileStatusesImpl;
 import org.sonar.ce.task.projectanalysis.component.PreviousSourceHashRepositoryImpl;
 import org.sonar.ce.task.projectanalysis.component.ProjectPersister;
 import org.sonar.ce.task.projectanalysis.component.ReferenceBranchComponentUuids;
-import org.sonar.ce.task.projectanalysis.component.ReportModulesPath;
 import org.sonar.ce.task.projectanalysis.component.SiblingComponentsWithOpenIssues;
 import org.sonar.ce.task.projectanalysis.component.TreeRootHolderImpl;
 import org.sonar.ce.task.projectanalysis.duplication.CrossProjectDuplicationStatusHolderImpl;
@@ -199,7 +198,6 @@ public final class ProjectAnalysisTaskContainerPopulator implements ContainerPop
       // File System
       new ComputationTempFolderProvider(),
 
-      ReportModulesPath.class,
       FileStatusesImpl.class,
       new MetricModule(),
 
