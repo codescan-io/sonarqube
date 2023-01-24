@@ -130,6 +130,10 @@ public class OrganizationDao implements Dao {
     getMapper(dbSession).updateDefaultGroupUuid(uuid, requireNonNull(defaultGroupUuid, "Default group uuid cannot be null"), system2.now());
   }
 
+  public boolean getNewProjectPrivate(DbSession dbSession, OrganizationDto organization) {
+    return getMapper(dbSession).selectNewProjectPrivateByUuid(organization.getUuid());
+  }
+
   public int update(DbSession dbSession, OrganizationDto organization) {
     checkDto(organization);
     organization.setUpdatedAt(system2.now());
