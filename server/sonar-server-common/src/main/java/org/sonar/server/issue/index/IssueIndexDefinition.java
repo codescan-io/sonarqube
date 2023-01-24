@@ -61,7 +61,6 @@ public class IssueIndexDefinition implements IndexDefinition {
   public static final String FIELD_ISSUE_SCOPE = "scope";
   public static final String FIELD_ISSUE_LANGUAGE = "language";
   public static final String FIELD_ISSUE_LINE = "line";
-  public static final String FIELD_ISSUE_MODULE_PATH = "modulePath";
   public static final String FIELD_ISSUE_ORGANIZATION_UUID = "organization";
 
   /**
@@ -157,7 +156,6 @@ public class IssueIndexDefinition implements IndexDefinition {
     mapping.keywordFieldBuilder(FIELD_ISSUE_SCOPE).disableNorms().build();
     mapping.keywordFieldBuilder(FIELD_ISSUE_LANGUAGE).disableNorms().build();
     mapping.createIntegerField(FIELD_ISSUE_LINE);
-    mapping.createUuidPathField(FIELD_ISSUE_MODULE_PATH);
     mapping.keywordFieldBuilder(FIELD_ISSUE_ORGANIZATION_UUID).disableNorms().build();
     mapping.keywordFieldBuilder(FIELD_ISSUE_PROJECT_UUID).disableNorms().addSubFields(SORTABLE_ANALYZER).build();
     mapping.keywordFieldBuilder(FIELD_ISSUE_BRANCH_UUID).disableNorms().build();

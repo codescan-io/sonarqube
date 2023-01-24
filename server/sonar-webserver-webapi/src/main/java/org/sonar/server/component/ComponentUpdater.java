@@ -154,8 +154,6 @@ public class ComponentUpdater {
       .setOrganizationUuid(newComponent.getOrganizationUuid())
       .setUuidPath(ComponentDto.UUID_PATH_OF_ROOT)
       .setRootUuid(uuid)
-      .setModuleUuid(null)
-      .setModuleUuidPath(ComponentDto.UUID_PATH_SEPARATOR + uuid + ComponentDto.UUID_PATH_SEPARATOR)
       .setBranchUuid(uuid)
       .setKey(newComponent.key())
       .setName(newComponent.name())
