@@ -104,9 +104,9 @@ public class PermissionTemplateDao implements Dao {
     return mapper(session).selectByUuid(templateUuid);
   }
 
-  public List<PermissionTemplateDto> selectAll(DbSession session, @Nullable String nameMatch) {
+  public List<PermissionTemplateDto> selectAll(DbSession session, String organizationUuid, @Nullable String nameMatch) {
     String upperCaseNameLikeSql = nameMatch != null ? toUppercaseSqlQuery(nameMatch) : null;
-    return mapper(session).selectAll(upperCaseNameLikeSql);
+    return mapper(session).selectAll(organizationUuid, upperCaseNameLikeSql);
   }
 
   private static String toUppercaseSqlQuery(String nameMatch) {

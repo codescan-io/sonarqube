@@ -222,11 +222,13 @@
   <insert id="insert" parameterType="GroupPermission">
     insert into group_roles (
     uuid,
+    organization_uuid,
     group_uuid,
     component_uuid,
     role
     ) values (
     #{uuid,jdbcType=VARCHAR},
+    #{organizationUuid,jdbcType=VARCHAR},
     #{groupUuid,jdbcType=VARCHAR},
     #{componentUuid,jdbcType=BIGINT},
     #{role,jdbcType=VARCHAR}

@@ -611,6 +611,7 @@
 
   <insert id="insert" parameterType="Component">
     INSERT INTO components (
+      organization_uuid,
       kee,
       uuid,
       uuid_path,
@@ -644,6 +645,7 @@
       b_qualifier
     )
     VALUES (
+    #{organizationUuid,jdbcType=VARCHAR},
     #{kee,jdbcType=VARCHAR},
     #{uuid,jdbcType=VARCHAR},
     #{uuidPath,jdbcType=VARCHAR},

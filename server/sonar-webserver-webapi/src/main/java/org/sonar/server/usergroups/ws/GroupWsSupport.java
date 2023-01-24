@@ -98,7 +98,7 @@ public class GroupWsSupport {
     }
 
     if (ref.isAnyone()) {
-      return GroupUuidOrAnyone.forAnyone();
+      return GroupUuidOrAnyone.forAnyone(null /* TODO */);
     }
 
     Optional<GroupDto> group = dbClient.groupDao().selectByName(dbSession, ref.getName());

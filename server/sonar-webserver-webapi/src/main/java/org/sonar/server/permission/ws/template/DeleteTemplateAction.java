@@ -26,6 +26,7 @@ import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
+import org.sonar.db.permission.template.DefaultTemplates;
 import org.sonar.db.permission.template.PermissionTemplateDto;
 import org.sonar.server.permission.DefaultTemplatesResolver;
 import org.sonar.server.permission.DefaultTemplatesResolver.ResolvedDefaultTemplates;
@@ -35,6 +36,7 @@ import org.sonar.server.permission.ws.WsParameters;
 import org.sonar.server.user.UserSession;
 
 import static org.sonar.server.exceptions.BadRequestException.checkRequest;
+import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOptional;
 import static org.sonar.server.permission.PermissionPrivilegeChecker.checkGlobalAdmin;
 import static org.sonar.server.permission.ws.template.WsTemplateRef.newTemplateRef;
 import static org.sonarqube.ws.client.permission.PermissionsWsParameters.PARAM_TEMPLATE_ID;
@@ -84,14 +86,36 @@ public class DeleteTemplateAction implements PermissionsWsAction {
       PermissionTemplateDto template = wsSupport.findTemplate(dbSession, newTemplateRef(request.getTemplateId(), request.getTemplateName()));
       checkGlobalAdmin(userSession);
 
-      checkTemplateUuidIsNotDefault(dbSession, template);
+      DefaultTemplates defaultTemplates = retrieveDefaultTemplates(dbSession, template);
+
+      checkTemplateUuidIsNotDefault(dbSession, template, defaultTemplates);
       dbClient.permissionTemplateDao().deleteByUuid(dbSession, template.getUuid(), template.getName());
+      updateViewDefaultTemplateWhenGovernanceIsNotInstalled(dbSession, template, defaultTemplates);
       dbSession.commit();
     }
   }
 
-  private void checkTemplateUuidIsNotDefault(DbSession dbSession, PermissionTemplateDto template) {
-    ResolvedDefaultTemplates resolvedDefaultTemplates = defaultTemplatesResolver.resolve(dbSession);
+  /**
+   * The default template for view can be removed when Governance is not installed. To avoid keeping a reference
+   * to a non existing template, we update the default templates.
+   */
+  private void updateViewDefaultTemplateWhenGovernanceIsNotInstalled(DbSession dbSession, PermissionTemplateDto template, DefaultTemplates defaultTemplates) {
+    String viewDefaultTemplateUuid = defaultTemplates.getApplicationsUuid();
+    if (viewDefaultTemplateUuid != null && viewDefaultTemplateUuid.equals(template.getUuid())) {
+      defaultTemplates.setApplicationsUuid(null);
+      dbClient.organizationDao().setDefaultTemplates(dbSession, template.getOrganizationUuid(), defaultTemplates);
+    }
+  }
+
+  private DefaultTemplates retrieveDefaultTemplates(DbSession dbSession, PermissionTemplateDto template) {
+    return checkFoundWithOptional(
+            dbClient.organizationDao().getDefaultTemplates(dbSession, template.getOrganizationUuid()),
+            "Can't find default templates of Organization with uuid '%s' to which template with uuid '%s' belongs",
+            template.getOrganizationUuid(), template.getUuid());
+  }
+
+  private void checkTemplateUuidIsNotDefault(DbSession dbSession, PermissionTemplateDto template, DefaultTemplates defaultTemplates) {
+    ResolvedDefaultTemplates resolvedDefaultTemplates = defaultTemplatesResolver.resolve(dbSession, defaultTemplates);
     checkRequest(!resolvedDefaultTemplates.getProject().equals(template.getUuid()),
       "It is not possible to delete the default permission template for projects");
     resolvedDefaultTemplates.getApplication()

@@ -96,7 +96,7 @@ public class UserPermissionChanger {
     if (loadExistingPermissions(dbSession, change).contains(change.getPermission())) {
       return false;
     }
-    UserPermissionDto dto = new UserPermissionDto(uuidFactory.create(), change.getPermission(), change.getUserId().getUuid(),
+    UserPermissionDto dto = new UserPermissionDto(uuidFactory.create(), change.getOrganizationUuid(), change.getPermission(), change.getUserId().getUuid(),
       change.getProjectUuid());
     dbClient.userPermissionDao().insert(dbSession, dto, change.getProject(), change.getUserId(), null);
     return true;

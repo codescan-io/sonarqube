@@ -35,6 +35,7 @@ import org.sonar.core.i18n.I18n;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.permission.template.CountByTemplateAndPermissionDto;
+import org.sonar.db.permission.template.DefaultTemplates;
 import org.sonar.db.permission.template.PermissionTemplateCharacteristicDto;
 import org.sonar.db.permission.template.PermissionTemplateDto;
 import org.sonar.server.permission.DefaultTemplatesResolver;
@@ -50,6 +51,7 @@ import org.sonarqube.ws.Permissions.SearchTemplatesWsResponse.TemplateIdQualifie
 
 import static java.util.Optional.ofNullable;
 import static org.sonar.api.utils.DateUtils.formatDateTime;
+import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOptional;
 import static org.sonar.server.permission.PermissionPrivilegeChecker.checkGlobalAdmin;
 import static org.sonar.server.permission.ws.template.SearchTemplatesData.builder;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
@@ -179,7 +181,11 @@ public class SearchTemplatesAction implements PermissionsWsAction {
     List<PermissionTemplateDto> templates = searchTemplates(dbSession, request);
     List<String> templateUuids = templates.stream().map(PermissionTemplateDto::getUuid).collect(Collectors.toList());
 
-    ResolvedDefaultTemplates resolvedDefaultTemplates = defaultTemplatesResolver.resolve(dbSession);
+    DefaultTemplates defaultTemplates = checkFoundWithOptional(
+            dbClient.organizationDao().getDefaultTemplates(dbSession, request.getOrganizationUuid()),
+            "No Default templates for organization with uuid '%s'", request.getOrganizationUuid());
+    ResolvedDefaultTemplates resolvedDefaultTemplates = defaultTemplatesResolver.resolve(dbSession, defaultTemplates);
+
     data.templates(templates)
       .defaultTemplates(resolvedDefaultTemplates)
       .userCountByTemplateUuidAndPermission(userCountByTemplateUuidAndPermission(dbSession, templateUuids))
@@ -190,7 +196,7 @@ public class SearchTemplatesAction implements PermissionsWsAction {
   }
 
   private List<PermissionTemplateDto> searchTemplates(DbSession dbSession, SearchTemplatesRequest request) {
-    return dbClient.permissionTemplateDao().selectAll(dbSession, request.getQuery());
+    return dbClient.permissionTemplateDao().selectAll(dbSession, request.getOrganizationUuid(), request.getQuery());
   }
 
   private Table<String, String, Integer> userCountByTemplateUuidAndPermission(DbSession dbSession, List<String> templateUuids) {
@@ -228,6 +234,7 @@ public class SearchTemplatesAction implements PermissionsWsAction {
 
   private static class SearchTemplatesRequest {
     private String query;
+    private String organizationUuid;
 
     @CheckForNull
     public String getQuery() {
@@ -236,6 +243,15 @@ public class SearchTemplatesAction implements PermissionsWsAction {
 
     public SearchTemplatesRequest setQuery(@Nullable String query) {
       this.query = query;
+      return this;
+    }
+
+    public String getOrganizationUuid() {
+      return organizationUuid;
+    }
+
+    public SearchTemplatesRequest setOrganizationUuid(String s) {
+      this.organizationUuid = s;
       return this;
     }
   }

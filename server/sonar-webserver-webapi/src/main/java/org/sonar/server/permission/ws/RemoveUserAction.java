@@ -93,6 +93,7 @@ public class RemoveUserAction implements PermissionsWsAction {
       wsSupport.checkPermissionManagementAccess(userSession, project.orElse(null));
       PermissionChange change = new UserPermissionChange(
         PermissionChange.Operation.REMOVE,
+        null /* TODO */,
         permission,
         project.orElse(null),
         user, permissionService);

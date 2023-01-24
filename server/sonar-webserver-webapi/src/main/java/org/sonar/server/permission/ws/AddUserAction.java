@@ -93,6 +93,7 @@ public class AddUserAction implements PermissionsWsAction {
 
       PermissionChange change = new UserPermissionChange(
         PermissionChange.Operation.ADD,
+        null /* TODO */,
         request.mandatoryParam(PARAM_PERMISSION),
         project.orElse(null),
         user, permissionService);
