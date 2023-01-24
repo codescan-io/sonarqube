@@ -273,7 +273,7 @@ public class UserDbTester {
    */
   @Deprecated
   public UserPermissionDto insertPermissionOnUser(UserDto user, String permission) {
-    UserPermissionDto dto = new UserPermissionDto(Uuids.create(), permission, user.getUuid(), null);
+    UserPermissionDto dto = new UserPermissionDto(Uuids.create(), null, permission, user.getUuid(), null);
     db.getDbClient().userPermissionDao().insert(db.getSession(), dto, null, user, null);
     db.commit();
     return dto;
@@ -296,7 +296,7 @@ public class UserDbTester {
     checkArgument(project.isPrivate() || !PUBLIC_PERMISSIONS.contains(permission),
       "%s can't be granted on a public project", permission);
     checkArgument(project.getMainBranchProjectUuid() == null, "Permissions can't be granted on branches");
-    UserPermissionDto dto = new UserPermissionDto(Uuids.create(), permission, user.getUuid(), project.uuid());
+    UserPermissionDto dto = new UserPermissionDto(Uuids.create(), null, permission, user.getUuid(), project.uuid());
     db.getDbClient().userPermissionDao().insert(db.getSession(), dto, project, user, null);
     db.commit();
     return dto;

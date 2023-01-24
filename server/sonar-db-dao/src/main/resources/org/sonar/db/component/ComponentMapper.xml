@@ -3,6 +3,7 @@
 <mapper namespace="org.sonar.db.component.ComponentMapper">
 
   <sql id="componentColumns">
+    p.organization_uuid as organizationUuid,
     p.uuid as uuid,
     p.uuid_path as uuidPath,
     p.branch_uuid as branchUuid,
@@ -55,6 +56,7 @@
 
   <select id="selectByKeyAndBranchOrPr" parameterType="String" resultType="Component">
     select
+          p.organization_uuid as organizationUuid,
           p.uuid as uuid,
           p.uuid_path as uuidPath,
           p.branch_uuid as branchUuid,
