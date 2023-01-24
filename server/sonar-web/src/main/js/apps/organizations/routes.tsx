@@ -24,7 +24,22 @@ import OrganizationApp from "./components/OrganizationApp";
 import OrganizationProjects from "./components/OrganizationProjects";
 import OrganizationEdit from "./components/OrganizationEdit";
 import OrganizationDelete from "./components/OrganizationDelete";
-
+import App from "../permission-templates/components/App";
+import GlobalPermissionsApp from "../permissions/global/components/App";
+import GroupsApp from "../groups/components/App";
+import ProjectManagementApp from "../projectsManagement/ProjectManagementApp";
+import WebhookApp from "../webhooks/components/App";
+import IssuesApp from "../issues/components/IssuesApp";
+import QualityProfilesApp from "../quality-profiles/components/QualityProfilesApp";
+import RulesApp from "../coding-rules/components/App";
+import QualityGatesApp from "../quality-gates/components/App";
+import UsersApp from "../users/UsersApp";
+import ChangelogContainer from '../quality-profiles/changelog/ChangelogContainer';
+import ComparisonContainer from '../quality-profiles/compare/ComparisonContainer';
+import ProfileContainer from '../quality-profiles/components/ProfileContainer';
+import QualityProfilesApp from '../quality-profiles/components/QualityProfilesApp';
+import ProfileDetails from '../quality-profiles/details/ProfileDetails';
+import HomeContainer from '../quality-profiles/home/HomeContainer';
 
 const routes = () => (
     <Route path="organizations">
@@ -33,6 +48,23 @@ const routes = () => (
         <Route path="projects" element={<OrganizationProjects />}/>
         <Route path="edit" element={<OrganizationEdit />}/>
         <Route path="delete" element={<OrganizationDelete />}/>
+        <Route path="permission_templates" element={<App />}/>
+        <Route path="permissions" element={<GlobalPermissionsApp />}/>
+        <Route path="groups" element={<GroupsApp />}/>
+        <Route path="projects_management" element={<ProjectManagementApp />}/>
+        <Route path="webhooks" element={<WebhookApp />}/>
+        <Route path="issues" element={<IssuesApp />}/>
+        <Route path="quality_gates" element={<QualityGatesApp />}/>
+        <Route path="quality_profiles" element={<QualityProfilesApp />}>
+           <Route index={true} element={<HomeContainer />} />
+           <Route element={<ProfileContainer />}>
+             <Route path="show" element={<ProfileDetails />} />
+             <Route path="changelog" element={<ChangelogContainer />} />
+             <Route path="compare" element={<ComparisonContainer />} />
+           </Route>
+        </Route>
+        <Route path="rules" element={<RulesApp />}/>
+        <Route path="members" element={<UsersApp />}/>
       </Route>
       <Route path="create" element={<CreateOrganizationPage/>}/>
     </Route>
