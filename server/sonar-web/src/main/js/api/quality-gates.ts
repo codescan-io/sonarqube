@@ -48,19 +48,19 @@ export function createQualityGate(data: { name: string; organization: string }):
   return postJSON('/api/qualitygates/create', data).catch(throwGlobalError);
 }
 
-export function deleteQualityGate(data: { id: string; organization: string }): Promise<void | Response> {
+export function deleteQualityGate(data: { name: string; organization: string }): Promise<void | Response> {
   return post('/api/qualitygates/destroy', data).catch(throwGlobalError);
 }
 
-export function renameQualityGate(data: { id: string; name: string; organization: string }): Promise<void | Response> {
+export function renameQualityGate(data: { currentName: string; name: string; organization: string }): Promise<void | Response> {
   return post('/api/qualitygates/rename', data).catch(throwGlobalError);
 }
 
-export function copyQualityGate(data: { id: string; name: string; organization: string }): Promise<QualityGate> {
+export function copyQualityGate(data: { sourceName: string; name: string; organization: string }): Promise<QualityGate> {
   return postJSON('/api/qualitygates/copy', data).catch(throwGlobalError);
 }
 
-export function setQualityGateAsDefault(data: { id: string; organization: string }): Promise<void | Response> {
+export function setQualityGateAsDefault(data: { name: string; organization: string }): Promise<void | Response> {
   return post('/api/qualitygates/set_as_default', data).catch(throwGlobalError);
 }
 
@@ -115,7 +115,6 @@ export function associateGateWithProject(data: {
 }
 
 export function dissociateGateWithProject(data: {
-  gateId: string;
   organization?: string;
   projectKey: string;
 }): Promise<void | Response> {

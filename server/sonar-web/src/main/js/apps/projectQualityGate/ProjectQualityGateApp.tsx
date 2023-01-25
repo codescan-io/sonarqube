@@ -150,7 +150,6 @@ export class ProjectQualityGateApp extends React.PureComponent<Props, State> {
 
     if (selectedQualityGateId === USE_SYSTEM_DEFAULT) {
       await dissociateGateWithProject({
-        gateId: currentQualityGate.id,
         organization: component.organization,
         projectKey: component.key,
       }).catch(() => {
@@ -158,7 +157,6 @@ export class ProjectQualityGateApp extends React.PureComponent<Props, State> {
       });
     } else {
       await associateGateWithProject({
-        gateId: selectedQualityGateId,
         organization: component.organization,
         projectKey: component.key,
       }).catch(() => {

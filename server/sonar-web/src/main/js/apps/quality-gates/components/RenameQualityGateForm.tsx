@@ -50,7 +50,7 @@ export default class RenameQualityGateForm extends React.PureComponent<Props, St
     const { organization, qualityGate } = this.props;
     const { name } = this.state;
 
-    return renameQualityGate({ id: qualityGate.id, name, organization }).then(() => this.props.onRename());
+    return renameQualityGate({ currentName: qualityGate.name, name, organization }).then(() => this.props.onRename());
   };
 
   render() {

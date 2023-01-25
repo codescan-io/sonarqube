@@ -58,15 +58,15 @@ export function getRuleTags(parameters: { organization?: string; ps?: number; q:
 }
 
 export function createRule(data: {
-  custom_key: string;
-  markdown_description: string;
+  customKey: string;
+  markdownDescription: string;
   name: string;
   organization: string;
   params?: string;
-  prevent_reactivation?: boolean;
+  preventReactivation?: boolean;
   severity?: string;
   status?: string;
-  template_key: string;
+  templateKey: string;
   type?: string;
 }): Promise<RuleDetails> {
   return postJSON('/api/rules/create', data).then(

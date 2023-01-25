@@ -121,7 +121,6 @@ export default class Projects extends React.PureComponent<Props, State> {
 
   handleUnselect = (key: string) =>
     dissociateGateWithProject({
-      gateId: this.props.qualityGate.id,
       organization: this.props.organization,
       projectKey: key,
     }).then(() => {
