@@ -134,7 +134,11 @@ class App extends React.PureComponent<Props, State> {
                       organization={this.props.organization.kee}
                     />
                     <DeferredSpinner loading={this.state.loading}>
-                      <List organization={this.props.organization.kee} qualityGates={qualityGates} />
+                      <List
+                        organization={this.props.organization.kee}
+                        qualityGates={qualityGates}
+                        currentQualityGate={id}
+                      />
                     </DeferredSpinner>
                   </div>
                 </div>
