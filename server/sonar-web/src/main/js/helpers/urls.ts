@@ -319,9 +319,9 @@ export function getQualityProfileUrl(name: string, language: string, organizatio
   return getProfilePath(name, language, organization);
 }
 
-export function getQualityGateUrl(organizationKey: string, key: string): To {
+export function getQualityGateUrl(organizationKey: string, name: string): To {
   return {
-    pathname: `/organizations/${organizationKey}/quality_gates/show/` + encodeURIComponent(key),
+    pathname: `/organizations/${organizationKey}/quality_gates/show/` + encodeURIComponent(name),
   };
 }
 

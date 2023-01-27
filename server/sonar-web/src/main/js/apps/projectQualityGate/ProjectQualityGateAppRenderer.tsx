@@ -32,6 +32,7 @@ import Suggestions from '../../components/embed-docs-modal/Suggestions';
 import { Alert } from '../../components/ui/Alert';
 import { translate } from '../../helpers/l10n';
 import { isDiffMetric } from '../../helpers/measures';
+import { getQualityGateUrl } from '../../helpers/urls';
 import { Organization, QualityGate } from '../../types/types';
 import BuiltInQualityGateBadge from '../quality-gates/components/BuiltInQualityGateBadge';
 import { USE_SYSTEM_DEFAULT } from './constants';
@@ -70,7 +71,7 @@ function renderQualitygateOption(props: OptionProps<QualityGateOption, false>) {
               defaultMessage={translate('project_quality_gate.no_condition')}
               values={{
                 link: (
-                  <Link to={{ pathname: `/organizations/${props.data.organizationKey}/quality_gates/show/${props.data.value}` }}>
+                  <Link to={{ pathname: `/organizations/${props.data.organizationKey}/quality_gates/show/${props.data.label}` }}>
                     {translate('project_quality_gate.no_condition.link')}
                   </Link>
                 ),
@@ -213,7 +214,7 @@ export default function ProjectQualityGateAppRenderer(props: ProjectQualityGateA
                   defaultMessage={translate('project_quality_gate.no_condition_on_new_code')}
                   values={{
                     link: (
-                      <Link to={{ pathname: `organizations/${organization.kee}/quality_gates/show/${selectedQualityGate.id}` }}>
+                      <Link to={{ pathname: `organizations/${organization.kee}/quality_gates/show/${selectedQualityGate.name}` }}>
                         {translate('project_quality_gate.no_condition.link')}
                       </Link>
                     ),

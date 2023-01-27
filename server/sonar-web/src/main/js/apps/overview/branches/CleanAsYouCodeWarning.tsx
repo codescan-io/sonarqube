@@ -41,7 +41,7 @@ export default function CleanAsYouCodeWarning({ component }: Props) {
             defaultMessage={translate('overview.quality_gate.conditions.cayc.details_with_link')}
             values={{
               link: (
-                <Link to={getQualityGateUrl(component.organization, component.qualityGate.key)}>
+                <Link to={getQualityGateUrl(component.organization, component.qualityGate.name)}>
                   {translate('overview.quality_gate.conditions.non_cayc.warning.link')}
                 </Link>
               ),

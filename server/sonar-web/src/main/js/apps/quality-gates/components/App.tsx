@@ -41,7 +41,7 @@ import ListHeader from './ListHeader';
 import { withOrganizationContext } from "../../organizations/OrganizationContext";
 
 interface Props {
-  id?: string;
+  name?: string;
   navigate: NavigateFunction;
   organization: Organization;
 }
@@ -64,7 +64,7 @@ class App extends React.PureComponent<Props, State> {
   }
 
   componentDidUpdate(prevProps: Props) {
-    if (prevProps.id !== undefined && this.props.id === undefined) {
+    if (prevProps.name !== undefined && this.props.name === undefined) {
       this.openDefault(this.state.qualityGates);
     }
   }
@@ -81,7 +81,7 @@ class App extends React.PureComponent<Props, State> {
         if (this.mounted) {
           this.setState({ canCreate: actions.create, loading: false, qualityGates });
 
-          if (!this.props.id) {
+          if (!this.props.name) {
             this.openDefault(qualityGates);
           }
         }
@@ -96,7 +96,7 @@ class App extends React.PureComponent<Props, State> {
 
   openDefault(qualityGates: QualityGate[]) {
     const defaultQualityGate = qualityGates.find((gate) => Boolean(gate.isDefault))!;
-    this.props.navigate(getQualityGateUrl(this.props.organization.kee, String(defaultQualityGate.id)), { replace: true });
+    this.props.navigate(getQualityGateUrl(this.props.organization.kee, String(defaultQualityGate.name)), { replace: true });
   }
 
   handleSetDefault = (qualityGate: QualityGate) => {
@@ -113,7 +113,7 @@ class App extends React.PureComponent<Props, State> {
   };
 
   render() {
-    const { id } = this.props;
+    const { name } = this.props;
     const { canCreate, qualityGates } = this.state;
     const defaultTitle = translate('quality_gates.page');
 
@@ -137,7 +137,7 @@ class App extends React.PureComponent<Props, State> {
                       <List
                         organization={this.props.organization.kee}
                         qualityGates={qualityGates}
-                        currentQualityGate={id}
+                        currentQualityGate={name}
                       />
                     </DeferredSpinner>
                   </div>
@@ -146,10 +146,10 @@ class App extends React.PureComponent<Props, State> {
             )}
           </ScreenPositionHelper>
 
-          {id !== undefined && (
+          {name !== undefined && (
             <Details
               organization={this.props.organization.kee}
-              id={id}
+              qualityGateName={name}
               onSetDefault={this.handleSetDefault}
               qualityGates={this.state.qualityGates}
               refreshQualityGates={this.fetchQualityGates}
@@ -169,7 +169,7 @@ function AppWrapper(props: AppWrapperProps) {
   const params = useParams();
   const navigate = useNavigate();
 
-  return <App id={params['id']} navigate={navigate} organization={props.organization}/>;
+  return <App name={params['name']} navigate={navigate} organization={props.organization}/>;
 }
 
 export default withOrganizationContext(AppWrapper);

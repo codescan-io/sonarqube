@@ -20,12 +20,14 @@
 import * as React from 'react';
 import { renameQualityGate } from '../../../api/quality-gates';
 import ConfirmModal from '../../../components/controls/ConfirmModal';
+import { withRouter, WithRouterProps } from '../../../components/hoc/withRouter';
 import MandatoryFieldMarker from '../../../components/ui/MandatoryFieldMarker';
 import MandatoryFieldsExplanation from '../../../components/ui/MandatoryFieldsExplanation';
 import { translate } from '../../../helpers/l10n';
+import { getQualityGateUrl } from '../../../helpers/urls';
 import { QualityGate } from '../../../types/types';
 
-interface Props {
+interface Props extends WithRouterProps {
   onClose: () => void;
   onRename: () => Promise<void>;
   qualityGate: QualityGate;
@@ -36,7 +38,7 @@ interface State {
   name: string;
 }
 
-export default class RenameQualityGateForm extends React.PureComponent<Props, State> {
+class RenameQualityGateForm extends React.PureComponent<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { name: props.qualityGate.name };
@@ -47,10 +49,13 @@ export default class RenameQualityGateForm extends React.PureComponent<Props, St
   };
 
   handleRename = () => {
-    const { organization, qualityGate } = this.props;
+    const { organization, qualityGate, router } = this.props;
     const { name } = this.state;
 
-    return renameQualityGate({ currentName: qualityGate.name, name, organization }).then(() => this.props.onRename());
+    return renameQualityGate({ currentName: qualityGate.name, name, organization }).then(() => {
+      this.props.onRename();
+      router.push(getQualityGateUrl(organization, name));
+    });
   };
 
   render() {
@@ -88,3 +93,5 @@ export default class RenameQualityGateForm extends React.PureComponent<Props, St
     );
   }
 }
+
+export default withRouter(RenameQualityGateForm);

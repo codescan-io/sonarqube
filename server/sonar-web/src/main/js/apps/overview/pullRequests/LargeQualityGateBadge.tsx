@@ -39,7 +39,7 @@ export function LargeQualityGateBadge({ component, level }: Props) {
   const path =
     component.qualityGate === undefined
       ? getQualityGatesUrl()
-      : getQualityGateUrl(component.organization, component.qualityGate.key);
+      : getQualityGateUrl(component.organization, component.qualityGate.name);
 
   return (
     <div
