@@ -219,7 +219,6 @@ export interface FlowLocation {
 export interface Group {
   default?: boolean;
   description?: string;
-  id: number;
   membersCount: number;
   name: string;
 }
