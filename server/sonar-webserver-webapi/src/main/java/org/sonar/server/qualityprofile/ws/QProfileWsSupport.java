@@ -22,16 +22,21 @@ package org.sonar.server.qualityprofile.ws;
 import java.util.Optional;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.server.ServerSide;
+import org.sonar.api.server.ws.WebService.NewAction;
+import org.sonar.api.server.ws.WebService.NewParam;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
+import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.GlobalPermission;
 import org.sonar.db.qualityprofile.QProfileDto;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.user.UserSession;
+import org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.sonar.db.organization.OrganizationDto.Subscription.PAID;
 import static org.sonar.server.exceptions.BadRequestException.checkRequest;
 import static org.sonar.server.exceptions.NotFoundException.checkFound;
 import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOptional;
@@ -46,6 +51,30 @@ public class QProfileWsSupport {
   public QProfileWsSupport(DbClient dbClient, UserSession userSession) {
     this.dbClient = dbClient;
     this.userSession = userSession;
+  }
+
+  public static NewParam createOrganizationParam(NewAction action) {
+    return action
+            .createParam(QualityProfileWsParameters.PARAM_ORGANIZATION)
+            .setDescription("Organization key. If no organization is provided, the default organization is used.")
+            .setRequired(false)
+            .setInternal(true)
+            .setExampleValue("my-org");
+  }
+
+  public OrganizationDto getOrganizationByKey(DbSession dbSession, String organizationKey) {
+    OrganizationDto organization = checkFoundWithOptional(
+            dbClient.organizationDao().selectByKey(dbSession, organizationKey),
+            "No organization with key '%s'", organizationKey);
+    checkMembershipOnPaidOrganization(organization);
+    return organization;
+  }
+
+  private void checkMembershipOnPaidOrganization(OrganizationDto organization) {
+    if (!organization.getSubscription().equals(PAID)) {
+      return;
+    }
+    userSession.checkMembership(organization);
   }
 
   public RuleDto getRule(DbSession dbSession, RuleKey ruleKey) {

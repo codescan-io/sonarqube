@@ -111,7 +111,7 @@ public class ShowAction implements QProfileWsAction {
   }
 
   private long countProjectsByProfiles(DbSession dbSession, QProfileDto profile) {
-    Map<String, Long> projects = dbClient.qualityProfileDao().countProjectsByProfiles(dbSession, singletonList(profile));
+    Map<String, Long> projects = dbClient.qualityProfileDao().countProjectsByProfiles(dbSession, null /* TODO */, singletonList(profile));
     return projects.getOrDefault(profile.getKee(), 0L);
   }
 

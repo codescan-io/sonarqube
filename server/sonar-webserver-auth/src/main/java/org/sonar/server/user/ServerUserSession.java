@@ -40,12 +40,15 @@ import org.sonar.db.DbSession;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.component.ComponentTreeQuery;
 import org.sonar.db.component.ComponentTreeQuery.Strategy;
+import org.sonar.db.organization.OrganizationDto;
+import org.sonar.db.organization.OrganizationMemberDto;
 import org.sonar.db.permission.GlobalPermission;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
 
 import static java.util.Collections.singleton;
+import static java.util.Objects.requireNonNull;
 import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
@@ -66,6 +69,7 @@ public class ServerUserSession extends AbstractUserSession {
   private Collection<GroupDto> groups;
   private Boolean isSystemAdministrator;
   private Set<GlobalPermission> permissions;
+  private final Set<String> organizationMembership = new HashSet<>();
 
   public ServerUserSession(DbClient dbClient, @Nullable UserDto userDto) {
     this.dbClient = dbClient;
@@ -366,5 +370,35 @@ public class ServerUserSession extends AbstractUserSession {
 
   private boolean loadIsSystemAdministrator() {
     return hasPermission(GlobalPermission.ADMINISTER);
+  }
+
+  @Override
+  public boolean isRoot() {
+    return userDto != null && userDto.isRoot();
+  }
+
+  @Override
+  public boolean hasMembershipImpl(OrganizationDto organizationDto) {
+    return isMember(organizationDto.getUuid());
+  }
+
+  private boolean isMember(String organizationUuid) {
+    if (!isLoggedIn()) {
+      return false;
+    }
+    if (isRoot()) {
+      return true;
+    }
+
+    if (organizationMembership.contains(organizationUuid)) {
+      return true;
+    }
+    try (DbSession dbSession = dbClient.openSession(false)) {
+      Optional<OrganizationMemberDto> organizationMemberDto = dbClient.organizationMemberDao().select(dbSession, organizationUuid, requireNonNull(getUuid()));
+      if (organizationMemberDto.isPresent()) {
+        organizationMembership.add(organizationUuid);
+      }
+      return organizationMembership.contains(organizationUuid);
+    }
   }
 }
