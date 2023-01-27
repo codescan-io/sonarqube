@@ -99,7 +99,7 @@ export class GlobalNavMenu extends React.PureComponent<Props> {
       if ((appState.canAdmin && isSonarAdminGroupAvailable) || (!appState.canAdmin && appState.canCustomerAdmin)) {
         return (
             <li>
-              <Link to="/admin">
+              <Link to="/admin/settings">
                 {translate('layout.settings')}
               </Link>
             </li>

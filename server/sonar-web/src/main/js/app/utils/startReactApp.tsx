@@ -21,7 +21,7 @@ import * as React from 'react';
 import { render } from 'react-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { IntlProvider } from 'react-intl';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import accountRoutes from '../../apps/account/routes';
 import auditLogsRoutes from '../../apps/audit-logs/routes';
 import backgroundTasksRoutes from '../../apps/background-tasks/routes';
@@ -231,6 +231,18 @@ function renderAdminRoutes(canAdmin: boolean) {
   );
 }
 
+function renderRedirects() {
+  return (
+    <>
+      {/*
+       * This redirect enables analyzers and PDFs to link to the correct version of the
+       * documentation without having to compute the direct links themselves (DRYer).
+       */}
+      <Route path="/documentation/*" element={<DocumentationRedirect />} />
+    </>
+  );
+}
+
 export default function startReactApp(
   lang: string,
   userOrganizations?: Organization[],
@@ -253,6 +265,7 @@ export default function startReactApp(
               <BrowserRouter basename={getBaseUrl()}>
                 <Routes>
                   {renderRedirects()}
+
                   <Route path="formatting/help" element={<FormattingHelp />} />
 
                   <Route element={<SimpleContainer />}>{maintenanceRoutes()}</Route>
