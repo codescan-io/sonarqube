@@ -55,7 +55,6 @@ public class SearchRequest {
   private List<String> resolutions;
   private Boolean resolved;
   private List<String> rules;
-  private Boolean sinceLeakPeriod;
   private String sort;
   private List<String> severities;
   private List<String> statuses;
@@ -315,24 +314,6 @@ public class SearchRequest {
 
   public SearchRequest setRules(@Nullable List<String> rules) {
     this.rules = rules;
-    return this;
-  }
-
-  /**
-   * @deprecated since 9.4 - replaced by getInNewCodePeriod()
-   */
-  @Deprecated(since = "9.4")
-  @CheckForNull
-  public Boolean getSinceLeakPeriod() {
-    return sinceLeakPeriod;
-  }
-
-  /**
-   * @deprecated since 9.4 - replaced by setInNewCodePeriod()
-   */
-  @Deprecated(since = "9.4")
-  public SearchRequest setSinceLeakPeriod(@Nullable Boolean sinceLeakPeriod) {
-    this.sinceLeakPeriod = sinceLeakPeriod;
     return this;
   }
 
