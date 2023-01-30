@@ -30,22 +30,9 @@ import javax.annotation.Generated;
 @Generated("sonar-ws-generator")
 public class AddUserRequest {
 
-  private String id;
   private String login;
   private String name;
   private String organization;
-
-  /**
-   * Example value: "42"
-   */
-  public AddUserRequest setId(String id) {
-    this.id = id;
-    return this;
-  }
-
-  public String getId() {
-    return id;
-  }
 
   /**
    * Example value: "g.hopper"

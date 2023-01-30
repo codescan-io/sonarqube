@@ -30,7 +30,6 @@ import javax.annotation.Generated;
 @Generated("sonar-ws-generator")
 public class RemoveGroupRequest {
 
-  private String groupId;
   private String groupName;
   private String permission;
   private String projectId;
@@ -43,18 +42,6 @@ public class RemoveGroupRequest {
 
   public void setOrganization(String organization) {
     this.organization = organization;
-  }
-
-  /**
-   * Example value: "42"
-   */
-  public RemoveGroupRequest setGroupId(String groupId) {
-    this.groupId = groupId;
-    return this;
-  }
-
-  public String getGroupId() {
-    return groupId;
   }
 
   /**

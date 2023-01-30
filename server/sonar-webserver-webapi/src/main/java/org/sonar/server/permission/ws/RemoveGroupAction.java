@@ -39,7 +39,6 @@ import org.sonar.server.permission.PermissionUpdater;
 import org.sonar.server.user.UserSession;
 
 import static java.util.Collections.singletonList;
-import static org.sonar.server.permission.ws.WsParameters.createGroupIdParameter;
 import static org.sonar.server.permission.ws.WsParameters.createGroupNameParameter;
 import static org.sonar.server.permission.ws.WsParameters.createProjectParameters;
 import static org.sonarqube.ws.client.permission.PermissionsWsParameters.PARAM_PERMISSION;
@@ -71,7 +70,7 @@ public class RemoveGroupAction implements PermissionsWsAction {
     WebService.NewAction action = context.createAction(ACTION)
       .setDescription("Remove a permission from a group.<br /> " +
         "This service defaults to global permissions, but can be limited to project permissions by providing project id or project key.<br /> " +
-        "The group id or group name must be provided, not both.<br />" +
+        "The group name must be provided.<br />" +
         "Requires one of the following permissions:" +
         "<ul>" +
         "<li>'Administer System'</li>" +
@@ -80,13 +79,13 @@ public class RemoveGroupAction implements PermissionsWsAction {
       .setSince("5.2")
       .setPost(true)
       .setChangelog(
+        new Change("10.0", "Parameter 'groupId' is removed. Use 'groupName' instead."),
         new Change("8.4", "Parameter 'groupId' is deprecated. Format changes from integer to string. Use 'groupName' instead."))
       .setHandler(this);
 
     wsParameters.createPermissionParameter(action, "The permission you would like to revoke from the group.");
     wsParameters.createOrganizationParameter(action).setSince("6.2");
     createGroupNameParameter(action);
-    createGroupIdParameter(action);
     createProjectParameters(action);
   }
 

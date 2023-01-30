@@ -52,18 +52,6 @@ public class UsersRequest {
   }
 
   /**
-   * Example value: "42"
-   */
-  public UsersRequest setId(String id) {
-    this.id = id;
-    return this;
-  }
-
-  public String getId() {
-    return id;
-  }
-
-  /**
    * Example value: "sonar-administrators"
    */
   public UsersRequest setName(String name) {
