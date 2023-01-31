@@ -107,7 +107,7 @@ export default class Projects extends React.PureComponent<Props, State> {
 
   handleSelect = (key: string) =>
     associateGateWithProject({
-      gateId: this.props.qualityGate.id,
+      gateName: this.props.qualityGate.name,
       organization: this.props.organization,
       projectKey: key,
     }).then(() => {

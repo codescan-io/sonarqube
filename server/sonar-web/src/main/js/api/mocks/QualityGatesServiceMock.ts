@@ -36,6 +36,7 @@ import {
   dissociateGateWithProject,
   fetchQualityGate,
   fetchQualityGates,
+  getGateForProject,
   renameQualityGate,
   searchGroups,
   searchProjects,
@@ -49,11 +50,12 @@ export class QualityGatesServiceMock {
   readOnlyList: QualityGate[];
   list: QualityGate[];
   projects: Project[];
+  getGateForProjectGateName: string;
+  throwOnGetGateForProject: boolean;
 
-  constructor(list?: QualityGate[], defaultId = 'AWBWEMe2qGAMGEYPjJlm') {
+  constructor(list?: QualityGate[]) {
     this.readOnlyList = list || [
       mockQualityGate({
-        id: defaultId,
         name: 'SonarSource way',
         conditions: [
           { id: 'AXJMbIUGPAOIsUIE3eNC', metric: 'new_coverage', op: 'LT', error: '85' },
@@ -85,7 +87,6 @@ export class QualityGatesServiceMock {
         caycStatus: CaycStatus.Compliant,
       }),
       mockQualityGate({
-        id: 'AXGYZrDqC-YjVCvvbRDY',
         name: 'SonarSource way - CFamily',
         conditions: [
           { id: 'AXJMbIUHPAOIsUIE3eOu', metric: 'new_coverage', op: 'LT', error: '0' },
@@ -97,7 +98,6 @@ export class QualityGatesServiceMock {
         caycStatus: CaycStatus.NonCompliant,
       }),
       mockQualityGate({
-        id: 'AWBWEMe4qGAMGEYPjJlr',
         name: 'Sonar way',
         conditions: [
           { id: 'AXJMbIUHPAOIsUIE3eNs', metric: 'new_security_rating', op: 'GT', error: '1' },
@@ -127,7 +127,6 @@ export class QualityGatesServiceMock {
         caycStatus: CaycStatus.Compliant,
       }),
       mockQualityGate({
-        id: 'AWBWEMe4qGAMGEYPjJlruit',
         name: 'Non Cayc QG',
         conditions: [
           { id: 'AXJMbIUHPAOIsUIE3eNs', metric: 'new_security_rating', op: 'GT', error: '1' },
@@ -170,6 +169,22 @@ export class QualityGatesServiceMock {
         isBuiltIn: false,
         caycStatus: CaycStatus.OverCompliant,
       }),
+      mockQualityGate({
+        name: 'QG without conditions',
+        conditions: [],
+        isDefault: false,
+        isBuiltIn: false,
+        isCaycCompliant: false,
+      }),
+      mockQualityGate({
+        name: 'QG without new code conditions',
+        conditions: [
+          { id: 'AXJMbIUHPAOIsUIE3eNs', metric: 'security_rating', op: 'GT', error: '1' },
+        ],
+        isDefault: false,
+        isBuiltIn: false,
+        isCaycCompliant: false,
+      }),
     ];
 
     this.list = cloneDeep(this.readOnlyList);
@@ -180,6 +195,9 @@ export class QualityGatesServiceMock {
       { key: 'test3', name: 'test3', selected: true },
       { key: 'test4', name: 'test4', selected: true },
     ];
+
+    this.getGateForProjectGateName = 'SonarSource way';
+    this.throwOnGetGateForProject = false;
 
     (fetchQualityGate as jest.Mock).mockImplementation(this.showHandler);
     (fetchQualityGates as jest.Mock).mockImplementation(this.listHandler);
@@ -196,6 +214,7 @@ export class QualityGatesServiceMock {
     (associateGateWithProject as jest.Mock).mockImplementation(this.selectHandler);
     (dissociateGateWithProject as jest.Mock).mockImplementation(this.deSelectHandler);
     (setQualityGateAsDefault as jest.Mock).mockImplementation(this.setDefaultHandler);
+    (getGateForProject as jest.Mock).mockImplementation(this.projectGateHandler);
 
     // To be implemented.
     (addUser as jest.Mock).mockResolvedValue({});
@@ -209,6 +228,7 @@ export class QualityGatesServiceMock {
   reset() {
     this.setIsAdmin(false);
     this.list = cloneDeep(this.readOnlyList);
+    this.getGateForProjectGateName = 'SonarSource way';
   }
 
   getDefaultQualityGate() {
@@ -221,6 +241,14 @@ export class QualityGatesServiceMock {
 
   setIsAdmin(isAdmin: boolean) {
     this.isAdmin = isAdmin;
+  }
+
+  setGetGateForProjectName(name: string) {
+    this.getGateForProjectGateName = name;
+  }
+
+  setThrowOnGetGateForProject(value: boolean) {
+    this.throwOnGetGateForProject = value;
   }
 
   computeActions(q: QualityGate) {
@@ -243,7 +271,7 @@ export class QualityGatesServiceMock {
           ...q,
           actions: this.computeActions(q),
         })),
-      default: this.getDefaultQualityGate().id,
+      default: this.getDefaultQualityGate().name,
       actions: { create: this.isAdmin },
     });
   };
@@ -257,10 +285,8 @@ export class QualityGatesServiceMock {
   };
 
   createHandler = ({ name }: { name: string }) => {
-    const newId = `newId${this.list.length}`;
     this.list.push(
       mockQualityGate({
-        id: newId,
         name,
         conditions: [
           mockCondition({
@@ -290,7 +316,6 @@ export class QualityGatesServiceMock {
       })
     );
     return this.reply({
-      id: newId,
       name,
     });
   };
@@ -308,7 +333,6 @@ export class QualityGatesServiceMock {
       });
     }
     newQG.name = name;
-    newQG.id = `newId${this.list.length}`;
 
     newQG.isDefault = false;
     newQG.isBuiltIn = false;
@@ -316,7 +340,6 @@ export class QualityGatesServiceMock {
     this.list.push(newQG);
 
     return this.reply({
-      id: newQG.id,
       name,
     });
   };
@@ -330,7 +353,6 @@ export class QualityGatesServiceMock {
     }
     renameQG.name = name;
     return this.reply({
-      id: renameQG.id,
       name,
     });
   };
@@ -351,20 +373,21 @@ export class QualityGatesServiceMock {
 
   createConditionHandler = (
     data: {
-      gateId: string;
+      gateName: string;
     } & Omit<Condition, 'id'>
   ) => {
-    const { metric, gateId, op, error } = data;
-    const qg = this.list.find((q) => q.id === gateId);
+    const { metric, gateName, op, error } = data;
+    const qg = this.list.find((q) => q.name === gateName);
     if (qg === undefined) {
       return Promise.reject({
-        errors: [{ msg: `No quality gate has been found for id ${gateId}` }],
+        errors: [{ msg: `No quality gate has been found for name ${gateName}` }],
       });
     }
 
     const conditions = qg.conditions || [];
-    const id = `condId${qg.id}${conditions.length}`;
-    const newCondition = { id, metric, op, error };
+    const id = `condId${qg.name}${conditions.length}`;
+    const newCondition = { metric, op, error, id };
+
     conditions.push(newCondition);
     qg.conditions = conditions;
     return this.reply(newCondition);
@@ -445,6 +468,14 @@ export class QualityGatesServiceMock {
       changedProject.selected = false;
     }
     return Promise.resolve();
+  };
+
+  projectGateHandler = () => {
+    if (this.throwOnGetGateForProject) {
+      return Promise.reject('unknown');
+    }
+
+    return this.reply(this.list.find((qg) => qg.name === this.getGateForProjectGateName));
   };
 
   reply<T>(response: T): Promise<T> {

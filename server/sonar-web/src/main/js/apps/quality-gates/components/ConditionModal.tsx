@@ -74,7 +74,7 @@ export default class ConditionModal extends React.PureComponent<Props, State> {
     };
     const submitPromise = condition
       ? updateCondition({ organization, id: condition.id, ...newCondition })
-      : createCondition({ organization, gateId: qualityGate.id, ...newCondition });
+      : createCondition({ organization, gateName: qualityGate.name, ...newCondition });
     return submitPromise.then(this.props.onAddCondition);
   };
 

@@ -66,7 +66,7 @@ export function setQualityGateAsDefault(data: { name: string; organization: stri
 
 export function createCondition(
   data: {
-    gateId: string;
+    gateName: string;
     organization: string;
   } & Omit<Condition, 'id'>
 ): Promise<Condition> {
@@ -107,7 +107,7 @@ export function searchProjects(data: {
 }
 
 export function associateGateWithProject(data: {
-  gateId: string;
+  gateName: string;
   organization?: string;
   projectKey: string;
 }): Promise<void | Response> {

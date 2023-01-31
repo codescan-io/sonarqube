@@ -77,7 +77,7 @@ export function DetailsContent(props: DetailsContentProps) {
             <Projects
               canEdit={actions.associateProjects}
               // pass unique key to re-mount the component when the quality gate changes
-              key={qualityGate.id}
+              key={qualityGate.name}
               qualityGate={qualityGate}
               organization={props.organization}
             />

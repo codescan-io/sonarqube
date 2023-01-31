@@ -527,7 +527,6 @@ export interface QualityGate {
     setAsDefault?: boolean;
   };
   conditions?: Condition[];
-  id: string;
   isBuiltIn?: boolean;
   caycStatus?: CaycStatus;
   isDefault?: boolean;

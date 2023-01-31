@@ -70,7 +70,7 @@ export default class CaycReviewUpdateConditionsModal extends React.PureComponent
       promiseArr.push(
         createCondition({
           ...getCorrectCaycCondition(condition),
-          gateId: qualityGate.id,
+          gateName: qualityGate.name,
           organization,
         })
           .then((resultCondition) => this.props.onAddCondition(resultCondition))
