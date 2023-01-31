@@ -30,7 +30,8 @@ import javax.annotation.Generated;
 @Generated("sonar-ws-generator")
 public class DestroyRequest {
 
-  private String id;
+  private String name;
+
   private String organization;
 
   public String getOrganization() {
@@ -41,16 +42,12 @@ public class DestroyRequest {
     this.organization = organization;
   }
 
-  /**
-   * This is a mandatory parameter.
-   * Example value: "1"
-   */
-  public DestroyRequest setId(String id) {
-    this.id = id;
-    return this;
+  public String getName() {
+    return name;
   }
 
-  public String getId() {
-    return id;
+  public DestroyRequest setName(String name) {
+    this.name = name;
+    return this;
   }
 }

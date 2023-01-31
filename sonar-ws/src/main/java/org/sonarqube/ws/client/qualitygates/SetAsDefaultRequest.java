@@ -30,7 +30,9 @@ import javax.annotation.Generated;
 @Generated("sonar-ws-generator")
 public class SetAsDefaultRequest {
 
-  private String id;
+  private String name;
+
+  private String organization;
 
   public String getOrganization() {
     return organization;
@@ -40,18 +42,12 @@ public class SetAsDefaultRequest {
     this.organization = organization;
   }
 
-  private String organization;
-
-  /**
-   * This is a mandatory parameter.
-   * Example value: "1"
-   */
-  public SetAsDefaultRequest setId(String id) {
-    this.id = id;
-    return this;
+  public String getName() {
+    return name;
   }
 
-  public String getId() {
-    return id;
+  public SetAsDefaultRequest setName(String name) {
+    this.name = name;
+    return this;
   }
 }

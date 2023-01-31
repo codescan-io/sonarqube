@@ -24,7 +24,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import javax.annotation.Nullable;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
@@ -40,10 +39,8 @@ import org.sonar.server.qualitygate.QualityGateCaycStatus;
 import org.sonar.server.qualitygate.QualityGateFinder;
 import org.sonarqube.ws.Qualitygates.ShowWsResponse;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Optional.ofNullable;
-import static org.sonar.core.util.Uuids.UUID_EXAMPLE_01;
 import static org.sonar.core.util.stream.MoreCollectors.toList;
 import static org.sonar.core.util.stream.MoreCollectors.toSet;
 import static org.sonar.core.util.stream.MoreCollectors.uniqueIndex;
@@ -74,6 +71,7 @@ public class ShowAction implements QualityGatesWsAction {
       .setSince("4.3")
       .setResponseExample(Resources.getResource(this.getClass(), "show-example.json"))
       .setChangelog(
+        new Change("10.0", "Parameter 'id' is removed. Use 'name' instead."),
         new Change("9.9", "'caycStatus' field is added to the response"),
         new Change("8.4", "Parameter 'id' is deprecated. Format changes from integer to string. Use 'name' instead."),
         new Change("8.4", "Field 'id' in the response is deprecated."),
@@ -82,11 +80,8 @@ public class ShowAction implements QualityGatesWsAction {
         new Change("7.0", "'actions' field is added in the response"))
       .setHandler(this);
 
-    action.createParam(PARAM_ID)
-      .setDescription("ID of the quality gate. Either id or name must be set")
-      .setExampleValue(UUID_EXAMPLE_01);
-
     action.createParam(PARAM_NAME)
+      .setRequired(true)
       .setDescription("Name of the quality gate. Either id or name must be set")
       .setExampleValue("My Quality Gate");
 
@@ -95,29 +90,17 @@ public class ShowAction implements QualityGatesWsAction {
 
   @Override
   public void handle(Request request, Response response) {
-    String id = request.param(PARAM_ID);
-    String name = request.param(PARAM_NAME);
-    checkOneOfIdOrNamePresent(id, name);
+    String name = request.mandatoryParam(PARAM_NAME);
 
     try (DbSession dbSession = dbClient.openSession(false)) {
       OrganizationDto organization = wsSupport.getOrganization(dbSession, request);
-      QualityGateDto qualityGate = getByNameOrUuid(dbSession, organization, name, id);
+      QualityGateDto qualityGate = checkFound(dbClient.qualityGateDao().selectByOrganizationAndName(dbSession, organization, name), "No quality gate has been found for name %s", name);
       Collection<QualityGateConditionDto> conditions = getConditions(dbSession, qualityGate);
       Map<String, MetricDto> metricsByUuid = getMetricsByUuid(dbSession, conditions);
       QualityGateDto defaultQualityGate = qualityGateFinder.getDefault(dbSession, organization);
       QualityGateCaycStatus caycStatus = qualityGateCaycChecker.checkCaycCompliant(dbSession, qualityGate.getUuid());
       writeProtobuf(buildResponse(dbSession, organization, qualityGate, defaultQualityGate, conditions, metricsByUuid, caycStatus), request, response);
     }
-  }
-
-  private QualityGateDto getByNameOrUuid(DbSession dbSession, OrganizationDto organization, @Nullable String name, @Nullable String uuid) {
-    if (name != null) {
-      return checkFound(dbClient.qualityGateDao().selectByOrganizationAndName(dbSession, organization, name), "No quality gate has been found for name %s", name);
-    }
-    if (uuid != null) {
-      return wsSupport.getByOrganizationAndUuid(dbSession, organization, uuid);
-    }
-    throw new IllegalArgumentException("No parameter has been set to identify a quality gate");
   }
 
   public Collection<QualityGateConditionDto> getConditions(DbSession dbSession, QualityGateDto qualityGate) {
@@ -157,7 +140,4 @@ public class ShowAction implements QualityGatesWsAction {
     };
   }
 
-  private static void checkOneOfIdOrNamePresent(@Nullable String qGateUuid, @Nullable String qGateName) {
-    checkArgument(qGateUuid == null ^ qGateName == null, "Either '%s' or '%s' must be provided", PARAM_ID, PARAM_NAME);
-  }
 }
