@@ -125,7 +125,7 @@ class App extends React.PureComponent<Props, State> {
 
           <ScreenPositionHelper className="layout-page-side-outer">
             {({ top }) => (
-              <div className="layout-page-side" style={{ top }}>
+              <nav className="layout-page-side" style={{ top }}>
                 <div className="layout-page-side-inner">
                   <div className="layout-page-filters">
                     <ListHeader
@@ -142,7 +142,7 @@ class App extends React.PureComponent<Props, State> {
                     </DeferredSpinner>
                   </div>
                 </div>
-              </div>
+              </nav>
             )}
           </ScreenPositionHelper>
 

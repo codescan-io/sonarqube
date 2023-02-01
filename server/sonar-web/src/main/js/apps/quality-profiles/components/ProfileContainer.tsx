@@ -65,7 +65,9 @@ export default function ProfileContainer() {
         updateProfiles={context.updateProfiles}
         organization={profile.organization}
       />
-      <Outlet context={{ profile, ...context }} />
+      <main>
+        <Outlet context={{ profile, ...context }} />
+      </main>
     </div>
   );
 }
