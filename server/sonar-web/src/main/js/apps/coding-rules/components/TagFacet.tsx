@@ -69,6 +69,8 @@ export default class TagFacet extends React.PureComponent<Props> {
         getFacetItemText={this.getTagName}
         getSearchResultKey={(tag) => tag}
         getSearchResultText={(tag) => tag}
+        showMoreAriaLabel={translate('coding_rules.facet.tag.show_more')}
+        showLessAriaLabel={translate('coding_rules.facet.tag.show_less')}
         onChange={this.props.onChange}
         onSearch={this.handleSearch}
         onToggle={this.props.onToggle}
