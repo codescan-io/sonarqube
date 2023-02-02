@@ -46,7 +46,7 @@ public class CeTask {
   private final Map<String, String> characteristics;
 
   private CeTask(Builder builder) {
-    this.organizationUuid = requireNonNull(emptyToNull(builder.organizationUuid), "organizationUuid can't be null nor empty");
+    this.organizationUuid = builder.organizationUuid;
     this.uuid = requireNonNull(emptyToNull(builder.uuid), "uuid can't be null nor empty");
     this.type = requireNonNull(emptyToNull(builder.type), "type can't be null nor empty");
     checkArgument((builder.component == null) == (builder.mainComponent == null),

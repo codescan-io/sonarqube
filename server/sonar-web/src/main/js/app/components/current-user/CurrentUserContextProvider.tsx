@@ -35,7 +35,10 @@ interface State {
 export default class CurrentUserContextProvider extends React.PureComponent<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { currentUser: props.currentUser ?? { isLoggedIn: false, dismissedNotices: {} }, userOrganizations: props.userOrganizations ?? [] };
+    this.state = {
+      currentUser: props.currentUser ?? { isLoggedIn: false, dismissedNotices: {} },
+      userOrganizations: props.userOrganizations ?? [],
+    };
   }
 
   updateCurrentUserHomepage = (homepage: HomePage) => {
@@ -53,6 +56,12 @@ export default class CurrentUserContextProvider extends React.PureComponent<Prop
     }));
   };
 
+  updateUserOrganizations = (organizations: Organization[]) => {
+    this.setState(() => ({
+      userOrganizations: organizations,
+    }));
+  };
+
   render() {
     return (
       <CurrentUserContext.Provider
@@ -61,6 +70,7 @@ export default class CurrentUserContextProvider extends React.PureComponent<Prop
           userOrganizations: this.state.userOrganizations,
           updateCurrentUserHomepage: this.updateCurrentUserHomepage,
           updateDismissedNotices: this.updateDismissedNotices,
+          updateUserOrganizations: this.updateUserOrganizations,
         }}
       >
         {this.props.children}

@@ -26,6 +26,7 @@ export interface CurrentUserContextInterface {
   userOrganizations: Organization[];
   updateCurrentUserHomepage: (homepage: HomePage) => void;
   updateDismissedNotices: (key: NoticeType, value: boolean) => void;
+  updateUserOrganizations: (organizations: Organization[]) => void;
 }
 
 export const CurrentUserContext = React.createContext<CurrentUserContextInterface | undefined>(

@@ -24,14 +24,22 @@ import { translate } from "../../../helpers/l10n";
 import { Organization } from "../../../types/types";
 import { Router, withRouter } from "../../../components/hoc/withRouter";
 import { getOrganizationUrl } from "../../../helpers/urls";
+import { getUserOrganizations } from "../../../api/organizations";
+import withCurrentUserContext from "../../../app/components/current-user/withCurrentUserContext";
+import { CurrentUserContextInterface } from "../../../app/components/current-user/CurrentUserContext";
 
 interface Props {
   router: Router;
 }
 
-export class CreateOrganizationPage extends React.PureComponent<Props> {
+export class CreateOrganizationPage extends React.PureComponent<Props & CurrentUserContextInterface> {
 
   handleOrgCreated = (organization: Organization) => {
+    getUserOrganizations().then((organizations) => {
+      this.props.updateUserOrganizations(organizations);
+    }).catch(() => {
+      /* noop */
+    });
     this.props.router.push(getOrganizationUrl(organization.kee));
   };
 
@@ -62,4 +70,4 @@ export class CreateOrganizationPage extends React.PureComponent<Props> {
   }
 }
 
-export default withRouter(CreateOrganizationPage);
+export default withCurrentUserContext(withRouter(CreateOrganizationPage));
