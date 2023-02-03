@@ -578,7 +578,11 @@ export class App extends React.PureComponent<Props, State> {
         <div className="layout-page" id="coding-rules-page">
           <ScreenPositionHelper className="layout-page-side-outer">
             {({ top }) => (
-              <div className="layout-page-side" style={{ top }}>
+              <section
+                aria-label={translate('filters')}
+                className="layout-page-side"
+                style={{ top }}
+              >
                 <div className="layout-page-side-inner">
                   <div className="layout-page-filters">
                     <A11ySkipTarget
@@ -609,7 +613,7 @@ export class App extends React.PureComponent<Props, State> {
                     />
                   </div>
                 </div>
-              </div>
+              </section>
             )}
           </ScreenPositionHelper>
 
@@ -658,6 +662,7 @@ export class App extends React.PureComponent<Props, State> {
                 />
               ) : (
                 <>
+                  <h2 className="a11y-hidden">{translate('list_of_rules')}</h2>
                   <ul>
                     {rules.map((rule) => (
                       <RuleListItem

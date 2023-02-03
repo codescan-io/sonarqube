@@ -143,7 +143,7 @@
 }
 
 .button-link.disabled {
-  color: var(--secondFontColor);
+  color: var(--secondFontColor) !important;
   background: transparent !important;
   cursor: default;
 }
