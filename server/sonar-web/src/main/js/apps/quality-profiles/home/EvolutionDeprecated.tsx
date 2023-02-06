@@ -131,6 +131,11 @@ export default class EvolutionDeprecated extends React.PureComponent<Props> {
                 <Link
                   className="link-no-underline"
                   to={getDeprecatedActiveRulesUrl({ qprofile: profile.key }, this.props.organization)}
+                  aria-label={translateWithParameters(
+                    'quality_profile.lang_deprecated_x_rules',
+                    profile.languageName,
+                    profile.activeDeprecatedRuleCount
+                  )}
                 >
                   {translateWithParameters(
                     'quality_profile.x_rules',
