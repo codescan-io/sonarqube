@@ -29,8 +29,8 @@ import HelpTooltip from '../../../components/controls/HelpTooltip';
 import Modal from '../../../components/controls/Modal';
 import Radio from '../../../components/controls/Radio';
 import Select, {
-  BasicSelectOption,
   CreatableSelect,
+  LabelValueSelectOption,
   SearchSelect,
 } from '../../../components/controls/Select';
 import IssueTypeIcon from '../../../components/icons/IssueTypeIcon';
@@ -47,7 +47,7 @@ import withComponentContext  from '../../../app/components/componentContext/with
 
 const DEBOUNCE_DELAY = 250;
 
-interface TagOption extends BasicSelectOption {
+interface TagOption extends LabelValueSelectOption {
   label: string;
   value: string;
 }
@@ -92,6 +92,41 @@ enum InputField {
 }
 
 export const MAX_PAGE_SIZE = 500;
+
+function typeFieldTypeRenderer(option: LabelValueSelectOption) {
+  return (
+    <div className="display-flex-center">
+      <IssueTypeIcon query={option.value} />
+      <span className="little-spacer-left">{option.label}</span>
+    </div>
+  );
+}
+
+function TypeFieldOptionComponent(props: OptionProps<LabelValueSelectOption, false>) {
+  return <components.Option {...props}>{typeFieldTypeRenderer(props.data)}</components.Option>;
+}
+
+function TypeFieldSingleValueComponent(props: SingleValueProps<LabelValueSelectOption, false>) {
+  return (
+    <components.SingleValue {...props}>{typeFieldTypeRenderer(props.data)}</components.SingleValue>
+  );
+}
+
+function SeverityFieldOptionComponent(props: OptionProps<LabelValueSelectOption, false>) {
+  return (
+    <components.Option {...props}>
+      {<SeverityHelper className="display-flex-center" severity={props.data.value} />}
+    </components.Option>
+  );
+}
+
+function SeverityFieldSingleValueComponent(props: SingleValueProps<LabelValueSelectOption, false>) {
+  return (
+    <components.SingleValue {...props}>
+      {<SeverityHelper className="display-flex-center" severity={props.data.value} />}
+    </components.SingleValue>
+  );
+}
 
 export class BulkChangeModal extends React.PureComponent<Props, State> {
   mounted = false;
@@ -167,13 +202,14 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
     this.setState({ comment: event.currentTarget.value });
   };
 
-  handleSelectFieldChange = (field: 'severity' | 'type') => (data: BasicSelectOption | null) => {
-    if (data) {
-      this.setState<keyof FormFields>({ [field]: data.value });
-    } else {
-      this.setState<keyof FormFields>({ [field]: undefined });
-    }
-  };
+  handleSelectFieldChange =
+    (field: 'severity' | 'type') => (data: LabelValueSelectOption | null) => {
+      if (data) {
+        this.setState<keyof FormFields>({ [field]: data.value });
+      } else {
+        this.setState<keyof FormFields>({ [field]: undefined });
+      }
+    };
 
   handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -310,17 +346,10 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
     }
 
     const types: IssueType[] = ['BUG', 'VULNERABILITY', 'CODE_SMELL'];
-    const options: BasicSelectOption[] = types.map((type) => ({
+    const options: LabelValueSelectOption[] = types.map((type) => ({
       label: translate('issue.type', type),
       value: type,
     }));
-
-    const typeRenderer = (option: BasicSelectOption) => (
-      <div className="display-flex-center">
-        <IssueTypeIcon query={option.value} />
-        <span className="little-spacer-left">{option.label}</span>
-      </div>
-    );
 
     const input = (
       <Select
@@ -329,12 +358,8 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
         isClearable={true}
         isSearchable={false}
         components={{
-          Option: (props: OptionProps<BasicSelectOption, false>) => (
-            <components.Option {...props}>{typeRenderer(props.data)}</components.Option>
-          ),
-          SingleValue: (props: SingleValueProps<BasicSelectOption>) => (
-            <components.SingleValue {...props}>{typeRenderer(props.data)}</components.SingleValue>
-          ),
+          Option: TypeFieldOptionComponent,
+          SingleValue: TypeFieldSingleValueComponent,
         }}
         onChange={this.handleSelectFieldChange('type')}
         options={options}
@@ -353,7 +378,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
     }
 
     const severities = ['BLOCKER', 'CRITICAL', 'MAJOR', 'MINOR', 'INFO'];
-    const options: BasicSelectOption[] = severities.map((severity) => ({
+    const options: LabelValueSelectOption[] = severities.map((severity) => ({
       label: translate('severity', severity),
       value: severity,
     }));
@@ -366,16 +391,8 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
         isSearchable={false}
         onChange={this.handleSelectFieldChange('severity')}
         components={{
-          Option: (props: OptionProps<BasicSelectOption, false>) => (
-            <components.Option {...props}>
-              {<SeverityHelper className="display-flex-center" severity={props.data.value} />}
-            </components.Option>
-          ),
-          SingleValue: (props: SingleValueProps<BasicSelectOption>) => (
-            <components.SingleValue {...props}>
-              {<SeverityHelper className="display-flex-center" severity={props.data.value} />}
-            </components.SingleValue>
-          ),
+          Option: SeverityFieldOptionComponent,
+          SingleValue: SeverityFieldSingleValueComponent,
         }}
         options={options}
       />

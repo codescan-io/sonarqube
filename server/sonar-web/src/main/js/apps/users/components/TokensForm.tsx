@@ -26,7 +26,7 @@ import { getScannableProjects } from '../../../api/components';
 import { generateToken, getTokens } from '../../../api/user-tokens';
 import withCurrentUserContext from '../../../app/components/current-user/withCurrentUserContext';
 import { SubmitButton } from '../../../components/controls/buttons';
-import Select, { BasicSelectOption } from '../../../components/controls/Select';
+import Select, { LabelValueSelectOption } from '../../../components/controls/Select';
 import DeferredSpinner from '../../../components/ui/DeferredSpinner';
 import { translate } from '../../../helpers/l10n';
 import {
@@ -57,8 +57,8 @@ interface State {
   newTokenName: string;
   newTokenType?: TokenType;
   tokens: UserToken[];
-  projects: BasicSelectOption[];
-  selectedProject?: BasicSelectOption;
+  projects: LabelValueSelectOption[];
+  selectedProject?: LabelValueSelectOption;
   newTokenExpiration: TokenExpiration;
   tokenExpirationOptions: { value: TokenExpiration; label: string }[];
   tokenTypeOptions: Array<{ label: string; value: TokenType }>;
@@ -132,7 +132,7 @@ export class TokensForm extends React.PureComponent<Props, State> {
     return projects;
   };
 
-  constructTokenTypeOptions = (projects: BasicSelectOption[]) => {
+  constructTokenTypeOptions = (projects: LabelValueSelectOption[]) => {
     const { currentUser } = this.props;
     const { whiteLabel } = this.props.appState;
 
@@ -271,7 +271,7 @@ export class TokensForm extends React.PureComponent<Props, State> {
     this.setState({ newTokenType: value });
   };
 
-  handleProjectChange = (selectedProject: BasicSelectOption) => {
+  handleProjectChange = (selectedProject: LabelValueSelectOption) => {
     this.setState({ selectedProject });
   };
 
@@ -315,7 +315,7 @@ export class TokensForm extends React.PureComponent<Props, State> {
                 {translate('users.tokens.type')}
               </label>
               <Select
-                id="token-select-type"
+                inputId="token-select-type"
                 className="spacer-top it__token-type"
                 isSearchable={false}
                 onChange={this.handleNewTokenTypeChange}
@@ -334,7 +334,7 @@ export class TokensForm extends React.PureComponent<Props, State> {
                   {translate('users.tokens.project')}
                 </label>
                 <Select
-                  id="token-select-project"
+                  inputId="token-select-project"
                   className="spacer-top it__project"
                   onChange={this.handleProjectChange}
                   options={projects}
@@ -350,7 +350,7 @@ export class TokensForm extends React.PureComponent<Props, State> {
             {translate('users.tokens.expires_in')}
           </label>
           <Select
-            id="token-select-expiration"
+            inputId="token-select-expiration"
             className="spacer-top"
             isSearchable={false}
             onChange={this.handleNewTokenExpirationChange}
