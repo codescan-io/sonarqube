@@ -79,7 +79,7 @@ export default class EvolutionDeprecated extends React.PureComponent<Props> {
             }
 
             return (
-              <div className="muted" key={rule.from.key}>
+              <div key={rule.from.key}>
                 {' '}
                 {translateWithParameters(
                   'coding_rules.filters.inheritance.x_inherited_from_y',
