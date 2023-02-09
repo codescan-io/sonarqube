@@ -46,7 +46,6 @@ include 'server:sonar-webserver-monitoring'
 
 include 'sonar-application'
 include 'codescan-application'
-include 'sonar-check-api'
 include 'sonar-core'
 include 'sonar-duplications'
 include 'sonar-markdown'
