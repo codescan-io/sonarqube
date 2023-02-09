@@ -17,25 +17,44 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.server.almintegration.ws;
+package org.sonar.db.permission;
 
-import java.util.Base64;
-import javax.annotation.Nullable;
-import org.sonar.db.alm.setting.ALM;
+public enum OrganizationPermission {
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.sonar.db.alm.setting.ALM.BITBUCKET_CLOUD;
+  ADMINISTER("admin"),
+  ADMINISTER_QUALITY_GATES("gateadmin"),
+  ADMINISTER_QUALITY_PROFILES("profileadmin"),
+  ADMINISTER_CUSTOMER("customerAdmin"),
+  PROVISION_PROJECTS("provisioning"),
+  SCAN("scan"),
 
-public class CredentialsEncoderHelper {
-  private CredentialsEncoderHelper() {
+  /**
+   * @since 7.4
+   */
+  APPLICATION_CREATOR("applicationcreator"),
+  PORTFOLIO_CREATOR("portfoliocreator");
 
+  private final String key;
+
+  OrganizationPermission(String key) {
+    this.key = key;
   }
 
-  public static String encodeCredentials(ALM alm, String pat, @Nullable String username) {
-    if (!alm.equals(BITBUCKET_CLOUD)) {
-      return pat;
-    }
+  public String getKey() {
+    return key;
+  }
 
-    return Base64.getEncoder().encodeToString((username + ":" + pat).getBytes(UTF_8));
+  @Override
+  public String toString() {
+    return key;
+  }
+
+  public static OrganizationPermission fromKey(String key) {
+    for (OrganizationPermission p : values()) {
+      if (p.getKey().equals(key)) {
+        return p;
+      }
+    }
+    throw new IllegalArgumentException("Unsupported permission: " + key);
   }
 }

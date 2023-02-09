@@ -34,6 +34,7 @@ import org.sonar.api.server.ws.WebService.Param;
 import org.sonar.core.i18n.I18n;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
+import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.template.CountByTemplateAndPermissionDto;
 import org.sonar.db.permission.template.DefaultTemplates;
 import org.sonar.db.permission.template.PermissionTemplateCharacteristicDto;
@@ -41,6 +42,7 @@ import org.sonar.db.permission.template.PermissionTemplateDto;
 import org.sonar.server.permission.DefaultTemplatesResolver;
 import org.sonar.server.permission.DefaultTemplatesResolver.ResolvedDefaultTemplates;
 import org.sonar.server.permission.PermissionService;
+import org.sonar.server.permission.ws.PermissionWsSupport;
 import org.sonar.server.permission.ws.PermissionsWsAction;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.Permissions;
@@ -55,6 +57,7 @@ import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOption
 import static org.sonar.server.permission.PermissionPrivilegeChecker.checkGlobalAdmin;
 import static org.sonar.server.permission.ws.template.SearchTemplatesData.builder;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
+import static org.sonarqube.ws.client.permission.PermissionsWsParameters.PARAM_ORGANIZATION;
 
 public class SearchTemplatesAction implements PermissionsWsAction {
   private static final String PROPERTY_PREFIX = "projects_role.";
@@ -65,14 +68,16 @@ public class SearchTemplatesAction implements PermissionsWsAction {
   private final I18n i18n;
   private final DefaultTemplatesResolver defaultTemplatesResolver;
   private final PermissionService permissionService;
+  private final PermissionWsSupport wsSupport;
 
   public SearchTemplatesAction(DbClient dbClient, UserSession userSession, I18n i18n, DefaultTemplatesResolver defaultTemplatesResolver,
-    PermissionService permissionService) {
+    PermissionService permissionService, PermissionWsSupport wsSupport) {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.i18n = i18n;
     this.defaultTemplatesResolver = defaultTemplatesResolver;
     this.permissionService = permissionService;
+    this.wsSupport = wsSupport;
   }
 
   @Override
@@ -89,8 +94,9 @@ public class SearchTemplatesAction implements PermissionsWsAction {
   @Override
   public void handle(Request wsRequest, Response wsResponse) throws Exception {
     try (DbSession dbSession = dbClient.openSession(false)) {
-      SearchTemplatesRequest request = new SearchTemplatesRequest().setQuery(wsRequest.param(Param.TEXT_QUERY));
-      checkGlobalAdmin(userSession);
+      OrganizationDto org = wsSupport.findOrganization(dbSession, wsRequest.param(PARAM_ORGANIZATION));
+      SearchTemplatesRequest request = new SearchTemplatesRequest().setOrganizationUuid(org.getUuid()).setQuery(wsRequest.param(Param.TEXT_QUERY));
+      checkGlobalAdmin(userSession, request.getOrganizationUuid());
 
       SearchTemplatesWsResponse searchTemplatesWsResponse = buildResponse(load(dbSession, request));
       writeProtobuf(searchTemplatesWsResponse, wsRequest, wsResponse);

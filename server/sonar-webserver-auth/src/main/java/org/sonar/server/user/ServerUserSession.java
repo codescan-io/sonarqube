@@ -42,7 +42,7 @@ import org.sonar.db.component.ComponentTreeQuery;
 import org.sonar.db.component.ComponentTreeQuery.Strategy;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.organization.OrganizationMemberDto;
-import org.sonar.db.permission.GlobalPermission;
+import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
@@ -65,10 +65,9 @@ public class ServerUserSession extends AbstractUserSession {
   private final DbClient dbClient;
   private final Map<String, String> projectUuidByComponentUuid = new HashMap<>();
   private final Map<String, Set<String>> permissionsByProjectUuid = new HashMap<>();
+  private final Map<String, Set<OrganizationPermission>> permissionsByOrganizationUuid = new HashMap<>();
 
   private Collection<GroupDto> groups;
-  private Boolean isSystemAdministrator;
-  private Set<GlobalPermission> permissions;
   private final Set<String> organizationMembership = new HashSet<>();
 
   public ServerUserSession(DbClient dbClient, @Nullable UserDto userDto) {
@@ -135,14 +134,6 @@ public class ServerUserSession extends AbstractUserSession {
   @Override
   public Optional<ExternalIdentity> getExternalIdentity() {
     return ofNullable(userDto).map(d -> computeIdentity(d).getExternalIdentity());
-  }
-
-  @Override
-  protected boolean hasPermissionImpl(GlobalPermission permission) {
-    if (permissions == null) {
-      permissions = loadGlobalPermissions();
-    }
-    return permissions.contains(permission);
   }
 
   @Override
@@ -292,17 +283,23 @@ public class ServerUserSession extends AbstractUserSession {
     });
   }
 
-  private Set<GlobalPermission> loadGlobalPermissions() {
+  @Override
+  protected boolean hasPermissionImpl(OrganizationPermission permission, String organizationUuid) {
+    Set<OrganizationPermission> permissions = permissionsByOrganizationUuid.computeIfAbsent(organizationUuid, this::loadOrganizationPermissions);
+    return permissions.contains(permission);
+  }
+
+  private Set<OrganizationPermission> loadOrganizationPermissions(String organizationUuid) {
     Set<String> permissionKeys;
     try (DbSession dbSession = dbClient.openSession(false)) {
       if (userDto != null && userDto.getUuid() != null) {
-        permissionKeys = dbClient.authorizationDao().selectGlobalPermissions(dbSession, userDto.getUuid());
+        permissionKeys = dbClient.authorizationDao().selectOrganizationPermissions(dbSession, organizationUuid, userDto.getUuid());
       } else {
-        permissionKeys = dbClient.authorizationDao().selectGlobalPermissionsOfAnonymous(dbSession);
+        permissionKeys = dbClient.authorizationDao().selectOrganizationPermissionsOfAnonymous(dbSession, organizationUuid);
       }
     }
     return permissionKeys.stream()
-      .map(GlobalPermission::fromKey)
+      .map(OrganizationPermission::fromKey)
       .collect(MoreCollectors.toSet(permissionKeys.size()));
   }
 
@@ -357,19 +354,13 @@ public class ServerUserSession extends AbstractUserSession {
 
   @Override
   public boolean isSystemAdministrator() {
-    if (isSystemAdministrator == null) {
-      isSystemAdministrator = loadIsSystemAdministrator();
-    }
-    return isSystemAdministrator;
+    // organization feature is enabled -> requires to be root
+    return isRoot();
   }
 
   @Override
   public boolean isActive() {
     return userDto.isActive();
-  }
-
-  private boolean loadIsSystemAdministrator() {
-    return hasPermission(GlobalPermission.ADMINISTER);
   }
 
   @Override

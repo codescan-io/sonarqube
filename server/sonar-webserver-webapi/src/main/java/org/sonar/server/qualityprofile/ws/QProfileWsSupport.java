@@ -27,7 +27,7 @@ import org.sonar.api.server.ws.WebService.NewParam;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
-import org.sonar.db.permission.GlobalPermission;
+import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.qualityprofile.QProfileDto;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.db.user.GroupDto;
@@ -35,7 +35,9 @@ import org.sonar.db.user.UserDto;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static java.util.Objects.requireNonNull;
 import static org.sonar.db.organization.OrganizationDto.Subscription.PAID;
 import static org.sonar.server.exceptions.BadRequestException.checkRequest;
 import static org.sonar.server.exceptions.NotFoundException.checkFound;
@@ -56,10 +58,18 @@ public class QProfileWsSupport {
   public static NewParam createOrganizationParam(NewAction action) {
     return action
             .createParam(QualityProfileWsParameters.PARAM_ORGANIZATION)
-            .setDescription("Organization key. If no organization is provided, the default organization is used.")
-            .setRequired(false)
-            .setInternal(true)
+            .setDescription("Organization key.")
+            .setRequired(true)
             .setExampleValue("my-org");
+  }
+
+  public OrganizationDto getOrganization(DbSession dbSession, QProfileDto profile) {
+    requireNonNull(profile);
+    String organizationUuid = profile.getOrganizationUuid();
+    OrganizationDto organization = dbClient.organizationDao().selectByUuid(dbSession, organizationUuid)
+            .orElseThrow(() -> new IllegalStateException("Cannot load organization with uuid=" + organizationUuid));
+    checkMembershipOnPaidOrganization(organization);
+    return organization;
   }
 
   public OrganizationDto getOrganizationByKey(DbSession dbSession, String organizationKey) {
@@ -95,32 +105,37 @@ public class QProfileWsSupport {
       profile = dbClient.qualityProfileDao().selectByUuid(dbSession, ref.getKey());
       checkFound(profile, "Quality Profile with key '%s' does not exist", ref.getKey());
     } else {
-      profile = dbClient.qualityProfileDao().selectByNameAndLanguage(dbSession, ref.getName(), ref.getLanguage());
+      OrganizationDto org = getOrganizationByKey(dbSession, ref.getOrganizationKey().orElse(null));
+      profile = dbClient.qualityProfileDao().selectByNameAndLanguage(dbSession, org, ref.getName(), ref.getLanguage());
       checkFound(profile, "Quality Profile for language '%s' and name '%s' does not exist", ref.getLanguage(), ref.getName());
     }
     return profile;
   }
 
-  public QProfileDto getProfile(DbSession dbSession, String name, String language) {
-    QProfileDto profile = dbClient.qualityProfileDao().selectByNameAndLanguage(dbSession, name, language);
-    checkFound(profile, "Quality Profile for language '%s' and name '%s' does not exist", language, name);
+  public QProfileDto getProfile(DbSession dbSession, OrganizationDto organization, String name, String language) {
+    QProfileDto profile = dbClient.qualityProfileDao().selectByNameAndLanguage(dbSession, organization, name, language);
+    checkFound(profile, "Quality Profile for language '%s' and name '%s' does not exist in organization '%s'", language, name, organization.getKey());
     return profile;
   }
 
-  public UserDto getUser(DbSession dbSession, String login) {
+  public UserDto getUser(DbSession dbSession, OrganizationDto organization, String login) {
     UserDto user = dbClient.userDao().selectActiveUserByLogin(dbSession, login);
     checkFound(user, "User with login '%s' is not found'", login);
+    checkMembership(dbSession, organization, user);
     return user;
   }
 
-  GroupDto getGroup(DbSession dbSession, String groupName) {
-    Optional<GroupDto> group = dbClient.groupDao().selectByName(dbSession, groupName);
-    checkFoundWithOptional(group, "No group with name '%s'", groupName);
+  GroupDto getGroup(DbSession dbSession, OrganizationDto organization, String groupName) {
+    Optional<GroupDto> group = dbClient.groupDao().selectByName(dbSession, organization.getUuid(), groupName);
+    checkFoundWithOptional(group, "No group with name '%s' in organization '%s'", groupName, organization.getKey());
     return group.get();
   }
 
-  boolean canEdit(DbSession dbSession, QProfileDto profile) {
+  boolean canEdit(DbSession dbSession, OrganizationDto organization, QProfileDto profile) {
     if (canAdministrate(profile)) {
+      return true;
+    }
+    if (userSession.hasPermission(OrganizationPermission.ADMINISTER_QUALITY_PROFILES, organization)) {
       return true;
     }
     UserDto user = dbClient.userDao().selectByLogin(dbSession, userSession.getLogin());
@@ -133,12 +148,12 @@ public class QProfileWsSupport {
     if (profile.isBuiltIn() || !userSession.isLoggedIn()) {
       return false;
     }
-    return userSession.hasPermission(GlobalPermission.ADMINISTER_QUALITY_PROFILES);
+    return userSession.hasPermission(OrganizationPermission.ADMINISTER_QUALITY_PROFILES, profile.getOrganizationUuid());
   }
 
-  public void checkCanEdit(DbSession dbSession, QProfileDto profile) {
+  public void checkCanEdit(DbSession dbSession, OrganizationDto organization, QProfileDto profile) {
     checkNotBuiltIn(profile);
-    if (!canEdit(dbSession, profile)) {
+    if (!canEdit(dbSession, organization, profile)) {
       throw insufficientPrivilegesException();
     }
   }
@@ -152,5 +167,14 @@ public class QProfileWsSupport {
 
   void checkNotBuiltIn(QProfileDto profile) {
     checkRequest(!profile.isBuiltIn(), "Operation forbidden for built-in Quality Profile '%s' with language '%s'", profile.getName(), profile.getLanguage());
+  }
+
+  private void checkMembership(DbSession dbSession, OrganizationDto organization, UserDto user) {
+    checkArgument(isMember(dbSession, organization, user.getUuid()),
+            "User '%s' is not member of organization '%s'", user.getLogin(), organization.getKey());
+  }
+
+  private boolean isMember(DbSession dbSession, OrganizationDto organization, String userUuid) {
+    return dbClient.organizationMemberDao().select(dbSession, organization.getUuid(), userUuid).isPresent();
   }
 }

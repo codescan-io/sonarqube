@@ -80,8 +80,8 @@ public class PermissionTemplateDao implements Dao {
     return mapper(session).selectGroupNamesByQueryAndTemplate(templateUuid, query, new RowBounds(query.getPageOffset(), query.getPageSize()));
   }
 
-  public int countGroupNamesByQueryAndTemplate(DbSession session, PermissionQuery query, String templateUuid) {
-    return mapper(session).countGroupNamesByQueryAndTemplate(query, templateUuid);
+  public int countGroupNamesByQueryAndTemplate(DbSession session, PermissionQuery query, String organizationUuid, String templateUuid) {
+    return mapper(session).countGroupNamesByQueryAndTemplate(organizationUuid, query, templateUuid);
   }
 
   public List<PermissionTemplateGroupDto> selectGroupPermissionsByTemplateIdAndGroupNames(DbSession dbSession, String templateUuid, List<String> groups) {
@@ -252,8 +252,8 @@ public class PermissionTemplateDao implements Dao {
     session.commit();
   }
 
-  public PermissionTemplateDto selectByName(DbSession dbSession, String name) {
-    return mapper(dbSession).selectByName(name.toUpperCase(Locale.ENGLISH));
+  public PermissionTemplateDto selectByName(DbSession dbSession, String organizationUuid, String name) {
+    return mapper(dbSession).selectByName(organizationUuid, name.toUpperCase(Locale.ENGLISH));
   }
 
   public List<String> selectPotentialPermissionsByUserUuidAndTemplateUuid(DbSession dbSession, @Nullable String currentUserUuid, String templateUuid) {

@@ -29,6 +29,7 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.organization.OrganizationDto;
+import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.server.component.ComponentUpdater;
 import org.sonar.server.project.ProjectDefaultVisibility;
 import org.sonar.server.project.Visibility;
@@ -40,7 +41,6 @@ import static org.apache.commons.lang.StringUtils.abbreviate;
 import static org.sonar.api.resources.Qualifiers.PROJECT;
 import static org.sonar.core.component.ComponentKeys.MAX_COMPONENT_KEY_LENGTH;
 import static org.sonar.db.component.ComponentValidator.MAX_COMPONENT_NAME_LENGTH;
-import static org.sonar.db.permission.GlobalPermission.PROVISION_PROJECTS;
 import static org.sonar.server.component.NewComponent.newComponentBuilder;
 import static org.sonar.server.project.ws.ProjectsWsSupport.PARAM_ORGANIZATION;
 import static org.sonar.server.ws.KeyExamples.KEY_PROJECT_EXAMPLE_001;
@@ -118,7 +118,7 @@ public class CreateAction implements ProjectsWsAction {
   private CreateWsResponse doHandle(CreateRequest request) {
     try (DbSession dbSession = dbClient.openSession(false)) {
       OrganizationDto organization = support.getOrganization(dbSession, request.getOrganization());
-      userSession.checkPermission(PROVISION_PROJECTS);
+      userSession.checkPermission(OrganizationPermission.PROVISION_PROJECTS, organization);
       String visibility = request.getVisibility();
       boolean changeToPrivate = visibility == null ? projectDefaultVisibility.get(dbSession).isPrivate() : "private".equals(visibility);
 

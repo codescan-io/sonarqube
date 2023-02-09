@@ -69,8 +69,8 @@ public class GroupPermissionDao implements Dao {
    * Select global or project permission of given groups. Anyone virtual group is supported
    * through the value "zero" (0L) in {@code groupUuids}.
    */
-  public List<GroupPermissionDto> selectByGroupUuids(DbSession dbSession, List<String> groupUuids, @Nullable String projectUuid) {
-    return executeLargeInputs(groupUuids, groups -> mapper(dbSession).selectByGroupUuids(groups, projectUuid));
+  public List<GroupPermissionDto> selectByGroupUuids(DbSession dbSession, String organizationUuid, List<String> groupUuids, @Nullable String projectUuid) {
+    return executeLargeInputs(groupUuids, groups -> mapper(dbSession).selectByGroupUuids(organizationUuid, groups, projectUuid));
   }
 
   public List<String> selectProjectKeysWithAnyonePermissions(DbSession dbSession, int max) {

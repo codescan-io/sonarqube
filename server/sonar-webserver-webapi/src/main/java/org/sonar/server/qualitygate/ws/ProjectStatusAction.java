@@ -216,8 +216,7 @@ public class ProjectStatusAction implements QualityGatesWsAction {
   private void checkPermission(ProjectDto project) {
     if (!userSession.hasProjectPermission(UserRole.ADMIN, project) &&
       !userSession.hasProjectPermission(UserRole.USER, project) &&
-      !userSession.hasProjectPermission(UserRole.SCAN, project) &&
-      !userSession.hasPermission(GlobalPermission.SCAN)) {
+      !userSession.hasProjectPermission(UserRole.SCAN, project)) {
       throw insufficientPrivilegesException();
     }
   }

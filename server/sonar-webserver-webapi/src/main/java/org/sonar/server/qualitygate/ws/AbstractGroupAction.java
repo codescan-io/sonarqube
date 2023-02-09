@@ -61,7 +61,7 @@ public abstract class AbstractGroupAction implements QualityGatesWsAction {
     final String qualityGateName = request.mandatoryParam(PARAM_GATE_NAME);
 
     try (DbSession dbSession = dbClient.openSession(false)) {
-      QualityGateDto qualityGateDto = wsSupport.getByName(dbSession, qualityGateName);
+      QualityGateDto qualityGateDto = wsSupport.getByOrganizationAndName(dbSession, null /*TODO*/, qualityGateName);
       wsSupport.checkCanLimitedEdit(dbSession, qualityGateDto);
       GroupDto group = getGroup(dbSession, groupName);
       apply(dbSession, qualityGateDto, group);
@@ -72,7 +72,7 @@ public abstract class AbstractGroupAction implements QualityGatesWsAction {
   protected abstract void apply(DbSession dbSession, QualityGateDto qualityGate, GroupDto group);
 
   private GroupDto getGroup(DbSession dbSession, String groupName) {
-    Optional<GroupDto> group = dbClient.groupDao().selectByName(dbSession, groupName);
+    Optional<GroupDto> group = dbClient.groupDao().selectByName(dbSession, null /*TODO*/, groupName);
     checkFoundWithOptional(group, "Group with name '%s' is not found", groupName);
     return group.get();
   }

@@ -28,7 +28,7 @@ public interface QualityGateMapper {
 
   void insertQualityGate(QualityGateDto qualityGate);
 
-  List<QualityGateDto> selectAll();
+  List<QualityGateDto> selectAll(@Param("organizationUuid") String organizationUuid);
 
   QualityGateDto selectByName(String name);
 
@@ -46,7 +46,11 @@ public interface QualityGateMapper {
 
   QualityGateDto selectByUuid(String uuid);
 
-  QualityGateDto selectDefault();
+  QualityGateDto selectByUuidAndOrganization(@Param("qualityGateUuid") String qualityGateUuid, @Param("organizationUuid") String organizationUuid);
+
+  QualityGateDto selectByNameAndOrganization(@Param("name") String name, @Param("organizationUuid") String organizationUuid);
+
+  QualityGateDto selectDefault(@Param("organizationUuid") String organizationUuid);
 
   QualityGateDto selectByProjectUuid(@Param("projectUuid") String projectUuid);
 }

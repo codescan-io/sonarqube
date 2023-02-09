@@ -39,6 +39,7 @@ import static org.sonar.server.exceptions.BadRequestException.checkRequest;
 import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOptional;
 import static org.sonar.server.permission.PermissionPrivilegeChecker.checkGlobalAdmin;
 import static org.sonar.server.permission.ws.template.WsTemplateRef.newTemplateRef;
+import static org.sonarqube.ws.client.permission.PermissionsWsParameters.PARAM_ORGANIZATION;
 import static org.sonarqube.ws.client.permission.PermissionsWsParameters.PARAM_TEMPLATE_ID;
 import static org.sonarqube.ws.client.permission.PermissionsWsParameters.PARAM_TEMPLATE_NAME;
 
@@ -58,6 +59,7 @@ public class DeleteTemplateAction implements PermissionsWsAction {
 
   private static DeleteTemplateRequest toDeleteTemplateWsRequest(Request request) {
     return new DeleteTemplateRequest()
+      .setOrganization(request.param(PARAM_ORGANIZATION))
       .setTemplateId(request.param(PARAM_TEMPLATE_ID))
       .setTemplateName(request.param(PARAM_TEMPLATE_NAME));
   }
@@ -83,8 +85,9 @@ public class DeleteTemplateAction implements PermissionsWsAction {
 
   private void doHandle(DeleteTemplateRequest request) {
     try (DbSession dbSession = dbClient.openSession(false)) {
-      PermissionTemplateDto template = wsSupport.findTemplate(dbSession, newTemplateRef(request.getTemplateId(), request.getTemplateName()));
-      checkGlobalAdmin(userSession);
+      PermissionTemplateDto template = wsSupport.findTemplate(dbSession, newTemplateRef(
+              request.getTemplateId(), request.getOrganization(), request.getTemplateName()));
+      checkGlobalAdmin(userSession, template.getOrganizationUuid());
 
       DefaultTemplates defaultTemplates = retrieveDefaultTemplates(dbSession, template);
 
@@ -131,6 +134,7 @@ public class DeleteTemplateAction implements PermissionsWsAction {
   private static class DeleteTemplateRequest {
     private String templateId;
     private String templateName;
+    private String organization;
 
     @CheckForNull
     public String getTemplateId() {
@@ -149,6 +153,15 @@ public class DeleteTemplateAction implements PermissionsWsAction {
 
     public DeleteTemplateRequest setTemplateName(@Nullable String templateName) {
       this.templateName = templateName;
+      return this;
+    }
+
+    public String getOrganization() {
+      return organization;
+    }
+
+    public DeleteTemplateRequest setOrganization(@Nullable String s) {
+      this.organization = s;
       return this;
     }
   }

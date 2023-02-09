@@ -32,6 +32,7 @@ import org.sonar.api.server.ws.WebService;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.metric.MetricDto;
+import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.qualitygate.QualityGateConditionDto;
 import org.sonar.db.qualitygate.QualityGateDto;
 import org.sonar.server.qualitygate.QualityGateFinder;
@@ -44,6 +45,7 @@ import static org.sonar.core.util.Uuids.UUID_EXAMPLE_01;
 import static org.sonar.core.util.stream.MoreCollectors.toList;
 import static org.sonar.core.util.stream.MoreCollectors.toSet;
 import static org.sonar.core.util.stream.MoreCollectors.uniqueIndex;
+import static org.sonar.server.exceptions.NotFoundException.checkFound;
 import static org.sonar.server.qualitygate.ws.QualityGatesWsParameters.PARAM_ID;
 import static org.sonar.server.qualitygate.ws.QualityGatesWsParameters.PARAM_NAME;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
@@ -81,6 +83,8 @@ public class ShowAction implements QualityGatesWsAction {
     action.createParam(PARAM_NAME)
       .setDescription("Name of the quality gate. Either id or name must be set")
       .setExampleValue("My Quality Gate");
+
+    wsSupport.createOrganizationParam(action);
   }
 
   @Override
@@ -90,20 +94,21 @@ public class ShowAction implements QualityGatesWsAction {
     checkOneOfIdOrNamePresent(id, name);
 
     try (DbSession dbSession = dbClient.openSession(false)) {
-      QualityGateDto qualityGate = getByNameOrUuid(dbSession, name, id);
+      OrganizationDto organization = wsSupport.getOrganization(dbSession, request);
+      QualityGateDto qualityGate = getByNameOrUuid(dbSession, organization, name, id);
       Collection<QualityGateConditionDto> conditions = getConditions(dbSession, qualityGate);
       Map<String, MetricDto> metricsByUuid = getMetricsByUuid(dbSession, conditions);
-      QualityGateDto defaultQualityGate = qualityGateFinder.getDefault(dbSession);
-      writeProtobuf(buildResponse(dbSession, qualityGate, defaultQualityGate, conditions, metricsByUuid), request, response);
+      QualityGateDto defaultQualityGate = qualityGateFinder.getDefault(dbSession, organization);
+      writeProtobuf(buildResponse(dbSession, organization, qualityGate, defaultQualityGate, conditions, metricsByUuid), request, response);
     }
   }
 
-  private QualityGateDto getByNameOrUuid(DbSession dbSession, @Nullable String name, @Nullable String uuid) {
+  private QualityGateDto getByNameOrUuid(DbSession dbSession, OrganizationDto organization, @Nullable String name, @Nullable String uuid) {
     if (name != null) {
-      return wsSupport.getByName(dbSession, name);
+      return checkFound(dbClient.qualityGateDao().selectByOrganizationAndName(dbSession, organization, name), "No quality gate has been found for name %s", name);
     }
     if (uuid != null) {
-      return wsSupport.getByUuid(dbSession, uuid);
+      return wsSupport.getByOrganizationAndUuid(dbSession, organization, uuid);
     }
     throw new IllegalArgumentException("No parameter has been set to identify a quality gate");
   }
@@ -119,7 +124,7 @@ public class ShowAction implements QualityGatesWsAction {
       .collect(uniqueIndex(MetricDto::getUuid));
   }
 
-  private ShowWsResponse buildResponse(DbSession dbSession, QualityGateDto qualityGate, QualityGateDto defaultQualityGate,
+  private ShowWsResponse buildResponse(DbSession dbSession, OrganizationDto organization, QualityGateDto qualityGate, QualityGateDto defaultQualityGate,
                                        Collection<QualityGateConditionDto> conditions, Map<String, MetricDto> metricsByUuid) {
     return ShowWsResponse.newBuilder()
       .setId(qualityGate.getUuid())
@@ -128,7 +133,7 @@ public class ShowAction implements QualityGatesWsAction {
       .addAllConditions(conditions.stream()
         .map(toWsCondition(metricsByUuid))
         .collect(toList()))
-      .setActions(wsSupport.getActions(dbSession, qualityGate, defaultQualityGate))
+      .setActions(wsSupport.getActions(dbSession, organization, qualityGate, defaultQualityGate))
       .build();
   }
 

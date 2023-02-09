@@ -92,4 +92,8 @@ public class GroupMembershipDao implements Dao {
   private static GroupMembershipMapper mapper(DbSession session) {
     return session.getMapper(GroupMembershipMapper.class);
   }
+
+  public List<UserOrganizationGroup> selectGroupsAndOrganizationsByLogin(DbSession dbSession, String login) {
+    return mapper(dbSession).selectGroupsAndOrganizationsByLogin(login);
+  }
 }

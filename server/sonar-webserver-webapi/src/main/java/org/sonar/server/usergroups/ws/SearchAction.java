@@ -33,6 +33,8 @@ import org.sonar.api.utils.Paging;
 import org.sonar.core.util.stream.MoreCollectors;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
+import org.sonar.db.organization.OrganizationDto;
+import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.user.GroupDto;
 import org.sonar.server.es.SearchOptions;
 import org.sonar.server.user.UserSession;
@@ -41,8 +43,8 @@ import org.sonar.server.usergroups.DefaultGroupFinder;
 import static java.util.Optional.ofNullable;
 import static org.apache.commons.lang.StringUtils.defaultIfBlank;
 import static org.sonar.api.utils.Paging.forPageIndex;
-import static org.sonar.db.permission.GlobalPermission.ADMINISTER;
 import static org.sonar.server.es.SearchOptions.MAX_PAGE_SIZE;
+import static org.sonar.server.usergroups.ws.GroupWsSupport.PARAM_ORGANIZATION_KEY;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
 import static org.sonarqube.ws.UserGroups.Group;
 import static org.sonarqube.ws.UserGroups.SearchWsResponse;
@@ -56,11 +58,13 @@ public class SearchAction implements UserGroupsWsAction {
 
   private final DbClient dbClient;
   private final UserSession userSession;
+  private final GroupWsSupport groupWsSupport;
   private final DefaultGroupFinder defaultGroupFinder;
 
-  public SearchAction(DbClient dbClient, UserSession userSession, DefaultGroupFinder defaultGroupFinder) {
+  public SearchAction(DbClient dbClient, UserSession userSession, GroupWsSupport groupWsSupport, DefaultGroupFinder defaultGroupFinder) {
     this.dbClient = dbClient;
     this.userSession = userSession;
+    this.groupWsSupport = groupWsSupport;
     this.defaultGroupFinder = defaultGroupFinder;
   }
 
@@ -92,12 +96,13 @@ public class SearchAction implements UserGroupsWsAction {
     Set<String> fields = neededFields(request);
 
     try (DbSession dbSession = dbClient.openSession(false)) {
-      userSession.checkLoggedIn().checkPermission(ADMINISTER);
-      GroupDto defaultGroup = defaultGroupFinder.findDefaultGroup(dbSession);
+      OrganizationDto organization = groupWsSupport.findOrganizationByKey(dbSession, request.param(PARAM_ORGANIZATION_KEY));
+      userSession.checkLoggedIn().checkPermission(OrganizationPermission.ADMINISTER, organization);
+      GroupDto defaultGroup = defaultGroupFinder.findDefaultGroup(dbSession, organization.getUuid());
 
-      int limit = dbClient.groupDao().countByQuery(dbSession, query);
+      int limit = dbClient.groupDao().countByQuery(dbSession, organization.getUuid(), query);
       Paging paging = forPageIndex(page).withPageSize(pageSize).andTotal(limit);
-      List<GroupDto> groups = dbClient.groupDao().selectByQuery(dbSession, query, options.getOffset(), pageSize);
+      List<GroupDto> groups = dbClient.groupDao().selectByQuery(dbSession, organization.getUuid(), query, options.getOffset(), pageSize);
       List<String> groupUuids = groups.stream().map(GroupDto::getUuid).collect(MoreCollectors.toList(groups.size()));
       Map<String, Integer> userCountByGroup = dbClient.groupMembershipDao().countUsersByGroups(dbSession, groupUuids);
       writeProtobuf(buildResponse(groups, userCountByGroup, fields, paging, defaultGroup), request, response);

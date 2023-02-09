@@ -60,7 +60,7 @@ public abstract class AbstractUserAction implements QualityGatesWsAction {
     final String qualityGateName = request.mandatoryParam(PARAM_GATE_NAME);
 
     try (DbSession dbSession = dbClient.openSession(false)) {
-      QualityGateDto qualityGateDto = wsSupport.getByName(dbSession, qualityGateName);
+      QualityGateDto qualityGateDto = wsSupport.getByOrganizationAndName(dbSession, null /* TODO */, qualityGateName);
       wsSupport.checkCanLimitedEdit(dbSession, qualityGateDto);
       UserDto user = getUser(dbSession, login);
       apply(dbSession, qualityGateDto, user);

@@ -34,7 +34,7 @@ import org.sonar.server.user.UserSession;
 
 import java.util.List;
 
-import static org.sonar.db.permission.GlobalPermission.ADMINISTER;
+import static org.sonar.db.permission.OrganizationPermission.ADMINISTER;
 import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOptional;
 import static org.sonar.server.ws.KeyExamples.KEY_ORG_EXAMPLE_001;
 
@@ -95,7 +95,7 @@ public class OrganizationAction implements NavigationWsAction {
         json.name("pages");
         writePages(json, pageRepository.getOrganizationPages(false));
         // Check userPermissions
-        if (userSession.hasPermission(ADMINISTER)) {
+        if (userSession.hasPermission(ADMINISTER, organization)) {
             json.name("adminPages");
             writePages(json, pageRepository.getOrganizationPages(true));
         }

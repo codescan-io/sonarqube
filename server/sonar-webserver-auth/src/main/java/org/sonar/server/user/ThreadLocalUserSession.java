@@ -25,7 +25,7 @@ import java.util.Optional;
 import javax.annotation.CheckForNull;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.organization.OrganizationDto;
-import org.sonar.db.permission.GlobalPermission;
+import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.db.user.GroupDto;
 import org.sonar.server.exceptions.UnauthorizedException;
@@ -113,13 +113,24 @@ public class ThreadLocalUserSession implements UserSession {
   }
 
   @Override
-  public boolean hasPermission(GlobalPermission permission) {
-    return get().hasPermission(permission);
+  public boolean hasPermission(OrganizationPermission permission, String organizationUuid) {
+    return get().hasPermission(permission, organizationUuid);
   }
 
   @Override
-  public UserSession checkPermission(GlobalPermission permission) {
-    get().checkPermission(permission);
+  public UserSession checkPermission(OrganizationPermission permission, String organizationUuid) {
+    get().checkPermission(permission, organizationUuid);
+    return this;
+  }
+
+  @Override
+  public boolean hasPermission(OrganizationPermission permission, OrganizationDto organization) {
+    return get().hasPermission(permission, organization);
+  }
+
+  @Override
+  public UserSession checkPermission(OrganizationPermission permission, OrganizationDto organization) {
+    get().checkPermission(permission, organization);
     return this;
   }
 

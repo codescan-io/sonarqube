@@ -61,7 +61,7 @@ import static java.util.function.Function.identity;
 import static org.sonar.api.rule.RuleStatus.DEPRECATED;
 import static org.sonar.api.utils.DateUtils.formatDateTime;
 import static org.sonar.core.util.stream.MoreCollectors.toList;
-import static org.sonar.db.permission.GlobalPermission.ADMINISTER_QUALITY_PROFILES;
+import static org.sonar.db.permission.OrganizationPermission.ADMINISTER_QUALITY_PROFILES;
 import static org.sonar.server.ws.KeyExamples.KEY_PROJECT_EXAMPLE_001;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.ACTION_SEARCH;
@@ -165,7 +165,7 @@ public class SearchAction implements QProfileWsAction {
           dbClient.activeRuleDao().countActiveRulesByQuery(dbSession, builder.setProfiles(profiles).build()))
         .setActiveDeprecatedRuleCountByProfileKey(
           dbClient.activeRuleDao().countActiveRulesByQuery(dbSession, builder.setProfiles(profiles).setRuleStatus(DEPRECATED).build()))
-        .setProjectCountByProfileKey(dbClient.qualityProfileDao().countProjectsByProfiles(dbSession, organization, profiles))
+        .setProjectCountByProfileKey(dbClient.qualityProfileDao().countProjectsByOrganizationAndProfiles(dbSession, organization, profiles))
         .setDefaultProfileKeys(defaultProfiles)
         .setEditableProfileKeys(editableProfiles);
     }
@@ -251,7 +251,7 @@ public class SearchAction implements QProfileWsAction {
   private SearchWsResponse buildResponse(SearchData data) {
     List<QProfileDto> profiles = data.getProfiles();
     Map<String, QProfileDto> profilesByKey = profiles.stream().collect(Collectors.toMap(QProfileDto::getKee, identity()));
-    boolean isGlobalQProfileAdmin = userSession.hasPermission(ADMINISTER_QUALITY_PROFILES);
+    boolean isGlobalQProfileAdmin = userSession.hasPermission(ADMINISTER_QUALITY_PROFILES, data.getOrganization());
 
     SearchWsResponse.Builder response = SearchWsResponse.newBuilder();
     response.setActions(SearchWsResponse.Actions.newBuilder().setCreate(isGlobalQProfileAdmin));
@@ -259,6 +259,7 @@ public class SearchAction implements QProfileWsAction {
       QualityProfile.Builder profileBuilder = response.addProfilesBuilder();
 
       String profileKey = profile.getKee();
+      ofNullable(profile.getOrganizationUuid()).ifPresent(o -> profileBuilder.setOrganization(data.getOrganization().getKey()));
       profileBuilder.setKey(profileKey);
       ofNullable(profile.getName()).ifPresent(profileBuilder::setName);
       ofNullable(profile.getRulesUpdatedAt()).ifPresent(profileBuilder::setRulesUpdatedAt);

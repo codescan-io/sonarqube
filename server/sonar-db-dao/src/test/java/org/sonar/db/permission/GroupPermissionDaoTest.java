@@ -305,25 +305,25 @@ public class GroupPermissionDaoTest {
     db.users().insertPermissionOnAnyone(SCAN);
     db.users().insertPermissionOnAnyone(PROVISION_PROJECTS);
 
-    assertThat(underTest.selectByGroupUuids(dbSession, asList(group1.getUuid()), null))
+    assertThat(underTest.selectByGroupUuids(dbSession, null, asList(group1.getUuid()), null))
       .extracting(GroupPermissionDto::getGroupUuid, GroupPermissionDto::getRole, GroupPermissionDto::getComponentUuid)
       .containsOnly(tuple(group1.getUuid(), SCAN_EXECUTION, null));
 
-    assertThat(underTest.selectByGroupUuids(dbSession, asList(group2.getUuid()), null)).isEmpty();
+    assertThat(underTest.selectByGroupUuids(dbSession, null, asList(group2.getUuid()), null)).isEmpty();
 
-    assertThat(underTest.selectByGroupUuids(dbSession, asList(group3.getUuid()), null))
+    assertThat(underTest.selectByGroupUuids(dbSession, null, asList(group3.getUuid()), null))
       .extracting(GroupPermissionDto::getGroupUuid, GroupPermissionDto::getRole, GroupPermissionDto::getComponentUuid)
       .containsOnly(tuple(group3.getUuid(), ADMINISTER.getKey(), null));
 
-    assertThat(underTest.selectByGroupUuids(dbSession, asList(ANYONE_UUID), null))
+    assertThat(underTest.selectByGroupUuids(dbSession, null, asList(ANYONE_UUID), null))
       .extracting(GroupPermissionDto::getGroupUuid, GroupPermissionDto::getRole, GroupPermissionDto::getComponentUuid)
       .containsOnly(
         tuple(ANYONE_UUID, SCAN.getKey(), null),
         tuple(ANYONE_UUID, PROVISION_PROJECTS.getKey(), null));
 
-    assertThat(underTest.selectByGroupUuids(dbSession, asList(group1.getUuid(), group2.getUuid(), ANYONE_UUID), null)).hasSize(3);
-    assertThat(underTest.selectByGroupUuids(dbSession, asList(MISSING_UUID), null)).isEmpty();
-    assertThat(underTest.selectByGroupUuids(dbSession, Collections.emptyList(), null)).isEmpty();
+    assertThat(underTest.selectByGroupUuids(dbSession, null, asList(group1.getUuid(), group2.getUuid(), ANYONE_UUID), null)).hasSize(3);
+    assertThat(underTest.selectByGroupUuids(dbSession, null, asList(MISSING_UUID), null)).isEmpty();
+    assertThat(underTest.selectByGroupUuids(dbSession, null, Collections.emptyList(), null)).isEmpty();
   }
 
   @Test
@@ -342,24 +342,24 @@ public class GroupPermissionDaoTest {
     db.users().insertPermissionOnAnyone("p3");
     db.users().insertProjectPermissionOnAnyone("p4", project);
 
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(group1.getUuid()), project.uuid())).isEmpty();
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(group1.getUuid()), project.uuid())).isEmpty();
 
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(group2.getUuid()), project.uuid()))
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(group2.getUuid()), project.uuid()))
       .extracting(GroupPermissionDto::getGroupUuid, GroupPermissionDto::getRole, GroupPermissionDto::getComponentUuid)
       .containsOnly(tuple(group2.getUuid(), "p2", project.uuid()));
 
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(group3.getUuid()), project.uuid()))
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(group3.getUuid()), project.uuid()))
       .extracting(GroupPermissionDto::getGroupUuid, GroupPermissionDto::getRole, GroupPermissionDto::getComponentUuid)
       .containsOnly(tuple(group3.getUuid(), "p2", project.uuid()));
 
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(ANYONE_UUID), project.uuid()))
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(ANYONE_UUID), project.uuid()))
       .extracting(GroupPermissionDto::getGroupUuid, GroupPermissionDto::getRole, GroupPermissionDto::getComponentUuid)
       .containsOnly(tuple(ANYONE_UUID, "p4", project.uuid()));
 
-    assertThat(underTest.selectByGroupUuids(dbSession, asList(group1.getUuid(), group2.getUuid(), ANYONE_UUID), project.uuid())).hasSize(2);
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(MISSING_UUID), project.uuid())).isEmpty();
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(group1.getUuid()), "123")).isEmpty();
-    assertThat(underTest.selectByGroupUuids(dbSession, Collections.emptyList(), project.uuid())).isEmpty();
+    assertThat(underTest.selectByGroupUuids(dbSession, null, asList(group1.getUuid(), group2.getUuid(), ANYONE_UUID), project.uuid())).hasSize(2);
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(MISSING_UUID), project.uuid())).isEmpty();
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(group1.getUuid()), "123")).isEmpty();
+    assertThat(underTest.selectByGroupUuids(dbSession, null, Collections.emptyList(), project.uuid())).isEmpty();
   }
 
   @Test
@@ -377,23 +377,23 @@ public class GroupPermissionDaoTest {
     // Anyone group
     db.users().insertPermissionOnAnyone(SCAN);
 
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(group1.getUuid()), project.uuid())).isEmpty();
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(group1.getUuid()), project.uuid())).isEmpty();
 
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(group2.getUuid()), project.uuid()))
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(group2.getUuid()), project.uuid()))
       .extracting(GroupPermissionDto::getGroupUuid, GroupPermissionDto::getRole, GroupPermissionDto::getComponentUuid)
       .containsOnly(tuple(group2.getUuid(), USER, project.uuid()));
 
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(group3.getUuid()), project.uuid()))
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(group3.getUuid()), project.uuid()))
       .extracting(GroupPermissionDto::getGroupUuid, GroupPermissionDto::getRole, GroupPermissionDto::getComponentUuid)
       .containsOnly(tuple(group3.getUuid(), USER, project.uuid()));
 
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(ANYONE_UUID), project.uuid()))
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(ANYONE_UUID), project.uuid()))
       .isEmpty();
 
-    assertThat(underTest.selectByGroupUuids(dbSession, asList(group1.getUuid(), group2.getUuid(), ANYONE_UUID), project.uuid())).hasSize(1);
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(MISSING_UUID), project.uuid())).isEmpty();
-    assertThat(underTest.selectByGroupUuids(dbSession, singletonList(group1.getUuid()), "123")).isEmpty();
-    assertThat(underTest.selectByGroupUuids(dbSession, Collections.emptyList(), project.uuid())).isEmpty();
+    assertThat(underTest.selectByGroupUuids(dbSession, null, asList(group1.getUuid(), group2.getUuid(), ANYONE_UUID), project.uuid())).hasSize(1);
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(MISSING_UUID), project.uuid())).isEmpty();
+    assertThat(underTest.selectByGroupUuids(dbSession, null, singletonList(group1.getUuid()), "123")).isEmpty();
+    assertThat(underTest.selectByGroupUuids(dbSession, null, Collections.emptyList(), project.uuid())).isEmpty();
   }
 
   @Test

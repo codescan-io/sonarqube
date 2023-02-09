@@ -53,12 +53,6 @@ import org.sonar.core.extension.CoreExtensionsInstaller;
 import org.sonar.core.language.LanguagesProvider;
 import org.sonar.core.platform.PlatformEditionProvider;
 import org.sonar.core.platform.SpringComponentContainer;
-import org.sonar.server.almintegration.ws.AlmIntegrationsWSModule;
-import org.sonar.server.almintegration.ws.CredentialsEncoderHelper;
-import org.sonar.server.almintegration.ws.ImportHelper;
-import org.sonar.server.almintegration.ws.ProjectKeyGenerator;
-import org.sonar.server.almsettings.MultipleAlmFeature;
-import org.sonar.server.almsettings.ws.AlmSettingsWsModule;
 import org.sonar.server.authentication.AuthenticationModule;
 import org.sonar.server.authentication.DefaultAdminCredentialsVerifierImpl;
 import org.sonar.server.authentication.DefaultAdminCredentialsVerifierNotificationHandler;
@@ -535,9 +529,6 @@ public class PlatformLevel4 extends PlatformLevel {
 
       // ALM integrations
       TimeoutConfigurationImpl.class,
-      CredentialsEncoderHelper.class,
-      ImportHelper.class,
-      ProjectKeyGenerator.class,
       GithubAppSecurityImpl.class,
       GithubApplicationClientImpl.class,
       GithubApplicationHttpClientImpl.class,
@@ -545,15 +536,11 @@ public class PlatformLevel4 extends PlatformLevel {
       BitbucketServerRestClient.class,
       GitlabHttpClient.class,
       AzureDevOpsHttpClient.class,
-      new AlmIntegrationsWSModule(),
       BitbucketCloudValidator.class,
       BitbucketServerSettingsValidator.class,
       GithubGlobalSettingsValidator.class,
       GitlabGlobalSettingsValidator.class,
       AzureDevOpsValidator.class,
-
-      // ALM settings
-      new AlmSettingsWsModule(),
 
       // Project export
       new ProjectExportWsModule(),
@@ -567,8 +554,6 @@ public class PlatformLevel4 extends PlatformLevel {
       // Core Extensions
       CoreExtensionBootstraper.class,
       CoreExtensionStopper.class,
-
-      MultipleAlmFeature.class,
 
       LoginMessageFeature.class,
 

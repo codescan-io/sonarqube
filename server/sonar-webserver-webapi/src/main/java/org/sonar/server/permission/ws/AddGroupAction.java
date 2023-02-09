@@ -35,6 +35,7 @@ import org.sonar.server.permission.PermissionService;
 import org.sonar.server.permission.PermissionUpdater;
 import org.sonar.server.user.UserSession;
 
+import static org.sonar.server.permission.PermissionPrivilegeChecker.checkProjectAdmin;
 import static org.sonar.server.permission.ws.WsParameters.createGroupIdParameter;
 import static org.sonar.server.permission.ws.WsParameters.createGroupNameParameter;
 import static org.sonar.server.permission.ws.WsParameters.createProjectParameters;
@@ -88,7 +89,7 @@ public class AddGroupAction implements PermissionsWsAction {
     try (DbSession dbSession = dbClient.openSession(false)) {
       GroupUuidOrAnyone group = wsSupport.findGroup(dbSession, request);
       Optional<ComponentDto> project = wsSupport.findProject(dbSession, request);
-      wsSupport.checkPermissionManagementAccess(userSession, project.orElse(null));
+      wsSupport.checkPermissionManagementAccess(userSession, group.getOrganizationUuid(), project.orElse(null));
       PermissionChange change = new GroupPermissionChange(
         PermissionChange.Operation.ADD,
         request.mandatoryParam(PARAM_PERMISSION),

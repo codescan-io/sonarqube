@@ -156,6 +156,8 @@
     LEFT JOIN perm_templates_groups ptg ON
         ptg.group_uuid=g.uuid
       AND ptg.template_uuid=#{templateUuid}
+    where
+      g.organization_uuid=#{query.organizationUuid,jdbcType=VARCHAR}
     UNION ALL
     SELECT
       'Anyone' AS group_uuid,
@@ -165,11 +167,12 @@
     FROM groups g
     LEFT JOIN perm_templates_groups ptg ON
       ptg.template_uuid=#{templateUuid}
-          <if test="query.withAtLeastOnePermission()">
     <where>
-      ptg.group_uuid IS NULL
+      g.organization_uuid=#{query.organizationUuid,jdbcType=VARCHAR}
+      <if test="query.withAtLeastOnePermission()">
+        AND ptg.group_uuid IS NULL
+      </if>
     </where>
-          </if>
     ) groups
     <where>
       <if test="query.searchQueryToSql != null">

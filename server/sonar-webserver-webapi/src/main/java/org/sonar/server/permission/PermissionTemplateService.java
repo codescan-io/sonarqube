@@ -56,7 +56,7 @@ import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static org.sonar.api.security.DefaultGroups.isAnyone;
 import static org.sonar.api.web.UserRole.PUBLIC_PERMISSIONS;
-import static org.sonar.db.permission.GlobalPermission.SCAN;
+import static org.sonar.db.permission.OrganizationPermission.SCAN;
 
 @ServerSide
 public class PermissionTemplateService {
@@ -76,12 +76,12 @@ public class PermissionTemplateService {
     this.uuidFactory = uuidFactory;
   }
 
-  public boolean wouldUserHaveScanPermissionWithDefaultTemplate(DbSession dbSession, @Nullable String userUuid, String projectKey) {
-    if (userSession.hasPermission(SCAN)) {
+  public boolean wouldUserHaveScanPermissionWithDefaultTemplate(DbSession dbSession, String organizationUuid, @Nullable String userUuid, String projectKey) {
+    if (userSession.hasPermission(SCAN, organizationUuid)) {
       return true;
     }
 
-    ComponentDto dto = new ComponentDto().setKey(projectKey).setQualifier(Qualifiers.PROJECT);
+    ComponentDto dto = new ComponentDto().setOrganizationUuid(organizationUuid).setKey(projectKey).setQualifier(Qualifiers.PROJECT);
     PermissionTemplateDto template = findTemplate(dbSession, dto);
     if (template == null) {
       return false;

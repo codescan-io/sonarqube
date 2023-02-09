@@ -29,8 +29,11 @@ import { QualityProfilesContextProps } from '../qualityProfilesContext';
 import '../styles.css';
 import { Exporter, Profile } from '../types';
 import { sortProfiles } from '../utils';
+import { withOrganizationContext } from "../../organizations/OrganizationContext";
+import { Organization } from "../../../types/types";
 
 interface Props {
+  organization: Organization;
   languages: Languages;
 }
 
@@ -55,7 +58,9 @@ export class QualityProfilesApp extends React.PureComponent<Props, State> {
   }
 
   fetchProfiles() {
-    return searchQualityProfiles();
+    const { organization } = this.props;
+    const data = organization ? { organization: organization.kee } : {};
+    return searchQualityProfiles(data);
   }
 
   loadData() {
@@ -118,4 +123,4 @@ export class QualityProfilesApp extends React.PureComponent<Props, State> {
   }
 }
 
-export default withLanguagesContext(QualityProfilesApp);
+export default withLanguagesContext(withOrganizationContext(QualityProfilesApp));

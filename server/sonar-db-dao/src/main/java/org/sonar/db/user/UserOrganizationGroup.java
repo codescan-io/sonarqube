@@ -17,8 +17,23 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-@ParametersAreNonnullByDefault
-package org.sonar.server.almintegration.validator;
+package org.sonar.db.user;
 
-import javax.annotation.ParametersAreNonnullByDefault;
+public class UserOrganizationGroup {
 
+  private String organizationKey;
+  private String organizationName;
+  private String groupName;
+
+  public String organizationKey() {
+    return organizationKey;
+  }
+
+  public String organizationName() {
+    return organizationName;
+  }
+
+  public String groupName() {
+    return groupName;
+  }
+}

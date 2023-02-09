@@ -148,7 +148,7 @@ public class UserDbTester {
   }
 
   public Optional<GroupDto> selectGroup(String name) {
-    return db.getDbClient().groupDao().selectByName(db.getSession(), name);
+    return db.getDbClient().groupDao().selectByName(db.getSession(), null, name);
   }
 
   // GROUP MEMBERSHIP

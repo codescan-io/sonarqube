@@ -33,7 +33,7 @@ public interface GroupPermissionMapper {
 
   int countGroupsByQuery(@Param("query") PermissionQuery query);
 
-  List<GroupPermissionDto> selectByGroupUuids(@Param("groupUuids") List<String> groupUuids, @Nullable @Param("projectUuid") String projectUuid);
+  List<GroupPermissionDto> selectByGroupUuids(@Param("organizationUuid") String organizationUuid, @Param("groupUuids") List<String> groupUuids, @Nullable @Param("projectUuid") String projectUuid);
 
   void groupsCountByProjectUuidAndPermission(Map<String, Object> parameters, ResultHandler<CountPerProjectPermission> resultHandler);
 

@@ -151,8 +151,8 @@ public class QualityProfileDao implements Dao {
   }
 
   @CheckForNull
-  public QProfileDto selectDefaultProfile(DbSession dbSession, String language) {
-    return mapper(dbSession).selectDefaultProfile(language);
+  public QProfileDto selectDefaultProfile(DbSession dbSession, OrganizationDto organization, String language) {
+    return mapper(dbSession).selectDefaultProfile(organization.getUuid(), language);
   }
 
   @CheckForNull
@@ -204,20 +204,20 @@ public class QualityProfileDao implements Dao {
   }
 
   @CheckForNull
-  public QProfileDto selectByNameAndLanguage(DbSession dbSession, String name, String language) {
-    return mapper(dbSession).selectByNameAndLanguage(name, language);
+  public QProfileDto selectByNameAndLanguage(DbSession dbSession, OrganizationDto organization, String name, String language) {
+    return mapper(dbSession).selectByNameAndLanguage(organization.getUuid(), name, language);
   }
 
   @CheckForNull
-  public QProfileDto selectByRuleProfileUuid(DbSession dbSession, String ruleProfileKee) {
-    return mapper(dbSession).selectByRuleProfileUuid(ruleProfileKee);
+  public QProfileDto selectByRuleProfileUuid(DbSession dbSession, String organizationUuid, String ruleProfileKee) {
+    return mapper(dbSession).selectByRuleProfileUuid(organizationUuid, ruleProfileKee);
   }
 
   public List<QProfileDto> selectByNameAndLanguages(DbSession dbSession, String name, Collection<String> languages) {
     return mapper(dbSession).selectByNameAndLanguages(name, languages);
   }
 
-  public Map<String, Long> countProjectsByProfiles(DbSession dbSession, OrganizationDto organization, List<QProfileDto> profiles) {
+  public Map<String, Long> countProjectsByOrganizationAndProfiles(DbSession dbSession, OrganizationDto organization, List<QProfileDto> profiles) {
     List<String> profileUuids = profiles.stream().map(QProfileDto::getKee).collect(MoreCollectors.toList());
     return KeyLongValue.toMap(executeLargeInputs(profileUuids, partition -> mapper(dbSession).countProjectsByOrganizationAndProfiles(organization.getUuid(), partition)));
   }

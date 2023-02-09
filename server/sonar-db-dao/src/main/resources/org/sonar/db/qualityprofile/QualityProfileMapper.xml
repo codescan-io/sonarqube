@@ -141,7 +141,9 @@
     inner join default_qprofiles dp on dp.qprofile_uuid = oqp.uuid
     where
       dp.language = #{language, jdbcType=VARCHAR}
+      and dp.organization_uuid = #{organizationUuid, jdbcType=VARCHAR}
       and rp.language = dp.language
+      and oqp.organization_uuid = dp.organization_uuid
   </select>
 
   <select id="selectDefaultProfileUuid" parameterType="string" resultType="string">
@@ -200,6 +202,7 @@
     where
       rp.name = #{name, jdbcType=VARCHAR}
       and rp.language = #{language, jdbcType=VARCHAR}
+      and oqp.organization_uuid = #{organizationUuid, jdbcType=VARCHAR}
   </select>
 
   <select id="selectByRuleProfileUuid" parameterType="map" resultType="org.sonar.db.qualityprofile.QProfileDto">
@@ -209,6 +212,7 @@
     inner join rules_profiles rp on oqp.rules_profile_uuid = rp.uuid
     where
     rp.uuid = #{ruleProfileUuid, jdbcType=VARCHAR}
+    and oqp.organization_uuid = #{organizationUuid, jdbcType=VARCHAR}
   </select>
 
   <select id="selectByNameAndLanguages" parameterType="map" resultType="org.sonar.db.qualityprofile.QProfileDto">
