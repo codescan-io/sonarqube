@@ -31,14 +31,16 @@ import {
 import { Condition, Paging, QualityGate } from '../types/types';
 import { UserBase } from '../types/users';
 
-export function fetchQualityGates(): Promise<{
+export function fetchQualityGates(data: {
+  organization: string;
+}): Promise<{
   actions: { create: boolean };
   qualitygates: QualityGate[];
 }> {
-  return getJSON('/api/qualitygates/list').catch(throwGlobalError);
+  return getJSON('/api/qualitygates/list', data).catch(throwGlobalError);
 }
 
-export function fetchQualityGate(data: { id: number | string }): Promise<QualityGate> {
+export function fetchQualityGate(data: { id: number | string, organization: string }): Promise<QualityGate> {
   return getJSON('/api/qualitygates/show', data).catch(throwGlobalError);
 }
 

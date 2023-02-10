@@ -31,8 +31,8 @@ import ProjectManagementApp from "../projectsManagement/ProjectManagementApp";
 import WebhookApp from "../webhooks/components/App";
 import IssuesApp from "../issues/components/IssuesApp";
 import QualityProfilesApp from "../quality-profiles/components/QualityProfilesApp";
+import qualityGatesRoutes from "../quality-gates/routes";
 import RulesApp from "../coding-rules/components/App";
-import QualityGatesApp from "../quality-gates/components/App";
 import UsersApp from "../users/UsersApp";
 import ChangelogContainer from '../quality-profiles/changelog/ChangelogContainer';
 import ComparisonContainer from '../quality-profiles/compare/ComparisonContainer';
@@ -54,7 +54,7 @@ const routes = () => (
         <Route path="projects_management" element={<ProjectManagementApp />}/>
         <Route path="webhooks" element={<WebhookApp />}/>
         <Route path="issues" element={<IssuesApp />}/>
-        <Route path="quality_gates" element={<QualityGatesApp />}/>
+        {qualityGatesRoutes()}
         <Route path="quality_profiles" element={<QualityProfilesApp />}>
            <Route index={true} element={<HomeContainer />} />
            <Route element={<ProfileContainer />}>

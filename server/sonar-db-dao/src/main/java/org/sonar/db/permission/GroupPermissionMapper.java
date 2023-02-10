@@ -45,7 +45,9 @@ public interface GroupPermissionMapper {
 
   int delete(@Param("permission") String permission, @Nullable @Param("groupUuid") String groupUuid, @Nullable @Param("rootComponentUuid") String rootComponentUuid);
 
-  List<String> selectGlobalPermissionsOfGroup(@Nullable @Param("groupUuid") String groupUuid);
+  List<String> selectGlobalPermissionsOfGroups(@Nullable @Param("groupUuid") String groupUuid);
+
+  List<String> selectGlobalPermissionsOfGroup(@Param("organizationUuid") String organizationUuid, @Nullable @Param("groupUuid") String groupUuid);
 
   List<String> selectProjectPermissionsOfGroup(@Nullable @Param("groupUuid") String groupUuid, @Param("projectUuid") String projectUuid);
 

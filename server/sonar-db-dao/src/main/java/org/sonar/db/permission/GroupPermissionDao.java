@@ -108,8 +108,16 @@ public class GroupPermissionDao implements Dao {
    * Selects the global permissions granted to group. An empty list is returned if the
    * group does not exist.
    */
-  public List<String> selectGlobalPermissionsOfGroup(DbSession session, @Nullable String groupUuid) {
-    return mapper(session).selectGlobalPermissionsOfGroup(groupUuid);
+  public List<String> selectGlobalPermissionsOfGroups(DbSession session, @Nullable String groupUuid) {
+    return mapper(session).selectGlobalPermissionsOfGroups(groupUuid);
+  }
+
+  /**
+   * Selects the global permissions granted to group. An empty list is returned if the
+   * group does not exist.
+   */
+  public List<String> selectGlobalPermissionsOfGroup(DbSession session, String organizationUuid, @Nullable String groupUuid) {
+    return mapper(session).selectGlobalPermissionsOfGroup(organizationUuid, groupUuid);
   }
 
   /**

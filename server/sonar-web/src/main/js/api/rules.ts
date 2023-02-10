@@ -23,8 +23,8 @@ import { GetRulesAppResponse, SearchRulesResponse } from '../types/coding-rules'
 import { SearchRulesQuery } from '../types/rules';
 import { RuleActivation, RuleDetails, RulesUpdateRequest } from '../types/types';
 
-export function getRulesApp(): Promise<GetRulesAppResponse> {
-  return getJSON('/api/rules/app').catch(throwGlobalError);
+export function getRulesApp(organization: string): Promise<GetRulesAppResponse> {
+  return getJSON('/api/rules/app', { organization }).catch(throwGlobalError);
 }
 
 export function searchRules(data: SearchRulesQuery): Promise<SearchRulesResponse> {

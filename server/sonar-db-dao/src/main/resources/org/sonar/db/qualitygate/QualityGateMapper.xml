@@ -63,16 +63,6 @@
       is_built_in = ${_true}
   </select>
 
-  <select id="selectDefault" resultType="org.sonar.db.qualitygate.QualityGateDto">
-    SELECT
-      <include refid="gateColumns"/>
-    FROM quality_gates qg INNER JOIN properties p ON qg.uuid = p.text_value
-    WHERE
-      p.prop_key = 'qualitygate.default'
-      and p.component_uuid is null
-      and p.user_uuid is null
-  </select>
-
   <select id="selectByUuidAndOrganization" parameterType="Map" resultType="org.sonar.db.qualitygate.QualityGateDto">
     SELECT
       <include refid="qateWithOrgColumns"/>

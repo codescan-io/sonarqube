@@ -21,13 +21,14 @@ import { omit, uniqBy } from 'lodash';
 import * as React from 'react';
 import { getRulesApp } from '../../api/rules';
 import { get, save } from '../../helpers/storage';
-import { Dict } from '../../types/types';
+import { Dict, Organization } from '../../types/types';
 import { ComponentDescriptor, RuleDescriptor, WorkspaceContext } from './context';
 import './styles.css';
 import WorkspaceComponentViewer from './WorkspaceComponentViewer';
 import WorkspaceNav from './WorkspaceNav';
 import WorkspacePortal from './WorkspacePortal';
 import WorkspaceRuleViewer from './WorkspaceRuleViewer';
+import withCurrentUserContext from "../../app/components/current-user/withCurrentUserContext";
 
 const WORKSPACE = 'sonarqube-workspace';
 interface State {
@@ -37,6 +38,10 @@ interface State {
   maximized?: boolean;
   open: { component?: string; rule?: string };
   rules: RuleDescriptor[];
+}
+
+interface WorkspaceProps {
+  userOrganizations: Organization[];
 }
 
 export const MIN_HEIGHT = 0.05;
@@ -49,10 +54,10 @@ export enum WorkspaceTypes {
   Component = 'component',
 }
 
-export default class Workspace extends React.PureComponent<{}, State> {
+class Workspace extends React.PureComponent<WorkspaceProps, State> {
   mounted = false;
 
-  constructor(props: {}) {
+  constructor(props: WorkspaceProps) {
     super(props);
     this.state = {
       externalRulesRepoNames: {},
@@ -78,7 +83,7 @@ export default class Workspace extends React.PureComponent<{}, State> {
   }
 
   fetchRuleNames = async () => {
-    const { repositories } = await getRulesApp();
+    const { repositories } = await getRulesApp(this.props.userOrganizations[0].kee);
     const externalRulesRepoNames: Dict<string> = {};
     repositories
       .filter(({ key }) => key.startsWith('external_'))
@@ -256,3 +261,5 @@ export default class Workspace extends React.PureComponent<{}, State> {
     );
   }
 }
+
+export default withCurrentUserContext(Workspace);

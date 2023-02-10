@@ -168,6 +168,7 @@ public class GroupPermissionChanger {
         projectUuid);
     }
     return dbClient.groupPermissionDao().selectGlobalPermissionsOfGroup(dbSession,
+      change.getOrganizationUuid(),
       change.getGroupUuidOrAnyone().getUuid());
   }
 

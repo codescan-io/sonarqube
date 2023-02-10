@@ -30,11 +30,13 @@ import withComponentContext from '../../app/components/componentContext/withComp
 import handleRequiredAuthorization from '../../app/utils/handleRequiredAuthorization';
 import { addGlobalSuccessMessage } from '../../helpers/globalMessages';
 import { translate } from '../../helpers/l10n';
-import { Component, QualityGate } from '../../types/types';
+import { Component, Organization, QualityGate } from '../../types/types';
 import { USE_SYSTEM_DEFAULT } from './constants';
 import ProjectQualityGateAppRenderer from './ProjectQualityGateAppRenderer';
+import { withOrganizationContext } from "../organizations/OrganizationContext";
 
 interface Props {
+  organization: Organization;
   component: Component;
   onComponentChange: (changes: {}) => void;
 }
@@ -97,7 +99,7 @@ export class ProjectQualityGateApp extends React.PureComponent<Props, State> {
   };
 
   fetchDetailedQualityGates = async () => {
-    const { qualitygates } = await fetchQualityGates();
+    const { qualitygates } = await fetchQualityGates({organization: this.props.organization.kee});
     return Promise.all(
       qualitygates.map(async (qg) => {
         const detailedQp = await fetchQualityGate({ id: qg.id }).catch(() => qg);
@@ -186,6 +188,7 @@ export class ProjectQualityGateApp extends React.PureComponent<Props, State> {
 
     return (
       <ProjectQualityGateAppRenderer
+        organization={this.props.organization}
         allQualityGates={allQualityGates}
         currentQualityGate={currentQualityGate}
         loading={loading}
@@ -198,4 +201,4 @@ export class ProjectQualityGateApp extends React.PureComponent<Props, State> {
   }
 }
 
-export default withComponentContext(ProjectQualityGateApp);
+export default withComponentContext(withOrganizationContext(ProjectQualityGateApp));

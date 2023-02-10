@@ -27,7 +27,6 @@ import auditLogsRoutes from '../../apps/audit-logs/routes';
 import backgroundTasksRoutes from '../../apps/background-tasks/routes';
 import ChangeAdminPasswordApp from '../../apps/change-admin-password/ChangeAdminPasswordApp';
 import codeRoutes from '../../apps/code/routes';
-import codingRulesRoutes from '../../apps/coding-rules/routes';
 import componentMeasuresRoutes from '../../apps/component-measures/routes';
 import groupsRoutes from '../../apps/groups/routes';
 import { globalIssuesRoutes, projectIssuesRoutes } from '../../apps/issues/routes';
@@ -43,12 +42,8 @@ import ProjectDeletionApp from '../../apps/projectDeletion/App';
 import projectDumpRoutes from '../../apps/projectDump/routes';
 import ProjectKeyApp from '../../apps/projectKey/Key';
 import ProjectLinksApp from '../../apps/projectLinks/App';
-import projectQualityGateRoutes from '../../apps/projectQualityGate/routes';
-import projectQualityProfilesRoutes from '../../apps/projectQualityProfiles/routes';
 import projectsRoutes from '../../apps/projects/routes';
 import projectsManagementRoutes from '../../apps/projectsManagement/routes';
-import qualityGatesRoutes from '../../apps/quality-gates/routes';
-import qualityProfilesRoutes from '../../apps/quality-profiles/routes';
 import SecurityHotspotsApp from '../../apps/security-hotspots/SecurityHotspotsApp';
 import sessionsRoutes from '../../apps/sessions/routes';
 import settingsRoutes from '../../apps/settings/routes';
@@ -114,8 +109,6 @@ function renderRedirects() {
         }
       />
 
-      <Route path="/codingrules" element={<NavigateWithSearchAndHash pathname="/coding_rules" />} />
-
       <Route
         path="/dashboard/index/:key"
         element={
@@ -147,9 +140,7 @@ function renderRedirects() {
       {renderRedirect({ from: '/groups', to: '/admin/groups' })}
       {renderRedirect({ from: '/extension/governance/portfolios', to: '/portfolios' })}
       {renderRedirect({ from: '/permission_templates', to: '/admin/permission_templates' })}
-      {renderRedirect({ from: '/profiles/index', to: '/profiles' })}
       {renderRedirect({ from: '/projects_admin', to: '/admin/projects_management' })}
-      {renderRedirect({ from: '/quality_gates/index', to: '/quality_gates' })}
       {renderRedirect({ from: '/roles/global', to: '/admin/permissions' })}
       {renderRedirect({ from: '/admin/roles/global', to: '/admin/permissions' })}
       {renderRedirect({ from: '/settings', to: '/admin/settings' })}
@@ -187,8 +178,6 @@ function renderComponentRoutes() {
         />
         {projectIssuesRoutes()}
         <Route path="security_hotspots" element={<SecurityHotspotsApp />} />
-        {projectQualityGateRoutes()}
-        {projectQualityProfilesRoutes()}
 
         {tutorialsRoutes()}
       </Route>
@@ -268,8 +257,6 @@ export default function startReactApp(
                       <Route element={<GlobalContainer />}>
                         {accountRoutes()}
 
-                        {codingRulesRoutes()}
-
                         <Route
                           path="extension/:pluginKey/:extensionKey"
                           element={<GlobalPageExtension />}
@@ -280,9 +267,6 @@ export default function startReactApp(
                         {organizationsRoutes()}
 
                         {projectsRoutes()}
-
-                        {qualityGatesRoutes()}
-                        {qualityProfilesRoutes()}
 
                         <Route path="portfolios" element={<PortfoliosPage />} />
 
