@@ -246,14 +246,14 @@ public class UserDbTester {
 
   public List<String> selectGroupPermissions(GroupDto group, @Nullable ComponentDto project) {
     if (project == null) {
-      return db.getDbClient().groupPermissionDao().selectGlobalPermissionsOfGroup(db.getSession(), group.getUuid());
+      return db.getDbClient().groupPermissionDao().selectGlobalPermissionsOfGroup(db.getSession(), null, group.getUuid());
     }
     return db.getDbClient().groupPermissionDao().selectProjectPermissionsOfGroup(db.getSession(), group.getUuid(), project.uuid());
   }
 
   public List<String> selectAnyonePermissions(@Nullable ComponentDto project) {
     if (project == null) {
-      return db.getDbClient().groupPermissionDao().selectGlobalPermissionsOfGroup(db.getSession(), null);
+      return db.getDbClient().groupPermissionDao().selectGlobalPermissionsOfGroup(db.getSession(), null, null);
     }
     return db.getDbClient().groupPermissionDao().selectProjectPermissionsOfGroup(db.getSession(), null, project.uuid());
   }
