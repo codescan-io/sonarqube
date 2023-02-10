@@ -37,7 +37,7 @@ import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.SnapshotDto;
 import org.sonar.db.measure.LiveMeasureDto;
 import org.sonar.db.measure.MeasureDto;
-import org.sonar.db.permission.GlobalPermission;
+import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.server.component.ComponentFinder;
 import org.sonar.server.exceptions.BadRequestException;
@@ -70,12 +70,14 @@ public class ProjectStatusAction implements QualityGatesWsAction {
   private final ComponentFinder componentFinder;
   private final UserSession userSession;
   private final QualityGateCaycChecker qualityGateCaycChecker;
+  private final QualityGatesWsSupport wsSupport;
 
-  public ProjectStatusAction(DbClient dbClient, ComponentFinder componentFinder, UserSession userSession, QualityGateCaycChecker qualityGateCaycChecker) {
+  public ProjectStatusAction(DbClient dbClient, ComponentFinder componentFinder, UserSession userSession, QualityGateCaycChecker qualityGateCaycChecker, QualityGatesWsSupport wsSupport) {
     this.dbClient = dbClient;
     this.componentFinder = componentFinder;
     this.userSession = userSession;
     this.qualityGateCaycChecker = qualityGateCaycChecker;
+    this.wsSupport = wsSupport;
   }
 
   @Override
@@ -126,6 +128,8 @@ public class ProjectStatusAction implements QualityGatesWsAction {
       .setSince("7.7")
       .setDescription("Pull request id")
       .setExampleValue(KeyExamples.KEY_PULL_REQUEST_EXAMPLE_001);
+
+    wsSupport.createOrganizationParam(action);
   }
 
   @Override
@@ -143,17 +147,18 @@ public class ProjectStatusAction implements QualityGatesWsAction {
     checkRequest(isNullOrEmpty(branchKey) || isNullOrEmpty(pullRequestId), MSG_ONE_BRANCH_PARAMETER_ONLY);
 
     try (DbSession dbSession = dbClient.openSession(false)) {
-      ProjectStatusResponse projectStatusResponse = doHandle(dbSession, analysisId, projectId, projectKey, branchKey, pullRequestId);
+      OrganizationDto organization = wsSupport.getOrganization(dbSession, request);
+      ProjectStatusResponse projectStatusResponse = doHandle(dbSession, organization, analysisId, projectId, projectKey, branchKey, pullRequestId);
       writeProtobuf(projectStatusResponse, request, response);
     }
   }
 
-  private ProjectStatusResponse doHandle(DbSession dbSession, @Nullable String analysisId, @Nullable String projectUuid,
+  private ProjectStatusResponse doHandle(DbSession dbSession, OrganizationDto organization, @Nullable String analysisId, @Nullable String projectUuid,
     @Nullable String projectKey, @Nullable String branchKey, @Nullable String pullRequestId) {
     ProjectAndSnapshot projectAndSnapshot = getProjectAndSnapshot(dbSession, analysisId, projectUuid, projectKey, branchKey, pullRequestId);
     checkPermission(projectAndSnapshot.project);
     Optional<String> measureData = loadQualityGateDetails(dbSession, projectAndSnapshot, analysisId != null);
-    QualityGateCaycStatus caycStatus = qualityGateCaycChecker.checkCaycCompliantFromProject(dbSession, projectAndSnapshot.project.getUuid());
+    QualityGateCaycStatus caycStatus = qualityGateCaycChecker.checkCaycCompliantFromProject(dbSession, organization, projectAndSnapshot.project.getUuid());
 
     return ProjectStatusResponse.newBuilder()
       .setProjectStatus(new QualityGateDetailsFormatter(measureData.orElse(null), projectAndSnapshot.snapshotDto.orElse(null), caycStatus).format())

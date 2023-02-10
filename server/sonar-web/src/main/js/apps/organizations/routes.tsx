@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -24,7 +24,7 @@ import OrganizationApp from "./components/OrganizationApp";
 import OrganizationProjects from "./components/OrganizationProjects";
 import OrganizationEdit from "./components/OrganizationEdit";
 import OrganizationDelete from "./components/OrganizationDelete";
-import App from "../permission-templates/components/App";
+import PermissionTemplatesApp from "../permission-templates/components/PermissionTemplatesApp";
 import GlobalPermissionsApp from "../permissions/global/components/App";
 import GroupsApp from "../groups/components/App";
 import ProjectManagementApp from "../projectsManagement/ProjectManagementApp";
@@ -48,7 +48,7 @@ const routes = () => (
         <Route path="projects" element={<OrganizationProjects />}/>
         <Route path="edit" element={<OrganizationEdit />}/>
         <Route path="delete" element={<OrganizationDelete />}/>
-        <Route path="permission_templates" element={<App />}/>
+        <Route path="permission_templates" element={<PermissionTemplatesApp />}/>
         <Route path="permissions" element={<GlobalPermissionsApp />}/>
         <Route path="groups" element={<GroupsApp />}/>
         <Route path="projects_management" element={<ProjectManagementApp />}/>

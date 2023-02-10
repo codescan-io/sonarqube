@@ -1,6 +1,5 @@
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
-import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins {
   id "com.github.hierynomus.license-report"
@@ -42,9 +41,8 @@ configurations {
 
 jar.enabled = false
 shadowJar {
-  archiveBaseName = 'sonar-application'
+  archiveBaseName = 'codescan-application'
   archiveClassifier = null
-  mergeServiceFiles()
   manifest {
     attributes('Main-Class': 'org.sonar.application.App')
   }
@@ -84,7 +82,7 @@ downloadLicenses {
 
 task zip(type: Zip, dependsOn: [configurations.compileClasspath]) {
   duplicatesStrategy DuplicatesStrategy.EXCLUDE
-  def archiveDir = "sonarqube-$project.versionWithoutBuildNumber"
+  def archiveDir = "sonarqube-$versionWithoutBuildNumber"
 
   if(release) {
     dependsOn tasks.downloadLicenses
@@ -153,13 +151,13 @@ assemble.dependsOn zip
 // the script start.sh unpacks OSS distribution into $buildDir/distributions/sonarqube-oss.
 // This directory should be deleted when the zip is changed.
 task cleanLocalUnzippedDir(dependsOn: zip) {
-  def unzippedDir = file("$buildDir/distributions/sonarqube-$version")
-  inputs.files(file("$buildDir/distributions/sonar-application-${version}.zip"))
+  def unzippedDir = file("$buildDir/distributions/sonarqube-$versionWithoutBuildNumber")
+  inputs.files(file("$buildDir/distributions/sonar-application-${versionWithoutBuildNumber}.zip"))
   outputs.upToDateWhen { true }
 
   doLast {
     println("delete directory ${unzippedDir}")
-    project.delete(unzippedDir)
+
   }
 }
 assemble.dependsOn cleanLocalUnzippedDir
