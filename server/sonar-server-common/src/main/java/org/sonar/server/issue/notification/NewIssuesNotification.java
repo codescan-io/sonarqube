@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -24,12 +24,10 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.ToIntFunction;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import javax.annotation.concurrent.Immutable;
 import org.sonar.api.notifications.Notification;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rules.RuleType;
@@ -86,40 +84,10 @@ public class NewIssuesNotification extends Notification {
     Optional<String> getUserNameByUuid(String uuid);
   }
 
-  @Immutable
-  public static final class RuleDefinition {
-    private final String name;
-    private final String language;
-
+  public record RuleDefinition(String name, String language) {
     public RuleDefinition(String name, @Nullable String language) {
       this.name = requireNonNull(name, "name can't be null");
       this.language = language;
-    }
-
-    public String getName() {
-      return name;
-    }
-
-    @CheckForNull
-    public String getLanguage() {
-      return language;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      RuleDefinition that = (RuleDefinition) o;
-      return name.equals(that.name) && Objects.equals(language, that.language);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(name, language);
     }
 
     @Override
@@ -177,7 +145,7 @@ public class NewIssuesNotification extends Notification {
       String ruleKey = ruleStats.getKey();
       RuleDefinition rule = detailsSupplier.getRuleDefinitionByRuleKey(RuleKey.parse(ruleKey))
         .orElseThrow(() -> new IllegalStateException(String.format("Rule with key '%s' does not exist", ruleKey)));
-      String name = rule.getName() + " (" + rule.getLanguage() + ")";
+      String name = rule.name() + " (" + rule.language() + ")";
       setFieldValue(metric + DOT + i + LABEL, name);
       setFieldValue(metric + DOT + i + COUNT, String.valueOf(ruleStats.getValue().getOnCurrentAnalysis()));
       i++;

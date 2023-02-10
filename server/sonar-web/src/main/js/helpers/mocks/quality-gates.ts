@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -24,7 +24,7 @@ import {
   QualityGateStatusCondition,
   QualityGateStatusConditionEnhanced,
 } from '../../types/quality-gates';
-import { QualityGate } from '../../types/types';
+import { CaycStatus, QualityGate } from '../../types/types';
 import { mockMeasureEnhanced, mockMetric } from '../testMocks';
 
 export function mockQualityGate(overrides: Partial<QualityGate> = {}): QualityGate {
@@ -40,6 +40,7 @@ export function mockQualityGateStatus(
 ): QualityGateStatus {
   return {
     ignoredConditions: false,
+    caycStatus: CaycStatus.Compliant,
     failedConditions: [mockQualityGateStatusConditionEnhanced()],
     key: 'foo',
     name: 'Foo',
@@ -90,6 +91,7 @@ export function mockQualityGateProjectStatus(
       },
     ],
     ignoredConditions: false,
+    caycStatus: CaycStatus.Compliant,
     status: 'OK',
     ...overrides,
   };
@@ -121,6 +123,7 @@ export function mockQualityGateApplicationStatus(
             value: '5',
           },
         ],
+        caycStatus: CaycStatus.Compliant,
         status: 'ERROR',
       },
       {
@@ -136,6 +139,7 @@ export function mockQualityGateApplicationStatus(
             value: '15',
           },
         ],
+        caycStatus: CaycStatus.Compliant,
         status: 'ERROR',
       },
     ],

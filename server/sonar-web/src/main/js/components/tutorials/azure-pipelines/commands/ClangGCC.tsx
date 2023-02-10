@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -115,45 +115,48 @@ unzip build-wrapper.zip`,
                 highlightPrefixKeys="onboarding.tutorial.with.azure_pipelines.BranchAnalysis.prepare"
                 highlightKeys={['pipeline']}
               />
+              <ul className="list-styled list-alpha spacer-top">
+                <li>
+                  <SentenceWithHighlights
+                    translationKey="onboarding.tutorial.with.azure_pipelines.BranchAnalysis.build_wrapper.ccpp.script"
+                    highlightPrefixKeys={codeSnippetDownload[os].highlightScriptKey}
+                    highlightKeys={['task', 'inline']}
+                  />
+                  <CodeSnippet snippet={codeSnippetDownload[os].script} />
+                </li>
+              </ul>
             </li>
-            <ul className="list-styled">
-              <li>
-                <SentenceWithHighlights
-                  translationKey="onboarding.tutorial.with.azure_pipelines.BranchAnalysis.build_wrapper.ccpp.script"
-                  highlightPrefixKeys={codeSnippetDownload[os].highlightScriptKey}
-                  highlightKeys={['task', 'inline']}
-                />
-                <CodeSnippet snippet={codeSnippetDownload[os].script} />
-              </li>
-            </ul>
+
             <li>
               <SentenceWithHighlights
                 translationKey="onboarding.tutorial.with.azure_pipelines.BranchAnalysis.prepare.ccpp"
                 highlightPrefixKeys="onboarding.tutorial.with.azure_pipelines.BranchAnalysis.prepare"
                 highlightKeys={['task', 'before']}
               />
+              <PrepareAnalysisCommand
+                buildTool={BuildTools.CFamily}
+                kind={PrepareType.StandAlone}
+                projectKey={projectKey}
+              />
             </li>
-            <PrepareAnalysisCommand
-              buildTool={BuildTools.CFamily}
-              kind={PrepareType.StandAlone}
-              projectKey={projectKey}
-            />
+
             <li>
               <SentenceWithHighlights
                 translationKey="onboarding.tutorial.with.azure_pipelines.BranchAnalysis.build.ccpp"
                 highlightKeys={['task']}
               />
+              <ul className="list-styled list-alpha spacer-top">
+                <li>
+                  <SentenceWithHighlights
+                    translationKey="onboarding.tutorial.with.azure_pipelines.BranchAnalysis.build_script.ccpp"
+                    highlightKeys={['build_wrapper']}
+                  />
+                  <CodeSnippet snippet={codeSnippetDownload[os].scriptBuild} />
+                  <CompilationInfo />
+                </li>
+              </ul>
             </li>
-            <ul className="list-styled">
-              <li>
-                <SentenceWithHighlights
-                  translationKey="onboarding.tutorial.with.azure_pipelines.BranchAnalysis.build_script.ccpp"
-                  highlightKeys={['build_wrapper']}
-                />
-                <CodeSnippet snippet={codeSnippetDownload[os].scriptBuild} />
-                <CompilationInfo />
-              </li>
-            </ul>
+
             <li>
               <SentenceWithHighlights
                 translationKey="onboarding.tutorial.with.azure_pipelines.BranchAnalysis.run.ccpp"

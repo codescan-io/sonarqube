@@ -22,9 +22,9 @@ env:
   ELASTIC_PWD: VAULT[development/team/sonarqube/kv/data/elasticsearch-cloud data.password]
   CIRRUS_LOG_TIMESTAMP: true
   BRANCH_MAIN: 'master'
-  BRANCH_NIGHTLY: 'branch-nightly-build'
   BRANCH_PATTERN_MAINTENANCE: 'branch-.*'
   BRANCH_PATTERN_PUBLIC: 'public_.*'
+  NIGHTLY_99_CRON: '9-9-lts-nightly'
 
 auto_cancellation: $CIRRUS_BRANCH != $BRANCH_MAIN && $CIRRUS_BRANCH !=~ $BRANCH_PATTERN_MAINTENANCE
 
@@ -35,20 +35,30 @@ build_dependant_task_template: &BUILD_DEPENDANT_TASK_TEMPLATE
   depends_on: build
 
 nightly_task_template: &NIGHTLY_TASK_TEMPLATE
-  only_if: $CIRRUS_BRANCH == $BRANCH_NIGHTLY
+  only_if: $CIRRUS_CRON == $NIGHTLY_99_CRON
 
 except_nightly_task_template: &EXCEPT_ON_NIGHTLY_TASK_TEMPLATE
-  only_if: $CIRRUS_BRANCH != $BRANCH_NIGHTLY
+  only_if: $CIRRUS_CRON != $NIGHTLY_99_CRON
 
 database_related_nightly_task_template: &DATABASE_RELATED_NIGHTLY_TASK_TEMPLATE
   only_if: >-
-    $CIRRUS_BRANCH == $BRANCH_NIGHTLY ||
-    changesInclude('server/sonar-db-dao/**/*Mapper.xml', 'server/sonar-db-migration/**/DbVersion*.java', 'server/sonar-db-dao/**/*Dao.java')
+    $CIRRUS_CRON == $NIGHTLY_99_CRON ||
+    changesInclude('server/sonar-db-dao/**/*Mapper.xml', 'server/sonar-db-migration/**/DbVersion*.java', 'server/sonar-db-dao/**/*Dao.java', 'server/sonar-db-core/src/main/java/org/sonar/db/*.java')
 
 saml_nightly_task_template: &SAML_NIGHTLY_TASK_TEMPLATE
   only_if: >-
-    $CIRRUS_BRANCH == $BRANCH_NIGHTLY ||
+    $CIRRUS_CRON == $NIGHTLY_99_CRON ||
     changesInclude('server/sonar-auth-saml/src/main/java/**/*.java', 'server/sonar-auth-saml/src/main/resources/**/*', 'server/sonar-db-dao/src/main/**/SAML*.java', 'private/it-core/src/test/java/org/sonarqube/tests/saml/*.java', 'server/sonar-webserver-webapi/src/main/java/org/sonar/server/saml/**/*.java')
+
+ldap_nightly_task_template: &LDAP_NIGHTLY_TASK_TEMPLATE
+  only_if: >-
+    $CIRRUS_CRON == $NIGHTLY_99_CRON ||
+    changesInclude('server/sonar-auth-ldap/src/main/java/**/*.java', 'server/sonar-webserver-auth/src/main/java/org/sonar/server/authentication/LdapCredentialsAuthentication.java', 'private/it-core/src/test/java/org/sonarqube/tests/ldap/*.java')
+
+github_nightly_task_template: &GITHUB_NIGHTLY_TASK_TEMPLATE
+  only_if: >-
+    $CIRRUS_CRON == $NIGHTLY_99_CRON ||
+    changesInclude('private/core-extension-developer-server/src/main/java/com/sonarsource/branch/pr/github/*.java', 'private/it-branch/it-tests/src/test/java/com/sonarsource/branch/it/suite/pr/github/*.java')    
 
 docker_build_container_template: &GKE_CONTAINER_TEMPLATE
   dockerfile: private/docker/Dockerfile-build
@@ -62,12 +72,14 @@ docker_build_container_template: &GKE_CONTAINER_TEMPLATE
 
 oracle_additional_container_template: &ORACLE_ADDITIONAL_CONTAINER_TEMPLATE
   name: oracle
-  image: us.gcr.io/sonarqube-team/oracle12:0.0.1 # see https://github.com/SonarSource/vms/blob/master/docker/README.md#oracle-12c to build it
+  image: gvenzl/oracle-xe:21-faststart
   port: 1521
   cpu: 2
   memory: 5Gb
   env:
-    ORACLE_PWD: sonarqube
+    ORACLE_PASSWORD: sonarqube
+    APP_USER: sonarqube
+    APP_USER_PASSWORD: sonarqube
 
 postgres_additional_container_template: &POSTGRES_ADDITIONAL_CONTAINER_TEMPLATE
   name: postgres
@@ -268,6 +280,8 @@ qa_task:
       - <<: *POSTGRES_ADDITIONAL_CONTAINER_TEMPLATE
   env:
     matrix:
+    # QA name should not exceed 13 characters to be properly reported on wallboard by burgr
+    # QA name cannot contain "_"
       - QA_CATEGORY: Cat1
       - QA_CATEGORY: Cat2
       - QA_CATEGORY: Cat3
@@ -276,49 +290,23 @@ qa_task:
       - QA_CATEGORY: Cat6
       - QA_CATEGORY: Analysis
       - QA_CATEGORY: Authorization
-      - QA_CATEGORY: Authentication
+      - QA_CATEGORY: Auth
       - QA_CATEGORY: Branch1
       - QA_CATEGORY: Branch2
-      - QA_CATEGORY: CommunityEdition
-      - QA_CATEGORY: CommunityEditionWithPlugins
+      - QA_CATEGORY: CE1
+      - QA_CATEGORY: CE2
       - QA_CATEGORY: ComputeEngine
-      - QA_CATEGORY: Dev1
-      - QA_CATEGORY: Dev2
-      - QA_CATEGORY: Enterprise
-      - QA_CATEGORY: EnterprisePortfolio
+      - QA_CATEGORY: DE1
+      - QA_CATEGORY: DE2
+      - QA_CATEGORY: EE1
+      - QA_CATEGORY: EE2
       - QA_CATEGORY: Issues1
       - QA_CATEGORY: Issues2
       - QA_CATEGORY: License1
       - QA_CATEGORY: License2
       - QA_CATEGORY: Plugins
       - QA_CATEGORY: Project
-      - QA_CATEGORY: QualityProfile
-      - QA_CATEGORY: Upgrade
-  script:
-    - ./private/cirrus/cirrus-qa.sh postgres
-  <<: *DEFAULT_ARTIFACTS_TEMPLATE
-
-qa_java11_task:
-  <<: *DEFAULT_TEMPLATE
-  <<: *BUILD_DEPENDANT_TASK_TEMPLATE
-  <<: *GRADLE_CACHE_TEMPLATE
-  <<: *JAR_CACHE_TEMPLATE
-  gke_container:
-    dockerfile: private/docker/Dockerfile-build-java11
-    builder_image_project: sonarqube-team
-    builder_image_name: family/docker-builder
-    cluster_name: cirrus-ci-cluster
-    zone: us-central1-a
-    namespace: default
-    cpu: 2
-    memory: 6Gb
-    additional_containers:
-      - <<: *POSTGRES_ADDITIONAL_CONTAINER_TEMPLATE
-  env:
-    matrix:
-      - QA_CATEGORY: Cat1
-      - QA_CATEGORY: CommunityEditionWithPlugins
-      - QA_CATEGORY: ComputeEngine
+      - QA_CATEGORY: QP
       - QA_CATEGORY: Upgrade
   script:
     - ./private/cirrus/cirrus-qa.sh postgres
@@ -402,7 +390,7 @@ docker_gitlab_container_build_task:
   env:
     matrix:
       - GITLAB_TAG: latest
-      - GITLAB_TAG: 11.7.0-ce.0
+      - GITLAB_TAG: 15.6.2-ce.0
   build_script:
     - docker pull "us.gcr.io/sonarqube-team/sq-gitlab:${GITLAB_TAG}" || true
     - docker build --build-arg "GITLAB_TAG=${GITLAB_TAG}" --cache-from "us.gcr.io/sonarqube-team/sq-gitlab:${GITLAB_TAG}" -t "us.gcr.io/sonarqube-team/sq-gitlab:${GITLAB_TAG}" private/docker/gitlab/
@@ -431,7 +419,7 @@ qa_gitlab_task:
         memory: 5Gb
         matrix:
           - image: us.gcr.io/sonarqube-team/sq-gitlab:latest
-          - image: us.gcr.io/sonarqube-team/sq-gitlab:11.7.0-ce.0
+          - image: us.gcr.io/sonarqube-team/sq-gitlab:15.6.2-ce.0
   env:
     QA_CATEGORY: GITLAB
   script:
@@ -482,7 +470,7 @@ qa_azure_task:
 qa_github_task:
   <<: *DEFAULT_TEMPLATE
   <<: *BUILD_DEPENDANT_TASK_TEMPLATE
-  <<: *NIGHTLY_TASK_TEMPLATE
+  <<: *GITHUB_NIGHTLY_TASK_TEMPLATE
   <<: *JAR_CACHE_TEMPLATE
   <<: *GRADLE_CACHE_TEMPLATE
   gke_container:
@@ -491,8 +479,8 @@ qa_github_task:
     memory: 5Gb
   env:
     QA_CATEGORY: GITHUB
-    GITHUB_COM_CODE_SCANNING_ALERTS_TECHNICAL_USER_USERNAME: ENCRYPTED[ac65bdcd84c5e5ff164bfffdea5f77b886a8be7f8586a9a9a41f5a648d9fcb33cc2fd5cd7aa6fcda3aa7f0372ccb007b]
-    GITHUB_COM_CODE_SCANNING_ALERTS_TECHNICAL_USER_TOKEN: ENCRYPTED[ac3877b534eb925c2c7989074a283a6eac83f1e54858e9ff5b97764a78857028dc21added63100cc730b0bb2b8ec4727]
+    GITHUB_COM_CODE_SCANNING_ALERTS_TECHNICAL_USER_USERNAME: QA-task
+    GITHUB_COM_CODE_SCANNING_ALERTS_TECHNICAL_USER_TOKEN: VAULT[development/github/token/SonarSource-sonar-enterprise-code-scanning token]
   script:
     - ./private/cirrus/cirrus-qa.sh h2
   <<: *DEFAULT_ARTIFACTS_TEMPLATE
@@ -528,7 +516,7 @@ qa_saml_task:
 qa_ldap_task:
   <<: *DEFAULT_TEMPLATE
   <<: *BUILD_DEPENDANT_TASK_TEMPLATE
-  <<: *NIGHTLY_TASK_TEMPLATE
+  <<: *LDAP_NIGHTLY_TASK_TEMPLATE
   <<: *JAR_CACHE_TEMPLATE
   <<: *GRADLE_CACHE_TEMPLATE
   gke_container:
@@ -630,7 +618,7 @@ sql_postgres11_task:
     - ./private/cirrus/cirrus-db-unit-test.sh postgres
   <<: *DEFAULT_ARTIFACTS_TEMPLATE
 
-sql_oracle12_task:
+sql_oracle21_task:
   <<: *DEFAULT_TEMPLATE
   <<: *BUILD_DEPENDANT_TASK_TEMPLATE
   <<: *DATABASE_RELATED_NIGHTLY_TASK_TEMPLATE
@@ -641,7 +629,7 @@ sql_oracle12_task:
     additional_containers:
       - <<: *ORACLE_ADDITIONAL_CONTAINER_TEMPLATE
   script:
-    - ./private/cirrus/cirrus-db-unit-test.sh oracle12
+    - ./private/cirrus/cirrus-db-unit-test.sh oracle21
   <<: *DEFAULT_ARTIFACTS_TEMPLATE
 
 upgd_mssql_task:
@@ -656,7 +644,7 @@ upgd_mssql_task:
     memory: 6Gb
     additional_containers:
       - name: mssql
-        image: mcr.microsoft.com/mssql/server:2019-GA-ubuntu-16.04
+        image: mcr.microsoft.com/mssql/server:2022-latest
         port: 1433
         cpu: 2
         memory: 5Gb
@@ -670,7 +658,7 @@ upgd_mssql_task:
     - ./private/cirrus/cirrus-qa.sh mssql
   <<: *DEFAULT_ARTIFACTS_TEMPLATE
 
-upgd_oracle12_task:
+upgd_oracle21_task:
   <<: *DEFAULT_TEMPLATE
   <<: *BUILD_DEPENDANT_TASK_TEMPLATE
   <<: *DATABASE_RELATED_NIGHTLY_TASK_TEMPLATE
@@ -685,7 +673,7 @@ upgd_oracle12_task:
   env:
     QA_CATEGORY: Upgrade
   script:
-    - ./private/cirrus/cirrus-qa.sh oracle12
+    - ./private/cirrus/cirrus-qa.sh oracle21
   <<: *DEFAULT_ARTIFACTS_TEMPLATE
 
 ws_scan_task:
@@ -693,7 +681,7 @@ ws_scan_task:
   <<: *BUILD_DEPENDANT_TASK_TEMPLATE
   only_if: >-
     $CIRRUS_BRANCH == $BRANCH_MAIN ||
-    ($CIRRUS_BRANCH =~ $BRANCH_PATTERN_MAINTENANCE && $CIRRUS_BRANCH != $BRANCH_NIGHTLY)
+    ($CIRRUS_BRANCH =~ $BRANCH_PATTERN_MAINTENANCE && $CIRRUS_CRON != $NIGHTLY_99_CRON)
   <<: *YARN_CACHE_TEMPLATE
   <<: *GRADLE_CACHE_TEMPLATE
   timeout_in: 30m

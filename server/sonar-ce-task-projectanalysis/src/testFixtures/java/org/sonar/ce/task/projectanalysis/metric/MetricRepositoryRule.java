@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -23,8 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
 import org.junit.rules.ExternalResource;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -118,6 +116,6 @@ public class MetricRepositoryRule extends ExternalResource implements MetricRepo
 
   @Override
   public List<Metric> getMetricsByType(Metric.MetricType type) {
-    return metricsByKey.values().stream().filter(m -> m.getType() == type).collect(Collectors.toList());
+    return metricsByKey.values().stream().filter(m -> m.getType() == type).toList();
   }
 }

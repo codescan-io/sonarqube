@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -83,7 +83,7 @@ export default function IssuesFilter(props: Props) {
 function renderOption(option: number, selected: boolean) {
   return (
     <span>
-      <Rating muted={!selected} small={true} value={option} />
+      <Rating muted={!selected} value={option} />
       <span className="spacer-left">
         {translateWithParameters('projects.facets.rating_x', formatMeasure(option, 'RATING'))}
       </span>

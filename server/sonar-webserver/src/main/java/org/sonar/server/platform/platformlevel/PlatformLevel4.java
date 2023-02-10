@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -49,6 +49,7 @@ import org.sonar.ce.task.projectanalysis.taskprocessor.IssueSyncTaskProcessor;
 import org.sonar.ce.task.projectanalysis.taskprocessor.ReportTaskProcessor;
 import org.sonar.ce.task.projectexport.taskprocessor.ProjectExportTaskProcessor;
 import org.sonar.core.component.DefaultResourceTypes;
+import org.sonar.core.documentation.DefaultDocumentationLinkGenerator;
 import org.sonar.core.extension.CoreExtensionsInstaller;
 import org.sonar.core.language.LanguagesProvider;
 import org.sonar.core.platform.PlatformEditionProvider;
@@ -150,6 +151,7 @@ import org.sonar.server.platform.PersistentSettings;
 import org.sonar.server.platform.SystemInfoWriterModule;
 import org.sonar.server.platform.WebCoreExtensionsInstaller;
 import org.sonar.server.platform.db.CheckAnyonePermissionsAtStartup;
+import org.sonar.server.platform.db.CheckLanguageSpecificParamsAtStartup;
 import org.sonar.server.platform.web.SonarLintConnectionFilter;
 import org.sonar.server.platform.web.WebServiceFilter;
 import org.sonar.server.platform.web.WebServiceReroutingFilter;
@@ -294,6 +296,7 @@ public class PlatformLevel4 extends PlatformLevel {
       WebAnalyticsLoaderImpl.class,
       new MonitoringWsModule(),
       DefaultBranchNameResolver.class,
+      DefaultDocumentationLinkGenerator.class,
 
       // batch
       new BatchWsModule(),
@@ -408,6 +411,7 @@ public class PlatformLevel4 extends PlatformLevel {
       UserPermissionChanger.class,
       GroupPermissionChanger.class,
       CheckAnyonePermissionsAtStartup.class,
+      CheckLanguageSpecificParamsAtStartup.class,
 
       // components
       new BranchWsModule(),

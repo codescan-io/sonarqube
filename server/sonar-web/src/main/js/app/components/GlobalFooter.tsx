@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -80,13 +80,9 @@ export function GlobalFooter({ hideLoggedInInfo, appState }: GlobalFooterProps) 
           <DocLink to="/">{translate('footer.documentation')}</DocLink>
         </li>
         <li className="page-footer-menu-item">
-          <a
-            href="https://redirect.sonarsource.com/doc/plugin-library.html"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
+          <DocLink to="/instance-administration/plugin-version-matrix/">
             {translate('footer.plugins')}
-          </a>
+          </DocLink>
         </li>
         {!hideLoggedInInfo && (
           <li className="page-footer-menu-item">

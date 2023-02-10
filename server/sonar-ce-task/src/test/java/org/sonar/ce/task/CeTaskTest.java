@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -110,7 +110,7 @@ public class CeTaskTest {
       .setSubmitter(new CeTask.User("USER_ID", ""))
       .build();
 
-    assertThat(ceTask.getSubmitter().getLogin()).isNull();
+    assertThat(ceTask.getSubmitter().login()).isNull();
   }
 
   @Test
@@ -140,8 +140,8 @@ public class CeTaskTest {
   public void verify_submitter_getters() {
     CeTask.User user = new CeTask.User("UUID", "LOGIN");
 
-    assertThat(user.getUuid()).isEqualTo("UUID");
-    assertThat(user.getLogin()).isEqualTo("LOGIN");
+    assertThat(user.uuid()).isEqualTo("UUID");
+    assertThat(user.login()).isEqualTo("LOGIN");
   }
 
   @Test

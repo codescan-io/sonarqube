@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -151,11 +151,11 @@ public class QProfileExportersTest {
 
     StringWriter writer = new StringWriter();
     underTest.export(db.getSession(), profile, "standard", writer);
-    assertThat(writer.toString()).isEqualTo("standard -> " + profile.getName() + " -> 0");
+    assertThat(writer).hasToString("standard -> " + profile.getName() + " -> 0");
 
     writer = new StringWriter();
     underTest.export(db.getSession(), profile, "xootool", writer);
-    assertThat(writer.toString()).isEqualTo("xoo -> " + profile.getName() + " -> 0");
+    assertThat(writer).hasToString("xoo -> " + profile.getName() + " -> 0");
   }
 
   @Test
@@ -165,11 +165,11 @@ public class QProfileExportersTest {
 
     StringWriter writer = new StringWriter();
     underTest.export(db.getSession(), profile, "standard", writer);
-    assertThat(writer.toString()).isEqualTo("standard -> " + profile.getName() + " -> 1");
+    assertThat(writer).hasToString("standard -> " + profile.getName() + " -> 1");
 
     writer = new StringWriter();
     underTest.export(db.getSession(), profile, "xootool", writer);
-    assertThat(writer.toString()).isEqualTo("xoo -> " + profile.getName() + " -> 1");
+    assertThat(writer).hasToString("xoo -> " + profile.getName() + " -> 1");
   }
 
   @Test

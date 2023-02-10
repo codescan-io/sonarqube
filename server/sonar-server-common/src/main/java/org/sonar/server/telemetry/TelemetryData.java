@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonar.core.platform.EditionProvider;
 import org.sonar.core.platform.EditionProvider.Edition;
@@ -36,10 +35,11 @@ import static java.util.Objects.requireNonNullElse;
 public class TelemetryData {
   private final String serverId;
   private final String version;
+  private final Long messageSequenceNumber;
   private final Map<String, String> plugins;
   private final Database database;
   private final EditionProvider.Edition edition;
-  private final String licenseType;
+  private final String defaultQualityGate;
   private final Long installationDate;
   private final String installationVersion;
   private final boolean inDocker;
@@ -47,15 +47,19 @@ public class TelemetryData {
   private final List<UserTelemetryDto> users;
   private final List<Project> projects;
   private final List<ProjectStatistics> projectStatistics;
+  private final List<QualityGate> qualityGates;
+  private final Boolean hasUnanalyzedC;
+  private final Boolean hasUnanalyzedCpp;
   private final Set<String> customSecurityConfigs;
 
   private TelemetryData(Builder builder) {
     serverId = builder.serverId;
     version = builder.version;
+    messageSequenceNumber = builder.messageSequenceNumber;
     plugins = builder.plugins;
     database = builder.database;
     edition = builder.edition;
-    licenseType = builder.licenseType;
+    defaultQualityGate = builder.defaultQualityGate;
     installationDate = builder.installationDate;
     installationVersion = builder.installationVersion;
     inDocker = builder.inDocker;
@@ -63,6 +67,9 @@ public class TelemetryData {
     users = builder.users;
     projects = builder.projects;
     projectStatistics = builder.projectStatistics;
+    qualityGates = builder.qualityGates;
+    hasUnanalyzedC = builder.hasUnanalyzedC;
+    hasUnanalyzedCpp = builder.hasUnanalyzedCpp;
     customSecurityConfigs = requireNonNullElse(builder.customSecurityConfigs, Set.of());
   }
 
@@ -72,6 +79,10 @@ public class TelemetryData {
 
   public String getVersion() {
     return version;
+  }
+
+  public Long getMessageSequenceNumber() {
+    return messageSequenceNumber;
   }
 
   public Map<String, String> getPlugins() {
@@ -86,8 +97,8 @@ public class TelemetryData {
     return Optional.ofNullable(edition);
   }
 
-  public Optional<String> getLicenseType() {
-    return Optional.ofNullable(licenseType);
+  public String getDefaultQualityGate() {
+    return defaultQualityGate;
   }
 
   public Long getInstallationDate() {
@@ -106,6 +117,14 @@ public class TelemetryData {
     return isScimEnabled;
   }
 
+  public Optional<Boolean> hasUnanalyzedC() {
+    return Optional.ofNullable(hasUnanalyzedC);
+  }
+
+  public Optional<Boolean> hasUnanalyzedCpp() {
+    return Optional.ofNullable(hasUnanalyzedCpp);
+  }
+
   public Set<String> getCustomSecurityConfigs() {
     return customSecurityConfigs;
   }
@@ -122,6 +141,10 @@ public class TelemetryData {
     return projectStatistics;
   }
 
+  public List<QualityGate> getQualityGates() {
+    return qualityGates;
+  }
+
   static Builder builder() {
     return new Builder();
   }
@@ -129,18 +152,22 @@ public class TelemetryData {
   static class Builder {
     private String serverId;
     private String version;
+    private Long messageSequenceNumber;
     private Map<String, String> plugins;
     private Database database;
     private Edition edition;
-    private String licenseType;
+    private String defaultQualityGate;
     private Long installationDate;
     private String installationVersion;
     private boolean inDocker = false;
     private boolean isScimEnabled;
+    private Boolean hasUnanalyzedC;
+    private Boolean hasUnanalyzedCpp;
     private Set<String> customSecurityConfigs;
     private List<UserTelemetryDto> users;
     private List<Project> projects;
     private List<ProjectStatistics> projectStatistics;
+    private List<QualityGate> qualityGates;
 
     private Builder() {
       // enforce static factory method
@@ -153,6 +180,11 @@ public class TelemetryData {
 
     Builder setVersion(String version) {
       this.version = version;
+      return this;
+    }
+
+    Builder setMessageSequenceNumber(@Nullable Long messageSequenceNumber) {
+      this.messageSequenceNumber = messageSequenceNumber;
       return this;
     }
 
@@ -171,8 +203,8 @@ public class TelemetryData {
       return this;
     }
 
-    Builder setLicenseType(@Nullable String licenseType) {
-      this.licenseType = licenseType;
+    Builder setDefaultQualityGate(String defaultQualityGate) {
+      this.defaultQualityGate = defaultQualityGate;
       return this;
     }
 
@@ -188,6 +220,16 @@ public class TelemetryData {
 
     Builder setInDocker(boolean inDocker) {
       this.inDocker = inDocker;
+      return this;
+    }
+
+    Builder setHasUnanalyzedC(@Nullable Boolean hasUnanalyzedC) {
+      this.hasUnanalyzedC = hasUnanalyzedC;
+      return this;
+    }
+
+    Builder setHasUnanalyzedCpp(@Nullable Boolean hasUnanalyzedCpp) {
+      this.hasUnanalyzedCpp = hasUnanalyzedCpp;
       return this;
     }
 
@@ -212,7 +254,7 @@ public class TelemetryData {
     }
 
     TelemetryData build() {
-      requireNonNullValues(serverId, version, plugins, database);
+      requireNonNullValues(serverId, version, plugins, database, messageSequenceNumber);
       return new TelemetryData(this);
     }
 
@@ -221,79 +263,53 @@ public class TelemetryData {
       return this;
     }
 
+    Builder setQualityGates(List<QualityGate> qualityGates) {
+      this.qualityGates = qualityGates;
+      return this;
+    }
+
     private static void requireNonNullValues(Object... values) {
       Arrays.stream(values).forEach(Objects::requireNonNull);
     }
+
   }
 
-  static class Database {
-    private final String name;
-    private final String version;
-
-    Database(String name, String version) {
-      this.name = name;
-      this.version = version;
-    }
-
-    public String getName() {
-      return name;
-    }
-
-    public String getVersion() {
-      return version;
-    }
+  record Database(String name, String version) {
   }
 
-  static class Project {
-    private final String projectUuid;
-    private final String language;
-    private final Long loc;
-    private final Long lastAnalysis;
-
-    public Project(String projectUuid, Long lastAnalysis, String language, Long loc) {
-      this.projectUuid = projectUuid;
-      this.lastAnalysis = lastAnalysis;
-      this.language = language;
-      this.loc = loc;
-    }
-
-    public String getProjectUuid() {
-      return projectUuid;
-    }
-
-    public String getLanguage() {
-      return language;
-    }
-
-    public Long getLoc() {
-      return loc;
-    }
-
-    public Long getLastAnalysis() {
-      return lastAnalysis;
-    }
+  record Project(String projectUuid, Long lastAnalysis, String language, Long loc) {
   }
 
-  static class ProjectStatistics {
+  record QualityGate(String uuid, String caycStatus) {
+  }
+
+  public static class ProjectStatistics {
     private final String projectUuid;
     private final Long branchCount;
     private final Long pullRequestCount;
-    private final Boolean hasUnanalyzedC;
-    private final Boolean hasUnanalyzedCpp;
+    private final String qualityGate;
     private final String scm;
     private final String ci;
     private final String devopsPlatform;
+    private final Long bugs;
+    private final Long vulnerabilities;
+    private final Long securityHotspots;
+    private final Long technicalDebt;
+    private final Long developmentCost;
 
-    ProjectStatistics(String projectUuid, Long branchCount, Long pullRequestCount, @Nullable Boolean hasUnanalyzedC, @Nullable Boolean hasUnanalyzedCpp,
-      @Nullable String scm, @Nullable String ci, @Nullable String devopsPlatform) {
-      this.projectUuid = projectUuid;
-      this.branchCount = branchCount;
-      this.pullRequestCount = pullRequestCount;
-      this.hasUnanalyzedC = hasUnanalyzedC;
-      this.hasUnanalyzedCpp = hasUnanalyzedCpp;
-      this.scm = scm;
-      this.ci = ci;
-      this.devopsPlatform = devopsPlatform;
+    ProjectStatistics(Builder builder) {
+      this.projectUuid = builder.projectUuid;
+      this.branchCount = builder.branchCount;
+      this.pullRequestCount = builder.pullRequestCount;
+      this.qualityGate = builder.qualityGate;
+      this.scm = builder.scm;
+      this.ci = builder.ci;
+      this.devopsPlatform = builder.devopsPlatform;
+      this.bugs = builder.bugs;
+      this.vulnerabilities = builder.vulnerabilities;
+      this.securityHotspots = builder.securityHotspots;
+      this.technicalDebt = builder.technicalDebt;
+      this.developmentCost = builder.developmentCost;
     }
 
     public String getProjectUuid() {
@@ -308,27 +324,119 @@ public class TelemetryData {
       return pullRequestCount;
     }
 
-    @CheckForNull
+    public String getQualityGate() {
+      return qualityGate;
+    }
+
     public String getScm() {
       return scm;
     }
 
-    @CheckForNull
     public String getCi() {
       return ci;
     }
 
-    @CheckForNull
     public String getDevopsPlatform() {
       return devopsPlatform;
     }
 
-    public Optional<Boolean> hasUnanalyzedC() {
-      return Optional.ofNullable(hasUnanalyzedC);
+    public Optional<Long> getBugs() {
+      return Optional.ofNullable(bugs);
     }
 
-    public Optional<Boolean> hasUnanalyzedCpp() {
-      return Optional.ofNullable(hasUnanalyzedCpp);
+    public Optional<Long> getVulnerabilities() {
+      return Optional.ofNullable(vulnerabilities);
+    }
+
+    public Optional<Long> getSecurityHotspots() {
+      return Optional.ofNullable(securityHotspots);
+    }
+
+    public Optional<Long> getTechnicalDebt() {
+      return Optional.ofNullable(technicalDebt);
+    }
+
+    public Optional<Long> getDevelopmentCost() {
+      return Optional.ofNullable(developmentCost);
+    }
+
+    static class Builder {
+      private String projectUuid;
+      private Long branchCount;
+      private Long pullRequestCount;
+      private String qualityGate;
+      private String scm;
+      private String ci;
+      private String devopsPlatform;
+      private Long bugs;
+      private Long vulnerabilities;
+      private Long securityHotspots;
+      private Long technicalDebt;
+      private Long developmentCost;
+
+      public Builder setProjectUuid(String projectUuid) {
+        this.projectUuid = projectUuid;
+        return this;
+      }
+
+      public Builder setBranchCount(Long branchCount) {
+        this.branchCount = branchCount;
+        return this;
+      }
+
+      public Builder setPRCount(Long pullRequestCount) {
+        this.pullRequestCount = pullRequestCount;
+        return this;
+      }
+
+      public Builder setQG(String qualityGate) {
+        this.qualityGate = qualityGate;
+        return this;
+      }
+
+      public Builder setScm(String scm) {
+        this.scm = scm;
+        return this;
+      }
+
+      public Builder setCi(String ci) {
+        this.ci = ci;
+        return this;
+      }
+
+      public Builder setDevops(String devopsPlatform) {
+        this.devopsPlatform = devopsPlatform;
+        return this;
+      }
+
+      public Builder setBugs(@Nullable Number bugs) {
+        this.bugs = bugs != null ? bugs.longValue() : null;
+        return this;
+      }
+
+      public Builder setVulnerabilities(@Nullable Number vulnerabilities) {
+        this.vulnerabilities = vulnerabilities != null ? vulnerabilities.longValue() : null;
+        return this;
+      }
+
+      public Builder setSecurityHotspots(@Nullable Number securityHotspots) {
+        this.securityHotspots = securityHotspots != null ? securityHotspots.longValue() : null;
+        return this;
+      }
+
+      public Builder setTechnicalDebt(@Nullable Number technicalDebt) {
+        this.technicalDebt = technicalDebt != null ? technicalDebt.longValue() : null;
+        return this;
+      }
+
+      public Builder setDevelopmentCost(@Nullable Number developmentCost) {
+        this.developmentCost = developmentCost != null ? developmentCost.longValue() : null;
+        return this;
+      }
+
+      public ProjectStatistics build() {
+        return new ProjectStatistics(this);
+      }
     }
   }
 }

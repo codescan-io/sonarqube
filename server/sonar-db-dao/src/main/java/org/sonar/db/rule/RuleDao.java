@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -167,7 +167,7 @@ public class RuleDao implements Dao {
     List<String> templateRuleUuids = ruleDtos.stream()
       .map(RuleDto::getTemplateUuid)
       .filter(Objects::nonNull)
-      .collect(Collectors.toList());
+      .toList();
 
     Map<String, RuleDto> templateDtos = findTemplateDtos(mapper, templateRuleUuids);
     ruleDtos.stream().map(r -> toRuleForIndexingDto(r, templateDtos)).forEach(consumer);

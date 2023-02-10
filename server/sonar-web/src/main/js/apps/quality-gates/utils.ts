@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,7 +19,97 @@
  */
 import { getLocalizedMetricName } from '../../helpers/l10n';
 import { isDiffMetric } from '../../helpers/measures';
-import { Condition, Dict, Metric, QualityGate } from '../../types/types';
+import { CaycStatus, Condition, Dict, Metric, QualityGate } from '../../types/types';
+
+const CAYC_CONDITIONS: { [key: string]: Condition } = {
+  new_reliability_rating: {
+    error: '1',
+    id: 'new_reliability_rating',
+    metric: 'new_reliability_rating',
+    op: 'GT',
+  },
+  new_security_rating: {
+    error: '1',
+    id: 'new_security_rating',
+    metric: 'new_security_rating',
+    op: 'GT',
+  },
+  new_maintainability_rating: {
+    error: '1',
+    id: 'new_maintainability_rating',
+    metric: 'new_maintainability_rating',
+    op: 'GT',
+  },
+  new_security_hotspots_reviewed: {
+    error: '100',
+    id: 'new_security_hotspots_reviewed',
+    metric: 'new_security_hotspots_reviewed',
+    op: 'LT',
+  },
+  new_coverage: {
+    id: 'AXJMbIUHPAOIsUIE3eOF',
+    metric: 'new_coverage',
+    op: 'LT',
+    error: '80',
+  },
+  new_duplicated_lines_density: {
+    id: 'AXJMbIUHPAOIsUIE3eOG',
+    metric: 'new_duplicated_lines_density',
+    op: 'GT',
+    error: '3',
+  },
+};
+
+export const CAYC_CONDITIONS_WITHOUT_FIXED_VALUE = ['new_duplicated_lines_density', 'new_coverage'];
+export const CAYC_CONDITIONS_WITH_FIXED_VALUE = [
+  'new_security_hotspots_reviewed',
+  'new_maintainability_rating',
+  'new_security_rating',
+  'new_reliability_rating',
+];
+
+export function isCaycCondition(condition: Condition) {
+  return condition.metric in CAYC_CONDITIONS;
+}
+
+export function getWeakMissingAndNonCaycConditions(conditions: Condition[]) {
+  const result: {
+    weakConditions: Condition[];
+    missingConditions: Condition[];
+  } = {
+    weakConditions: [],
+    missingConditions: [],
+  };
+  Object.keys(CAYC_CONDITIONS).forEach((key) => {
+    const selectedCondition = conditions.find((condition) => condition.metric === key);
+    if (!selectedCondition) {
+      result.missingConditions.push(CAYC_CONDITIONS[key]);
+    } else if (
+      !CAYC_CONDITIONS_WITHOUT_FIXED_VALUE.includes(key) &&
+      CAYC_CONDITIONS[key].error !== selectedCondition.error
+    ) {
+      result.weakConditions.push(selectedCondition);
+    }
+  });
+  return result;
+}
+
+export function getCaycConditionsWithCorrectValue(conditions: Condition[]) {
+  return Object.keys(CAYC_CONDITIONS).map((key) => {
+    const selectedCondition = conditions.find((condition) => condition.metric === key);
+    if (CAYC_CONDITIONS_WITHOUT_FIXED_VALUE.includes(key) && selectedCondition) {
+      return selectedCondition;
+    }
+    return CAYC_CONDITIONS[key];
+  });
+}
+
+export function getCorrectCaycCondition(condition: Condition) {
+  if (CAYC_CONDITIONS_WITHOUT_FIXED_VALUE.includes(condition.metric)) {
+    return condition;
+  }
+  return CAYC_CONDITIONS[condition.metric];
+}
 
 export function checkIfDefault(qualityGate: QualityGate, list: QualityGate[]): boolean {
   const finding = list.find((candidate) => candidate.id === qualityGate.id);
@@ -29,12 +119,18 @@ export function checkIfDefault(qualityGate: QualityGate, list: QualityGate[]): b
 export function addCondition(qualityGate: QualityGate, condition: Condition): QualityGate {
   const oldConditions = qualityGate.conditions || [];
   const conditions = [...oldConditions, condition];
+  if (conditions) {
+    qualityGate.caycStatus = updateCaycCompliantStatus(conditions);
+  }
   return { ...qualityGate, conditions };
 }
 
 export function deleteCondition(qualityGate: QualityGate, condition: Condition): QualityGate {
   const conditions =
     qualityGate.conditions && qualityGate.conditions.filter((candidate) => candidate !== condition);
+  if (conditions) {
+    qualityGate.caycStatus = updateCaycCompliantStatus(conditions);
+  }
   return { ...qualityGate, conditions };
 }
 
@@ -48,7 +144,38 @@ export function replaceCondition(
     qualityGate.conditions.map((candidate) => {
       return candidate === oldCondition ? newCondition : candidate;
     });
+  if (conditions) {
+    qualityGate.caycStatus = updateCaycCompliantStatus(conditions);
+  }
+
   return { ...qualityGate, conditions };
+}
+
+export function updateCaycCompliantStatus(conditions: Condition[]) {
+  if (conditions.length < Object.keys(CAYC_CONDITIONS).length) {
+    return CaycStatus.NonCompliant;
+  }
+
+  for (const key of Object.keys(CAYC_CONDITIONS)) {
+    const selectedCondition = conditions.find((condition) => condition.metric === key);
+    if (!selectedCondition) {
+      return CaycStatus.NonCompliant;
+    }
+
+    if (
+      !CAYC_CONDITIONS_WITHOUT_FIXED_VALUE.includes(key) &&
+      selectedCondition &&
+      selectedCondition.error !== CAYC_CONDITIONS[key].error
+    ) {
+      return CaycStatus.NonCompliant;
+    }
+  }
+
+  if (conditions.length > Object.keys(CAYC_CONDITIONS).length) {
+    return CaycStatus.OverCompliant;
+  }
+
+  return CaycStatus.Compliant;
 }
 
 export function getPossibleOperators(metric: Metric) {

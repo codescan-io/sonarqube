@@ -25,49 +25,49 @@ exports[`should render correctly: loaded 1`] = `
   />
   <Header
     component={
-      Object {
-        "breadcrumbs": Array [],
+      {
+        "breadcrumbs": [],
         "key": "foo",
         "name": "MyProject",
         "qualifier": "TRK",
-        "qualityGate": Object {
+        "qualityGate": {
           "isDefault": true,
           "key": "30",
           "name": "Sonar way",
         },
-        "qualityProfiles": Array [
-          Object {
+        "qualityProfiles": [
+          {
             "deleted": false,
             "key": "my-qp",
             "language": "ts",
             "name": "Sonar way",
           },
         ],
-        "tags": Array [],
+        "tags": [],
       }
     }
   />
   <Stats
     component={
-      Object {
-        "breadcrumbs": Array [],
+      {
+        "breadcrumbs": [],
         "key": "foo",
         "name": "MyProject",
         "qualifier": "TRK",
-        "qualityGate": Object {
+        "qualityGate": {
           "isDefault": true,
           "key": "30",
           "name": "Sonar way",
         },
-        "qualityProfiles": Array [
-          Object {
+        "qualityProfiles": [
+          {
             "deleted": false,
             "key": "my-qp",
             "language": "ts",
             "name": "Sonar way",
           },
         ],
-        "tags": Array [],
+        "tags": [],
       }
     }
     failingCount={15}
@@ -77,25 +77,25 @@ exports[`should render correctly: loaded 1`] = `
   />
   <Search
     component={
-      Object {
-        "breadcrumbs": Array [],
+      {
+        "breadcrumbs": [],
         "key": "foo",
         "name": "MyProject",
         "qualifier": "TRK",
-        "qualityGate": Object {
+        "qualityGate": {
           "isDefault": true,
           "key": "30",
           "name": "Sonar way",
         },
-        "qualityProfiles": Array [
-          Object {
+        "qualityProfiles": [
+          {
             "deleted": false,
             "key": "my-qp",
             "language": "ts",
             "name": "Sonar way",
           },
         ],
-        "tags": Array [],
+        "tags": [],
       }
     }
     currents="__ALL__"
@@ -106,8 +106,8 @@ exports[`should render correctly: loaded 1`] = `
     status="__ALL_EXCEPT_PENDING__"
     taskType="ALL_TYPES"
     types={
-      Object {
-        "taskTypes": Array [
+      {
+        "taskTypes": [
           "REPORT",
           "PROJECT_EXPORT",
           "PROJECT_IMPORT",
@@ -116,35 +116,35 @@ exports[`should render correctly: loaded 1`] = `
       }
     }
   />
-  <Tasks
+  <withAppStateContext(Tasks)
     component={
-      Object {
-        "breadcrumbs": Array [],
+      {
+        "breadcrumbs": [],
         "key": "foo",
         "name": "MyProject",
         "qualifier": "TRK",
-        "qualityGate": Object {
+        "qualityGate": {
           "isDefault": true,
           "key": "30",
           "name": "Sonar way",
         },
-        "qualityProfiles": Array [
-          Object {
+        "qualityProfiles": [
+          {
             "deleted": false,
             "key": "my-qp",
             "language": "ts",
             "name": "Sonar way",
           },
         ],
-        "tags": Array [],
+        "tags": [],
       }
     }
     loading={false}
     onCancelTask={[Function]}
     onFilterTask={[Function]}
     tasks={
-      Array [
-        Object {
+      [
+        {
           "componentId": "AWBLZYhGOUrjxRA-u6ex",
           "componentKey": "sonar-csharp",
           "componentName": "SonarC#",
@@ -156,14 +156,15 @@ exports[`should render correctly: loaded 1`] = `
           "hasScannerContext": false,
           "id": "AWkGcOThOiAPiP5AE-kM",
           "logs": false,
+          "nodeName": "node_CE_server_1",
           "startedAt": "2019-02-19T16:47:36+0100",
           "status": "FAILED",
           "submittedAt": "2019-02-19T16:47:35+0100",
           "type": "VIEW_REFRESH",
           "warningCount": 0,
-          "warnings": Array [],
+          "warnings": [],
         },
-        Object {
+        {
           "componentId": "AV2ZaHs1Wa2znA6pDz1l",
           "componentKey": "c-cpp-build-wrapper",
           "componentName": "C/C++ Build Wrapper",
@@ -178,7 +179,7 @@ exports[`should render correctly: loaded 1`] = `
           "submittedAt": "2019-02-19T16:47:35+0100",
           "type": "VIEW_REFRESH",
           "warningCount": 0,
-          "warnings": Array [],
+          "warnings": [],
         },
       ]
     }

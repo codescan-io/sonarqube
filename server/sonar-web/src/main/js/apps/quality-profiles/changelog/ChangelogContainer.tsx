@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -20,6 +20,7 @@
 import * as React from 'react';
 import { getProfileChangelog } from '../../../api/quality-profiles';
 import { Location, Router, withRouter } from '../../../components/hoc/withRouter';
+import DeferredSpinner from '../../../components/ui/DeferredSpinner';
 import { parseDate, toShortNotSoISOString } from '../../../helpers/dates';
 import { translate } from '../../../helpers/l10n';
 import { withQualityProfilesContext } from '../qualityProfilesContext';
@@ -137,7 +138,7 @@ export class ChangelogContainer extends React.PureComponent<Props, State> {
 
     return (
       <div className="boxed-group boxed-group-inner js-profile-changelog">
-        <header className="spacer-bottom">
+        <div className="spacer-bottom">
           <ChangelogSearch
             dateRange={{
               from: query.since ? parseDate(query.since) : undefined,
@@ -146,9 +147,8 @@ export class ChangelogContainer extends React.PureComponent<Props, State> {
             onDateRangeChange={this.handleDateRangeChange}
             onReset={this.handleReset}
           />
-
-          {this.state.loading && <i className="spinner spacer-left" />}
-        </header>
+          <DeferredSpinner loading={this.state.loading} className="spacer-left" />
+        </div>
 
         {this.state.events != null && this.state.events.length === 0 && <ChangelogEmpty />}
 

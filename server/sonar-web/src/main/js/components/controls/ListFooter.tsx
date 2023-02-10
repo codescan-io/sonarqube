@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -43,7 +43,7 @@ export default function ListFooter(props: ListFooterProps) {
     className,
     count,
     loadMore,
-    loading,
+    loading = false,
     needReload,
     total,
     pageSize,
@@ -100,15 +100,17 @@ export default function ListFooter(props: ListFooterProps) {
         className
       )}
     >
-      {total !== undefined
-        ? translateWithParameters(
-            'x_of_y_shown',
-            formatMeasure(count, 'INT', null),
-            formatMeasure(total, 'INT', null)
-          )
-        : translateWithParameters('x_show', formatMeasure(count, 'INT', null))}
+      <span aria-live="polite" aria-busy={loading}>
+        {total !== undefined
+          ? translateWithParameters(
+              'x_of_y_shown',
+              formatMeasure(count, 'INT', null),
+              formatMeasure(total, 'INT', null)
+            )
+          : translateWithParameters('x_show', formatMeasure(count, 'INT', null))}
+      </span>
       {button}
-      {loading && <DeferredSpinner className="text-bottom spacer-left position-absolute" />}
+      {<DeferredSpinner loading={loading} className="text-bottom spacer-left position-absolute" />}
     </div>
   );
 }

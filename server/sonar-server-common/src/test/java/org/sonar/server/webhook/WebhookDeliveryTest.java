@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -70,7 +70,7 @@ public class WebhookDeliveryTest {
       .setError(cause)
       .build();
 
-    assertThat(delivery.getErrorMessage().get()).isEqualTo("fail to connect");
+    assertThat(delivery.getErrorMessage()).contains("fail to connect");
   }
 
   private static WebhookDelivery.Builder newBuilderTemplate() {

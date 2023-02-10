@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -33,6 +33,7 @@ jest.mock('../../../../api/ce', () => ({
       {
         id: 'AWkGcOThOiAPiP5AE-kM',
         type: 'VIEW_REFRESH',
+        nodeName: 'node_CE_server_1',
         componentId: 'AWBLZYhGOUrjxRA-u6ex',
         componentKey: 'sonar-csharp',
         componentName: 'SonarC#',

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -138,6 +138,10 @@ module.exports = {
     darkBackground: '#292929',
     darkBackgroundSeparator: '#413b3b',
     darkBackgroundFontColor: '#f6f8fa',
+
+    //quality gate badges
+    badgeGreenBackground: '#f0faec',
+    badgeRedBackground: '#ffeaea',
 
     // new color palette
     // Some of these colors duplicate what we have above, but this will make it

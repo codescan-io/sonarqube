@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -22,10 +22,8 @@ package org.sonar.server.user;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import javax.annotation.CheckForNull;
-import javax.annotation.concurrent.Immutable;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.OrganizationPermission;
@@ -97,21 +95,10 @@ public interface UserSession {
    */
   Optional<IdentityProvider> getIdentityProvider();
 
-  @Immutable final class ExternalIdentity {
-    private final String id;
-    private final String login;
-
+  record ExternalIdentity(String id, String login) {
     public ExternalIdentity(String id, String login) {
       this.id = requireNonNull(id, "id can't be null");
       this.login = requireNonNull(login, "login can't be null");
-    }
-
-    public String getId() {
-      return id;
-    }
-
-    public String getLogin() {
-      return login;
     }
 
     @Override
@@ -122,22 +109,6 @@ public interface UserSession {
         '}';
     }
 
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      ExternalIdentity that = (ExternalIdentity) o;
-      return Objects.equals(id, that.id) && Objects.equals(login, that.login);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(id, login);
-    }
   }
 
   /**
@@ -157,11 +128,6 @@ public interface UserSession {
 
   /**
    * Returns {@code true} if the permission is granted on the organization, otherwise {@code false}.
-   *
-   * If the organization does not exist, then returns {@code false}.
-   *
-   * Always returns {@code true} if {@link #isRoot()} is {@code true}, even if
-   * organization does not exist.
    */
   boolean hasPermission(OrganizationPermission permission, OrganizationDto organization);
 
@@ -181,7 +147,7 @@ public interface UserSession {
    *
    * If the component does not exist, then returns {@code false}.
    *
-   * @param component non-null component.
+   * @param component  non-null component.
    * @param permission project permission as defined by {@link org.sonar.server.permission.PermissionService}
    */
   boolean hasComponentPermission(String permission, ComponentDto component);

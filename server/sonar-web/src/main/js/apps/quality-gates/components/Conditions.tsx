@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,31 +19,42 @@
  */
 import { differenceWith, map, sortBy, uniqBy } from 'lodash';
 import * as React from 'react';
+import { FormattedMessage } from 'react-intl';
 import withAvailableFeatures, {
   WithAvailableFeaturesProps,
 } from '../../../app/components/available-features/withAvailableFeatures';
 import withMetricsContext from '../../../app/components/metrics/withMetricsContext';
+import DocLink from '../../../components/common/DocLink';
 import DocumentationTooltip from '../../../components/common/DocumentationTooltip';
 import { Button } from '../../../components/controls/buttons';
-import ModalButton from '../../../components/controls/ModalButton';
+import ModalButton, { ModalProps } from '../../../components/controls/ModalButton';
 import { Alert } from '../../../components/ui/Alert';
 import { getLocalizedMetricName, translate } from '../../../helpers/l10n';
 import { isDiffMetric } from '../../../helpers/measures';
 import { Feature } from '../../../types/features';
 import { MetricKey } from '../../../types/metrics';
-import { Condition as ConditionType, Dict, Metric, QualityGate } from '../../../types/types';
-import Condition from './Condition';
+import {
+  CaycStatus,
+  Condition as ConditionType,
+  Dict,
+  Metric,
+  QualityGate,
+} from '../../../types/types';
 import ConditionModal from './ConditionModal';
+import CaycReviewUpdateConditionsModal from './ConditionReviewAndUpdateModal';
+import ConditionsTable from './ConditionsTable';
 
 interface Props extends WithAvailableFeaturesProps {
-  canEdit: boolean;
-  conditions: ConditionType[];
   metrics: Dict<Metric>;
   onAddCondition: (condition: ConditionType) => void;
   onRemoveCondition: (Condition: ConditionType) => void;
   onSaveCondition: (newCondition: ConditionType, oldCondition: ConditionType) => void;
   qualityGate: QualityGate;
   updatedConditionId?: string;
+}
+
+interface State {
+  unlockEditing: boolean;
 }
 
 const FORBIDDEN_METRIC_TYPES = ['DATA', 'DISTRIB', 'STRING', 'BOOL'];
@@ -54,68 +65,80 @@ const FORBIDDEN_METRICS: string[] = [
   MetricKey.new_security_hotspots,
 ];
 
-export class Conditions extends React.PureComponent<Props> {
-  renderConditionsTable = (conditions: ConditionType[], scope: 'new' | 'overall') => {
-    const {
-      qualityGate,
-      metrics,
-      canEdit,
-      onRemoveCondition,
-      onSaveCondition,
-      updatedConditionId,
-    } = this.props;
+export class Conditions extends React.PureComponent<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      unlockEditing: props.qualityGate.caycStatus === CaycStatus.NonCompliant,
+    };
+  }
 
-    const captionTranslationId =
-      scope === 'new'
-        ? 'quality_gates.conditions.new_code'
-        : 'quality_gates.conditions.overall_code';
+  componentDidUpdate(prevProps: Readonly<Props>): void {
+    const { qualityGate } = this.props;
+    if (prevProps.qualityGate.name !== qualityGate.name) {
+      this.setState({ unlockEditing: qualityGate.caycStatus === CaycStatus.NonCompliant });
+    }
+  }
+
+  unlockEditing = () => {
+    this.setState({ unlockEditing: true });
+  };
+
+  lockEditing = () => {
+    this.setState({ unlockEditing: false });
+  };
+
+  renderConditionModal = ({ onClose }: ModalProps) => {
+    const { metrics, qualityGate } = this.props;
+    const { conditions = [] } = qualityGate;
+    const availableMetrics = differenceWith(
+      map(metrics, (metric) => metric).filter(
+        (metric) =>
+          !metric.hidden &&
+          !FORBIDDEN_METRIC_TYPES.includes(metric.type) &&
+          !FORBIDDEN_METRICS.includes(metric.key)
+      ),
+      conditions,
+      (metric, condition) => metric.key === condition.metric
+    );
     return (
-      <table className="data zebra" data-test={`quality-gates__conditions-${scope}`}>
-        <caption>
-          <h4>{translate(captionTranslationId, 'long')}</h4>
+      <ConditionModal
+        header={translate('quality_gates.add_condition')}
+        metrics={availableMetrics}
+        onAddCondition={this.props.onAddCondition}
+        onClose={onClose}
+        qualityGate={qualityGate}
+      />
+    );
+  };
 
-          {this.props.hasFeature(Feature.BranchSupport) && (
-            <p className="spacer-top spacer-bottom">
-              {translate(captionTranslationId, 'description')}
-            </p>
-          )}
-        </caption>
-        <thead>
-          <tr>
-            <th className="nowrap" style={{ width: 300 }}>
-              {translate('quality_gates.conditions.metric')}
-            </th>
-            <th className="nowrap">{translate('quality_gates.conditions.operator')}</th>
-            <th className="nowrap">{translate('quality_gates.conditions.value')}</th>
-            {canEdit && (
-              <>
-                <th className="thin">{translate('edit')}</th>
-                <th className="thin">{translate('delete')}</th>
-              </>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {conditions.map((condition) => (
-            <Condition
-              canEdit={canEdit}
-              condition={condition}
-              key={condition.id}
-              metric={metrics[condition.metric]}
-              onRemoveCondition={onRemoveCondition}
-              onSaveCondition={onSaveCondition}
-              qualityGate={qualityGate}
-              updated={condition.id === updatedConditionId}
-            />
-          ))}
-        </tbody>
-      </table>
+  renderCaycModal = ({ onClose }: ModalProps) => {
+    const { qualityGate, metrics } = this.props;
+    const { conditions = [] } = qualityGate;
+    const canEdit = Boolean(qualityGate.actions?.manageConditions);
+    return (
+      <CaycReviewUpdateConditionsModal
+        qualityGate={qualityGate}
+        metrics={metrics}
+        canEdit={canEdit}
+        onRemoveCondition={this.props.onRemoveCondition}
+        onSaveCondition={this.props.onSaveCondition}
+        onAddCondition={this.props.onAddCondition}
+        lockEditing={this.lockEditing}
+        updatedConditionId={this.props.updatedConditionId}
+        conditions={conditions}
+        scope="new-cayc"
+        onClose={onClose}
+      />
     );
   };
 
   render() {
-    const { conditions, metrics, canEdit } = this.props;
-
+    const { qualityGate, metrics, onRemoveCondition, onSaveCondition, updatedConditionId } =
+      this.props;
+    const canEdit = Boolean(qualityGate.actions?.manageConditions);
+    const { unlockEditing } = this.state;
+    const { conditions = [] } = qualityGate;
     const existingConditions = conditions.filter((condition) => metrics[condition.metric]);
     const sortedConditions = sortBy(
       existingConditions,
@@ -145,32 +168,93 @@ export class Conditions extends React.PureComponent<Props> {
       metric: metrics[condition.metric],
     }));
 
-    const availableMetrics = differenceWith(
-      map(metrics, (metric) => metric).filter(
-        (metric) =>
-          !metric.hidden &&
-          !FORBIDDEN_METRIC_TYPES.includes(metric.type) &&
-          !FORBIDDEN_METRICS.includes(metric.key)
-      ),
-      conditions,
-      (metric, condition) => metric.key === condition.metric
-    );
-
     return (
       <div className="quality-gate-section">
-        {canEdit && (
+        {qualityGate.caycStatus !== CaycStatus.NonCompliant && (
+          <Alert className="big-spacer-top big-spacer-bottom cayc-success-banner" variant="success">
+            <h4 className="spacer-bottom cayc-success-header">
+              {translate('quality_gates.cayc.banner.title')}
+            </h4>
+            <div className="cayc-warning-description">
+              <FormattedMessage
+                id="quality_gates.cayc.banner.description1"
+                defaultMessage={translate('quality_gates.cayc.banner.description1')}
+                values={{
+                  cayc_link: (
+                    <DocLink to="/user-guide/clean-as-you-code/">
+                      {translate('quality_gates.cayc')}
+                    </DocLink>
+                  ),
+                }}
+              />
+              <br />
+              {translate('quality_gates.cayc.banner.description2')}
+            </div>
+            <ul className="big-spacer-top big-spacer-left spacer-bottom cayc-warning-description">
+              <li>{translate('quality_gates.cayc.banner.list_item1')}</li>
+              <li>{translate('quality_gates.cayc.banner.list_item2')}</li>
+              <li>{translate('quality_gates.cayc.banner.list_item3')}</li>
+              <li>{translate('quality_gates.cayc.banner.list_item4')}</li>
+              <li>{translate('quality_gates.cayc.banner.list_item5')}</li>
+              <li>{translate('quality_gates.cayc.banner.list_item6')}</li>
+            </ul>
+          </Alert>
+        )}
+
+        {qualityGate.caycStatus === CaycStatus.OverCompliant && (
+          <Alert className="big-spacer-top big-spacer-bottom cayc-success-banner" variant="info">
+            <h4 className="spacer-bottom cayc-over-compliant-header">
+              {translate('quality_gates.cayc_over_compliant.banner.title')}
+            </h4>
+            <div className="cayc-warning-description spacer-top">
+              <FormattedMessage
+                id="quality_gates.cayc_over_compliant.banner.description"
+                defaultMessage={translate('quality_gates.cayc_over_compliant.banner.description')}
+                values={{
+                  link: (
+                    <DocLink to="/user-guide/clean-as-you-code/#potential-drawbacks">
+                      {translate('quality_gates.cayc_over_compliant.banner.link')}
+                    </DocLink>
+                  ),
+                }}
+              />
+            </div>
+          </Alert>
+        )}
+
+        {qualityGate.caycStatus === CaycStatus.NonCompliant && (
+          <Alert className="big-spacer-top big-spacer-bottom" variant="warning">
+            <h4 className="spacer-bottom cayc-warning-header">
+              {translate('quality_gates.cayc_missing.banner.title')}
+            </h4>
+            <div className="cayc-warning-description spacer-bottom">
+              <FormattedMessage
+                id="quality_gates.cayc_missing.banner.description"
+                defaultMessage={translate('quality_gates.cayc_missing.banner.description')}
+                values={{
+                  cayc_link: (
+                    <DocLink to="/user-guide/clean-as-you-code/">
+                      {translate('quality_gates.cayc')}
+                    </DocLink>
+                  ),
+                }}
+              />
+            </div>
+            {canEdit && (
+              <ModalButton modal={this.renderCaycModal}>
+                {({ onClick }) => (
+                  <Button className="big-spacer-top spacer-bottom" onClick={onClick}>
+                    {translate('quality_gates.cayc_condition.review_update')}
+                  </Button>
+                )}
+              </ModalButton>
+            )}
+          </Alert>
+        )}
+
+        {(qualityGate.caycStatus === CaycStatus.NonCompliant || unlockEditing) && canEdit && (
           <div className="pull-right">
-            <ModalButton
-              modal={({ onClose }) => (
-                <ConditionModal
-                  header={translate('quality_gates.add_condition')}
-                  metrics={availableMetrics}
-                  onAddCondition={this.props.onAddCondition}
-                  onClose={onClose}
-                  qualityGate={this.props.qualityGate}
-                />
-              )}
-            >
+            <ModalButton modal={this.renderConditionModal}>
               {({ onClick }) => (
                 <Button data-test="quality-gates__add-condition" onClick={onClick}>
                   {translate('quality_gates.add_condition')}
@@ -180,8 +264,8 @@ export class Conditions extends React.PureComponent<Props> {
           </div>
         )}
 
-        <header className="display-flex-center spacer-bottom">
-          <h3>{translate('quality_gates.conditions')}</h3>
+        <header className="display-flex-center">
+          <h2 className="big">{translate('quality_gates.conditions')}</h2>
           <DocumentationTooltip
             className="spacer-left"
             content={translate('quality_gates.conditions.help')}
@@ -207,13 +291,71 @@ export class Conditions extends React.PureComponent<Props> {
 
         {sortedConditionsOnNewMetrics.length > 0 && (
           <div className="big-spacer-top">
-            {this.renderConditionsTable(sortedConditionsOnNewMetrics, 'new')}
+            <h3 className="medium text-normal">
+              {translate('quality_gates.conditions.new_code', 'long')}
+            </h3>
+            {this.props.hasFeature(Feature.BranchSupport) && (
+              <p className="spacer-top spacer-bottom">
+                {translate('quality_gates.conditions.new_code', 'description')}
+              </p>
+            )}
+            <ConditionsTable
+              qualityGate={qualityGate}
+              metrics={metrics}
+              canEdit={canEdit}
+              onRemoveCondition={onRemoveCondition}
+              onSaveCondition={onSaveCondition}
+              updatedConditionId={updatedConditionId}
+              conditions={sortedConditionsOnNewMetrics}
+              showEdit={this.state.unlockEditing}
+              scope="new"
+            />
           </div>
         )}
 
         {sortedConditionsOnOverallMetrics.length > 0 && (
           <div className="big-spacer-top">
-            {this.renderConditionsTable(sortedConditionsOnOverallMetrics, 'overall')}
+            <h3 className="medium text-normal">
+              {translate('quality_gates.conditions.overall_code', 'long')}
+            </h3>
+
+            {this.props.hasFeature(Feature.BranchSupport) && (
+              <p className="spacer-top spacer-bottom">
+                {translate('quality_gates.conditions.overall_code', 'description')}
+              </p>
+            )}
+
+            <ConditionsTable
+              qualityGate={qualityGate}
+              metrics={metrics}
+              canEdit={canEdit}
+              onRemoveCondition={onRemoveCondition}
+              onSaveCondition={onSaveCondition}
+              updatedConditionId={updatedConditionId}
+              conditions={sortedConditionsOnOverallMetrics}
+              scope="overall"
+            />
+          </div>
+        )}
+
+        {qualityGate.caycStatus !== CaycStatus.NonCompliant && !unlockEditing && canEdit && (
+          <div className="big-spacer-top big-spacer-bottom cayc-warning-description it__qg-unfollow-cayc">
+            <p>
+              <FormattedMessage
+                id="quality_gates.cayc_unfollow.description"
+                defaultMessage={translate('quality_gates.cayc_unfollow.description')}
+                values={{
+                  cayc_link: (
+                    <DocLink to="/user-guide/clean-as-you-code/">
+                      {translate('quality_gates.cayc')}
+                    </DocLink>
+                  ),
+                }}
+              />
+            </p>
+            <Button className="big-spacer-top spacer-bottom" onClick={this.unlockEditing}>
+              {translate('quality_gates.cayc.unlock_edit')}
+            </Button>
           </div>
         )}
 

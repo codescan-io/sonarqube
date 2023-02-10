@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -25,7 +25,6 @@ import com.tngtech.java.junit.dataprovider.UseDataProvider;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.ibatis.session.ResultContext;
 import org.apache.ibatis.session.ResultHandler;
@@ -129,7 +128,7 @@ public class ScrollForFileMoveComponentDaoTest {
         FileSourceDto fileSource = db.fileSources().insertFileSource(file);
         return new ComponentAndSource(file, fileSource);
       })
-      .collect(Collectors.toList());
+      .toList();
     RecordingResultHandler resultHandler = new RecordingResultHandler();
 
     underTest.scrollAllFilesForFileMove(dbSession, project.uuid(), resultHandler);

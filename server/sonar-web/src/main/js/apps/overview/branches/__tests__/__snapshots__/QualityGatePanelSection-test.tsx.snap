@@ -4,29 +4,58 @@ exports[`should render correctly 1`] = `
 <div
   className="overview-quality-gate-conditions"
 >
-  <h4
-    className="overview-quality-gate-conditions-section-title"
+  <div
+    className="big-padded bordered-bottom overview-quality-gate-conditions-list"
   >
-    quality_gates.conditions.new_code
+    <CleanAsYouCodeWarning
+      component={
+        {
+          "breadcrumbs": [],
+          "key": "my-project",
+          "name": "MyProject",
+          "qualifier": "TRK",
+          "qualityGate": {
+            "isDefault": true,
+            "key": "30",
+            "name": "Sonar way",
+          },
+          "qualityProfiles": [
+            {
+              "deleted": false,
+              "key": "my-qp",
+              "language": "ts",
+              "name": "Sonar way",
+            },
+          ],
+          "tags": [],
+        }
+      }
+    />
+  </div>
+  <h4
+    className="big-padded overview-quality-gate-conditions-section-title"
+  >
+    quality_gates.conditions.new_code_x.1
   </h4>
   <Memo(QualityGateConditions)
     component={
-      Object {
-        "failedConditions": Array [
-          Object {
+      {
+        "caycStatus": "non-compliant",
+        "failedConditions": [
+          {
             "actual": "10",
             "error": "0",
             "level": "ERROR",
-            "measure": Object {
+            "measure": {
               "bestValue": true,
               "leak": "1",
-              "metric": Object {
+              "metric": {
                 "id": "coverage",
                 "key": "coverage",
                 "name": "coverage",
                 "type": "PERCENT",
               },
-              "period": Object {
+              "period": {
                 "bestValue": true,
                 "index": 1,
                 "value": "1.0",
@@ -36,20 +65,20 @@ exports[`should render correctly 1`] = `
             "metric": "bugs",
             "op": "GT",
           },
-          Object {
+          {
             "actual": "10",
             "error": "0",
             "level": "ERROR",
-            "measure": Object {
+            "measure": {
               "bestValue": true,
               "leak": "1",
-              "metric": Object {
+              "metric": {
                 "id": "coverage",
                 "key": "coverage",
                 "name": "coverage",
                 "type": "PERCENT",
               },
-              "period": Object {
+              "period": {
                 "bestValue": true,
                 "index": 1,
                 "value": "1.0",
@@ -67,21 +96,21 @@ exports[`should render correctly 1`] = `
       }
     }
     failedConditions={
-      Array [
-        Object {
+      [
+        {
           "actual": "10",
           "error": "0",
           "level": "ERROR",
-          "measure": Object {
+          "measure": {
             "bestValue": true,
             "leak": "1",
-            "metric": Object {
+            "metric": {
               "id": "coverage",
               "key": "coverage",
               "name": "coverage",
               "type": "PERCENT",
             },
-            "period": Object {
+            "period": {
               "bestValue": true,
               "index": 1,
               "value": "1.0",
@@ -95,28 +124,29 @@ exports[`should render correctly 1`] = `
     }
   />
   <h4
-    className="overview-quality-gate-conditions-section-title"
+    className="big-padded overview-quality-gate-conditions-section-title"
   >
-    quality_gates.conditions.overall_code
+    quality_gates.conditions.overall_code_x.1
   </h4>
   <Memo(QualityGateConditions)
     component={
-      Object {
-        "failedConditions": Array [
-          Object {
+      {
+        "caycStatus": "non-compliant",
+        "failedConditions": [
+          {
             "actual": "10",
             "error": "0",
             "level": "ERROR",
-            "measure": Object {
+            "measure": {
               "bestValue": true,
               "leak": "1",
-              "metric": Object {
+              "metric": {
                 "id": "coverage",
                 "key": "coverage",
                 "name": "coverage",
                 "type": "PERCENT",
               },
-              "period": Object {
+              "period": {
                 "bestValue": true,
                 "index": 1,
                 "value": "1.0",
@@ -126,20 +156,20 @@ exports[`should render correctly 1`] = `
             "metric": "bugs",
             "op": "GT",
           },
-          Object {
+          {
             "actual": "10",
             "error": "0",
             "level": "ERROR",
-            "measure": Object {
+            "measure": {
               "bestValue": true,
               "leak": "1",
-              "metric": Object {
+              "metric": {
                 "id": "coverage",
                 "key": "coverage",
                 "name": "coverage",
                 "type": "PERCENT",
               },
-              "period": Object {
+              "period": {
                 "bestValue": true,
                 "index": 1,
                 "value": "1.0",
@@ -157,21 +187,21 @@ exports[`should render correctly 1`] = `
       }
     }
     failedConditions={
-      Array [
-        Object {
+      [
+        {
           "actual": "10",
           "error": "0",
           "level": "ERROR",
-          "measure": Object {
+          "measure": {
             "bestValue": true,
             "leak": "1",
-            "metric": Object {
+            "metric": {
               "id": "coverage",
               "key": "coverage",
               "name": "coverage",
               "type": "PERCENT",
             },
-            "period": Object {
+            "period": {
               "bestValue": true,
               "index": 1,
               "value": "1.0",
@@ -191,34 +221,52 @@ exports[`should render correctly 2`] = `
 <div
   className="overview-quality-gate-conditions"
 >
-  <h3
-    className="overview-quality-gate-conditions-project-name"
+  <ButtonPlain
+    aria-expanded={true}
+    aria-label="overview.quality_gate.hide_project_conditions_x.Foo"
+    className="width-100 text-left"
+    onClick={[Function]}
   >
-    Foo
-  </h3>
+    <div
+      className="display-flex-center"
+    >
+      <h3
+        className="overview-quality-gate-conditions-project-name text-ellipsis"
+        title="Foo"
+      >
+        <ChevronDownIcon />
+        <span
+          className="spacer-left"
+        >
+          Foo
+        </span>
+      </h3>
+    </div>
+  </ButtonPlain>
   <h4
-    className="overview-quality-gate-conditions-section-title"
+    className="big-padded overview-quality-gate-conditions-section-title"
   >
-    quality_gates.conditions.new_code
+    quality_gates.conditions.new_code_x.1
   </h4>
   <Memo(QualityGateConditions)
     component={
-      Object {
-        "failedConditions": Array [
-          Object {
+      {
+        "caycStatus": "non-compliant",
+        "failedConditions": [
+          {
             "actual": "10",
             "error": "0",
             "level": "ERROR",
-            "measure": Object {
+            "measure": {
               "bestValue": true,
               "leak": "1",
-              "metric": Object {
+              "metric": {
                 "id": "coverage",
                 "key": "coverage",
                 "name": "coverage",
                 "type": "PERCENT",
               },
-              "period": Object {
+              "period": {
                 "bestValue": true,
                 "index": 1,
                 "value": "1.0",
@@ -228,20 +276,20 @@ exports[`should render correctly 2`] = `
             "metric": "bugs",
             "op": "GT",
           },
-          Object {
+          {
             "actual": "10",
             "error": "0",
             "level": "ERROR",
-            "measure": Object {
+            "measure": {
               "bestValue": true,
               "leak": "1",
-              "metric": Object {
+              "metric": {
                 "id": "coverage",
                 "key": "coverage",
                 "name": "coverage",
                 "type": "PERCENT",
               },
-              "period": Object {
+              "period": {
                 "bestValue": true,
                 "index": 1,
                 "value": "1.0",
@@ -259,21 +307,21 @@ exports[`should render correctly 2`] = `
       }
     }
     failedConditions={
-      Array [
-        Object {
+      [
+        {
           "actual": "10",
           "error": "0",
           "level": "ERROR",
-          "measure": Object {
+          "measure": {
             "bestValue": true,
             "leak": "1",
-            "metric": Object {
+            "metric": {
               "id": "coverage",
               "key": "coverage",
               "name": "coverage",
               "type": "PERCENT",
             },
-            "period": Object {
+            "period": {
               "bestValue": true,
               "index": 1,
               "value": "1.0",
@@ -287,28 +335,29 @@ exports[`should render correctly 2`] = `
     }
   />
   <h4
-    className="overview-quality-gate-conditions-section-title"
+    className="big-padded overview-quality-gate-conditions-section-title"
   >
-    quality_gates.conditions.overall_code
+    quality_gates.conditions.overall_code_x.1
   </h4>
   <Memo(QualityGateConditions)
     component={
-      Object {
-        "failedConditions": Array [
-          Object {
+      {
+        "caycStatus": "non-compliant",
+        "failedConditions": [
+          {
             "actual": "10",
             "error": "0",
             "level": "ERROR",
-            "measure": Object {
+            "measure": {
               "bestValue": true,
               "leak": "1",
-              "metric": Object {
+              "metric": {
                 "id": "coverage",
                 "key": "coverage",
                 "name": "coverage",
                 "type": "PERCENT",
               },
-              "period": Object {
+              "period": {
                 "bestValue": true,
                 "index": 1,
                 "value": "1.0",
@@ -318,20 +367,20 @@ exports[`should render correctly 2`] = `
             "metric": "bugs",
             "op": "GT",
           },
-          Object {
+          {
             "actual": "10",
             "error": "0",
             "level": "ERROR",
-            "measure": Object {
+            "measure": {
               "bestValue": true,
               "leak": "1",
-              "metric": Object {
+              "metric": {
                 "id": "coverage",
                 "key": "coverage",
                 "name": "coverage",
                 "type": "PERCENT",
               },
-              "period": Object {
+              "period": {
                 "bestValue": true,
                 "index": 1,
                 "value": "1.0",
@@ -349,21 +398,21 @@ exports[`should render correctly 2`] = `
       }
     }
     failedConditions={
-      Array [
-        Object {
+      [
+        {
           "actual": "10",
           "error": "0",
           "level": "ERROR",
-          "measure": Object {
+          "measure": {
             "bestValue": true,
             "leak": "1",
-            "metric": Object {
+            "metric": {
               "id": "coverage",
               "key": "coverage",
               "name": "coverage",
               "type": "PERCENT",
             },
-            "period": Object {
+            "period": {
               "bestValue": true,
               "index": 1,
               "value": "1.0",

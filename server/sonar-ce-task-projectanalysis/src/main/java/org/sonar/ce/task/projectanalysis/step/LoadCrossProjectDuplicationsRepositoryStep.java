@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -105,14 +104,14 @@ public class LoadCrossProjectDuplicationsRepositoryStep implements ComputationSt
         return;
       }
 
-      Collection<String> hashes = cpdTextBlocks.stream().map(CpdTextBlockToHash.INSTANCE).collect(Collectors.toList());
+      Collection<String> hashes = cpdTextBlocks.stream().map(CpdTextBlockToHash.INSTANCE).toList();
       List<DuplicationUnitDto> dtos = selectDuplicates(file, hashes);
       if (dtos.isEmpty()) {
         return;
       }
 
-      Collection<Block> duplicatedBlocks = dtos.stream().map(DtoToBlock.INSTANCE).collect(Collectors.toList());
-      Collection<Block> originBlocks = cpdTextBlocks.stream().map(new CpdTextBlockToBlock(file.getKey())).collect(Collectors.toList());
+      Collection<Block> duplicatedBlocks = dtos.stream().map(DtoToBlock.INSTANCE).toList();
+      Collection<Block> originBlocks = cpdTextBlocks.stream().map(new CpdTextBlockToBlock(file.getKey())).toList();
       LOGGER.trace("Found {} duplicated cpd blocks on file {}", duplicatedBlocks.size(), file.getKey());
 
       integrateCrossProjectDuplications.computeCpd(file, originBlocks, duplicatedBlocks);

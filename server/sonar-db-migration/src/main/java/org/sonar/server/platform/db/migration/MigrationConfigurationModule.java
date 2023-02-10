@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -37,6 +37,7 @@ import org.sonar.server.platform.db.migration.version.v95.DbVersion95;
 import org.sonar.server.platform.db.migration.version.v96.DbVersion96;
 import org.sonar.server.platform.db.migration.version.v97.DbVersion97;
 import org.sonar.server.platform.db.migration.version.v98.DbVersion98;
+import org.sonar.server.platform.db.migration.version.v99.DbVersion99;
 
 public class MigrationConfigurationModule extends Module {
   @Override
@@ -54,6 +55,7 @@ public class MigrationConfigurationModule extends Module {
       DbVersion96.class,
       DbVersion97.class,
       DbVersion98.class,
+      DbVersion99.class,
 
       // migration steps
       MigrationStepRegistryImpl.class,

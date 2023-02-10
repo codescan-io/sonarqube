@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -24,13 +24,15 @@ import HelpTooltip from '../../../components/controls/HelpTooltip';
 import { Alert } from '../../../components/ui/Alert';
 import DeferredSpinner from '../../../components/ui/DeferredSpinner';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
+import { ComponentQualifier, isApplication } from '../../../types/component';
 import { QualityGateStatus } from '../../../types/quality-gates';
-import { Component } from '../../../types/types';
+import { CaycStatus, Component } from '../../../types/types';
 import SonarLintPromotion from '../components/SonarLintPromotion';
+import ApplicationNonCaycProjectWarning from './ApplicationNonCaycProjectWarning';
 import QualityGatePanelSection from './QualityGatePanelSection';
 
 export interface QualityGatePanelProps {
-  component: Pick<Component, 'key' | 'qualifier'>;
+  component: Pick<Component, 'key' | 'qualifier' | 'qualityGate'>;
   loading?: boolean;
   qgStatuses?: QualityGateStatus[];
 }
@@ -50,9 +52,20 @@ export function QualityGatePanel(props: QualityGatePanelProps) {
     0
   );
 
+  const nonCaycProjectsInApp = isApplication(component.qualifier)
+    ? qgStatuses
+        .filter(({ caycStatus }) => caycStatus === CaycStatus.NonCompliant)
+        .sort(({ name: a }, { name: b }) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+    : [];
+
+  const overCompliantCaycProjectsInApp = isApplication(component.qualifier)
+    ? qgStatuses
+        .filter(({ caycStatus }) => caycStatus === CaycStatus.OverCompliant)
+        .sort(({ name: a }, { name: b }) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+    : [];
+
   const showIgnoredConditionWarning =
-    component.qualifier === 'TRK' &&
-    qgStatuses !== undefined &&
+    component.qualifier === ComponentQualifier.Project &&
     qgStatuses.some((p) => Boolean(p.ignoredConditions));
 
   return (
@@ -82,7 +95,7 @@ export function QualityGatePanel(props: QualityGatePanelProps) {
         </Alert>
       )}
 
-      <div className="overview-panel-content">
+      <div>
         {loading ? (
           <div className="overview-panel-big-padded">
             <DeferredSpinner loading={loading} />
@@ -107,7 +120,8 @@ export function QualityGatePanel(props: QualityGatePanelProps) {
               </span>
             </div>
 
-            {overallFailedConditionsCount > 0 && (
+            {(overallFailedConditionsCount > 0 ||
+              qgStatuses.some(({ caycStatus }) => caycStatus !== CaycStatus.Compliant)) && (
               <div data-test="overview__quality-gate-conditions">
                 {qgStatuses.map((qgStatus) => (
                   <QualityGatePanelSection
@@ -117,6 +131,20 @@ export function QualityGatePanel(props: QualityGatePanelProps) {
                   />
                 ))}
               </div>
+            )}
+
+            {nonCaycProjectsInApp.length > 0 && (
+              <ApplicationNonCaycProjectWarning
+                projects={nonCaycProjectsInApp}
+                caycStatus={CaycStatus.NonCompliant}
+              />
+            )}
+
+            {overCompliantCaycProjectsInApp.length > 0 && (
+              <ApplicationNonCaycProjectWarning
+                projects={overCompliantCaycProjectsInApp}
+                caycStatus={CaycStatus.OverCompliant}
+              />
             )}
           </>
         )}

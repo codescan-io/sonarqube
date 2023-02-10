@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -52,7 +52,6 @@ import static java.util.Collections.singletonList;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
-import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang.StringUtils.EMPTY;
 import static org.sonar.api.web.UserRole.USER;
 import static org.sonar.server.user.ws.DismissNoticeAction.EDUCATION_PRINCIPLES;
@@ -220,13 +219,10 @@ public class CurrentAction implements UsersWsAction {
     if (!edition.isPresent()) {
       return false;
     }
-    switch (edition.get()) {
-      case ENTERPRISE:
-      case DATACENTER:
-        return true;
-      default:
-        return false;
-    }
+    return switch (edition.get()) {
+      case ENTERPRISE, DATACENTER -> true;
+      default -> false;
+    };
   }
 
   private void cleanUserHomepageInDb(DbSession dbSession, UserDto user) {

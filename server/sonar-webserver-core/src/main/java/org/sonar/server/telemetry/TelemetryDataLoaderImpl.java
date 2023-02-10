@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -23,14 +23,15 @@ import com.google.common.annotations.VisibleForTesting;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.platform.Server;
@@ -45,20 +46,36 @@ import org.sonar.db.alm.setting.ALM;
 import org.sonar.db.alm.setting.ProjectAlmKeyAndProject;
 import org.sonar.db.component.AnalysisPropertyValuePerProject;
 import org.sonar.db.component.PrBranchAnalyzedLanguageCountByProjectDto;
+import org.sonar.db.measure.LiveMeasureDto;
 import org.sonar.db.measure.ProjectMeasureDto;
+import org.sonar.db.metric.MetricDto;
+import org.sonar.db.qualitygate.ProjectQgateAssociationDto;
+import org.sonar.db.qualitygate.QualityGateDto;
 import org.sonar.server.platform.DockerSupport;
 import org.sonar.server.property.InternalProperties;
+import org.sonar.server.qualitygate.QualityGateCaycChecker;
+import org.sonar.server.qualitygate.QualityGateFinder;
 import org.sonar.server.telemetry.TelemetryData.Database;
 
 import static java.util.Arrays.asList;
 import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toMap;
 import static org.sonar.api.internal.apachecommons.lang.StringUtils.startsWithIgnoreCase;
+import static org.sonar.api.measures.CoreMetrics.BUGS_KEY;
+import static org.sonar.api.measures.CoreMetrics.DEVELOPMENT_COST_KEY;
 import static org.sonar.api.measures.CoreMetrics.NCLOC_LANGUAGE_DISTRIBUTION_KEY;
+import static org.sonar.api.measures.CoreMetrics.SECURITY_HOTSPOTS_KEY;
+import static org.sonar.api.measures.CoreMetrics.TECHNICAL_DEBT_KEY;
+import static org.sonar.api.measures.CoreMetrics.VULNERABILITIES_KEY;
 import static org.sonar.core.config.CorePropertyDefinitions.SONAR_ANALYSIS_DETECTEDCI;
 import static org.sonar.core.config.CorePropertyDefinitions.SONAR_ANALYSIS_DETECTEDSCM;
 import static org.sonar.core.platform.EditionProvider.Edition.COMMUNITY;
 import static org.sonar.core.platform.EditionProvider.Edition.DATACENTER;
 import static org.sonar.core.platform.EditionProvider.Edition.ENTERPRISE;
+import static org.sonar.server.metric.UnanalyzedLanguageMetrics.UNANALYZED_CPP_KEY;
+import static org.sonar.server.metric.UnanalyzedLanguageMetrics.UNANALYZED_C_KEY;
+import static org.sonar.server.telemetry.TelemetryDaemon.I_PROP_MESSAGE_SEQUENCE;
 
 @ServerSide
 public class TelemetryDataLoaderImpl implements TelemetryDataLoader {
@@ -79,14 +96,13 @@ public class TelemetryDataLoaderImpl implements TelemetryDataLoader {
   private final Configuration configuration;
   private final InternalProperties internalProperties;
   private final DockerSupport dockerSupport;
-  @CheckForNull
-  private final LicenseReader licenseReader;
-
+  private final QualityGateCaycChecker qualityGateCaycChecker;
+  private final QualityGateFinder qualityGateFinder;
 
   @Inject
   public TelemetryDataLoaderImpl(Server server, DbClient dbClient, PluginRepository pluginRepository,
     PlatformEditionProvider editionProvider, InternalProperties internalProperties, Configuration configuration,
-    DockerSupport dockerSupport, @Nullable LicenseReader licenseReader) {
+    DockerSupport dockerSupport, QualityGateCaycChecker qualityGateCaycChecker, QualityGateFinder qualityGateFinder) {
     this.server = server;
     this.dbClient = dbClient;
     this.pluginRepository = pluginRepository;
@@ -94,7 +110,8 @@ public class TelemetryDataLoaderImpl implements TelemetryDataLoader {
     this.internalProperties = internalProperties;
     this.configuration = configuration;
     this.dockerSupport = dockerSupport;
-    this.licenseReader = licenseReader;
+    this.qualityGateCaycChecker = qualityGateCaycChecker;
+    this.qualityGateFinder = qualityGateFinder;
   }
 
   private static Database loadDatabaseMetadata(DbSession dbSession) {
@@ -110,20 +127,24 @@ public class TelemetryDataLoaderImpl implements TelemetryDataLoader {
   public TelemetryData load() {
     TelemetryData.Builder data = TelemetryData.builder();
 
+    data.setMessageSequenceNumber(retrieveCurrentMessageSequenceNumber() + 1);
     data.setServerId(server.getId());
     data.setVersion(server.getVersion());
     data.setEdition(editionProvider.get().orElse(null));
-    ofNullable(licenseReader)
-      .flatMap(reader -> licenseReader.read())
-      .ifPresent(license -> data.setLicenseType(license.getType()));
     Function<PluginInfo, String> getVersion = plugin -> plugin.getVersion() == null ? "undefined" : plugin.getVersion().getName();
-    Map<String, String> plugins = pluginRepository.getPluginInfos().stream().collect(MoreCollectors.uniqueIndex(PluginInfo::getKey, getVersion));
+    Map<String, String> plugins = pluginRepository.getPluginInfos().stream().collect(MoreCollectors.uniqueIndex(PluginInfo::getKey,
+      getVersion));
     data.setPlugins(plugins);
     try (DbSession dbSession = dbClient.openSession(false)) {
       data.setDatabase(loadDatabaseMetadata(dbSession));
 
-      resolveProjectStatistics(data, dbSession);
+      String defaultQualityGateUuid = qualityGateFinder.getDefault(dbSession).getUuid();
+
+      data.setDefaultQualityGate(defaultQualityGateUuid);
+      resolveUnanalyzedLanguageCode(data, dbSession);
+      resolveProjectStatistics(data, dbSession, defaultQualityGateUuid);
       resolveProjects(data, dbSession);
+      resolveQualityGates(data, dbSession);
       resolveUsers(data, dbSession);
     }
 
@@ -140,42 +161,64 @@ public class TelemetryDataLoaderImpl implements TelemetryDataLoader {
       .build();
   }
 
-  private void resolveProjectStatistics(TelemetryData.Builder data, DbSession dbSession) {
+  private void resolveUnanalyzedLanguageCode(TelemetryData.Builder data, DbSession dbSession) {
+    long numberOfUnanalyzedCMeasures = dbClient.liveMeasureDao().countProjectsHavingMeasure(dbSession, UNANALYZED_C_KEY);
+    long numberOfUnanalyzedCppMeasures = dbClient.liveMeasureDao().countProjectsHavingMeasure(dbSession, UNANALYZED_CPP_KEY);
+    editionProvider.get()
+      .filter(edition -> edition.equals(COMMUNITY))
+      .ifPresent(edition -> {
+        data.setHasUnanalyzedC(numberOfUnanalyzedCMeasures > 0);
+        data.setHasUnanalyzedCpp(numberOfUnanalyzedCppMeasures > 0);
+      });
+  }
+
+  private Long retrieveCurrentMessageSequenceNumber() {
+    return internalProperties.read(I_PROP_MESSAGE_SEQUENCE).map(Long::parseLong).orElse(0L);
+  }
+
+  private void resolveProjectStatistics(TelemetryData.Builder data, DbSession dbSession, String defaultQualityGateUuid) {
     List<String> projectUuids = dbClient.projectDao().selectAllProjectUuids(dbSession);
     Map<String, String> scmByProject = getAnalysisPropertyByProject(dbSession, SONAR_ANALYSIS_DETECTEDSCM);
     Map<String, String> ciByProject = getAnalysisPropertyByProject(dbSession, SONAR_ANALYSIS_DETECTEDCI);
     Map<String, ProjectAlmKeyAndProject> almAndUrlByProject = getAlmAndUrlByProject(dbSession);
-    Map<String, PrBranchAnalyzedLanguageCountByProjectDto> prAndBranchCountByProjects = dbClient.branchDao().countPrBranchAnalyzedLanguageByProjectUuid(dbSession)
-      .stream().collect(Collectors.toMap(PrBranchAnalyzedLanguageCountByProjectDto::getProjectUuid, Function.identity()));
+    Map<String, PrBranchAnalyzedLanguageCountByProjectDto> prAndBranchCountByProject =
+      dbClient.branchDao().countPrBranchAnalyzedLanguageByProjectUuid(dbSession)
+        .stream().collect(toMap(PrBranchAnalyzedLanguageCountByProjectDto::getProjectUuid, Function.identity()));
+    Map<String, String> qgatesByProject = getProjectQgatesMap(dbSession);
+    Map<String, Map<String, Number>> metricsByProject =
+      getProjectMetricsByMetricKeys(dbSession, TECHNICAL_DEBT_KEY, DEVELOPMENT_COST_KEY, SECURITY_HOTSPOTS_KEY, VULNERABILITIES_KEY,
+        BUGS_KEY);
 
-    boolean isCommunityEdition = editionProvider.get().filter(edition -> edition.equals(COMMUNITY)).isPresent();
     List<TelemetryData.ProjectStatistics> projectStatistics = new ArrayList<>();
     for (String projectUuid : projectUuids) {
-      Optional<PrBranchAnalyzedLanguageCountByProjectDto> counts = ofNullable(prAndBranchCountByProjects.get(projectUuid));
+      Map<String, Number> metrics = metricsByProject.getOrDefault(projectUuid, Collections.emptyMap());
+      Optional<PrBranchAnalyzedLanguageCountByProjectDto> counts = ofNullable(prAndBranchCountByProject.get(projectUuid));
 
-      Long branchCount = counts.map(PrBranchAnalyzedLanguageCountByProjectDto::getBranch).orElse(0L);
-      Long pullRequestCount = counts.map(PrBranchAnalyzedLanguageCountByProjectDto::getPullRequest).orElse(0L);
-
-      Boolean hasUnanalyzedCMeasures = null;
-      Boolean hasUnanalyzedCppMeasures = null;
-      if (isCommunityEdition) {
-        hasUnanalyzedCMeasures = counts.map(PrBranchAnalyzedLanguageCountByProjectDto::getUnanalyzedCCount).orElse(0L) > 0;
-        hasUnanalyzedCppMeasures = counts.map(PrBranchAnalyzedLanguageCountByProjectDto::getUnanalyzedCppCount).orElse(0L) > 0;
-      }
-
-      String scm = Optional.ofNullable(scmByProject.get(projectUuid)).orElse(UNDETECTED);
-      String ci = Optional.ofNullable(ciByProject.get(projectUuid)).orElse(UNDETECTED);
-      String devopsPlatform = null;
-      if (almAndUrlByProject.containsKey(projectUuid)) {
-        ProjectAlmKeyAndProject projectAlmKeyAndProject = almAndUrlByProject.get(projectUuid);
-        devopsPlatform = getAlmName(projectAlmKeyAndProject.getAlmId(), projectAlmKeyAndProject.getUrl());
-      }
-      devopsPlatform = Optional.ofNullable(devopsPlatform).orElse(UNDETECTED);
-
-      projectStatistics.add(
-        new TelemetryData.ProjectStatistics(projectUuid, branchCount, pullRequestCount, hasUnanalyzedCMeasures, hasUnanalyzedCppMeasures, scm, ci, devopsPlatform));
+      TelemetryData.ProjectStatistics stats = new TelemetryData.ProjectStatistics.Builder()
+        .setProjectUuid(projectUuid)
+        .setBranchCount(counts.map(PrBranchAnalyzedLanguageCountByProjectDto::getBranch).orElse(0L))
+        .setPRCount(counts.map(PrBranchAnalyzedLanguageCountByProjectDto::getPullRequest).orElse(0L))
+        .setQG(qgatesByProject.getOrDefault(projectUuid, defaultQualityGateUuid))
+        .setScm(Optional.ofNullable(scmByProject.get(projectUuid)).orElse(UNDETECTED))
+        .setCi(Optional.ofNullable(ciByProject.get(projectUuid)).orElse(UNDETECTED))
+        .setDevops(resolveDevopsPlatform(almAndUrlByProject, projectUuid))
+        .setBugs(metrics.getOrDefault("bugs", null))
+        .setDevelopmentCost(metrics.getOrDefault("development_cost", null))
+        .setVulnerabilities(metrics.getOrDefault("vulnerabilities", null))
+        .setSecurityHotspots(metrics.getOrDefault("security_hotspots", null))
+        .setTechnicalDebt(metrics.getOrDefault("sqale_index", null))
+        .build();
+      projectStatistics.add(stats);
     }
     data.setProjectStatistics(projectStatistics);
+  }
+
+  private static String resolveDevopsPlatform(Map<String, ProjectAlmKeyAndProject> almAndUrlByProject, String projectUuid) {
+    if (almAndUrlByProject.containsKey(projectUuid)) {
+      ProjectAlmKeyAndProject projectAlmKeyAndProject = almAndUrlByProject.get(projectUuid);
+      return getAlmName(projectAlmKeyAndProject.getAlmId(), projectAlmKeyAndProject.getUrl());
+    }
+    return UNDETECTED;
   }
 
   private void resolveProjects(TelemetryData.Builder data, DbSession dbSession) {
@@ -192,6 +235,19 @@ public class TelemetryDataLoaderImpl implements TelemetryDataLoader {
     data.setProjects(projects);
   }
 
+  private void resolveQualityGates(TelemetryData.Builder data, DbSession dbSession) {
+    List<TelemetryData.QualityGate> qualityGates = new ArrayList<>();
+    Collection<QualityGateDto> qualityGateDtos = dbClient.qualityGateDao().selectAll(dbSession);
+    for (QualityGateDto qualityGateDto : qualityGateDtos) {
+      qualityGates.add(
+        new TelemetryData.QualityGate(qualityGateDto.getUuid(), qualityGateCaycChecker.checkCaycCompliant(dbSession,
+          qualityGateDto.getUuid()).toString())
+      );
+    }
+
+    data.setQualityGates(qualityGates);
+  }
+
   private void resolveUsers(TelemetryData.Builder data, DbSession dbSession) {
     data.setUsers(dbClient.userDao().selectUsersForTelemetry(dbSession));
   }
@@ -206,12 +262,12 @@ public class TelemetryDataLoaderImpl implements TelemetryDataLoader {
     return dbClient.analysisPropertiesDao()
       .selectAnalysisPropertyValueInLastAnalysisPerProject(dbSession, analysisPropertyKey)
       .stream()
-      .collect(Collectors.toMap(AnalysisPropertyValuePerProject::getProjectUuid, AnalysisPropertyValuePerProject::getPropertyValue));
+      .collect(toMap(AnalysisPropertyValuePerProject::getProjectUuid, AnalysisPropertyValuePerProject::getPropertyValue));
   }
 
   private Map<String, ProjectAlmKeyAndProject> getAlmAndUrlByProject(DbSession dbSession) {
     List<ProjectAlmKeyAndProject> projectAlmKeyAndProjects = dbClient.projectAlmSettingDao().selectAlmTypeAndUrlByProject(dbSession);
-    return projectAlmKeyAndProjects.stream().collect(Collectors.toMap(ProjectAlmKeyAndProject::getProjectUuid, Function.identity()));
+    return projectAlmKeyAndProjects.stream().collect(toMap(ProjectAlmKeyAndProject::getProjectUuid, Function.identity()));
   }
 
   private static String getAlmName(String alm, String url) {
@@ -232,6 +288,30 @@ public class TelemetryDataLoaderImpl implements TelemetryDataLoader {
     }
 
     return alm + "_server";
+  }
+
+  private Map<String, String> getProjectQgatesMap(DbSession dbSession) {
+    return dbClient.projectQgateAssociationDao().selectAll(dbSession)
+      .stream()
+      .collect(toMap(ProjectQgateAssociationDto::getUuid, p -> Optional.ofNullable(p.getGateUuid()).orElse("")));
+  }
+
+  private Map<String, Map<String, Number>> getProjectMetricsByMetricKeys(DbSession dbSession, String... metricKeys) {
+    Map<String, String> metricNamesByUuid = dbClient.metricDao().selectByKeys(dbSession, asList(metricKeys))
+      .stream()
+      .collect(toMap(MetricDto::getUuid, MetricDto::getKey));
+
+    // metrics can be empty for un-analyzed projects
+    if (metricNamesByUuid.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    return dbClient.liveMeasureDao().selectForProjectsByMetricUuids(dbSession, metricNamesByUuid.keySet())
+      .stream()
+      .collect(groupingBy(LiveMeasureDto::getProjectUuid,
+        toMap(lmDto -> metricNamesByUuid.get(lmDto.getMetricUuid()),
+          lmDto -> Optional.ofNullable(lmDto.getValue()).orElseGet(() -> Double.valueOf(lmDto.getTextValue())),
+          (oldValue, newValue) -> newValue, HashMap::new)));
   }
 
   private static boolean checkIfCloudAlm(String almRaw, String alm, String url, String cloudUrl) {

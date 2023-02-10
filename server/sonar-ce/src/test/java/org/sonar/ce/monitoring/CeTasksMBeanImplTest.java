@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -123,9 +123,10 @@ public class CeTasksMBeanImplTest {
   public void getWorkerUuids_returns_ordered_list_of_uuids_of_worker_from_CeWorkerFactory_instance() {
     List<String> workerUuids = underTest.getWorkerUuids();
 
-    assertThat(workerUuids).isEqualTo(WORKERS.stream().map(CeWorker::getUUID).sorted().collect(Collectors.toList()));
-    // ImmutableSet can not be serialized
-    assertThat(workerUuids).isNotInstanceOf(ImmutableSet.class);
+    assertThat(workerUuids).
+      isEqualTo(WORKERS.stream().map(CeWorker::getUUID).sorted().collect(Collectors.toList()))
+      // ImmutableSet can not be serialized
+      .isNotInstanceOf(ImmutableSet.class);
   }
 
   @Test
@@ -145,9 +146,10 @@ public class CeTasksMBeanImplTest {
 
     List<String> enabledWorkerUuids = underTest.getEnabledWorkerUuids();
 
-    assertThat(enabledWorkerUuids).isEqualTo(Stream.of(enabledWorkers).map(CeWorker::getUUID).sorted().collect(Collectors.toList()));
-    // ImmutableSet can not be serialized
-    assertThat(enabledWorkerUuids).isNotInstanceOf(ImmutableSet.class);
+    assertThat(enabledWorkerUuids)
+      .isEqualTo(Stream.of(enabledWorkers).map(CeWorker::getUUID).sorted().collect(Collectors.toList()))
+      // ImmutableSet can not be serialized
+      .isNotInstanceOf(ImmutableSet.class);
   }
 
   @Test

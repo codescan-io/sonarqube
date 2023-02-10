@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -24,11 +24,10 @@ import './SizeRating.css';
 
 export interface Props {
   muted?: boolean;
-  small?: boolean;
   value: number | null | undefined;
 }
 
-export default function SizeRating({ small = false, muted = false, value }: Props) {
+export default function SizeRating({ muted = false, value }: Props) {
   if (value == null) {
     return <div className="size-rating size-rating-muted">&nbsp;</div>;
   }
@@ -47,7 +46,6 @@ export default function SizeRating({ small = false, muted = false, value }: Prop
   }
 
   const className = classNames('size-rating', {
-    'size-rating-small': small,
     'size-rating-muted': muted,
   });
 

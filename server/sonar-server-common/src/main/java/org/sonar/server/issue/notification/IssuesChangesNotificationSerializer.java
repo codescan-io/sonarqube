@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -222,8 +222,7 @@ public class IssuesChangesNotificationSerializer {
 
   private static void serializeChange(IssuesChangesNotification notification, IssuesChangesNotificationBuilder.Change change) {
     notification.setFieldValue(FIELD_CHANGE_DATE, String.valueOf(change.date));
-    if (change instanceof IssuesChangesNotificationBuilder.UserChange) {
-      IssuesChangesNotificationBuilder.UserChange userChange = (IssuesChangesNotificationBuilder.UserChange) change;
+    if (change instanceof IssuesChangesNotificationBuilder.UserChange userChange) {
       User user = userChange.getUser();
       notification.setFieldValue(FIELD_CHANGE_AUTHOR_UUID, user.getUuid());
       notification.setFieldValue(FIELD_CHANGE_AUTHOR_LOGIN, user.getLogin());

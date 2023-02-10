@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang.StringUtils;
@@ -115,7 +114,7 @@ public class ComponentUuidFactoryWithMigration implements ComponentUuidFactory {
     List<ComponentDto> moduleDtos = dbClient.componentDao()
       .selectProjectAndModulesFromProjectKey(dbSession, rootKey, true, branchKey, prKey).stream()
       .filter(c -> Qualifiers.MODULE.equals(c.qualifier()))
-      .collect(Collectors.toList());
+      .toList();
 
     if (moduleDtos.isEmpty()) {
       return Collections.emptyMap();

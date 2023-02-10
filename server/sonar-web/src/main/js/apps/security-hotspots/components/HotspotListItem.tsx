@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -68,7 +68,7 @@ export default function HotspotListItem(props: HotspotListItemProps) {
       {selected && (
         <LocationsList
           locations={locations}
-          showCrossFile={false} // To removed once we support multi file location
+          showCrossFile={false} // To be removed once we support multi file location
           componentKey={hotspot.component}
           onLocationSelect={props.onLocationClick}
           selectedLocationIndex={selectedHotspotLocation}

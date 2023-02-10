@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,7 +17,6 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
@@ -67,10 +66,11 @@ it('should ask for PAT when it is not set yet and show the import project featur
   expect(screen.getByText('onboarding.create_project.enter_pat')).toBeInTheDocument();
   expect(screen.getByText('onboarding.create_project.pat_help.title')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'save' })).toBeInTheDocument();
-
-  await user.click(ui.personalAccessTokenInput.get());
-  await user.keyboard('secret');
-  await user.click(screen.getByRole('button', { name: 'save' }));
+  await act(async () => {
+    await user.click(ui.personalAccessTokenInput.get());
+    await user.keyboard('secret');
+    await user.click(screen.getByRole('button', { name: 'save' }));
+  });
 
   expect(screen.getByText('Gitlab project 1')).toBeInTheDocument();
   expect(screen.getByText('Gitlab project 2')).toBeInTheDocument();
@@ -90,7 +90,9 @@ it('should show import project feature when PAT is already set', async () => {
   expect(screen.getByText('Gitlab project 1')).toBeInTheDocument();
   expect(screen.getByText('Gitlab project 2')).toBeInTheDocument();
 
-  projectItem = screen.getByRole('row', { name: /Gitlab project 1/ });
+  projectItem = screen.getByRole('row', {
+    name: 'qualifier.TRK Gitlab project 1 Company / Best Projects opens_in_new_window onboarding.create_project.gitlab.link onboarding.create_project.repository_imported',
+  });
   expect(
     within(projectItem).getByText('onboarding.create_project.repository_imported')
   ).toBeInTheDocument();
@@ -100,12 +102,16 @@ it('should show import project feature when PAT is already set', async () => {
     '/dashboard?id=key'
   );
 
-  projectItem = screen.getByRole('row', { name: /Gitlab project 2/ });
+  projectItem = screen.getByRole('row', {
+    name: 'Gitlab project 2 Company / Best Projects opens_in_new_window onboarding.create_project.gitlab.link onboarding.create_project.set_up',
+  });
   const importProjectButton = within(projectItem).getByRole('button', {
     name: 'onboarding.create_project.set_up',
   });
 
-  await user.click(importProjectButton);
+  await act(async () => {
+    await user.click(importProjectButton);
+  });
   expect(await screen.findByText('/dashboard?id=key')).toBeInTheDocument();
 });
 
@@ -119,7 +125,7 @@ it('should show search filter when PAT is already set', async () => {
   });
 
   const inputSearch = screen.getByRole('searchbox', {
-    name: 'search_verb',
+    name: 'onboarding.create_project.search_prompt',
   });
   await user.click(inputSearch);
   await user.keyboard('sea');

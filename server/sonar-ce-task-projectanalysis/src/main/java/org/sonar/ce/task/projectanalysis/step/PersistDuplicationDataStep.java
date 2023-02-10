@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -159,15 +159,15 @@ public class PersistDuplicationDataStep implements ComputationStep {
       if (duplicate instanceof InnerDuplicate) {
         // Duplication is on the same file
         appendDuplication(xml, componentDbKey, duplicate);
-      } else if (duplicate instanceof InExtendedProjectDuplicate) {
+      } else if (duplicate instanceof InExtendedProjectDuplicate inExtendedProjectDuplicate) {
         // Duplication is on a different file that is not saved in the DB
-        appendDuplication(xml, ((InExtendedProjectDuplicate) duplicate).getFile().getKey(), duplicate.getTextBlock(), true);
-      } else if (duplicate instanceof InProjectDuplicate) {
+        appendDuplication(xml, inExtendedProjectDuplicate.getFile().getKey(), duplicate.getTextBlock(), true);
+      } else if (duplicate instanceof InProjectDuplicate inProjectDuplicate) {
         // Duplication is on a different file
-        appendDuplication(xml, ((InProjectDuplicate) duplicate).getFile().getKey(), duplicate);
-      } else if (duplicate instanceof CrossProjectDuplicate) {
+        appendDuplication(xml, inProjectDuplicate.getFile().getKey(), duplicate);
+      } else if (duplicate instanceof CrossProjectDuplicate crossProjectDuplicate) {
         // Only componentKey is set for cross project duplications
-        String crossProjectComponentKey = ((CrossProjectDuplicate) duplicate).getFileKey();
+        String crossProjectComponentKey = crossProjectDuplicate.getFileKey();
         appendDuplication(xml, crossProjectComponentKey, duplicate);
       } else {
         throw new IllegalArgumentException("Unsupported type of Duplicate " + duplicate.getClass().getName());

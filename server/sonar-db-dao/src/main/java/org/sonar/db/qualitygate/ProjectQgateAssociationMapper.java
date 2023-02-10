@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,8 @@ import org.apache.ibatis.annotations.Param;
 public interface ProjectQgateAssociationMapper {
 
   List<ProjectQgateAssociationDto> selectProjects(@Param("query") ProjectQgateAssociationQuery query);
+
+  List<ProjectQgateAssociationDto> selectAll();
 
   @CheckForNull
   String selectQGateUuidByProjectUuid(String projectUuid);

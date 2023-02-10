@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,7 +17,6 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 import { fetchL10nBundle } from '../api/l10n';
 import { L10nBundle, L10nBundleRequestParams } from '../types/l10nBundle';
 import { toNotSoISOString } from './dates';
@@ -84,7 +83,7 @@ function getPreferredLanguage() {
   return window.navigator.languages ? window.navigator.languages[0] : window.navigator.language;
 }
 
-function getL10nBundleFromCache() {
+function getL10nBundleFromCache(): L10nBundle {
   return (window as unknown as any).sonarQubeL10nBundle ?? {};
 }
 

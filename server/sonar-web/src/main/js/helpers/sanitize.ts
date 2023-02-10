@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -28,4 +28,30 @@ export function sanitizeStringRestricted(html: string) {
 
 export function sanitizeString(html: string) {
   return sanitize(html, { USE_PROFILES: { html: true } });
+}
+
+export function sanitizeUserInput(html: string) {
+  return sanitize(html, {
+    ALLOWED_TAGS: [
+      'b',
+      'br',
+      'code',
+      'i',
+      'li',
+      'p',
+      'strong',
+      'ul',
+      'ol',
+      'a',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'blockquote',
+      'pre',
+    ],
+    ALLOWED_ATTR: ['target', 'href', 'rel'],
+  });
 }

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -25,7 +25,7 @@ import Extension from './Extension';
 
 export default function ProjectAdminPageExtension() {
   const { extensionKey, pluginKey } = useParams();
-  const { component } = React.useContext(ComponentContext);
+  const { component, onBranchesChange } = React.useContext(ComponentContext);
 
   const extension =
     component &&
@@ -35,7 +35,7 @@ export default function ProjectAdminPageExtension() {
     );
 
   return extension ? (
-    <Extension extension={extension} options={{ component }} />
+    <Extension extension={extension} options={{ component, onBranchesChange }} />
   ) : (
     <NotFound withContainer={false} />
   );

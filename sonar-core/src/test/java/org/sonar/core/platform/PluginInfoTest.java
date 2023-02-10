@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -287,7 +287,7 @@ public class PluginInfoTest {
   @Test
   public void test_toString() {
     PluginInfo pluginInfo = new PluginInfo("java").setVersion(Version.create("1.1"));
-    assertThat(pluginInfo.toString()).isEqualTo("[java / 1.1]");
+    assertThat(pluginInfo).hasToString("[java / 1.1]");
 
     pluginInfo.setImplementationBuild("SHA1");
     assertThat(pluginInfo).hasToString("[java / 1.1 / SHA1]");

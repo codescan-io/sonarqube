@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -39,8 +39,8 @@ import static org.sonar.api.CoreProperties.SERVER_STARTTIME;
 @ServerSide
 public class StartupMetadataProvider {
   @Bean("StartupMetadata")
-  public StartupMetadata provide(System2 system, SonarRuntime runtime, WebServer webServer, DbClient dbClient) {
-    if (runtime.getSonarQubeSide() == SonarQubeSide.SERVER && webServer.isStartupLeader()) {
+  public StartupMetadata provide(System2 system, SonarRuntime runtime, NodeInformation nodeInformation, DbClient dbClient) {
+    if (runtime.getSonarQubeSide() == SonarQubeSide.SERVER && nodeInformation.isStartupLeader()) {
       return generate(system);
     } else {
       return load(dbClient);

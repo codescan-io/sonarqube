@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -607,7 +607,7 @@ public class SendIssueNotificationsStepTest extends BaseStepTest {
     List<DefaultIssue> issues = IntStream.range(0, 2001 + new Random().nextInt(10))
       .mapToObj(i -> newIssue(ruleDefinitionDto, project, file).setKee("uuid_" + i).setType(randomTypeExceptHotspot).toDefaultIssue()
         .setNew(false).setChanged(true).setSendNotifications(true).setAssigneeUuid(user.getUuid()))
-      .collect(toList());
+      .toList();
     DiskCache.CacheAppender cacheAppender = protoIssueCache.newAppender();
     issues.forEach(cacheAppender::append);
     cacheAppender.close();
@@ -624,8 +624,9 @@ public class SendIssueNotificationsStepTest extends BaseStepTest {
     assertThat(newIssuesFactoryCaptor.issuesSetCaptor.get(0)).hasSize(1000);
     assertThat(newIssuesFactoryCaptor.issuesSetCaptor.get(1)).hasSize(1000);
     assertThat(newIssuesFactoryCaptor.issuesSetCaptor.get(2)).hasSize(issues.size() - 2000);
-    assertThat(newIssuesFactoryCaptor.assigneeCacheCaptor).hasSize(3);
-    assertThat(newIssuesFactoryCaptor.assigneeCacheCaptor).containsOnly(newIssuesFactoryCaptor.assigneeCacheCaptor.iterator().next());
+    assertThat(newIssuesFactoryCaptor.assigneeCacheCaptor)
+      .hasSize(3)
+      .containsOnly(newIssuesFactoryCaptor.assigneeCacheCaptor.iterator().next());
     ArgumentCaptor<Collection> collectionCaptor = forClass(Collection.class);
     verify(notificationService, times(3)).deliverEmails(collectionCaptor.capture());
     assertThat(collectionCaptor.getAllValues()).hasSize(3);

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -47,8 +47,7 @@ public class ClobColumnDef extends AbstractColumnDef {
     switch (dialect.getId()) {
       case MsSql.ID:
         return "NVARCHAR (MAX)";
-      case Oracle.ID:
-      case H2.ID:
+      case Oracle.ID, H2.ID:
         return "CLOB";
       case PostgreSql.ID:
         return "TEXT";

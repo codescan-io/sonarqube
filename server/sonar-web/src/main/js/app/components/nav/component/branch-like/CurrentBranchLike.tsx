@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -96,7 +96,7 @@ export function CurrentBranchLike(props: CurrentBranchLikeProps) {
             data-test="branches-support-disabled"
             links={[
               {
-                href: 'https://redirect.sonarsource.com/editions/developer.html',
+                href: 'https://www.sonarsource.com/plans-and-pricing/developer/',
                 label: translate('learn_more'),
                 doc: false,
               },

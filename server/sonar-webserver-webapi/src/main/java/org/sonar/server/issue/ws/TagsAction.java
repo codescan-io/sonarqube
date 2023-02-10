@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -145,8 +145,7 @@ public class TagsAction implements IssuesWsAction {
         case Qualifiers.PROJECT:
           issueQueryBuilder.projectUuids(Set.of(project.uuid()));
           break;
-        case Qualifiers.APP:
-        case Qualifiers.VIEW:
+        case Qualifiers.APP, Qualifiers.VIEW:
           issueQueryBuilder.viewUuids(Set.of(project.uuid()));
           break;
         default:

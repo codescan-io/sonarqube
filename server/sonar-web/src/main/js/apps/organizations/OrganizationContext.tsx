@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,27 +17,26 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import React from 'react';
-import { useOutletContext } from 'react-router-dom';
-import { getWrappedDisplayName } from '../../components/hoc/utils';
-import { Organization } from "../../types/types";
+package org.sonar.server.almsettings.ws;
 
-export interface OrganizationContextProps {
-  organization: Organization;
-}
+import java.util.List;
+import org.sonar.api.server.ws.WebService;
 
-export function withOrganizationContext<P extends Partial<OrganizationContextProps>>(
-    WrappedComponent: React.ComponentType<P>
-): React.ComponentType<Omit<P, keyof OrganizationContextProps>> {
-  function ComponentWithOrganizationProps(props: P) {
-    const context = useOutletContext<OrganizationContextProps>();
-    return <WrappedComponent {...props} {...context} />;
+public class AlmSettingsWs implements WebService {
+  private final List<AlmSettingsWsAction> actions;
+
+  public AlmSettingsWs(List<AlmSettingsWsAction> actions) {
+    this.actions = actions;
   }
 
-  (ComponentWithOrganizationProps as React.FC<P>).displayName = getWrappedDisplayName(
-      WrappedComponent,
-      'withOrganizationContext'
-  );
+  @Override
+  public void define(Context context) {
+    NewController controller = context.createController("api/alm_settings")
+      .setDescription("Manage DevOps Platform Settings")
+      .setSince("8.1");
 
-  return ComponentWithOrganizationProps;
+    actions.forEach(a -> a.define(controller));
+
+    controller.done();
+  }
 }

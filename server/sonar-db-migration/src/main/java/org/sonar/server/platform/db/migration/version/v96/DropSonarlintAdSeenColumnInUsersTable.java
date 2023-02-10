@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -20,9 +20,9 @@
 package org.sonar.server.platform.db.migration.version.v96;
 
 import org.sonar.db.Database;
-import org.sonar.server.platform.db.migration.step.DropColumnWithConstraint;
+import org.sonar.server.platform.db.migration.step.DropColumnChange;
 
-public class DropSonarlintAdSeenColumnInUsersTable extends DropColumnWithConstraint {
+public class DropSonarlintAdSeenColumnInUsersTable extends DropColumnChange {
 
   private static final String TABLE_NAME = "users";
   private static final String COLUMN = "sonarlint_ad_seen";

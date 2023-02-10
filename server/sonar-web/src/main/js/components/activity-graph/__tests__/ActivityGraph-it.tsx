@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,10 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { UserEvent } from '@testing-library/user-event/dist/types/setup';
+import { UserEvent } from '@testing-library/user-event/dist/types/setup/setup';
 import { times } from 'lodash';
 import * as React from 'react';
 import selectEvent from 'react-select-event';
@@ -43,7 +42,7 @@ const START_DATE = '2016-01-01T00:00:00+0200';
 
 it('should render correctly when loading', async () => {
   renderActivityGraph({ loading: true });
-  expect(await screen.findByLabelText('loading')).toBeInTheDocument();
+  expect(await screen.findByText('loading')).toBeInTheDocument();
 });
 
 it('should show the correct legend items', async () => {

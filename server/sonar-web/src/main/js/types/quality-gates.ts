@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -18,13 +18,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import { BranchLike } from './branch-like';
-import { MeasureEnhanced, Metric, Status } from './types';
+import { CaycStatus, MeasureEnhanced, Metric, Status } from './types';
 import { UserBase } from './users';
 
 export interface QualityGateProjectStatus {
   conditions?: QualityGateProjectStatusCondition[];
   ignoredConditions: boolean;
   status: Status;
+  caycStatus: CaycStatus;
 }
 
 export interface QualityGateProjectStatusCondition {
@@ -58,11 +59,13 @@ export interface QualityGateApplicationStatusChildProject {
   key: string;
   name: string;
   status: Status;
+  caycStatus: CaycStatus;
 }
 
 export interface QualityGateStatus {
   failedConditions: QualityGateStatusConditionEnhanced[];
   ignoredConditions?: boolean;
+  caycStatus: CaycStatus;
   key: string;
   name: string;
   status: Status;
@@ -105,4 +108,15 @@ export interface Group {
 
 export function isUser(item: UserBase | Group): item is UserBase {
   return item && (item as UserBase).login !== undefined;
+}
+
+export enum QGBadgeType {
+  'Missing' = 'missing',
+  'Weak' = 'weak',
+  'Ok' = 'ok',
+}
+
+export enum BadgeTarget {
+  QualityGate = 'quality_gate',
+  Condition = 'condition',
 }

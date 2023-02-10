@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -571,12 +571,11 @@ public class BranchDaoTest {
     db.measures().insertLiveMeasure(project3, unanalyzedC);
 
     assertThat(underTest.countPrBranchAnalyzedLanguageByProjectUuid(db.getSession()))
-      .extracting(PrBranchAnalyzedLanguageCountByProjectDto::getProjectUuid, PrBranchAnalyzedLanguageCountByProjectDto::getBranch, PrBranchAnalyzedLanguageCountByProjectDto::getPullRequest,
-        PrBranchAnalyzedLanguageCountByProjectDto::getUnanalyzedCCount, PrBranchAnalyzedLanguageCountByProjectDto::getUnanalyzedCppCount)
+      .extracting(PrBranchAnalyzedLanguageCountByProjectDto::getProjectUuid, PrBranchAnalyzedLanguageCountByProjectDto::getBranch, PrBranchAnalyzedLanguageCountByProjectDto::getPullRequest)
       .containsExactlyInAnyOrder(
-        tuple(project1.uuid(), 3L, 3L, 1L, 1L),
-        tuple(project2.uuid(), 1L, 1L, 0L, 1L),
-        tuple(project3.uuid(), 2L, 0L, 1L, 0L)
+        tuple(project1.uuid(), 3L, 3L),
+        tuple(project2.uuid(), 1L, 1L),
+        tuple(project3.uuid(), 2L, 0L)
       );
   }
 

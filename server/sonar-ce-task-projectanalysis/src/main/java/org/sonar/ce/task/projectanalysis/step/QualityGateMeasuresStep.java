@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -184,7 +184,7 @@ public class QualityGateMeasuresStep implements ComputationStep {
       builder.addLabel(text);
 
       Measure updatedMeasure = Measure.updatedMeasureBuilder(measure.get())
-        .setQualityGateStatus(new QualityGateStatus(finalMetricEvaluationResult.evaluationResult.getLevel(), text))
+        .setQualityGateStatus(new QualityGateStatus(finalMetricEvaluationResult.evaluationResult.level(), text))
         .create();
       measureRepository.update(project, metric, updatedMeasure);
 
@@ -198,7 +198,7 @@ public class QualityGateMeasuresStep implements ComputationStep {
     MetricEvaluationResult metricEvaluationResult = null;
     for (Condition newCondition : conditions) {
       EvaluationResult newEvaluationResult = conditionEvaluator.evaluate(newCondition, measure);
-      if (metricEvaluationResult == null || newEvaluationResult.getLevel().ordinal() > metricEvaluationResult.evaluationResult.getLevel().ordinal()) {
+      if (metricEvaluationResult == null || newEvaluationResult.level().ordinal() > metricEvaluationResult.evaluationResult.level().ordinal()) {
         metricEvaluationResult = new MetricEvaluationResult(newEvaluationResult, newCondition);
       }
     }
@@ -244,12 +244,12 @@ public class QualityGateMeasuresStep implements ComputationStep {
     }
 
     public void addEvaluatedCondition(MetricEvaluationResult metricEvaluationResult) {
-      Measure.Level level = metricEvaluationResult.evaluationResult.getLevel();
+      Measure.Level level = metricEvaluationResult.evaluationResult.level();
       if (Measure.Level.ERROR == level) {
         globalLevel = Measure.Level.ERROR;
       }
       evaluatedConditions.add(
-        new EvaluatedCondition(metricEvaluationResult.condition, level, metricEvaluationResult.evaluationResult.getValue()));
+        new EvaluatedCondition(metricEvaluationResult.condition, level, metricEvaluationResult.evaluationResult.value()));
     }
 
     public List<EvaluatedCondition> getEvaluatedConditions() {

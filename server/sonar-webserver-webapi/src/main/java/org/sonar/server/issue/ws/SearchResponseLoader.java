@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -118,7 +118,7 @@ public class SearchResponseLoader {
     if (issueKeysToLoad.isEmpty()) {
       return issueKeys.stream()
         .map(new KeyToIssueFunction(preloadedIssues)).filter(Objects::nonNull)
-        .collect(Collectors.toList());
+        .toList();
     }
 
     List<IssueDto> loadedIssues = dbClient.issueDao().selectByKeys(dbSession, issueKeysToLoad);
@@ -127,7 +127,7 @@ public class SearchResponseLoader {
 
     return issueKeys.stream()
       .map(new KeyToIssueFunction(unorderedIssues)).filter(Objects::nonNull)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private void loadUsers(SearchResponseData preloadedResponseData, Collector collector, DbSession dbSession, SearchResponseData result) {
@@ -183,13 +183,14 @@ public class SearchResponseLoader {
       .forEach(ruleUuidsToLoad::remove);
 
     List<RuleDto> rules = dbClient.ruleDao().selectByUuids(dbSession, ruleUuidsToLoad);
-    updateNamesOfAdHocRules(rules);
     result.addRules(rules);
+    updateNamesOfAdHocRules(result.getRules());
   }
 
   private static void updateNamesOfAdHocRules(List<RuleDto> rules) {
     rules.stream()
       .filter(RuleDto::isAdHoc)
+      .filter(r -> r.getAdHocName() != null)
       .forEach(r -> r.setName(r.getAdHocName()));
   }
 

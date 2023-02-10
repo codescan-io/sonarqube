@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -44,7 +44,7 @@ export default function JavaToolInstallation() {
   return (
     <li>
       {translate('onboarding.tutorial.with.azure_pipelines.BranchAnalysis.java_installer.title')}
-      <ul className="list-styled">
+      <ul className="list-styled list-alpha">
         <li>
           {renderSentenceWithFieldAndValue({
             field: translate(

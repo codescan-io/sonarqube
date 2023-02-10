@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -83,7 +83,7 @@ public class ServerPluginManager implements Startable {
   }
 
   private Collection<ExplodedPlugin> extractPlugins(Collection<ServerPluginInfo> plugins) {
-    return plugins.stream().map(pluginJarExploder::explode).collect(Collectors.toList());
+    return plugins.stream().map(pluginJarExploder::explode).toList();
   }
 
   private static List<ServerPlugin> createServerPlugins(Collection<ExplodedPlugin> explodedPlugins, Map<String, Plugin> instancesByKey, Map<String, PluginType> typesByKey) {

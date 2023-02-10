@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -64,7 +64,7 @@ function getFacetValueForOption(facet: Facet, option: number) {
 function renderOption(option: number, selected: boolean) {
   return (
     <div className="display-flex-center">
-      <SizeRating muted={!selected} small={true} value={getSizeRatingAverageValue(option)} />
+      <SizeRating muted={!selected} value={getSizeRatingAverageValue(option)} />
       <span className="spacer-left">{getSizeRatingLabel(option)}</span>
     </div>
   );

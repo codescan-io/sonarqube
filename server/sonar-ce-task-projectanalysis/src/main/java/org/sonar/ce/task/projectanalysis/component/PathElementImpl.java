@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,25 +19,5 @@
  */
 package org.sonar.ce.task.projectanalysis.component;
 
-import javax.annotation.concurrent.Immutable;
-
-@Immutable
-final class PathElementImpl<T> implements PathAwareVisitor.PathElement<T> {
-  private final Component component;
-  private final T element;
-
-  public PathElementImpl(Component component, T element) {
-    this.component = component;
-    this.element = element;
-  }
-
-  @Override
-  public Component getComponent() {
-    return component;
-  }
-
-  @Override
-  public T getElement() {
-    return element;
-  }
+record PathElementImpl<T>(Component component, T element) implements PathAwareVisitor.PathElement<T> {
 }

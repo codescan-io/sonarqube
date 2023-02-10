@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -138,7 +138,7 @@ public class TransitionTest {
   @Test
   public void test_toString() {
     Transition t1 = Transition.create("resolve", "OPEN", "RESOLVED");
-    assertThat(t1.toString()).isEqualTo("OPEN->resolve->RESOLVED");
+    assertThat(t1).hasToString("OPEN->resolve->RESOLVED");
   }
 
   @Test

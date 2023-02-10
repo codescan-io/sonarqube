@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -27,6 +27,7 @@ import {
 } from '../../../../helpers/mocks/quality-gates';
 import { ComponentQualifier } from '../../../../types/component';
 import { MetricKey } from '../../../../types/metrics';
+import { CaycStatus } from '../../../../types/types';
 import { QualityGatePanelSection, QualityGatePanelSectionProps } from '../QualityGatePanelSection';
 
 it('should render correctly', () => {
@@ -36,6 +37,7 @@ it('should render correctly', () => {
       qgStatus: mockQualityGateStatus({
         failedConditions: [],
         status: 'OK',
+        caycStatus: CaycStatus.Compliant,
       }),
     }).type()
   ).toBeNull();
@@ -55,6 +57,7 @@ function shallowRender(props: Partial<QualityGatePanelSectionProps> = {}) {
           mockQualityGateStatusConditionEnhanced({ metric: MetricKey.new_bugs }),
         ],
         status: 'ERROR',
+        caycStatus: CaycStatus.NonCompliant,
       })}
       {...props}
     />

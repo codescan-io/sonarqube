@@ -28,16 +28,12 @@ exports[`should display error message when no issues available 1`] = `
     <div
       className="modal-foot"
     >
-      <Tooltip
-        overlay="issue_bulk_change.no_change_selected"
+      <SubmitButton
+        disabled={true}
+        id="bulk-change-submit"
       >
-        <SubmitButton
-          disabled={true}
-          id="bulk-change-submit"
-        >
-          apply
-        </SubmitButton>
-      </Tooltip>
+        apply
+      </SubmitButton>
       <ResetButtonLink
         onClick={[Function]}
       >
@@ -85,16 +81,12 @@ exports[`should display form when issues are present 1`] = `
     <div
       className="modal-foot"
     >
-      <Tooltip
-        overlay="issue_bulk_change.no_change_selected"
+      <SubmitButton
+        disabled={true}
+        id="bulk-change-submit"
       >
-        <SubmitButton
-          disabled={true}
-          id="bulk-change-submit"
-        >
-          apply
-        </SubmitButton>
-      </Tooltip>
+        apply
+      </SubmitButton>
       <ResetButtonLink
         onClick={[Function]}
       >
@@ -119,7 +111,7 @@ exports[`should display warning when too many issues are passed 2`] = `
     defaultMessage="issue_bulk_change.max_issues_reached"
     id="issue_bulk_change.max_issues_reached"
     values={
-      Object {
+      {
         "max": <strong>
           500
         </strong>,
@@ -132,7 +124,7 @@ exports[`should display warning when too many issues are passed 2`] = `
 exports[`should render select for severity: Option 1`] = `
 <Option
   data={
-    Object {
+    {
       "label": "label",
       "value": "value",
     }
@@ -148,7 +140,7 @@ exports[`should render select for severity: Option 1`] = `
 exports[`should render select for severity: SingleValue 1`] = `
 <SingleValue
   data={
-    Object {
+    {
       "label": "label",
       "value": "value",
     }
@@ -164,7 +156,7 @@ exports[`should render select for severity: SingleValue 1`] = `
 exports[`should render select for type: Option 1`] = `
 <Option
   data={
-    Object {
+    {
       "label": "label",
       "value": "value",
     }
@@ -188,7 +180,7 @@ exports[`should render select for type: Option 1`] = `
 exports[`should render select for type: SingleValue 1`] = `
 <SingleValue
   data={
-    Object {
+    {
       "label": "label",
       "value": "value",
     }

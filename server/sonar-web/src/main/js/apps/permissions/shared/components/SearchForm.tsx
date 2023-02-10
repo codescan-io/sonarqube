@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -22,9 +22,10 @@ import ButtonToggle from '../../../../components/controls/ButtonToggle';
 import SearchBox from '../../../../components/controls/SearchBox';
 import { translate } from '../../../../helpers/l10n';
 
+export type FilterOption = 'all' | 'users' | 'groups';
 interface Props {
-  filter: string;
-  onFilter: (value: string) => void;
+  filter: FilterOption;
+  onFilter: (value: FilterOption) => void;
   onSearch: (value: string) => void;
   query: string;
 }

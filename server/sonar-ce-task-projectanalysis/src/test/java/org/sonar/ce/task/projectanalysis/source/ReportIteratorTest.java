@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -45,7 +45,8 @@ public class ReportIteratorTest {
   @Before
   public void setUp() throws Exception {
     File dir = temp.newFolder();
-    ScannerReportWriter writer = new ScannerReportWriter(dir);
+    FileStructure fileStructure = new FileStructure(dir);
+    ScannerReportWriter writer = new ScannerReportWriter(fileStructure);
 
     writer.writeComponentCoverage(1, newArrayList(
       ScannerReport.LineCoverage.newBuilder()

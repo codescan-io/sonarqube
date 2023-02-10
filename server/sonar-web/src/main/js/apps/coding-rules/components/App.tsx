@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -41,7 +41,6 @@ import {
   removeSideBarClass,
   removeWhitePageClass,
 } from '../../../helpers/pages';
-import { scrollToElement } from '../../../helpers/scrolling';
 import { SecurityStandard } from '../../../types/security';
 import { Dict, Organization, Paging, RawQuery, Rule, RuleActivation } from '../../../types/types';
 import { CurrentUser, isLoggedIn } from '../../../types/users';
@@ -387,15 +386,15 @@ export class App extends React.PureComponent<Props, State> {
         open: undefined,
       },
     });
-    this.scrollToSelectedRule(false);
+    this.scrollToSelectedRule();
   };
 
-  scrollToSelectedRule = (smooth = false) => {
+  scrollToSelectedRule = () => {
     const selected = this.getSelectedRuleKey(this.props);
     if (selected) {
       const element = document.querySelector(`[data-rule="${selected}"]`);
       if (element) {
-        scrollToElement(element, { topOffset: 150, bottomOffset: 100, smooth });
+        element.scrollIntoView({ behavior: 'auto', block: 'center' });
       }
     }
   };
@@ -649,7 +648,7 @@ export class App extends React.PureComponent<Props, State> {
                 />
               ) : (
                 <>
-                  <section>
+                  <ul>
                     {rules.map((rule) => (
                       <RuleListItem
                         activation={this.getRuleActivation(rule.key)}
@@ -664,7 +663,7 @@ export class App extends React.PureComponent<Props, State> {
                         selectedProfile={this.getSelectedProfile()}
                       />
                     ))}
-                  </section>
+                  </ul>
                   {paging !== undefined && (
                     <ListFooter
                       count={rules.length}

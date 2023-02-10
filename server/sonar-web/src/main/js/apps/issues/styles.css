@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -167,18 +167,6 @@
   /* no math, just a good guess */
   min-width: 640px;
   width: 800px;
-}
-
-.issues .issue {
-  border: 2px solid transparent;
-  cursor: pointer;
-}
-
-.issues .issue:focus-within,
-.issues .issue:hover {
-  border: 2px dashed var(--blue);
-  transition: all 0.3s ease;
-  outline: 0;
 }
 
 .issues .issue a:focus,

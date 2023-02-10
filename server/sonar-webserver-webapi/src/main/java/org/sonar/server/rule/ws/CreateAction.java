@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rule.RuleStatus;
 import org.sonar.api.rule.Severity;
@@ -132,7 +131,7 @@ public class CreateAction implements RulesWsAction {
       .setPossibleValues(
         Arrays.stream(RuleStatus.values())
           .filter(status -> !RuleStatus.REMOVED.equals(status))
-          .collect(Collectors.toList()))
+          .toList())
       .setDefaultValue(RuleStatus.READY)
       .setDescription("Rule status");
 

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -157,6 +157,20 @@ public class RegionMapperTest {
     assertThat(textRange.start().lineOffset()).isZero();
     assertThat(textRange.end().line()).isEqualTo(fullRegion.getEndLine());
     assertThat(textRange.end().lineOffset()).isEqualTo(7);
+  }
+
+  @Test
+  public void mapRegion_whenRangeIsEmpty_shouldSelectWholeLine() {
+    Region fullRegion = mockRegion(8, 8, 3, 3);
+
+    Optional<TextRange> optTextRange = regionMapper.mapRegion(fullRegion, INPUT_FILE);
+
+    assertThat(optTextRange).isPresent();
+    TextRange textRange = optTextRange.get();
+    assertThat(textRange.start().line()).isEqualTo(fullRegion.getStartLine());
+    assertThat(textRange.start().lineOffset()).isZero();
+    assertThat(textRange.end().line()).isEqualTo(fullRegion.getEndLine());
+    assertThat(textRange.end().lineOffset()).isEqualTo(LINE_END_OFFSET);
   }
 
   private static Region mockRegion(@Nullable Integer startColumn, @Nullable Integer endColumn, @Nullable Integer startLine, @Nullable Integer endLine) {

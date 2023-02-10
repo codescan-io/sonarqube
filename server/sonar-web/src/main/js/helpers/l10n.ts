@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,7 +17,6 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 import { getMessages } from './l10nBundle';
 
 export function hasMessage(...keys: string[]): boolean {
@@ -43,7 +42,10 @@ export function translateWithParameters(
   if (message) {
     return parameters
       .map((parameter) => String(parameter))
-      .reduce((acc, parameter, index) => acc.replaceAll(`{${index}}`, () => parameter), message);
+      .reduce(
+        (acc, parameter, index) => acc.replace(new RegExp(`\\{${index}\\}`, 'g'), () => parameter),
+        message
+      );
   }
   if (process.env.NODE_ENV === 'development') {
     // eslint-disable-next-line no-console

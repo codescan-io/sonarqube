@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -82,6 +82,6 @@ public class QGChangeNotificationHandler extends EmailNotificationHandler<QGChan
     return notificationManager.findSubscribedEmailRecipients(KEY, projectKey, ALL_MUST_HAVE_ROLE_USER)
       .stream()
       .flatMap(emailRecipient -> notifications.stream()
-        .map(notification -> new EmailDeliveryRequest(emailRecipient.getEmail(), notification)));
+        .map(notification -> new EmailDeliveryRequest(emailRecipient.email(), notification)));
   }
 }

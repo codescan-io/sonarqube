@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -215,7 +215,7 @@ public class RuleMapper {
 
       List<String> deprecatedKeys = deprecatedRuleKeyDtos.stream()
         .map(r -> RuleKey.of(r.getOldRepositoryKey(), r.getOldRuleKey()).toString())
-        .collect(Collectors.toList());
+        .toList();
       if (!deprecatedKeys.isEmpty()) {
         ruleResponse.setDeprecatedKeys(Rules.DeprecatedKeys.newBuilder().addAllDeprecatedKey(deprecatedKeys).build());
       }

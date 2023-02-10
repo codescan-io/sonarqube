@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,27 +19,26 @@
  */
 package org.sonar.server.platform;
 
+import javax.annotation.Nullable;
+import javax.inject.Inject;
 import org.sonar.api.Startable;
 import org.sonar.api.server.ServerSide;
 import org.sonar.api.utils.MessageException;
 
-import javax.annotation.Nullable;
-import javax.inject.Inject;
-
 @ServerSide
 public class ClusterVerification implements Startable {
 
-  private final WebServer server;
+  private final NodeInformation server;
   @Nullable
   private final ClusterFeature feature;
 
   @Inject
-  public ClusterVerification(WebServer server, @Nullable ClusterFeature feature) {
+  public ClusterVerification(NodeInformation server, @Nullable ClusterFeature feature) {
     this.server = server;
     this.feature = feature;
   }
 
-  public ClusterVerification(WebServer server) {
+  public ClusterVerification(NodeInformation server) {
     this(server, null);
   }
 
@@ -50,7 +49,7 @@ public class ClusterVerification implements Startable {
     }
     if (feature == null || !feature.isEnabled()) {
       throw MessageException.of(
-        "Cluster mode can't be enabled. Please install the Data Center Edition. More details at https://redirect.sonarsource.com/editions/datacenter.html.");
+        "Cluster mode can't be enabled. Please install the Data Center Edition. More details at https://www.sonarsource.com/plans-and-pricing/data-center/.");
     }
   }
 

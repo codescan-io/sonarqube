@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -242,7 +242,7 @@ public class FileSourceDaoTest {
         dbTester.fileSources().insertFileSource(file);
         return file;
       })
-      .collect(Collectors.toList());
+      .toList();
 
     Map<String, FileHashesDto> fileSourcesByUuid = new HashMap<>();
     underTest.scrollFileHashesByProjectUuid(dbSession, project.branchUuid(), result -> fileSourcesByUuid.put(result.getResultObject().getFileUuid(), result.getResultObject()));
@@ -279,7 +279,7 @@ public class FileSourceDaoTest {
         dbTester.fileSources().insertFileSource(file);
         return file;
       })
-      .collect(Collectors.toList());
+      .toList();
 
     LineHashesWithKeyDtoHandler handler = new LineHashesWithKeyDtoHandler();
     underTest.scrollLineHashes(dbSession, files.stream().map(ComponentDto::uuid).collect(Collectors.toSet()), handler);

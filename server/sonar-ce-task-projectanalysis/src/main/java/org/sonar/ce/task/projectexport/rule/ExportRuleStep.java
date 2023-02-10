@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -61,9 +61,9 @@ public class ExportRuleStep implements ComputationStep {
   private static ProjectDump.Rule toRuleMessage(ProjectDump.Rule.Builder ruleBuilder, Rule rule) {
     ruleBuilder.clear();
     return ruleBuilder
-      .setRef(rule.getRef())
-      .setKey(rule.getKey())
-      .setRepository(rule.getRepository())
+      .setRef(rule.ref())
+      .setKey(rule.key())
+      .setRepository(rule.repository())
       .build();
   }
 }

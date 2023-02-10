@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -81,6 +81,7 @@ public final class SqTables {
     "project_mappings",
     "project_measures",
     "project_qprofiles",
+    "project_qgates",
     "properties",
     "push_events",
     "qprofile_changes",

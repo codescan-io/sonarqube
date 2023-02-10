@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -88,7 +88,7 @@ public class LoadMeasureComputersStep implements ComputationStep {
 
   @Override
   public void execute(Context context) {
-    List<MeasureComputerWrapper> wrappers = Arrays.stream(measureComputers).map(ToMeasureWrapper.INSTANCE).collect(Collectors.toList());
+    List<MeasureComputerWrapper> wrappers = Arrays.stream(measureComputers).map(ToMeasureWrapper.INSTANCE).toList();
     validateMetrics(wrappers);
     measureComputersHolder.setMeasureComputers(sortComputers(wrappers));
   }
@@ -137,13 +137,13 @@ public class LoadMeasureComputersStep implements ComputationStep {
     return measureComputer.getDefinition().getInputMetrics().stream()
       .map(toComputerByOutputMetricKey)
       .filter(Objects::nonNull)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private static Collection<MeasureComputerWrapper> getDependents(MeasureComputerWrapper measureComputer, ToComputerByKey toComputerByInputMetricKey) {
     return measureComputer.getDefinition().getInputMetrics().stream()
       .map(toComputerByInputMetricKey)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private static class ToComputerByKey implements Function<String, MeasureComputerWrapper> {

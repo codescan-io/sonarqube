@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -36,6 +36,7 @@ import org.sonar.api.utils.UriReader;
 import org.sonar.api.utils.Version;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
+import org.sonar.core.documentation.DefaultDocumentationLinkGenerator;
 import org.sonar.core.extension.CoreExtensionRepositoryImpl;
 import org.sonar.core.extension.CoreExtensionsLoader;
 import org.sonar.core.platform.PluginClassLoader;
@@ -96,6 +97,7 @@ public class SpringGlobalContainer extends SpringComponentContainer {
       new GlobalConfigurationProvider(),
       new ScannerWsClientProvider(),
       DefaultServer.class,
+      DefaultDocumentationLinkGenerator.class,
       new GlobalTempFolderProvider(),
       analysisWarnings,
       UriReader.class,

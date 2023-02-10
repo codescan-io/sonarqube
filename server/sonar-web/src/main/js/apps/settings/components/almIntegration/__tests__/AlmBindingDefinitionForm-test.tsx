@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -211,7 +211,6 @@ function shallowRender(props: Partial<AlmBindingDefinitionForm['props']> = {}) {
     <AlmBindingDefinitionForm
       alm={AlmKeys.GitHub}
       bindingDefinition={mockGithubBindingDefinition()}
-      alreadyHaveInstanceConfigured={false}
       onCancel={jest.fn()}
       afterSubmit={jest.fn()}
       {...props}

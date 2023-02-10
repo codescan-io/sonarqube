@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -107,6 +107,13 @@ export function getProjectUrl(
   return {
     pathname: PROJECT_BASE_URL,
     search: queryToSearch({ id: project, branch, ...(codeScope && { code_scope: codeScope }) }),
+  };
+}
+
+export function getProjectSecurityHotspots(project: string): To {
+  return {
+    pathname: '/security_hotspots',
+    search: queryToSearch({ id: project }),
   };
 }
 

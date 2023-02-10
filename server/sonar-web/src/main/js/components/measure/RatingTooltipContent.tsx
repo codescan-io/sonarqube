@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,34 +17,25 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 import * as React from 'react';
 import withAppStateContext from '../../app/components/app-state/withAppStateContext';
 import { translate, translateWithParameters } from '../../helpers/l10n';
 import { formatMeasure, isDiffMetric } from '../../helpers/measures';
+import {
+  DIFF_METRIC_PREFIX_LENGTH,
+  getMaintainabilityGrid,
+  GRID_INDEX_OFFSET,
+  PERCENT_MULTIPLIER,
+} from '../../helpers/ratings';
 import { AppState } from '../../types/appstate';
 import { MetricKey } from '../../types/metrics';
 import { GlobalSettingKeys } from '../../types/settings';
 import { KNOWN_RATINGS } from './utils';
 
-const RATING_GRID_SIZE = 4;
-const DIFF_METRIC_PREFIX_LENGTH = 4;
-const PERCENT_MULTIPLIER = 100;
-const GRID_INDEX_OFFSET = 2; // Rating of 2 should get index 0 (threshold between 1 and 2)
-
 export interface RatingTooltipContentProps {
   appState: AppState;
   metricKey: MetricKey | string;
   value: number | string;
-}
-
-function getMaintainabilityGrid(ratingGridSetting: string) {
-  const numbers = ratingGridSetting
-    .split(',')
-    .map((s) => parseFloat(s))
-    .filter((n) => !isNaN(n));
-
-  return numbers.length === RATING_GRID_SIZE ? numbers : [0, 0, 0, 0];
 }
 
 export function RatingTooltipContent(props: RatingTooltipContentProps) {

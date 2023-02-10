@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -46,11 +46,11 @@ export default class EmbedDocsPopup extends React.PureComponent<Props> {
     }
   };
 
-  renderTitle(text: string) {
+  renderTitle(text: string, labelId: string) {
     return (
-      <li role="presentation" className="menu-header">
+      <h2 className="menu-header" id={labelId}>
         {text}
-      </li>
+      </h2>
     );
   }
 
@@ -59,20 +59,22 @@ export default class EmbedDocsPopup extends React.PureComponent<Props> {
       return null;
     }
     return (
-      <ul className="menu abs-width-240" role="group">
-        {this.renderTitle(translate('docs.suggestion'))}
-        {suggestions.map((suggestion, i) => (
-          <li key={suggestion.link}>
-            <DocLink
-              innerRef={i === 0 ? this.focusFirstItem : undefined}
-              onClick={this.props.onClose}
-              to={suggestion.link}
-            >
-              {suggestion.text}
-            </DocLink>
-          </li>
-        ))}
-      </ul>
+      <>
+        {this.renderTitle(translate('docs.suggestion'), 'suggestion')}
+        <ul className="menu abs-width-240" aria-labelledby="suggestion">
+          {suggestions.map((suggestion, i) => (
+            <li key={suggestion.link}>
+              <DocLink
+                innerRef={i === 0 ? this.focusFirstItem : undefined}
+                onClick={this.props.onClose}
+                to={suggestion.link}
+              >
+                {suggestion.text}
+              </DocLink>
+            </li>
+          ))}
+        </ul>
+      </>
     );
   };
 
@@ -81,6 +83,7 @@ export default class EmbedDocsPopup extends React.PureComponent<Props> {
       <a href={link} rel="noopener noreferrer" target="_blank">
         <img
           alt={text}
+          aria-hidden={true}
           className="spacer-right"
           height="18"
           src={`${getBaseUrl()}/images/${icon}`}
@@ -95,7 +98,7 @@ export default class EmbedDocsPopup extends React.PureComponent<Props> {
     return (
       <DropdownOverlay>
         <SuggestionsContext.Consumer>{this.renderSuggestions}</SuggestionsContext.Consumer>
-        <ul className="menu abs-width-240" role="group">
+        <ul className="menu abs-width-240">
           <li>
             <DocLink innerRef={this.focusFirstItem} onClick={this.props.onClose} to="/">
               {translate('docs.documentation')}
@@ -107,7 +110,7 @@ export default class EmbedDocsPopup extends React.PureComponent<Props> {
             </Link>
           </li>
         </ul>
-        <ul className="menu abs-width-240" role="group">
+        <ul className="menu abs-width-240">
           <li>
             <Link
               className="display-flex-center"
@@ -118,8 +121,8 @@ export default class EmbedDocsPopup extends React.PureComponent<Props> {
             </Link>
           </li>
         </ul>
-        <ul className="menu abs-width-240" role="group">
-          {this.renderTitle(translate('docs.stay_connected'))}
+        {this.renderTitle(translate('docs.stay_connected'), 'stay_connected')}
+        <ul className="menu abs-width-240" aria-labelledby="stay_connected">
           <li>
             {this.renderIconLink(
               'https://www.sonarqube.org/whats-new/?referrer=sonarqube',

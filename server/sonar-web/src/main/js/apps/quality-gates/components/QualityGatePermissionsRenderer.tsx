@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -50,7 +50,7 @@ export default function QualityGatePermissionsRenderer(props: QualityGatePermiss
     props;
 
   return (
-    <div className="quality-gate-permissions">
+    <div className="quality-gate-permissions" data-testid="quality-gate-permissions">
       <h3 className="spacer-bottom">{translate('quality_gates.permissions')}</h3>
       <p className="spacer-bottom">{translate('quality_gates.permissions.help')}</p>
       <div>

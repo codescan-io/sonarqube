@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -108,7 +108,7 @@ public class QualityGateMeasuresStepTest {
       public String answer(InvocationOnMock invocation) {
         Condition condition = (Condition) invocation.getArguments()[0];
         EvaluationResult evaluationResult = (EvaluationResult) invocation.getArguments()[1];
-        return dumbResultTextAnswer(condition, evaluationResult.getLevel(), evaluationResult.getValue());
+        return dumbResultTextAnswer(condition, evaluationResult.level(), evaluationResult.value());
       }
     });
   }

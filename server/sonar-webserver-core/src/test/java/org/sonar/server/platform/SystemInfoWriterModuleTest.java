@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -27,12 +27,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class SystemInfoWriterModuleTest {
-  private final WebServer webServer = mock(WebServer.class);
-  private final SystemInfoWriterModule underTest = new SystemInfoWriterModule(webServer);
+  private final NodeInformation nodeInformation = mock(NodeInformation.class);
+  private final SystemInfoWriterModule underTest = new SystemInfoWriterModule(nodeInformation);
 
   @Test
   public void verify_system_info_configuration_in_cluster_mode() {
-    when(webServer.isStandalone()).thenReturn(false);
+    when(nodeInformation.isStandalone()).thenReturn(false);
     ListContainer container = new ListContainer();
     underTest.configure(container);
     assertThat(container.getAddedObjects()).hasSize(21);
@@ -40,7 +40,7 @@ public class SystemInfoWriterModuleTest {
 
   @Test
   public void verify_system_info_configuration_in_standalone_mode() {
-    when(webServer.isStandalone()).thenReturn(true);
+    when(nodeInformation.isStandalone()).thenReturn(true);
 
     ListContainer container = new ListContainer();
     underTest.configure(container);

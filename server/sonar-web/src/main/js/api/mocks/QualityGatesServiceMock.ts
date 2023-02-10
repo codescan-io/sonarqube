@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -21,8 +21,9 @@ import { cloneDeep, flatten, omit, remove } from 'lodash';
 import { Project } from '../../apps/quality-gates/components/Projects';
 import { mockQualityGate } from '../../helpers/mocks/quality-gates';
 import { mockUserBase } from '../../helpers/mocks/users';
-import { mockGroup } from '../../helpers/testMocks';
-import { Condition, QualityGate } from '../../types/types';
+import { mockCondition, mockGroup } from '../../helpers/testMocks';
+import { MetricKey } from '../../types/metrics';
+import { CaycStatus, Condition, QualityGate } from '../../types/types';
 import {
   addGroup,
   addUser,
@@ -81,6 +82,7 @@ export class QualityGatesServiceMock {
         ],
         isDefault: true,
         isBuiltIn: false,
+        caycStatus: CaycStatus.Compliant,
       }),
       mockQualityGate({
         id: 'AXGYZrDqC-YjVCvvbRDY',
@@ -92,6 +94,7 @@ export class QualityGatesServiceMock {
         ],
         isDefault: false,
         isBuiltIn: false,
+        caycStatus: CaycStatus.NonCompliant,
       }),
       mockQualityGate({
         id: 'AWBWEMe4qGAMGEYPjJlr',
@@ -121,6 +124,51 @@ export class QualityGatesServiceMock {
         ],
         isDefault: false,
         isBuiltIn: true,
+        caycStatus: CaycStatus.Compliant,
+      }),
+      mockQualityGate({
+        id: 'AWBWEMe4qGAMGEYPjJlruit',
+        name: 'Non Cayc QG',
+        conditions: [
+          { id: 'AXJMbIUHPAOIsUIE3eNs', metric: 'new_security_rating', op: 'GT', error: '1' },
+          { id: 'AXJMbIUHPAOIsUIE3eOD', metric: 'new_reliability_rating', op: 'GT', error: '1' },
+          { id: 'AXJMbIUHPAOIsUIE3eOF', metric: 'new_coverage', op: 'LT', error: '80' },
+        ],
+        isDefault: false,
+        isBuiltIn: false,
+        caycStatus: CaycStatus.NonCompliant,
+      }),
+      mockQualityGate({
+        id: 'AWBWEMe4qGAMGEYPjJlruitoc',
+        name: 'Over Compliant CAYC QG',
+        conditions: [
+          { id: 'deprecatedoc', metric: 'function_complexity', op: 'LT', error: '1' },
+          { id: 'AXJMbIUHPAOIsUIE3eOFoc', metric: 'new_coverage', op: 'LT', error: '80' },
+          { id: 'AXJMbIUHPAOIsUIE3eNsoc', metric: 'new_security_rating', op: 'GT', error: '1' },
+          { id: 'AXJMbIUHPAOIsUIE3eODoc', metric: 'new_reliability_rating', op: 'GT', error: '1' },
+          {
+            id: 'AXJMbIUHPAOIsUIE3eOEoc',
+            metric: 'new_maintainability_rating',
+            op: 'GT',
+            error: '1',
+          },
+          { id: 'AXJMbIUHPAOIsUIE3eOFocdl', metric: 'new_coverage', op: 'LT', error: '80' },
+          {
+            id: 'AXJMbIUHPAOIsUIE3eOGoc',
+            metric: 'new_duplicated_lines_density',
+            op: 'GT',
+            error: '3',
+          },
+          {
+            id: 'AXJMbIUHPAOIsUIE3eOkoc',
+            metric: 'new_security_hotspots_reviewed',
+            op: 'LT',
+            error: '100',
+          },
+        ],
+        isDefault: false,
+        isBuiltIn: false,
+        caycStatus: CaycStatus.OverCompliant,
       }),
     ];
 
@@ -214,9 +262,31 @@ export class QualityGatesServiceMock {
       mockQualityGate({
         id: newId,
         name,
-        conditions: [],
+        conditions: [
+          mockCondition({
+            id: `${MetricKey.new_reliability_rating}1`,
+            metric: MetricKey.new_reliability_rating,
+            error: '1',
+          }),
+          mockCondition({
+            id: `${MetricKey.new_maintainability_rating}1`,
+            metric: MetricKey.new_maintainability_rating,
+            error: '1',
+          }),
+          mockCondition({
+            id: `${MetricKey.new_security_rating}1`,
+            metric: MetricKey.new_security_rating,
+            error: '1',
+          }),
+          mockCondition({
+            id: `${MetricKey.new_security_hotspots_reviewed}1`,
+            metric: MetricKey.new_security_hotspots_reviewed,
+            error: '100',
+          }),
+        ],
         isDefault: false,
         isBuiltIn: false,
+        caycStatus: CaycStatus.Compliant,
       })
     );
     return this.reply({

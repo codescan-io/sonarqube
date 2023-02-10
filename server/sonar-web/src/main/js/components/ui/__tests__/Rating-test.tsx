@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -26,11 +26,11 @@ it('renders numeric value', () => {
 });
 
 it('renders string value', () => {
-  expect(shallow(<Rating value="2.0" muted={true} small={true} />)).toMatchSnapshot();
+  expect(shallow(<Rating value="2.0" muted={true} />)).toMatchSnapshot();
 });
 
 it('renders undefined value', () => {
-  expect(shallow(<Rating value={undefined} muted={true} small={true} />)).toMatchSnapshot();
+  expect(shallow(<Rating value={undefined} muted={true} />)).toMatchSnapshot();
 });
 
 it('renders with a custom aria-label', () => {

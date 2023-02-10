@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -56,7 +56,7 @@ public class RecentTasksDurationTask extends ComputeEngineMetricsTask {
 
       Collection<String> componentUuids = recentSuccessfulTasks.stream()
         .map(CeActivityDto::getMainComponentUuid)
-        .collect(Collectors.toList());
+        .toList();
       List<ComponentDto> componentDtos = dbClient.componentDao().selectByUuids(dbSession, componentUuids);
       Map<String, String> componentUuidAndKeys = componentDtos.stream()
         .collect(Collectors.toMap(ComponentDto::uuid, ComponentDto::getKey));
@@ -70,7 +70,7 @@ public class RecentTasksDurationTask extends ComputeEngineMetricsTask {
     List<CeActivityDto> recentTasks = dbClient.ceActivityDao().selectNewerThan(dbSession, lastUpdatedTimestamp);
     return recentTasks.stream()
       .filter(c -> c.getStatus() == CeActivityDto.Status.SUCCESS)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private void reportObservedDurationForTasks(List<CeActivityDto> tasks, Map<String, String> componentUuidAndKeys) {

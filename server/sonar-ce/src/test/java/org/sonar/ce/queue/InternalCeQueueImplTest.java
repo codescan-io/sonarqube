@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -48,6 +48,7 @@ import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.component.ComponentTesting;
 import org.sonar.db.user.UserDto;
+import org.sonar.server.platform.NodeInformation;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
@@ -68,6 +69,7 @@ public class InternalCeQueueImplTest {
   private static final String AN_ANALYSIS_UUID = "U1";
   private static final String WORKER_UUID_1 = "worker uuid 1";
   private static final String WORKER_UUID_2 = "worker uuid 2";
+  private static final String NODE_NAME = "nodeName1";
 
   private System2 system2 = new AlwaysIncreasingSystem2();
 
@@ -81,13 +83,15 @@ public class InternalCeQueueImplTest {
   private ComputeEngineStatus computeEngineStatus = mock(ComputeEngineStatus.class);
   private Configuration config = mock(Configuration.class);
   private NextPendingTaskPicker nextPendingTaskPicker = new NextPendingTaskPicker(config, db.getDbClient());
+  private NodeInformation nodeInformation = mock(NodeInformation.class);
   private InternalCeQueue underTest = new InternalCeQueueImpl(system2, db.getDbClient(), uuidFactory, queueStatus,
-    computeEngineStatus, nextPendingTaskPicker);
+    computeEngineStatus, nextPendingTaskPicker, nodeInformation);
 
   @Before
   public void setUp() {
     when(config.getBoolean(any())).thenReturn(Optional.of(false));
     when(computeEngineStatus.getStatus()).thenReturn(STARTED);
+    when(nodeInformation.getNodeName()).thenReturn(Optional.of(NODE_NAME));
   }
 
   @Test
@@ -211,6 +215,32 @@ public class InternalCeQueueImplTest {
   }
 
   @Test
+  public void remove_sets_nodeName_in_CeActivity_when_nodeInformation_defines_node_name() {
+    when(nodeInformation.getNodeName()).thenReturn(Optional.of(NODE_NAME));
+    CeTask task = submit(CeTaskTypes.REPORT, newProjectDto("PROJECT_1"));
+
+    Optional<CeTask> peek = underTest.peek(WORKER_UUID_2, true);
+    underTest.remove(peek.get(), CeActivityDto.Status.SUCCESS, newTaskResult(AN_ANALYSIS_UUID), null);
+
+    Optional<CeActivityDto> history = db.getDbClient().ceActivityDao().selectByUuid(db.getSession(), task.getUuid());
+    assertThat(history).isPresent();
+    assertThat(history.get().getNodeName()).isEqualTo(NODE_NAME);
+  }
+
+  @Test
+  public void remove_do_not_set_nodeName_in_CeActivity_when_nodeInformation_does_not_define_node_name() {
+    when(nodeInformation.getNodeName()).thenReturn(Optional.empty());
+    CeTask task = submit(CeTaskTypes.REPORT, newProjectDto("PROJECT_1"));
+
+    Optional<CeTask> peek = underTest.peek(WORKER_UUID_2, true);
+    underTest.remove(peek.get(), CeActivityDto.Status.SUCCESS, newTaskResult(AN_ANALYSIS_UUID), null);
+
+    Optional<CeActivityDto> history = db.getDbClient().ceActivityDao().selectByUuid(db.getSession(), task.getUuid());
+    assertThat(history).isPresent();
+    assertThat(history.get().getNodeName()).isNull();
+  }
+
+  @Test
   public void remove_saves_error_message_and_stacktrace_when_exception_is_provided() {
     Throwable error = new NullPointerException("Fake NPE to test persistence to DB");
 
@@ -248,7 +278,7 @@ public class InternalCeQueueImplTest {
     db.getDbClient().ceQueueDao().deleteByUuid(db.getSession(), task.getUuid());
     db.commit();
 
-    InternalCeQueueImpl underTest = new InternalCeQueueImpl(system2, db.getDbClient(), null, queueStatus, null, null);
+    InternalCeQueueImpl underTest = new InternalCeQueueImpl(system2, db.getDbClient(), null, queueStatus, null, null, nodeInformation);
 
     try {
       underTest.remove(task, CeActivityDto.Status.SUCCESS, null, null);
@@ -265,7 +295,7 @@ public class InternalCeQueueImplTest {
     CeTask task = submit(CeTaskTypes.REPORT, newProjectDto("PROJECT_1"));
     db.getDbClient().ceQueueDao().deleteByUuid(db.getSession(), task.getUuid());
     db.commit();
-    InternalCeQueueImpl underTest = new InternalCeQueueImpl(system2, db.getDbClient(), null, queueStatusMock, null, null);
+    InternalCeQueueImpl underTest = new InternalCeQueueImpl(system2, db.getDbClient(), null, queueStatusMock, null, null, nodeInformation);
 
     try {
       underTest.remove(task, CeActivityDto.Status.FAILED, null, null);
@@ -277,16 +307,19 @@ public class InternalCeQueueImplTest {
 
   @Test
   public void cancelWornOuts_does_not_update_queueStatus() {
+
     CEQueueStatus queueStatusMock = mock(CEQueueStatus.class);
 
     CeTask task = submit(CeTaskTypes.REPORT, newProjectDto("PROJECT_1"));
     db.executeUpdateSql("update ce_queue set status = 'PENDING', started_at = 123 where uuid = '" + task.getUuid() + "'");
     db.commit();
-    InternalCeQueueImpl underTest = new InternalCeQueueImpl(system2, db.getDbClient(), null, queueStatusMock, null, null);
+    InternalCeQueueImpl underTest = new InternalCeQueueImpl(system2, db.getDbClient(), null, queueStatusMock, null, null, nodeInformation);
 
     underTest.cancelWornOuts();
 
-    assertThat(db.getDbClient().ceActivityDao().selectByUuid(db.getSession(), task.getUuid())).isPresent();
+    Optional<CeActivityDto> ceActivityDto = db.getDbClient().ceActivityDao().selectByUuid(db.getSession(), task.getUuid());
+    assertThat(ceActivityDto).isPresent();
+    assertThat(ceActivityDto.get().getNodeName()).isEqualTo(NODE_NAME);
     verifyNoInteractions(queueStatusMock);
   }
 
@@ -623,11 +656,11 @@ public class InternalCeQueueImplTest {
     }
     if (taskSubmit.getSubmitterUuid() != null) {
       if (userDto == null) {
-        assertThat(task.getSubmitter().getUuid()).isEqualTo(taskSubmit.getSubmitterUuid());
-        assertThat(task.getSubmitter().getLogin()).isNull();
+        assertThat(task.getSubmitter().uuid()).isEqualTo(taskSubmit.getSubmitterUuid());
+        assertThat(task.getSubmitter().login()).isNull();
       } else {
-        assertThat(task.getSubmitter().getUuid()).isEqualTo(userDto.getUuid()).isEqualTo(taskSubmit.getSubmitterUuid());
-        assertThat(task.getSubmitter().getUuid()).isEqualTo(userDto.getLogin());
+        assertThat(task.getSubmitter().uuid()).isEqualTo(userDto.getUuid()).isEqualTo(taskSubmit.getSubmitterUuid());
+        assertThat(task.getSubmitter().uuid()).isEqualTo(userDto.getLogin());
       }
     }
   }

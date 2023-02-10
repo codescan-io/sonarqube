@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,12 +17,13 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { UserEvent } from '@testing-library/user-event/dist/types/setup';
+import { UserEvent } from '@testing-library/user-event/dist/types/setup/setup';
 import ComputeEngineServiceMock from '../../../api/mocks/ComputeEngineServiceMock';
-import { renderAppWithAdminContext } from '../../../helpers/testReactTestingUtils';
+import { mockAppState } from '../../../helpers/testMocks';
+import { renderAppWithAdminContext, RenderContext } from '../../../helpers/testReactTestingUtils';
+import { EditionKey } from '../../../types/editions';
 import { TaskStatuses, TaskTypes } from '../../../types/tasks';
 import routes from '../routes';
 
@@ -52,7 +53,9 @@ describe('The Global background task page', () => {
       within(await screen.findByText('background_tasks.number_of_workers')).getByText('2')
     ).toBeInTheDocument();
 
-    const editWorkersButton = screen.getByRole('button', { name: 'edit' });
+    const editWorkersButton = screen.getByRole('button', {
+      name: 'background_tasks.change_number_of_workers',
+    });
     expect(editWorkersButton).toBeInTheDocument();
 
     await user.click(editWorkersButton);
@@ -141,6 +144,36 @@ describe('The Global background task page', () => {
     expect(await screen.findAllByRole('row')).toHaveLength(2);
   });
 
+  it.each([[EditionKey.community], [EditionKey.developer], [EditionKey.enterprise]])(
+    'Editions %s should not display node name',
+    async (editionKey: EditionKey) => {
+      givenOneTaskWithoutNodeNameAndOneWithNodeName();
+
+      renderGlobalBackgroundTasksApp({ appState: mockAppState({ edition: editionKey }) });
+
+      await waitFor(() => {
+        expect(screen.getAllByRole('row')).toHaveLength(3); // including header
+      });
+
+      expect(screen.queryByText('background_tasks.table.nodeName')).not.toBeInTheDocument();
+      expect(screen.queryByText('best_node_ever')).not.toBeInTheDocument();
+    }
+  );
+
+  it('Node name should be shown in DCE edition', async () => {
+    givenOneTaskWithoutNodeNameAndOneWithNodeName();
+
+    renderGlobalBackgroundTasksApp({ appState: mockAppState({ edition: EditionKey.datacenter }) });
+
+    await waitFor(async () => {
+      expect(await screen.findByText('background_tasks.table.nodeName')).toBeInTheDocument();
+    });
+
+    expect(
+      within(await screen.getAllByRole('row')[1]).getByText('best_node_ever')
+    ).toBeInTheDocument();
+  });
+
   it('should handle task pagination', async () => {
     const user = userEvent.setup();
 
@@ -167,11 +200,30 @@ describe('The Global background task page', () => {
    */
 });
 
+function givenOneTaskWithoutNodeNameAndOneWithNodeName() {
+  computeEngineServiceMock.clearTasks();
+  computeEngineServiceMock.addTask({
+    executedAt: '2022-02-03T11:45:36+0200',
+    submittedAt: '2022-02-03T11:45:35+0200',
+    executionTimeMs: 167,
+    status: TaskStatuses.InProgress,
+    type: TaskTypes.IssueSync,
+    nodeName: 'best_node_ever',
+  });
+  computeEngineServiceMock.addTask({
+    executedAt: '2022-02-03T11:45:35+0200',
+    submittedAt: '2022-02-03T11:45:34+0200',
+    executionTimeMs: 167,
+    status: TaskStatuses.InProgress,
+    type: TaskTypes.IssueSync,
+  });
+}
+
 async function changeTaskFilter(user: UserEvent, fieldLabel: string, value: string) {
   await user.click(screen.getByLabelText(fieldLabel, { selector: 'input' }));
   await user.click(screen.getByText(value));
 }
 
-function renderGlobalBackgroundTasksApp() {
-  renderAppWithAdminContext('admin/background_tasks', routes, {});
+function renderGlobalBackgroundTasksApp(context: RenderContext = {}) {
+  renderAppWithAdminContext('admin/background_tasks', routes, context);
 }

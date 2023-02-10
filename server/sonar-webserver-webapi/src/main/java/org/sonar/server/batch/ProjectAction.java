@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -103,8 +103,8 @@ public class ProjectAction implements BatchWsAction {
 
   private static WsProjectResponse buildResponse(ProjectRepositories data) {
     WsProjectResponse.Builder response = WsProjectResponse.newBuilder();
-    if (data instanceof SingleProjectRepository) {
-      response.putAllFileDataByPath(buildFileDataByPath((SingleProjectRepository) data));
+    if (data instanceof SingleProjectRepository singleProjectRepository) {
+      response.putAllFileDataByPath(buildFileDataByPath(singleProjectRepository));
     } else {
       response.putAllFileDataByModuleAndPath(buildFileDataByModuleAndPath((MultiModuleProjectRepository) data));
     }

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -22,7 +22,6 @@ package org.sonar.ce.task.projectanalysis.measure.qualitygatedetails;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import javax.annotation.concurrent.Immutable;
 import org.sonar.ce.task.projectanalysis.measure.Measure;
@@ -44,7 +43,7 @@ public class QualityGateDetailsData {
     this.level = requireNonNull(level);
     this.conditions = StreamSupport.stream(conditions.spliterator(), false)
       .sorted(new ConditionComparator<>(c -> c.getCondition().getMetric().getKey()))
-      .collect(Collectors.toList());
+      .toList();
     this.ignoredConditions = ignoredConditions;
   }
 

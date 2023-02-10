@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -81,6 +81,22 @@ it('should redirect to github authorization page when not already authorized', a
   ).toBeInTheDocument();
 });
 
+it('should not redirect to github when url is malformated', async () => {
+  const user = userEvent.setup();
+  renderCreateProject();
+
+  expect(ui.githubCreateProjectButton.get()).toBeInTheDocument();
+
+  await user.click(ui.githubCreateProjectButton.get());
+  expect(screen.getByText('onboarding.create_project.github.title')).toBeInTheDocument();
+  expect(screen.getByText('alm.configuration.selector.placeholder')).toBeInTheDocument();
+  expect(ui.instanceSelector.get()).toBeInTheDocument();
+
+  await selectEvent.select(ui.instanceSelector.get(), [/conf-github-3/]);
+
+  expect(window.location.replace).not.toHaveBeenCalled();
+});
+
 it('should show import project feature when the authentication is successfull', async () => {
   const user = userEvent.setup();
   let repoItem;
@@ -132,7 +148,7 @@ it('should show search filter when the authentication is successful', async () =
   await selectEvent.select(ui.organizationSelector.get(), [/org-1/]);
 
   const inputSearch = screen.getByRole('searchbox', {
-    name: 'search_verb',
+    name: 'onboarding.create_project.search_repositories',
   });
   await user.click(inputSearch);
   await user.keyboard('search');

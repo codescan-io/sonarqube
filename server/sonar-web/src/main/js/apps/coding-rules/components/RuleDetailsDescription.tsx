@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -23,7 +23,7 @@ import FormattingTips from '../../../components/common/FormattingTips';
 import { Button, ResetButtonLink } from '../../../components/controls/buttons';
 import RuleTabViewer from '../../../components/rules/RuleTabViewer';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
-import { sanitizeString } from '../../../helpers/sanitize';
+import { sanitizeString, sanitizeUserInput } from '../../../helpers/sanitize';
 import { RuleDetails } from '../../../types/types';
 import { RuleDescriptionSections } from '../rule';
 import RemoveExtendedDescriptionModal from './RemoveExtendedDescriptionModal';
@@ -115,7 +115,9 @@ export default class RuleDetailsDescription extends React.PureComponent<Props, S
         <div
           className="rule-desc spacer-bottom markdown"
           // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{ __html: sanitizeString(this.props.ruleDetails.htmlNote) }}
+          dangerouslySetInnerHTML={{
+            __html: sanitizeUserInput(this.props.ruleDetails.htmlNote),
+          }}
         />
       )}
       {this.props.canWrite && (

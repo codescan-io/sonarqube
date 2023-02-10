@@ -1,7 +1,6 @@
-/* eslint-disable no-console */
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -32,11 +31,11 @@ import ListFooter from '../../../components/controls/ListFooter';
 import Suggestions from '../../../components/embed-docs-modal/Suggestions';
 import { Location, Router, withRouter } from '../../../components/hoc/withRouter';
 import { Alert } from '../../../components/ui/Alert';
-import { isPullRequest, isSameBranchLike } from '../../../helpers/branch-like';
+import { isPullRequest } from '../../../helpers/branch-like';
 import { translate } from '../../../helpers/l10n';
 import { CodeScope, getCodeUrl, getProjectUrl } from '../../../helpers/urls';
 import { BranchLike } from '../../../types/branch-like';
-import { isPortfolioLike } from '../../../types/component';
+import { ComponentQualifier, isPortfolioLike } from '../../../types/component';
 import { Breadcrumb, Component, ComponentMeasure, Dict, Issue, Metric } from '../../../types/types';
 import { addComponent, addComponentBreadcrumbs, clearBucket } from '../bucket';
 import '../code.css';
@@ -95,12 +94,7 @@ export class CodeApp extends React.Component<Props, State> {
   }
 
   componentDidUpdate(prevProps: Props) {
-    if (
-      prevProps.component !== this.props.component ||
-      !isSameBranchLike(prevProps.branchLike, this.props.branchLike)
-    ) {
-      this.handleComponentChange();
-    } else if (prevProps.location !== this.props.location) {
+    if (prevProps.location.query.selected !== this.props.location.query.selected) {
       this.handleUpdate();
     }
   }
@@ -119,7 +113,11 @@ export class CodeApp extends React.Component<Props, State> {
       this.props.branchLike
     ).then((r) => {
       if (this.mounted) {
-        if (['FIL', 'UTS'].includes(r.component.qualifier)) {
+        if (
+          [ComponentQualifier.File, ComponentQualifier.TestFile].includes(
+            r.component.qualifier as ComponentQualifier
+          )
+        ) {
           this.setState({
             breadcrumbs: r.breadcrumbs,
             components: r.components,
@@ -266,9 +264,10 @@ export class CodeApp extends React.Component<Props, State> {
 
     const showSearch = searchResults !== undefined;
 
-    const hasComponents = components.length === 0 && searchResults === undefined;
+    const hasComponents = components.length > 0 || searchResults !== undefined;
 
     const shouldShowBreadcrumbs = breadcrumbs.length > 1 && !showSearch;
+
     const shouldShowComponentList =
       sourceViewer === undefined && components.length > 0 && !showSearch;
 
@@ -284,14 +283,21 @@ export class CodeApp extends React.Component<Props, State> {
     const metrics = metricKeys.map((metric) => this.props.metrics[metric]);
 
     const defaultTitle =
-      baseComponent && ['APP', 'VW', 'SVW'].includes(baseComponent.qualifier)
+      baseComponent &&
+      [
+        ComponentQualifier.Application,
+        ComponentQualifier.Portfolio,
+        ComponentQualifier.SubPortfolio,
+      ].includes(baseComponent.qualifier as ComponentQualifier)
         ? translate('projects.page')
         : translate('code.page');
+
+    const isPortfolio = isPortfolioLike(qualifier);
 
     return (
       <div className="page page-limited">
         <A11ySkipTarget anchor="code_main" />
-        {!canBrowseAllChildProjects && isPortfolioLike(qualifier) && (
+        {!canBrowseAllChildProjects && isPortfolio && (
           <StyledAlert variant="warning" className="it__portfolio_warning">
             <AlertContent>
               {translate('code_viewer.not_all_measures_are_shown')}
@@ -308,7 +314,7 @@ export class CodeApp extends React.Component<Props, State> {
           defer={false}
           title={sourceViewer !== undefined ? sourceViewer.name : defaultTitle}
         />
-        {!hasComponents && (
+        {hasComponents && (
           <Search
             branchLike={branchLike}
             component={component}
@@ -320,7 +326,7 @@ export class CodeApp extends React.Component<Props, State> {
         )}
 
         <div className="code-components">
-          {hasComponents && sourceViewer === undefined && (
+          {!hasComponents && sourceViewer === undefined && (
             <div className="display-flex-center display-flex-column no-file">
               <span className="h1 text-muted">
                 {translate(
@@ -354,6 +360,7 @@ export class CodeApp extends React.Component<Props, State> {
                   rootComponent={component}
                   selected={highlighted}
                   newCodeSelected={newCodeSelected}
+                  showAnalysisDate={isPortfolio}
                 />
               </div>
               <ListFooter count={components.length} loadMore={this.handleLoadMore} total={total} />

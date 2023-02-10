@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -65,7 +65,7 @@ public class I18nClassloaderTest {
 
   @Test
   public void override_toString() {
-    assertThat(i18nClassloader.toString()).isEqualTo("i18n-classloader");
+    assertThat(i18nClassloader).hasToString("i18n-classloader");
   }
 
   private static URLClassLoader newCheckstyleClassloader() {

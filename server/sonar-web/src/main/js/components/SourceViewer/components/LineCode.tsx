@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -140,7 +140,6 @@ export default class LineCode extends React.PureComponent<React.PropsWithChildre
           onClick={onClick}
           selected={selected}
           aria-current={selected ? 'location' : false}
-          aria-label={message ? `${index + 1}-${message}` : index + 1}
         >
           <IssueSourceViewerScrollContext.Consumer>
             {(ctx) => (

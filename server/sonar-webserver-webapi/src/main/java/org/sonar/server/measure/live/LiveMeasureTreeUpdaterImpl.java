@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -22,7 +22,6 @@ package org.sonar.server.measure.live;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.measures.Metric;
 import org.sonar.db.DbClient;
@@ -147,7 +146,7 @@ public class LiveMeasureTreeUpdaterImpl implements LiveMeasureTreeUpdater {
         .flatMap(c -> matrix.getMeasure(c, currentFormula.getMetric().getKey()).stream())
         .map(LiveMeasureDto::getValue)
         .filter(Objects::nonNull)
-        .collect(Collectors.toList());
+        .toList();
     }
 
     /**

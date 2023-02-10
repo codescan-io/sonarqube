@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -103,7 +103,7 @@ public class ClusterHealthTest {
 
     ClusterHealth underTest = new ClusterHealth(health, nodeHealths);
 
-    assertThat(underTest.toString()).isEqualTo("ClusterHealth{health=" + health + ", nodes=" + nodeHealths + "}");
+    assertThat(underTest).hasToString("ClusterHealth{health=" + health + ", nodes=" + nodeHealths + "}");
   }
 
   @Test

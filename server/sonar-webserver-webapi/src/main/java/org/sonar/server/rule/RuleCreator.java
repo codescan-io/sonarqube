@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -109,7 +109,7 @@ public class RuleCreator {
         RuleKey customRuleKey = RuleKey.of(templateRule.getRepositoryKey(), newCustomRule.ruleKey());
         return createCustomRule(customRuleKey, newCustomRule, templateRule, dbSession);
       })
-      .collect(Collectors.toList());
+      .toList();
 
     ruleIndexer.commitAndIndex(dbSession, customRuleUuids);
     return newRules.stream()
@@ -117,7 +117,7 @@ public class RuleCreator {
         RuleDto templateRule = templateRules.get(newCustomRule.templateKey());
         return RuleKey.of(templateRule.getRepositoryKey(), newCustomRule.ruleKey());
       })
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private void validateCustomRule(NewCustomRule newRule, DbSession dbSession, RuleKey templateKey) {

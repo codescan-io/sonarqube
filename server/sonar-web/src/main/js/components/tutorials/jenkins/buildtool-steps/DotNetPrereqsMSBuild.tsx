@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -33,7 +33,7 @@ export default function DotNetPrereqsMSBuild() {
       <Alert className="spacer-top" variant="info">
         {translate('onboarding.tutorial.with.jenkins.dotnet.msbuild.prereqs.info')}
       </Alert>
-      <ul className="list-styled">
+      <ol className="list-styled list-roman">
         <li>
           <SentenceWithHighlights
             highlightKeys={['msbuild']}
@@ -54,7 +54,7 @@ export default function DotNetPrereqsMSBuild() {
           <code className="rule">Default MSBuild</code>
           <ClipboardIconButton copyValue="Default MSBuild" />
         </li>
-      </ul>
+      </ol>
     </li>
   );
 }

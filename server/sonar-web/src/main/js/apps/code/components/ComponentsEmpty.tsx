@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -28,10 +28,9 @@ export default function ComponentsEmpty({ canBePinned = true }: Props) {
   return (
     <tr>
       {canBePinned && <td />}
-      <td className="note" colSpan={2}>
+      <td className="note" colSpan={10}>
         {translate('no_results')}
       </td>
-      <td colSpan={10} />
     </tr>
   );
 }

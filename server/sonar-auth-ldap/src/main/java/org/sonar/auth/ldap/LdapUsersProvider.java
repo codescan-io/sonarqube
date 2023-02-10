@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -25,30 +25,7 @@ public interface LdapUsersProvider {
 
   LdapUserDetails doGetUserDetails(Context context);
 
-  final class Context {
-    private final String username;
-
-    private final String serverKey;
-
-    private final HttpServletRequest request;
-
-    public Context(String serverKey, String username, HttpServletRequest request) {
-      this.username = username;
-      this.serverKey = serverKey;
-      this.request = request;
-    }
-
-    public String getUsername() {
-      return username;
-    }
-
-    public String getServerKey() {
-      return serverKey;
-    }
-
-    public HttpServletRequest getRequest() {
-      return request;
-    }
+  record Context(String serverKey, String username, HttpServletRequest request) {
 
   }
 }

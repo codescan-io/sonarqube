@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -42,7 +42,6 @@ import static java.util.Arrays.stream;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.sonar.process.ProcessProperties.Property.AUTH_JWT_SECRET;
 import static org.sonar.process.ProcessProperties.Property.CLUSTER_ENABLED;
@@ -146,7 +145,7 @@ public class ClusterSettings implements Consumer<Props> {
       .map(AddressAndPort::getHost)
       .filter(t -> !network.toInetAddress(t).isPresent())
       .sorted()
-      .collect(toList());
+      .toList();
     if (!invalidHosts.isEmpty()) {
       throw new MessageException(format("Address in property %s is not a valid address: %s",
         property.getKey(), String.join(", ", invalidHosts)));
@@ -187,7 +186,7 @@ public class ClusterSettings implements Consumer<Props> {
     List<String> violations = FORBIDDEN_SEARCH_NODE_SETTINGS.stream()
       .filter(setting -> props.value(setting.getKey()) != null)
       .map(Property::getKey)
-      .collect(toList());
+      .toList();
 
     if (!violations.isEmpty()) {
       throw new MessageException(format("Properties [%s] are not allowed when running SonarQube in cluster mode.", String.join(", ", violations)));

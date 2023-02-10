@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,10 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import selectEvent from 'react-select-event';
+import ComponentsServiceMock from '../../../api/mocks/ComponentsServiceMock';
 import IssuesServiceMock from '../../../api/mocks/IssuesServiceMock';
 import { TabKeys } from '../../../components/rules/RuleTabViewer';
 import { mockComponent } from '../../../helpers/mocks/component';
@@ -39,18 +40,30 @@ jest.mock('../../../api/rules');
 jest.mock('../../../api/components');
 jest.mock('../../../api/users');
 
-let handler: IssuesServiceMock;
+const issuesHandler = new IssuesServiceMock();
+const componentsHandler = new ComponentsServiceMock();
 
 beforeEach(() => {
-  handler = new IssuesServiceMock();
+  issuesHandler.reset();
+  componentsHandler.reset();
   window.scrollTo = jest.fn();
   window.HTMLElement.prototype.scrollIntoView = jest.fn();
+});
+
+it('should navigate to Why is this an issue tab', async () => {
+  renderProjectIssuesApp('project/issues?issues=issue2&open=issue2&id=myproject&why=1');
+  expect(
+    await screen.findByRole('tab', {
+      name: `coding_rules.description_section.title.root_cause`,
+      selected: true,
+    })
+  ).toBeInTheDocument();
 });
 
 //Improve this to include all the bulk change fonctionality
 it('should be able to bulk change', async () => {
   const user = userEvent.setup();
-  handler.setIsAdmin(true);
+  issuesHandler.setIsAdmin(true);
   renderIssueApp(mockCurrentUser({ isLoggedIn: true }));
 
   // Check that the bulk button has correct behavior
@@ -101,7 +114,9 @@ it('should show warning when not all issues are accessible', async () => {
   });
   expect(await screen.findByRole('alert', { name: 'alert.tooltip.warning' })).toBeInTheDocument();
 
-  await user.keyboard('{ArrowRight}');
+  await act(async () => {
+    await user.keyboard('{ArrowRight}');
+  });
 
   expect(await screen.findByRole('alert', { name: 'alert.tooltip.warning' })).toBeInTheDocument();
 });
@@ -230,7 +245,9 @@ it('should open issue and navigate', async () => {
   expect(extendedDescriptions).toHaveLength(1);
 
   // Select the previous issue (with a simple rule) through keyboard shortcut
-  await user.keyboard('{ArrowUp}');
+  await act(async () => {
+    await user.keyboard('{ArrowUp}');
+  });
 
   // Are rule headers present?
   expect(screen.getByRole('heading', { level: 1, name: 'Fix this' })).toBeInTheDocument();
@@ -246,7 +263,9 @@ it('should open issue and navigate', async () => {
   expect(screen.getByRole('heading', { name: 'Default' })).toBeInTheDocument();
 
   // Select the previous issue (with a simple rule) through keyboard shortcut
-  await user.keyboard('{ArrowUp}');
+  await act(async () => {
+    await user.keyboard('{ArrowUp}');
+  });
 
   // Are rule headers present?
   expect(screen.getByRole('heading', { level: 1, name: 'Issue on file' })).toBeInTheDocument();
@@ -256,7 +275,7 @@ it('should open issue and navigate', async () => {
   expect(screen.getByRole('region', { name: 'Issue on file' })).toBeInTheDocument();
   expect(
     screen.getByRole('row', {
-      name: '2 source_viewer.tooltip.covered import java.util. ArrayList ;',
+      name: '2 * SonarQube',
     })
   ).toBeInTheDocument();
 });
@@ -279,8 +298,8 @@ it('should support OWASP Top 10 version 2021', async () => {
 
   await user.click(owaspTop102021);
   await Promise.all(
-    handler.owasp2021FacetList().values.map(async ({ val }) => {
-      const standard = await handler.getStandards();
+    issuesHandler.owasp2021FacetList().values.map(async ({ val }) => {
+      const standard = await issuesHandler.getStandards();
       /* eslint-disable-next-line testing-library/render-result-naming-convention */
       const linkName = renderOwaspTop102021Category(standard, val);
       expect(await screen.findByRole('checkbox', { name: linkName })).toBeInTheDocument();
@@ -290,7 +309,7 @@ it('should support OWASP Top 10 version 2021', async () => {
 
 it('should be able to perform action on issues', async () => {
   const user = userEvent.setup();
-  handler.setIsAdmin(true);
+  issuesHandler.setIsAdmin(true);
   renderIssueApp();
 
   // Select an issue with an advanced rule
@@ -369,13 +388,15 @@ it('should be able to perform action on issues', async () => {
       name: `issue.assign.unassigned_click_to_assign`,
     })
   );
-  expect(screen.getByRole('searchbox', { name: 'search_verb' })).toBeInTheDocument();
+  expect(screen.getByRole('searchbox', { name: 'search.search_for_users' })).toBeInTheDocument();
 
-  await user.click(screen.getByRole('searchbox', { name: 'search_verb' }));
+  await user.click(screen.getByRole('searchbox', { name: 'search.search_for_users' }));
   await user.keyboard('luke');
   expect(screen.getByText('Skywalker')).toBeInTheDocument();
   await user.keyboard('{ArrowUp}{enter}');
-  expect(screen.getByText('luke')).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'issue.assign.assigned_to_x_click_to_change.luke' })
+  ).toBeInTheDocument();
 
   // adding comment to the issue
   expect(
@@ -429,7 +450,7 @@ it('should be able to perform action on issues', async () => {
   // changing tags
   expect(screen.getByText('issue.no_tag')).toBeInTheDocument();
   await user.click(screen.getByText('issue.no_tag'));
-  expect(screen.getByRole('searchbox', { name: 'search_verb' })).toBeInTheDocument();
+  expect(screen.getByRole('searchbox', { name: 'search.search_for_tags' })).toBeInTheDocument();
   expect(screen.getByText('android')).toBeInTheDocument();
   expect(screen.getByText('accessibility')).toBeInTheDocument();
 
@@ -441,10 +462,11 @@ it('should be able to perform action on issues', async () => {
   await user.click(screen.getByText('accessibility'));
   expect(screen.getByTitle('android')).toBeInTheDocument();
 
-  await user.click(screen.getByRole('searchbox', { name: 'search_verb' }));
+  await user.click(screen.getByRole('searchbox', { name: 'search.search_for_tags' }));
   await user.keyboard('addNewTag');
-  expect(screen.getByText('+')).toBeInTheDocument();
-  expect(screen.getByText('addnewtag')).toBeInTheDocument();
+  expect(
+    screen.getByRole('checkbox', { name: 'create_new_element: addnewtag' })
+  ).toBeInTheDocument();
 });
 
 it('should not allow performing actions when user does not have permission', async () => {
@@ -484,7 +506,7 @@ it('should not allow performing actions when user does not have permission', asy
 
 it('should open the actions popup using keyboard shortcut', async () => {
   const user = userEvent.setup();
-  handler.setIsAdmin(true);
+  issuesHandler.setIsAdmin(true);
   renderIssueApp();
 
   // Select an issue with an advanced rule
@@ -507,7 +529,7 @@ it('should open the actions popup using keyboard shortcut', async () => {
 
   // open tags popup on key press 't'
   await user.keyboard('t');
-  expect(screen.getByRole('searchbox', { name: 'search_verb' })).toBeInTheDocument();
+  expect(screen.getByRole('searchbox', { name: 'search.search_for_tags' })).toBeInTheDocument();
   expect(screen.getByText('android')).toBeInTheDocument();
   expect(screen.getByText('accessibility')).toBeInTheDocument();
   // closing tags popup
@@ -515,13 +537,13 @@ it('should open the actions popup using keyboard shortcut', async () => {
 
   // open assign popup on key press 'a'
   await user.keyboard('a');
-  expect(screen.getByRole('searchbox', { name: 'search_verb' })).toBeInTheDocument();
+  expect(screen.getByRole('searchbox', { name: 'search.search_for_tags' })).toBeInTheDocument();
 });
 
 it('should not open the actions popup using keyboard shortcut when keyboard shortcut flag is disabled', async () => {
   localStorage.setItem('sonarqube.preferences.keyboard_shortcuts_enabled', 'false');
   const user = userEvent.setup();
-  handler.setIsAdmin(true);
+  issuesHandler.setIsAdmin(true);
   renderIssueApp();
 
   // Select an issue with an advanced rule
@@ -543,8 +565,8 @@ it('should show code tabs when any secondary location is selected', async () => 
   renderIssueApp();
 
   await user.click(await screen.findByRole('region', { name: 'Fix this' }));
-  expect(screen.getByText('location 1')).toBeInTheDocument();
-  expect(screen.getByText('location 2')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '1 location 1' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '2 location 2' })).toBeInTheDocument();
 
   // Select the "why is this an issue" tab
   await user.click(
@@ -587,7 +609,7 @@ it('should show code tabs when any secondary location is selected', async () => 
 
 it('should show issue tags if applicable', async () => {
   const user = userEvent.setup();
-  handler.setIsAdmin(true);
+  issuesHandler.setIsAdmin(true);
   renderIssueApp();
 
   // Select an issue with an advanced rule

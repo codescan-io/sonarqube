@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -29,7 +29,6 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.utils.log.Loggers;
 import org.sonar.ce.task.projectexport.component.ComponentRepository;
@@ -159,7 +158,7 @@ public class ExportIssuesStep implements ComputationStep {
     String ruleUuid = rs.getString(2);
     String ruleKey = rs.getString(3);
     String repositoryKey = rs.getString(4);
-    builder.setRuleRef(ruleRegistrar.register(ruleUuid, repositoryKey, ruleKey).getRef());
+    builder.setRuleRef(ruleRegistrar.register(ruleUuid, repositoryKey, ruleKey).ref());
   }
 
   private static void setLocations(ProjectDump.Issue.Builder builder, ResultSet rs, String issueUuid) throws SQLException {
@@ -197,7 +196,7 @@ public class ExportIssuesStep implements ComputationStep {
         .setStart(e.getStart())
         .setEnd(e.getEnd())
         .setType(ProjectDump.MessageFormattingType.valueOf(e.getType().name())).build())
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private static class RuleRegistrar {

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -139,6 +139,51 @@ public class LiveMeasureDaoTest {
     List<LiveMeasureDto> selected = underTest.selectByComponentUuidsAndMetricKeys(db.getSession(), singletonList("_missing_"), singletonList(metric.getKey()));
 
     assertThat(selected).isEmpty();
+  }
+
+  @Test
+  public void selectForProjectsByMetricUuids() {
+    MetricDto metric = db.measures().insertMetric();
+    MetricDto metric2 = db.measures().insertMetric();
+    ComponentDto project = db.components().insertPrivateProject();
+    ComponentDto project2 = db.components().insertPrivateProject();
+    underTest.insert(db.getSession(), newLiveMeasure(project, metric).setValue(3.14).setData((String) null));
+    underTest.insert(db.getSession(), newLiveMeasure(project, metric2).setValue(4.54).setData((String) null));
+    underTest.insert(db.getSession(), newLiveMeasure(project2, metric).setValue(99.99).setData((String) null));
+
+    List<LiveMeasureDto> selected = underTest.selectForProjectsByMetricUuids(db.getSession(), List.of(metric.getUuid(), metric2.getUuid()));
+    assertThat(selected)
+      .extracting(LiveMeasureDto::getComponentUuid, LiveMeasureDto::getProjectUuid, LiveMeasureDto::getMetricUuid, LiveMeasureDto::getValue, LiveMeasureDto::getDataAsString)
+      .containsExactlyInAnyOrder(
+        tuple(project.uuid(), project.uuid(), metric.getUuid(), 3.14, null),
+        tuple(project.uuid(), project.uuid(), metric2.getUuid(), 4.54, null),
+        tuple(project2.uuid(), project2.uuid(), metric.getUuid(), 99.99, null));
+  }
+
+  @Test
+  public void selectForProjectsByMetricUuids_whenMetricDoesNotMatch_shouldReturnEmptyList() {
+    ComponentDto project = db.components().insertPrivateProject();
+    underTest.insert(db.getSession(), newLiveMeasure(project, metric).setValue(3.14).setData((String) null));
+    List<LiveMeasureDto> selected = underTest.selectForProjectsByMetricUuids(db.getSession(), singletonList("_other_"));
+    assertThat(selected).isEmpty();
+  }
+
+  @Test
+  public void selectForProjectsByMetricUuids_shouldReturnProjectWithTRKQualifierOnly() {
+    MetricDto metric = db.measures().insertMetric();
+    ComponentDto application = db.components().insertPrivateApplication();
+    ComponentDto project = db.components().insertPrivateProject();
+    ComponentDto project2 = db.components().insertPrivateProject();
+    db.components().addApplicationProject(application, project, project2);
+    underTest.insert(db.getSession(), newLiveMeasure(application, metric).setValue(3.14).setData((String) null));
+    underTest.insert(db.getSession(), newLiveMeasure(project, metric).setValue(4.54).setData((String) null));
+    underTest.insert(db.getSession(), newLiveMeasure(project2, metric).setValue(5.56).setData((String) null));
+
+    List<LiveMeasureDto> selected = underTest.selectForProjectsByMetricUuids(db.getSession(), List.of(metric.getUuid()));
+
+    assertThat(selected)
+      .extracting(LiveMeasureDto::getProjectUuid)
+      .containsExactlyInAnyOrder(project.uuid(), project2.uuid());
   }
 
   @Test

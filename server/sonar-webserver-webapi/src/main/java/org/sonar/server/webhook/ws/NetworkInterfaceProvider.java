@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -24,7 +24,6 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class NetworkInterfaceProvider {
 
@@ -32,6 +31,6 @@ public class NetworkInterfaceProvider {
     return Collections.list(NetworkInterface.getNetworkInterfaces())
       .stream()
       .flatMap(ni -> Collections.list(ni.getInetAddresses()).stream())
-      .collect(Collectors.toList());
+      .toList();
   }
 }

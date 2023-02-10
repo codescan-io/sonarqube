@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -141,8 +141,8 @@ public class UserSessionInitializer {
   }
 
   private static void checkTokenUserSession(HttpServletResponse response, UserSession session) {
-    if (session instanceof TokenUserSession) {
-      UserTokenDto userTokenDto = ((TokenUserSession) session).getUserToken();
+    if (session instanceof TokenUserSession tokenUserSession) {
+      UserTokenDto userTokenDto = tokenUserSession.getUserToken();
       Optional.ofNullable(userTokenDto.getExpirationDate()).ifPresent(expirationDate -> response.addHeader(SQ_AUTHENTICATION_TOKEN_EXPIRATION, formatDateTime(expirationDate)));
     }
   }

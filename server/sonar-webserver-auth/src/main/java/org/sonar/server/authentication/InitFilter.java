@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -73,11 +73,11 @@ public class InitFilter extends AuthenticationFilter {
 
   private void handleProvider(HttpServletRequest request, HttpServletResponse response, IdentityProvider provider) {
     try {
-      if (provider instanceof BaseIdentityProvider) {
-        handleBaseIdentityProvider(request, response, (BaseIdentityProvider) provider);
-      } else if (provider instanceof OAuth2IdentityProvider) {
+      if (provider instanceof BaseIdentityProvider baseIdentityProvider) {
+        handleBaseIdentityProvider(request, response, baseIdentityProvider);
+      } else if (provider instanceof OAuth2IdentityProvider oAuth2IdentityProvider) {
         oAuthOAuth2AuthenticationParameters.init(request, response);
-        handleOAuth2IdentityProvider(request, response, (OAuth2IdentityProvider) provider);
+        handleOAuth2IdentityProvider(request, response, oAuth2IdentityProvider);
       } else {
         handleError(request, response, format("Unsupported IdentityProvider class: %s", provider.getClass()));
       }

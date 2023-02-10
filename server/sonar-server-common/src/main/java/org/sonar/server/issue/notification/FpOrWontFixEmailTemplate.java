@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -54,8 +54,8 @@ public class FpOrWontFixEmailTemplate extends IssueChangesEmailTemplate {
       .setMessageId(getMessageId(notification.getResolution()))
       .setSubject(buildSubject(notification))
       .setHtmlMessage(buildMessage(notification));
-    if (notification.getChange() instanceof UserChange) {
-      User user = ((UserChange) notification.getChange()).getUser();
+    if (notification.getChange() instanceof UserChange userChange) {
+      User user = userChange.getUser();
       emailMessage.setFrom(user.getName().orElse(user.getLogin()));
     }
     return emailMessage;

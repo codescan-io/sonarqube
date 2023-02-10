@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -33,6 +33,12 @@ class HtmlUrlChannel extends RegexChannel<MarkdownOutput> {
 
   @Override
   protected void consume(CharSequence token, MarkdownOutput output) {
-    output.append("<a href=\"" + token + "\" target=\"_blank\">" + token + "</a>");
+    String url = token.toString();
+    boolean isRelativeUrl = !url.contains("://");
+    output.append("<a href=\"");
+    output.append(url);
+    output.append(isRelativeUrl ? "\">" : "\" target=\"_blank\" rel=\"noopener noreferrer\">");
+    output.append(url);
+    output.append("</a>");
   }
 }

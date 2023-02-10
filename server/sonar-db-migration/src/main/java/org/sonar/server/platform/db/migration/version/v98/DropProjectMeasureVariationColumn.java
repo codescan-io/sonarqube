@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -22,8 +22,7 @@ package org.sonar.server.platform.db.migration.version.v98;
 import org.sonar.db.Database;
 import org.sonar.server.platform.db.migration.step.DropColumnChange;
 
-public class DropProjectMeasureVariationColumn extends DropColumnChange {
-
+public class DropProjectMeasureVariationColumn  extends DropColumnChange {
   public static final String TABLE_NAME = "project_measures";
   public static final String COLUMN_NAME = "variation_value_1";
 

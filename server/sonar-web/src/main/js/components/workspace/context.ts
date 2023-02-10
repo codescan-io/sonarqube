@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -37,11 +37,9 @@ export interface RuleDescriptor {
 export interface WorkspaceContextShape {
   externalRulesRepoNames: Dict<string>;
   openComponent: (component: ComponentDescriptor) => void;
-  openRule: (rule: RuleDescriptor) => void;
 }
 
 export const WorkspaceContext = createContext<WorkspaceContextShape>({
   externalRulesRepoNames: {},
   openComponent: () => {},
-  openRule: () => {},
 });

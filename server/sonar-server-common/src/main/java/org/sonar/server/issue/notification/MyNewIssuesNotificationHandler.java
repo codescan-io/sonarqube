@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -91,7 +91,7 @@ public class MyNewIssuesNotificationHandler extends EmailNotificationHandler<MyN
     Map<String, NotificationManager.EmailRecipient> recipientsByLogin = notificationManager
       .findSubscribedEmailRecipients(KEY, projectKey, assignees, ALL_MUST_HAVE_ROLE_USER)
       .stream()
-      .collect(MoreCollectors.uniqueIndex(NotificationManager.EmailRecipient::getLogin));
+      .collect(MoreCollectors.uniqueIndex(NotificationManager.EmailRecipient::login));
     return notifications.stream()
       .map(notification -> toEmailDeliveryRequest(recipientsByLogin, notification))
       .filter(Objects::nonNull);
@@ -104,7 +104,7 @@ public class MyNewIssuesNotificationHandler extends EmailNotificationHandler<MyN
 
     NotificationManager.EmailRecipient emailRecipient = recipientsByLogin.get(assignee);
     if (emailRecipient != null) {
-      return new EmailDeliveryRequest(emailRecipient.getEmail(), notification);
+      return new EmailDeliveryRequest(emailRecipient.email(), notification);
     }
     return null;
   }

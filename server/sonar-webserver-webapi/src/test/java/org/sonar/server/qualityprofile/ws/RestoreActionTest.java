@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -82,7 +82,7 @@ public class RestoreActionTest {
     TestResponse response = restore("<backup/>");
 
     assertThat(backuper.restoredBackup).isEqualTo("<backup/>");
-    assertThat(backuper.restoredSummary.getProfile().getName()).isEqualTo("the-name-in-backup");
+    assertThat(backuper.restoredSummary.profile().getName()).isEqualTo("the-name-in-backup");
     JsonAssert.assertJson(response.getInput()).isSimilarTo("{" +
       "  \"profile\": {" +
       "    \"name\": \"the-name-in-backup\"," +

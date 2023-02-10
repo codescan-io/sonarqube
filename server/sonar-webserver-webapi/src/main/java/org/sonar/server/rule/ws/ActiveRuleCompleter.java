@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -146,7 +146,7 @@ public class ActiveRuleCompleter {
       activeRuleUuidsByKey.put(activeRuleDto.getUuid(), activeRuleDto.getKey());
     }
 
-    List<String> activeRuleUuids = activeRules.stream().map(ActiveRuleDto::getUuid).collect(Collectors.toList());
+    List<String> activeRuleUuids = activeRules.stream().map(ActiveRuleDto::getUuid).toList();
     List<ActiveRuleParamDto> activeRuleParams = dbClient.activeRuleDao().selectParamsByActiveRuleUuids(dbSession, activeRuleUuids);
     ListMultimap<ActiveRuleKey, ActiveRuleParamDto> activeRuleParamsByActiveRuleKey = ArrayListMultimap.create(activeRules.size(), 10);
     for (ActiveRuleParamDto activeRuleParamDto : activeRuleParams) {
@@ -156,7 +156,7 @@ public class ActiveRuleCompleter {
 
     return activeRules.stream()
       .map(activeRule -> buildActiveRuleResponse(activeRule, activeRuleParamsByActiveRuleKey.get(activeRule.getKey())))
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private static Rules.Active buildActiveRuleResponse(OrgActiveRuleDto activeRule, List<ActiveRuleParamDto> parameters) {

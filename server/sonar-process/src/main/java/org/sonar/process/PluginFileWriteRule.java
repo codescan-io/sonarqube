@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -44,11 +44,8 @@ public class PluginFileWriteRule implements PluginPolicyRule {
 
   @Override
   public boolean implies(Permission permission) {
-    if (permission instanceof FilePermission) {
-      FilePermission requestPermission = (FilePermission) permission;
-      if (blockedFilePermission.implies(requestPermission) && !tmpFilePermission.implies(requestPermission)) {
-        return false;
-      }
+    if (permission instanceof FilePermission requestPermission) {
+      return !blockedFilePermission.implies(requestPermission) || tmpFilePermission.implies(requestPermission);
     }
     return true;
   }

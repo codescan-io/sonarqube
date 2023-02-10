@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -22,9 +22,11 @@ import { setQualityGateAsDefault } from '../../../api/quality-gates';
 import { Button } from '../../../components/controls/buttons';
 import ModalButton from '../../../components/controls/ModalButton';
 import Tooltip from '../../../components/controls/Tooltip';
+import AlertWarnIcon from '../../../components/icons/AlertWarnIcon';
 import { translate } from '../../../helpers/l10n';
-import { QualityGate } from '../../../types/types';
+import { CaycStatus, QualityGate } from '../../../types/types';
 import BuiltInQualityGateBadge from './BuiltInQualityGateBadge';
+import CaycBadgeTooltip from './CaycBadgeTooltip';
 import CopyQualityGateForm from './CopyQualityGateForm';
 import DeleteQualityGateForm from './DeleteQualityGateForm';
 import RenameQualityGateForm from './RenameQualityGateForm';
@@ -35,6 +37,8 @@ interface Props {
   refreshItem: () => Promise<void>;
   refreshList: () => Promise<void>;
 }
+
+const TOOLTIP_MOUSE_LEAVE_DELAY = 0.3;
 
 export default class DetailsHeader extends React.PureComponent<Props> {
   handleActionRefresh = () => {
@@ -60,8 +64,7 @@ export default class DetailsHeader extends React.PureComponent<Props> {
   render() {
     const { qualityGate } = this.props;
     const actions = qualityGate.actions || ({} as any);
-    const hasNoConditions =
-      qualityGate.conditions === undefined || qualityGate.conditions.length === 0;
+
     return (
       <div className="layout-page-header-panel layout-page-main-header issues-main-header">
         <div className="layout-page-header-panel-inner layout-page-main-header-inner">
@@ -69,6 +72,11 @@ export default class DetailsHeader extends React.PureComponent<Props> {
             <div className="pull-left display-flex-center">
               <h2>{qualityGate.name}</h2>
               {qualityGate.isBuiltIn && <BuiltInQualityGateBadge className="spacer-left" />}
+              {qualityGate.caycStatus === CaycStatus.NonCompliant && (
+                <Tooltip overlay={<CaycBadgeTooltip />} mouseLeaveDelay={TOOLTIP_MOUSE_LEAVE_DELAY}>
+                  <AlertWarnIcon className="spacer-left" />
+                </Tooltip>
+              )}
             </div>
 
             <div className="pull-right">
@@ -100,23 +108,38 @@ export default class DetailsHeader extends React.PureComponent<Props> {
                   )}
                 >
                   {({ onClick }) => (
-                    <Button className="little-spacer-left" id="quality-gate-copy" onClick={onClick}>
-                      {translate('copy')}
-                    </Button>
+                    <Tooltip
+                      overlay={
+                        qualityGate.caycStatus === CaycStatus.NonCompliant
+                          ? translate('quality_gates.cannot_copy_no_cayc')
+                          : null
+                      }
+                      accessible={false}
+                    >
+                      <Button
+                        className="little-spacer-left"
+                        id="quality-gate-copy"
+                        onClick={onClick}
+                        disabled={qualityGate.caycStatus === CaycStatus.NonCompliant}
+                      >
+                        {translate('copy')}
+                      </Button>
+                    </Tooltip>
                   )}
                 </ModalButton>
               )}
               {actions.setAsDefault && (
                 <Tooltip
                   overlay={
-                    hasNoConditions
-                      ? translate('quality_gates.cannot_set_default_no_conditions')
+                    qualityGate.caycStatus === CaycStatus.NonCompliant
+                      ? translate('quality_gates.cannot_set_default_no_cayc')
                       : null
                   }
+                  accessible={false}
                 >
                   <Button
                     className="little-spacer-left"
-                    disabled={hasNoConditions}
+                    disabled={qualityGate.caycStatus === CaycStatus.NonCompliant}
                     id="quality-gate-toggle-default"
                     onClick={this.handleSetAsDefaultClick}
                   >

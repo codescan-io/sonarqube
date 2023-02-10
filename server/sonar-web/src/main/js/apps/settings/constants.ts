@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -50,6 +50,7 @@ export const CATEGORY_OVERRIDES: Dict<string> = {
   python: LANGUAGES_CATEGORY,
   rpg: LANGUAGES_CATEGORY,
   ruby: LANGUAGES_CATEGORY,
+  secrets: LANGUAGES_CATEGORY,
   scala: LANGUAGES_CATEGORY,
   swift: LANGUAGES_CATEGORY,
   't-sql': LANGUAGES_CATEGORY,

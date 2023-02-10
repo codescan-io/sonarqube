@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -65,14 +65,9 @@ public class DropConstraintBuilder {
   }
 
   private String createSqlStatement() {
-    switch (dialect.getId()) {
-      case MsSql.ID:
-      case Oracle.ID:
-      case PostgreSql.ID:
-      case H2.ID:
-        return "ALTER TABLE " + tableName + " DROP CONSTRAINT " + constraintName;
-      default:
-        throw new IllegalStateException("Unsupported dialect for drop of constraint: " + dialect);
-    }
+    return switch (dialect.getId()) {
+      case MsSql.ID, Oracle.ID, PostgreSql.ID, H2.ID -> "ALTER TABLE " + tableName + " DROP CONSTRAINT " + constraintName;
+      default -> throw new IllegalStateException("Unsupported dialect for drop of constraint: " + dialect);
+    };
   }
 }

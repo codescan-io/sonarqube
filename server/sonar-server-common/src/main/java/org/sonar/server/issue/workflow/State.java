@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import org.sonar.api.issue.Issue;
 
@@ -57,7 +56,7 @@ public class State {
     return Arrays.stream(outTransitions)
       .filter(transition -> !transition.automatic())
       .filter(transition -> transition.supports(issue))
-      .collect(Collectors.toList());
+      .toList();
   }
 
   @CheckForNull
@@ -65,7 +64,7 @@ public class State {
     List<Transition> transitions = Arrays.stream(outTransitions)
       .filter(Transition::automatic)
       .filter(t -> t.supports(issue))
-      .collect(Collectors.toList());
+      .toList();
     if(transitions.size() > 1){
       throw new IllegalArgumentException("Several automatic transitions are available for issue: " + issue);
     }

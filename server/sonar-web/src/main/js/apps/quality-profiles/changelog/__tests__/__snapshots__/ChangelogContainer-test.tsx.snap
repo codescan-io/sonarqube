@@ -4,12 +4,12 @@ exports[`should render correctly 1`] = `
 <div
   className="boxed-group boxed-group-inner js-profile-changelog"
 >
-  <header
+  <div
     className="spacer-bottom"
   >
     <ChangelogSearch
       dateRange={
-        Object {
+        {
           "from": undefined,
           "to": undefined,
         }
@@ -17,32 +17,36 @@ exports[`should render correctly 1`] = `
       onDateRangeChange={[Function]}
       onReset={[Function]}
     />
-  </header>
+    <DeferredSpinner
+      className="spacer-left"
+      loading={false}
+    />
+  </div>
   <Changelog
     events={
-      Array [
-        Object {
+      [
+        {
           "action": "ACTIVATED",
           "date": "2019-04-23T02:12:32+0100",
-          "params": Object {
+          "params": {
             "severity": "MAJOR",
           },
           "ruleKey": "rule-key",
           "ruleName": "rule-name",
         },
-        Object {
+        {
           "action": "ACTIVATED",
           "date": "2019-04-23T02:12:32+0100",
-          "params": Object {
+          "params": {
             "severity": "MAJOR",
           },
           "ruleKey": "rule-key",
           "ruleName": "rule-name",
         },
-        Object {
+        {
           "action": "ACTIVATED",
           "date": "2019-04-23T02:12:32+0100",
-          "params": Object {
+          "params": {
             "severity": "MAJOR",
           },
           "ruleKey": "rule-key",
@@ -68,12 +72,12 @@ exports[`should render correctly without events 1`] = `
 <div
   className="boxed-group boxed-group-inner js-profile-changelog"
 >
-  <header
+  <div
     className="spacer-bottom"
   >
     <ChangelogSearch
       dateRange={
-        Object {
+        {
           "from": undefined,
           "to": undefined,
         }
@@ -81,7 +85,11 @@ exports[`should render correctly without events 1`] = `
       onDateRangeChange={[Function]}
       onReset={[Function]}
     />
-  </header>
+    <DeferredSpinner
+      className="spacer-left"
+      loading={false}
+    />
+  </div>
   <ChangelogEmpty />
 </div>
 `;

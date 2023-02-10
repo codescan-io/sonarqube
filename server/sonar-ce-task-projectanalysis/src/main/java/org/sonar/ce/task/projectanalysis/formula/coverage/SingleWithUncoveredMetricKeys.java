@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,25 +19,11 @@
  */
 package org.sonar.ce.task.projectanalysis.formula.coverage;
 
-import javax.annotation.concurrent.Immutable;
-
 import static java.util.Objects.requireNonNull;
 
-@Immutable
-public final class SingleWithUncoveredMetricKeys {
-  private final String covered;
-  private final String uncovered;
-
+public record SingleWithUncoveredMetricKeys(String covered, String uncovered) {
   public SingleWithUncoveredMetricKeys(String covered, String uncovered) {
     this.covered = requireNonNull(covered);
     this.uncovered = requireNonNull(uncovered);
-  }
-
-  public String getCovered() {
-    return covered;
-  }
-
-  public String getUncovered() {
-    return uncovered;
   }
 }

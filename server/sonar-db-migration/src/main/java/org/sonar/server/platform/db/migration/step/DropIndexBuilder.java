@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -61,16 +61,11 @@ class DropIndexBuilder {
   }
 
   private String createSqlStatement() {
-    switch (dialect.getId()) {
-      case MsSql.ID:
-        return "DROP INDEX " + indexName + " ON " + tableName;
-      case Oracle.ID:
-        return "DROP INDEX " + indexName;
-      case H2.ID:
-      case PostgreSql.ID:
-        return "DROP INDEX IF EXISTS " + indexName;
-      default:
-        throw new IllegalStateException("Unsupported dialect for drop of index: " + dialect);
-    }
+    return switch (dialect.getId()) {
+      case MsSql.ID -> "DROP INDEX " + indexName + " ON " + tableName;
+      case Oracle.ID -> "DROP INDEX " + indexName;
+      case H2.ID, PostgreSql.ID -> "DROP INDEX IF EXISTS " + indexName;
+      default -> throw new IllegalStateException("Unsupported dialect for drop of index: " + dialect);
+    };
   }
 }

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -81,7 +81,7 @@ public class ChangesOnMyIssueNotificationHandlerTest {
 
   @Test
   public void getMetadata_returns_same_instance_as_static_method() {
-    assertThat(underTest.getMetadata().get()).isSameAs(ChangesOnMyIssueNotificationHandler.newMetadata());
+    assertThat(underTest.getMetadata()).containsSame(ChangesOnMyIssueNotificationHandler.newMetadata());
   }
 
   @Test
@@ -283,15 +283,15 @@ public class ChangesOnMyIssueNotificationHandlerTest {
     Set<EmailDeliveryRequest> emailDeliveryRequests = emailDeliveryRequestSetCaptor.getValue();
     assertThat(emailDeliveryRequests).hasSize(4);
     ListMultimap<String, EmailDeliveryRequest> emailDeliveryRequestByEmail = emailDeliveryRequests.stream()
-      .collect(index(EmailDeliveryRequest::getRecipientEmail));
+      .collect(index(EmailDeliveryRequest::recipientEmail));
     List<EmailDeliveryRequest> assignee1Requests = emailDeliveryRequestByEmail.get(emailOf(assignee1.getLogin()));
     assertThat(assignee1Requests)
       .hasSize(2)
-      .extracting(t -> (ChangesOnMyIssuesNotification) t.getNotification())
+      .extracting(t -> (ChangesOnMyIssuesNotification) t.notification())
       .extracting(ChangesOnMyIssuesNotification::getChange)
       .containsOnly(userOrAnalysisChange);
     assertThat(assignee1Requests)
-      .extracting(t -> (ChangesOnMyIssuesNotification) t.getNotification())
+      .extracting(t -> (ChangesOnMyIssuesNotification) t.notification())
       .extracting(ChangesOnMyIssuesNotification::getChangedIssues)
       .containsOnly(
         assignee1Issues.stream().limit(5).collect(unorderedIndex(t -> project, t -> t)),
@@ -300,11 +300,11 @@ public class ChangesOnMyIssueNotificationHandlerTest {
     List<EmailDeliveryRequest> assignee2Requests = emailDeliveryRequestByEmail.get(emailOf(assignee2.getLogin()));
     assertThat(assignee2Requests)
       .hasSize(2)
-      .extracting(t -> (ChangesOnMyIssuesNotification) t.getNotification())
+      .extracting(t -> (ChangesOnMyIssuesNotification) t.notification())
       .extracting(ChangesOnMyIssuesNotification::getChange)
       .containsOnly(userOrAnalysisChange);
     assertThat(assignee2Requests)
-      .extracting(t -> (ChangesOnMyIssuesNotification) t.getNotification())
+      .extracting(t -> (ChangesOnMyIssuesNotification) t.notification())
       .extracting(ChangesOnMyIssuesNotification::getChangedIssues)
       .containsOnly(
         assignee2Issues.stream().limit(6).collect(unorderedIndex(t -> project, t -> t)),
@@ -376,15 +376,15 @@ public class ChangesOnMyIssueNotificationHandlerTest {
     Set<EmailDeliveryRequest> emailDeliveryRequests = emailDeliveryRequestSetCaptor.getValue();
     assertThat(emailDeliveryRequests).hasSize(3);
     ListMultimap<String, EmailDeliveryRequest> emailDeliveryRequestByEmail = emailDeliveryRequests.stream()
-      .collect(index(EmailDeliveryRequest::getRecipientEmail));
+      .collect(index(EmailDeliveryRequest::recipientEmail));
     List<EmailDeliveryRequest> assignee1Requests = emailDeliveryRequestByEmail.get(emailOf(assignee1.getLogin()));
     assertThat(assignee1Requests)
       .hasSize(2)
-      .extracting(t -> (ChangesOnMyIssuesNotification) t.getNotification())
+      .extracting(t -> (ChangesOnMyIssuesNotification) t.notification())
       .extracting(ChangesOnMyIssuesNotification::getChange)
       .containsOnly(userOrAnalysisChange, assignee2Change1);
     assertThat(assignee1Requests)
-      .extracting(t -> (ChangesOnMyIssuesNotification) t.getNotification())
+      .extracting(t -> (ChangesOnMyIssuesNotification) t.notification())
       .extracting(ChangesOnMyIssuesNotification::getChangedIssues)
       .containsOnly(
         assignee1Issues.stream().skip(4).limit(2).collect(unorderedIndex(t -> project1, t -> t)),
@@ -393,11 +393,11 @@ public class ChangesOnMyIssueNotificationHandlerTest {
     List<EmailDeliveryRequest> assignee2Requests = emailDeliveryRequestByEmail.get(emailOf(assignee2.getLogin()));
     assertThat(assignee2Requests)
       .hasSize(1)
-      .extracting(t -> (ChangesOnMyIssuesNotification) t.getNotification())
+      .extracting(t -> (ChangesOnMyIssuesNotification) t.notification())
       .extracting(ChangesOnMyIssuesNotification::getChange)
       .containsOnly(userOrAnalysisChange);
     assertThat(assignee2Requests)
-      .extracting(t -> (ChangesOnMyIssuesNotification) t.getNotification())
+      .extracting(t -> (ChangesOnMyIssuesNotification) t.notification())
       .extracting(ChangesOnMyIssuesNotification::getChangedIssues)
       .containsOnly(assignee2Issues.stream().skip(7).collect(unorderedIndex(t -> project2, t -> t)));
   }

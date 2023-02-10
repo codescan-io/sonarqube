@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -29,27 +29,6 @@ public interface DescendantProfilesSupplier {
 
   Result get(Collection<QProfileDto> profiles, Collection<String> ruleUuids);
 
-  final class Result {
-    private final Collection<QProfileDto> profiles;
-    private final Collection<ActiveRuleDto> activeRules;
-    private final Collection<ActiveRuleParamDto> activeRuleParams;
-
-    public Result(Collection<QProfileDto> profiles, Collection<ActiveRuleDto> activeRules, Collection<ActiveRuleParamDto> activeRuleParams) {
-      this.profiles = profiles;
-      this.activeRules = activeRules;
-      this.activeRuleParams = activeRuleParams;
-    }
-
-    public Collection<QProfileDto> getProfiles() {
-      return profiles;
-    }
-
-    public Collection<ActiveRuleDto> getActiveRules() {
-      return activeRules;
-    }
-
-    public Collection<ActiveRuleParamDto> getActiveRuleParams() {
-      return activeRuleParams;
-    }
+  record Result(Collection<QProfileDto> profiles, Collection<ActiveRuleDto> activeRules, Collection<ActiveRuleParamDto> activeRuleParams) {
   }
 }

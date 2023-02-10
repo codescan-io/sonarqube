@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -36,6 +36,6 @@ public class EnvironmentInformationTest {
   public void test_toString() {
     EnvironmentInformation env = new EnvironmentInformation("Maven Plugin", "2.0");
 
-    assertThat(env.toString()).isEqualTo("Maven Plugin/2.0");
+    assertThat(env).hasToString("Maven Plugin/2.0");
   }
 }

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -82,6 +82,6 @@ public class EmailRecipientTest {
     String login = randomAlphabetic(11);
     String email = randomAlphabetic(12);
 
-    assertThat(new EmailRecipient(login, email).toString()).isEqualTo("EmailRecipient{'" + login + "':'" + email + "'}");
+    assertThat(new EmailRecipient(login, email)).hasToString("EmailRecipient{'" + login + "':'" + email + "'}");
   }
 }

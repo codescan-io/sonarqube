@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -58,8 +58,7 @@ public class RootFilter implements Filter {
 
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-    if (request instanceof HttpServletRequest) {
-      HttpServletRequest httpRequest = (HttpServletRequest) request;
+    if (request instanceof HttpServletRequest httpRequest) {
       HttpServletResponse httpResponse = (HttpServletResponse) response;
       try {
         chain.doFilter(new ServletRequestWrapper(httpRequest), httpResponse);

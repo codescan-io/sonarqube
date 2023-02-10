@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -33,7 +33,7 @@ export function GlobalNavBranding({ appState: { settings } }: GlobalNavBrandingP
   const customLogoUrl = settings[GlobalSettingKeys.LogoUrl];
   const customLogoWidth = settings[GlobalSettingKeys.LogoWidth];
 
-  const title = translate('layout.sonar.slogan');
+  const title = translate('layout.nav.home_logo_alt');
   const url = customLogoUrl || `${getBaseUrl()}/images/logo.svg?v=6.6`;
   const width = customLogoUrl ? customLogoWidth || 100 : 83;
 

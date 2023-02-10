@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -384,11 +384,18 @@ export class ComponentContainer extends React.PureComponent<Props, State> {
   };
 
   handleBranchesChange = () => {
-    if (this.mounted && this.state.component) {
-      this.fetchBranches(this.state.component).then(
+    const { router, location } = this.props;
+    const { component } = this.state;
+
+    if (this.mounted && component) {
+      this.fetchBranches(component).then(
         ({ branchLike, branchLikes }) => {
           if (this.mounted) {
             this.setState({ branchLike, branchLikes });
+
+            if (branchLike === undefined) {
+              router.replace({ query: { ...location.query, branch: undefined } });
+            }
           }
         },
         () => {}

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -28,11 +28,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import javax.annotation.Nullable;
 import org.junit.Rule;
 import org.junit.Test;
@@ -43,7 +43,6 @@ import org.sonar.core.util.stream.MoreCollectors;
 import org.sonar.db.dialect.Oracle;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
@@ -70,7 +69,7 @@ public class DatabaseUtilsTest {
 
   @Test
   public void find_index_with_lower_case() throws SQLException {
-    String tableName = "schema_migrations";
+    String tableName = "SCHEMA_MIGRATIONS";
     String indexName = "lower_case_name";
     try (Connection connection = dbTester.openConnection()) {
       assertThat(DatabaseUtils.findExistingIndex(connection, tableName, indexName)).contains(indexName);
@@ -80,7 +79,7 @@ public class DatabaseUtilsTest {
 
   @Test
   public void find_index_with_upper_case() throws SQLException {
-    String tableName = "schema_migrations";
+    String tableName = "SCHEMA_MIGRATIONS";
     String indexName = "UPPER_CASE_NAME";
     try (Connection connection = dbTester.openConnection()) {
       assertThat(DatabaseUtils.findExistingIndex(connection, tableName, indexName)).contains(indexName);
@@ -90,21 +89,34 @@ public class DatabaseUtilsTest {
   }
 
   @Test
+  public void find_index_with_special_name() throws SQLException {
+    String tableName = "SCHEMA_MIGRATIONS";
+    String indexName = "INDEX_NAME";
+    try (Connection connection = dbTester.openConnection()) {
+      assertThat(DatabaseUtils.findExistingIndex(connection, tableName, indexName)).contains("idx_1234_index_name");
+      assertThat(DatabaseUtils.findExistingIndex(connection, tableName.toLowerCase(Locale.US), indexName)).contains("idx_1234_index_name");
+      assertThat(DatabaseUtils.findExistingIndex(connection, tableName.toLowerCase(Locale.US), indexName.toLowerCase(Locale.US))).contains("idx_1234_index_name");
+      assertThat(DatabaseUtils.findExistingIndex(connection, tableName, "index")).isEmpty();
+      assertThat(DatabaseUtils.findExistingIndex(connection, tableName, "index_name_2")).isEmpty();
+      assertThat(DatabaseUtils.findExistingIndex(connection, tableName, "index_name_")).isEmpty();
+    }
+  }
+
+  @Test
   public void find_column_with_lower_case_table_name_and_upper_case_column_name() throws SQLException {
     String tableName = "tablea";
     String columnName = "COLUMNA";
     try (Connection connection = dbTester.openConnection()) {
       assertThat(DatabaseUtils.tableColumnExists(connection, tableName, columnName)).isTrue();
-      assertThat(DatabaseUtils.tableColumnExists(connection, tableName.toLowerCase(Locale.US), columnName)).isTrue();
     }
   }
+
   @Test
   public void find_column_with_upper_case_table_name_and_upper_case_column_name() throws SQLException {
     String tableName = "TABLEA";
     String columnName = "COLUMNA";
     try (Connection connection = dbTester.openConnection()) {
       assertThat(DatabaseUtils.tableColumnExists(connection, tableName, columnName)).isTrue();
-      assertThat(DatabaseUtils.tableColumnExists(connection, tableName.toLowerCase(Locale.US), columnName)).isTrue();
     }
   }
 
@@ -114,7 +126,6 @@ public class DatabaseUtilsTest {
     String columnName = "columna";
     try (Connection connection = dbTester.openConnection()) {
       assertThat(DatabaseUtils.tableColumnExists(connection, tableName, columnName)).isTrue();
-      assertThat(DatabaseUtils.tableColumnExists(connection, tableName.toLowerCase(Locale.US), columnName)).isTrue();
     }
   }
 
@@ -124,8 +135,6 @@ public class DatabaseUtilsTest {
     String columnName = "columna";
     try (Connection connection = dbTester.openConnection()) {
       assertThat(DatabaseUtils.tableColumnExists(connection, tableName, columnName)).isTrue();
-      assertThat(DatabaseUtils.tableColumnExists(connection, tableName, columnName.toLowerCase(Locale.US))).isTrue();
-      assertThat(DatabaseUtils.tableColumnExists(connection, tableName.toLowerCase(Locale.US), columnName.toLowerCase(Locale.US))).isTrue();
     }
   }
 
@@ -199,34 +208,34 @@ public class DatabaseUtilsTest {
 
   @Test
   public void toUniqueAndSortedList_throws_NPE_if_arg_contains_a_null() {
-    assertThatThrownBy(() -> toUniqueAndSortedList(asList("A", null, "C")))
+    assertThatThrownBy(() -> toUniqueAndSortedList(List.of("A", null, "C")))
       .isInstanceOf(NullPointerException.class);
   }
 
   @Test
   public void toUniqueAndSortedList_throws_NPE_if_arg_is_a_set_containing_a_null() {
-    assertThatThrownBy(() ->  toUniqueAndSortedList(new HashSet<>(asList("A", null, "C"))))
+    assertThatThrownBy(() -> toUniqueAndSortedList(Set.of("A", null, "C")))
       .isInstanceOf(NullPointerException.class);
   }
 
   @Test
   public void toUniqueAndSortedList_enforces_natural_order() {
-    assertThat(toUniqueAndSortedList(asList("A", "B", "C"))).containsExactly("A", "B", "C");
-    assertThat(toUniqueAndSortedList(asList("B", "A", "C"))).containsExactly("A", "B", "C");
-    assertThat(toUniqueAndSortedList(asList("B", "C", "A"))).containsExactly("A", "B", "C");
+    assertThat(toUniqueAndSortedList(List.of("A", "B", "C"))).containsExactly("A", "B", "C");
+    assertThat(toUniqueAndSortedList(List.of("B", "A", "C"))).containsExactly("A", "B", "C");
+    assertThat(toUniqueAndSortedList(List.of("B", "C", "A"))).containsExactly("A", "B", "C");
   }
 
   @Test
   public void toUniqueAndSortedList_removes_duplicates() {
-    assertThat(toUniqueAndSortedList(asList("A", "A", "A"))).containsExactly("A");
-    assertThat(toUniqueAndSortedList(asList("A", "C", "A"))).containsExactly("A", "C");
-    assertThat(toUniqueAndSortedList(asList("C", "C", "B", "B", "A", "N", "C", "A"))).containsExactly("A", "B", "C", "N");
+    assertThat(toUniqueAndSortedList(List.of("A", "A", "A"))).containsExactly("A");
+    assertThat(toUniqueAndSortedList(List.of("A", "C", "A"))).containsExactly("A", "C");
+    assertThat(toUniqueAndSortedList(List.of("C", "C", "B", "B", "A", "N", "C", "A"))).containsExactly("A", "B", "C", "N");
   }
 
   @Test
   public void toUniqueAndSortedList_removes_duplicates_and_apply_natural_order_of_any_Comparable() {
     assertThat(
-      toUniqueAndSortedList(asList(myComparable(2), myComparable(5), myComparable(2), myComparable(4), myComparable(-1), myComparable(10))))
+      toUniqueAndSortedList(List.of(myComparable(2), myComparable(5), myComparable(2), myComparable(4), myComparable(-1), myComparable(10))))
       .containsExactly(
         myComparable(-1), myComparable(2), myComparable(4), myComparable(5), myComparable(10));
   }
@@ -410,7 +419,7 @@ public class DatabaseUtilsTest {
 
     List<String> outputs = DatabaseUtils.executeLargeInputs(inputs, input -> {
       // Check that each partition is only done on 1000 elements max
-      assertThat(input.size()).isLessThanOrEqualTo(1000);
+      assertThat(input).hasSizeLessThanOrEqualTo(1000);
       return input.stream().map(String::valueOf).collect(MoreCollectors.toList());
     });
 
@@ -434,7 +443,7 @@ public class DatabaseUtilsTest {
   public void executeLargeInputs_uses_specified_partition_size_manipulations() {
     List<List<Integer>> partitions = new ArrayList<>();
     List<Integer> outputs = DatabaseUtils.executeLargeInputs(
-      asList(1, 2, 3),
+      List.of(1, 2, 3),
       partition -> {
         partitions.add(partition);
         return partition;
@@ -442,7 +451,7 @@ public class DatabaseUtilsTest {
       i -> i / 500);
 
     assertThat(outputs).containsExactly(1, 2, 3);
-    assertThat(partitions).containsExactly(asList(1, 2), asList(3));
+    assertThat(partitions).containsExactly(List.of(1, 2), List.of(3));
   }
 
   @Test
@@ -454,7 +463,7 @@ public class DatabaseUtilsTest {
 
     List<Integer> processed = newArrayList();
     DatabaseUtils.executeLargeUpdates(inputs, input -> {
-      assertThat(input.size()).isLessThanOrEqualTo(1000);
+      assertThat(input).hasSizeLessThanOrEqualTo(1000);
       processed.addAll(input);
     });
     assertThat(processed).containsExactlyElementsOf(inputs);
@@ -528,7 +537,8 @@ public class DatabaseUtilsTest {
 
   @Test
   public void checkThatNotTooManyConditions_throws_IAE_if_strictly_more_than_1000_conditions() {
-    assertThatThrownBy(() -> DatabaseUtils.checkThatNotTooManyConditions(Collections.nCopies(1_001, "foo"), "the message"))
+    List<String> list = Collections.nCopies(1_001, "foo");
+    assertThatThrownBy(() -> DatabaseUtils.checkThatNotTooManyConditions(list, "the message"))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("the message");
   }

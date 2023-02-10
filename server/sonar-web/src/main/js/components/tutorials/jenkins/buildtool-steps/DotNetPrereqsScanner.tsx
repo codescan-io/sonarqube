@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -33,7 +33,7 @@ export default function DotNetPrereqsScanner() {
       <Alert className="spacer-top" variant="info">
         {translate('onboarding.tutorial.with.jenkins.dotnet.scanner.prereqs.info')}
       </Alert>
-      <ul className="list-styled">
+      <ol className="list-styled list-roman">
         <li>
           <SentenceWithHighlights
             highlightKeys={['path']}
@@ -60,7 +60,7 @@ export default function DotNetPrereqsScanner() {
             translationKey="onboarding.tutorial.with.jenkins.dotnet.scanner.prereqs.step5"
           />
         </li>
-      </ul>
+      </ol>
     </li>
   );
 }

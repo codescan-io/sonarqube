@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -45,9 +45,9 @@ public class AuditTesting {
 
   public static AuditDto newAuditDto(long createdAt, String operation) {
     AuditDto auditDto = new AuditDto();
-    auditDto.setUuid(randomAlphanumeric(20));
-    auditDto.setUserUuid(randomAlphanumeric(40));
-    auditDto.setUserLogin(randomAlphanumeric(40));
+    auditDto.setUuid(randomAlphanumeric(40));
+    auditDto.setUserUuid(randomAlphanumeric(255));
+    auditDto.setUserLogin(randomAlphanumeric(255));
     auditDto.setNewValue("{ \"someKey\": \"someValue\",  \"anotherKey\": \"\\\"anotherValue\\\" with quotes \\ \n\t\b\f\r\"}");
     auditDto.setOperation(operation);
     auditDto.setCategory("category");

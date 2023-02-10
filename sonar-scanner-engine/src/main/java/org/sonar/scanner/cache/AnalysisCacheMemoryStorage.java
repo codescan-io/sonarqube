@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -21,12 +21,12 @@ package org.sonar.scanner.cache;
 
 import java.io.InputStream;
 import javax.annotation.Nullable;
-import org.sonar.scanner.protocol.internal.ScannerInternal.AnalysisCacheMsg;
+import org.sonar.scanner.protocol.internal.SensorCacheData;
 
 public class AnalysisCacheMemoryStorage implements AnalysisCacheStorage {
   private final AnalysisCacheLoader loader;
   @Nullable
-  private AnalysisCacheMsg cache;
+  private SensorCacheData cache;
 
   public AnalysisCacheMemoryStorage(AnalysisCacheLoader loader) {
     this.loader = loader;
@@ -37,7 +37,7 @@ public class AnalysisCacheMemoryStorage implements AnalysisCacheStorage {
     if (!contains(key)) {
       throw new IllegalArgumentException("Key not found: " + key);
     }
-    return cache.getMapOrThrow(key).newInput();
+    return cache.getEntries().get(key).newInput();
   }
 
   @Override
@@ -45,7 +45,7 @@ public class AnalysisCacheMemoryStorage implements AnalysisCacheStorage {
     if (cache == null) {
       return false;
     }
-    return cache.containsMap(key);
+    return cache.getEntries().containsKey(key);
   }
 
   public void load() {

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -277,6 +277,18 @@ public class ProjectDaoTest {
 
     assertThat(projectUuids)
       .containsExactlyInAnyOrderElementsOf(extractComponentUuids(projects));
+  }
+
+  @Test
+  public void selectAllProjectUuids_shouldOnlyReturnProjectWithTRKQualifier() {
+    ComponentDto application = db.components().insertPrivateApplication();
+    ComponentDto project = db.components().insertPrivateProject();
+    ComponentDto project2 = db.components().insertPrivateProject();
+    db.components().addApplicationProject(application, project, project2);
+
+    List<String> projectUuids = projectDao.selectAllProjectUuids(db.getSession());
+
+    assertThat(projectUuids).containsExactlyInAnyOrder(project.uuid(), project2.uuid());
   }
 
   private void insertDefaultQualityProfile(String language) {

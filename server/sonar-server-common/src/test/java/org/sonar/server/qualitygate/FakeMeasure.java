@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -44,6 +44,11 @@ public class FakeMeasure  implements QualityGateEvaluator.Measure {
   public FakeMeasure(@Nullable Integer value) {
     this.value = value == null ? null : value.doubleValue();
     this.valueType = Metric.ValueType.INT;
+  }
+
+  public FakeMeasure(@Nullable Long value) {
+    this.value = value == null ? null : value.doubleValue();
+    this.valueType = Metric.ValueType.MILLISEC;
   }
 
   @Override

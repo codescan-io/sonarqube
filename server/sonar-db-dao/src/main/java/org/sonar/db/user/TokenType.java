@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -23,6 +23,7 @@ public enum TokenType {
 
   USER_TOKEN("u"),
   GLOBAL_ANALYSIS_TOKEN("a"),
+  PROJECT_BADGE_TOKEN("b"),
   PROJECT_ANALYSIS_TOKEN("p");
 
   private final String identifier;

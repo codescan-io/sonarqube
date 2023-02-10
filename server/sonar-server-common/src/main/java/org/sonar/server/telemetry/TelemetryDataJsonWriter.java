@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -23,10 +23,13 @@ import com.google.common.annotations.VisibleForTesting;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Locale;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.jetbrains.annotations.NotNull;
+import org.sonar.api.utils.System2;
 import org.sonar.api.utils.text.JsonWriter;
+import org.sonar.core.telemetry.TelemetryExtension;
 
 import static org.sonar.api.utils.DateUtils.DATETIME_FORMAT;
 
@@ -34,18 +37,30 @@ public class TelemetryDataJsonWriter {
 
   @VisibleForTesting
   static final String SCIM_PROPERTY = "scim";
+
   private static final String LANGUAGE_PROPERTY = "language";
+
+  private final List<TelemetryExtension> extensions;
+
+  private final System2 system2;
+
+  public TelemetryDataJsonWriter(List<TelemetryExtension> extensions, System2 system2) {
+    this.extensions = extensions;
+    this.system2 = system2;
+  }
 
   public void writeTelemetryData(JsonWriter json, TelemetryData statistics) {
     json.beginObject();
     json.prop("id", statistics.getServerId());
     json.prop("version", statistics.getVersion());
+    json.prop("messageSequenceNumber", statistics.getMessageSequenceNumber());
+    json.prop("localTimestamp", toUtc(system2.now()));
     statistics.getEdition().ifPresent(e -> json.prop("edition", e.name().toLowerCase(Locale.ENGLISH)));
-    statistics.getLicenseType().ifPresent(e -> json.prop("licenseType", e));
+    json.prop("defaultQualityGate", statistics.getDefaultQualityGate());
     json.name("database");
     json.beginObject();
-    json.prop("name", statistics.getDatabase().getName());
-    json.prop("version", statistics.getDatabase().getVersion());
+    json.prop("name", statistics.getDatabase().name());
+    json.prop("version", statistics.getDatabase().version());
     json.endObject();
     json.name("plugins");
     json.beginArray();
@@ -64,6 +79,9 @@ public class TelemetryDataJsonWriter {
       json.endArray();
     }
 
+    statistics.hasUnanalyzedC().ifPresent(hasUnanalyzedC -> json.prop("hasUnanalyzedC", hasUnanalyzedC));
+    statistics.hasUnanalyzedCpp().ifPresent(hasUnanalyzedCpp -> json.prop("hasUnanalyzedCpp", hasUnanalyzedCpp));
+
     if (statistics.getInstallationDate() != null) {
       json.prop("installationDate", toUtc(statistics.getInstallationDate()));
     }
@@ -77,6 +95,9 @@ public class TelemetryDataJsonWriter {
     writeUserData(json, statistics);
     writeProjectData(json, statistics);
     writeProjectStatsData(json, statistics);
+    writeQualityGates(json, statistics);
+
+    extensions.forEach(e -> e.write(json));
 
     json.endObject();
   }
@@ -110,12 +131,12 @@ public class TelemetryDataJsonWriter {
       json.beginArray();
       statistics.getProjects().forEach(project -> {
         json.beginObject();
-        json.prop("projectUuid", project.getProjectUuid());
-        if (project.getLastAnalysis() != null) {
-          json.prop("lastAnalysis", toUtc(project.getLastAnalysis()));
+        json.prop("projectUuid", project.projectUuid());
+        if (project.lastAnalysis() != null) {
+          json.prop("lastAnalysis", toUtc(project.lastAnalysis()));
         }
-        json.prop(LANGUAGE_PROPERTY, project.getLanguage());
-        json.prop("loc", project.getLoc());
+        json.prop(LANGUAGE_PROPERTY, project.language());
+        json.prop("loc", project.loc());
         json.endObject();
       });
       json.endArray();
@@ -131,11 +152,29 @@ public class TelemetryDataJsonWriter {
         json.prop("projectUuid", project.getProjectUuid());
         json.prop("branchCount", project.getBranchCount());
         json.prop("pullRequestCount", project.getPullRequestCount());
+        json.prop("qualityGate", project.getQualityGate());
         json.prop("scm", project.getScm());
         json.prop("ci", project.getCi());
         json.prop("devopsPlatform", project.getDevopsPlatform());
-        project.hasUnanalyzedC().ifPresent(hasUnanalyzedC -> json.prop("hasUnanalyzedC", hasUnanalyzedC));
-        project.hasUnanalyzedCpp().ifPresent(hasUnanalyzedCpp -> json.prop("hasUnanalyzedCpp", hasUnanalyzedCpp));
+        project.getBugs().ifPresent(bugs -> json.prop("bugs", bugs));
+        project.getVulnerabilities().ifPresent(vulnerabilities -> json.prop("vulnerabilities", vulnerabilities));
+        project.getSecurityHotspots().ifPresent(securityHotspots -> json.prop("securityHotspots", securityHotspots));
+        project.getTechnicalDebt().ifPresent(technicalDebt -> json.prop("technicalDebt", technicalDebt));
+        project.getDevelopmentCost().ifPresent(developmentCost -> json.prop("developmentCost", developmentCost));
+        json.endObject();
+      });
+      json.endArray();
+    }
+  }
+
+  private static void writeQualityGates(JsonWriter json, TelemetryData statistics) {
+    if (statistics.getQualityGates() != null) {
+      json.name("quality-gates");
+      json.beginArray();
+      statistics.getQualityGates().forEach(qualityGate -> {
+        json.beginObject();
+        json.prop("uuid", qualityGate.uuid());
+        json.prop("caycStatus", qualityGate.caycStatus());
         json.endObject();
       });
       json.endArray();

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -61,23 +61,10 @@ public class CeTask {
     }
   }
 
-  @Immutable
-  public static final class User {
-    private final String uuid;
-    private final String login;
-
+  public record User(String uuid, String login) {
     public User(String uuid, @Nullable String login) {
       this.uuid = requireNonNull(uuid);
       this.login = emptyToNull(login);
-    }
-
-    public String getUuid() {
-      return uuid;
-    }
-
-    @CheckForNull
-    public String getLogin() {
-      return login;
     }
 
     @Override

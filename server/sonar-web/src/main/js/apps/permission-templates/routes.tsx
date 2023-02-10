@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,8 +19,8 @@
  */
 import React from 'react';
 import { Route } from 'react-router-dom';
-import App from './components/App';
+import PermissionTemplatesApp from './components/PermissionTemplatesApp';
 
-const routes = () => <Route path="permission_templates" element={<App />} />;
+const routes = () => <Route path="permission_templates" element={<PermissionTemplatesApp />} />;
 
 export default routes;

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -59,7 +59,7 @@ import org.sonar.batch.bootstrapper.EnvironmentInformation;
 import org.sonar.batch.bootstrapper.LogOutput;
 import org.sonar.scanner.bootstrap.GlobalAnalysisMode;
 import org.sonar.scanner.cache.AnalysisCacheLoader;
-import org.sonar.scanner.protocol.internal.ScannerInternal;
+import org.sonar.scanner.protocol.internal.SensorCacheData;
 import org.sonar.scanner.report.CeTaskReportDataHolder;
 import org.sonar.scanner.repository.FileData;
 import org.sonar.scanner.repository.MetricsRepository;
@@ -525,7 +525,7 @@ public class ScannerMediumTester extends ExternalResource {
   @Priority(1)
   private static class FakeAnalysisCacheLoader implements AnalysisCacheLoader {
     @Override
-    public Optional<ScannerInternal.AnalysisCacheMsg> load() {
+    public Optional<SensorCacheData> load() {
       return Optional.empty();
     }
   }

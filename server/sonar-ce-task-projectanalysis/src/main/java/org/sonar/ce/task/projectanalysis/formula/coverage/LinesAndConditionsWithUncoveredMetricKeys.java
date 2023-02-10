@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,37 +19,13 @@
  */
 package org.sonar.ce.task.projectanalysis.formula.coverage;
 
-import javax.annotation.concurrent.Immutable;
-
 import static java.util.Objects.requireNonNull;
 
-@Immutable
-public final class LinesAndConditionsWithUncoveredMetricKeys {
-  private final String lines;
-  private final String conditions;
-  private final String uncoveredLines;
-  private final String uncoveredConditions;
-
+public record LinesAndConditionsWithUncoveredMetricKeys(String lines, String conditions, String uncoveredLines, String uncoveredConditions) {
   public LinesAndConditionsWithUncoveredMetricKeys(String lines, String conditions, String uncoveredLines, String uncoveredConditions) {
     this.lines = requireNonNull(lines);
     this.conditions = requireNonNull(conditions);
     this.uncoveredLines = requireNonNull(uncoveredLines);
     this.uncoveredConditions = requireNonNull(uncoveredConditions);
-  }
-
-  public String getLines() {
-    return lines;
-  }
-
-  public String getConditions() {
-    return conditions;
-  }
-
-  public String getUncoveredLines() {
-    return uncoveredLines;
-  }
-
-  public String getUncoveredConditions() {
-    return uncoveredConditions;
   }
 }

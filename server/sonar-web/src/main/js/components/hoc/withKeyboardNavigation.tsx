@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -37,7 +37,7 @@ export interface WithKeyboardNavigationProps {
 }
 
 export default function withKeyboardNavigation<P>(
-  WrappedComponent: React.ComponentClass<P & Partial<WithKeyboardNavigationProps>>
+  WrappedComponent: React.ComponentType<P & Partial<WithKeyboardNavigationProps>>
 ) {
   return class Wrapper extends React.Component<P & WithKeyboardNavigationProps> {
     static displayName = getWrappedDisplayName(WrappedComponent, 'withKeyboardNavigation');

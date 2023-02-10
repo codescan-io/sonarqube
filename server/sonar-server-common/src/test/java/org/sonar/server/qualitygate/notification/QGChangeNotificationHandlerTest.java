@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -53,7 +53,7 @@ public class QGChangeNotificationHandlerTest {
 
   @Test
   public void getMetadata_returns_same_instance_as_static_method() {
-    assertThat(underTest.getMetadata().get()).isSameAs(QGChangeNotificationHandler.newMetadata());
+    assertThat(underTest.getMetadata()).containsSame(QGChangeNotificationHandler.newMetadata());
   }
 
   @Test
@@ -157,7 +157,7 @@ public class QGChangeNotificationHandlerTest {
       .map(login -> new NotificationManager.EmailRecipient(login, emailOf(login)))
       .collect(toSet());
     Set<EmailNotificationChannel.EmailDeliveryRequest> expectedRequests = emailRecipients.stream()
-      .flatMap(emailRecipient -> withProjectKey.stream().map(notif -> new EmailNotificationChannel.EmailDeliveryRequest(emailRecipient.getEmail(), notif)))
+      .flatMap(emailRecipient -> withProjectKey.stream().map(notif -> new EmailNotificationChannel.EmailDeliveryRequest(emailRecipient.email(), notif)))
       .collect(toSet());
     when(emailNotificationChannel.isActivated()).thenReturn(true);
     when(notificationManager.findSubscribedEmailRecipients(QG_CHANGE_DISPATCHER_KEY, projectKey, ALL_MUST_HAVE_ROLE_USER))
@@ -198,9 +198,9 @@ public class QGChangeNotificationHandlerTest {
       .thenReturn(emailRecipients2);
     Set<EmailNotificationChannel.EmailDeliveryRequest> expectedRequests = Stream.concat(
       emailRecipients1.stream()
-        .flatMap(emailRecipient -> notifications1.stream().map(notif -> new EmailNotificationChannel.EmailDeliveryRequest(emailRecipient.getEmail(), notif))),
+        .flatMap(emailRecipient -> notifications1.stream().map(notif -> new EmailNotificationChannel.EmailDeliveryRequest(emailRecipient.email(), notif))),
       emailRecipients2.stream()
-        .flatMap(emailRecipient -> notifications2.stream().map(notif -> new EmailNotificationChannel.EmailDeliveryRequest(emailRecipient.getEmail(), notif))))
+        .flatMap(emailRecipient -> notifications2.stream().map(notif -> new EmailNotificationChannel.EmailDeliveryRequest(emailRecipient.email(), notif))))
       .collect(toSet());
 
     int deliver = underTest.deliver(Stream.concat(notifications1.stream(), notifications2.stream()).collect(toSet()));

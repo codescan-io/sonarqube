@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -62,6 +62,6 @@ function mountRenderAction(actionName: string, props: Partial<SimilarRulesFilter
     <SimilarRulesFilter onFilterChange={jest.fn()} rule={mockRule()} {...props} />
   );
   return mount(wrapper.find('Dropdown').prop<React.ReactElement>('overlay'))
-    .find(`a[data-test="coding-rules__similar-${actionName}"]`)
+    .find(`button[data-test="coding-rules__similar-${actionName}"]`)
     .first();
 }

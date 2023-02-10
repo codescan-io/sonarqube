@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -28,6 +28,10 @@ public class ProjectQgateAssociationDao implements Dao {
 
   public List<ProjectQgateAssociationDto> selectProjects(DbSession dbSession, ProjectQgateAssociationQuery query) {
     return mapper(dbSession).selectProjects(query);
+  }
+
+  public List<ProjectQgateAssociationDto> selectAll(DbSession dbSession) {
+    return mapper(dbSession).selectAll();
   }
 
   /**

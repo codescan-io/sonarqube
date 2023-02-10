@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -49,8 +49,8 @@ public class RekeyedProjectTest {
     String previousKey = randomAlphanumeric(6);
     RekeyedProject underTest = new RekeyedProject(project, previousKey);
 
-    assertThat(underTest.getProject()).isSameAs(project);
-    assertThat(underTest.getPreviousKey()).isEqualTo(previousKey);
+    assertThat(underTest.project()).isSameAs(project);
+    assertThat(underTest.previousKey()).isEqualTo(previousKey);
   }
 
   @Test
@@ -89,7 +89,7 @@ public class RekeyedProjectTest {
     String previousKey = "E";
     RekeyedProject underTest = new RekeyedProject(project, previousKey);
 
-    assertThat(underTest.toString()).isEqualTo("RekeyedProject{project=Project{uuid='A', key='B', name='C', description='D'}, previousKey='E'}");
+    assertThat(underTest).hasToString("RekeyedProject{project=Project{uuid='A', key='B', name='C', description='D'}, previousKey='E'}");
   }
 
   private static Project newRandomProject() {

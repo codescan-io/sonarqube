@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -51,7 +51,7 @@ public class LineRangeTest {
 
   @Test
   public void testToString() {
-    assertThat(new LineRange(12, 15).toString()).isEqualTo("[12-15]");
+    assertThat(new LineRange(12, 15)).hasToString("[12-15]");
   }
 
   @Test

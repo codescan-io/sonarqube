@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -37,8 +37,8 @@ class EvaluationResultAssert extends AbstractAssert<EvaluationResultAssert, Eval
     isNotNull();
 
     // check condition
-    if (actual.getLevel() != expected) {
-      failWithMessage("Expected Level to be <%s> but was <%s>", expected, actual.getLevel());
+    if (actual.level() != expected) {
+      failWithMessage("Expected Level to be <%s> but was <%s>", expected, actual.level());
     }
 
     return this;
@@ -47,8 +47,8 @@ class EvaluationResultAssert extends AbstractAssert<EvaluationResultAssert, Eval
   public EvaluationResultAssert hasValue(Comparable<?> expected) {
     isNotNull();
 
-    if (!Objects.equals(actual.getValue(), expected)) {
-      failWithMessage("Expected Value to be <%s> but was <%s>", expected, actual.getValue());
+    if (!Objects.equals(actual.value(), expected)) {
+      failWithMessage("Expected Value to be <%s> but was <%s>", expected, actual.value());
     }
 
     return this;

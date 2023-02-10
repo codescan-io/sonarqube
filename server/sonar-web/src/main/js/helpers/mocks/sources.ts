@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,9 +17,15 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 import { ComponentQualifier } from '../../types/component';
-import { SnippetsByComponent, SourceLine, SourceViewerFile } from '../../types/types';
+import {
+  DuplicatedFile,
+  Duplication,
+  DuplicationBlock,
+  SnippetsByComponent,
+  SourceLine,
+  SourceViewerFile,
+} from '../../types/types';
 
 export function mockSourceViewerFile(
   name = 'foo/bar.ts',
@@ -74,5 +80,30 @@ export function mockSnippetsByComponent(
   return {
     component: mockSourceViewerFile(file, project),
     sources,
+  };
+}
+
+export function mockDuplicatedFile(overrides: Partial<DuplicatedFile> = {}): DuplicatedFile {
+  return {
+    key: 'file1.java',
+    name: overrides.key || 'file1.java',
+    project: 'foo',
+    projectName: 'Foo',
+    ...overrides,
+  };
+}
+
+export function mockDuplication(overrides: Partial<Duplication> = {}): Duplication {
+  return {
+    blocks: [mockDuplicationBlock()],
+    ...overrides,
+  };
+}
+
+export function mockDuplicationBlock(overrides: Partial<DuplicationBlock> = {}): DuplicationBlock {
+  return {
+    from: 12,
+    size: 5,
+    ...overrides,
   };
 }

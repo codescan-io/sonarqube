@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -185,19 +185,22 @@ export default class BranchOverview extends React.PureComponent<Props, State> {
     ).then(
       (results) => {
         if (this.mounted) {
-          const qgStatuses = results.map(({ measures = [], project, projectBranchLike }) => {
-            const { key, name, status } = project;
-            const conditions = extractStatusConditionsFromApplicationStatusChildProject(project);
-            const failedConditions = this.getFailedConditions(conditions, measures);
+          const qgStatuses = results
+            .map(({ measures = [], project, projectBranchLike }) => {
+              const { key, name, status, caycStatus } = project;
+              const conditions = extractStatusConditionsFromApplicationStatusChildProject(project);
+              const failedConditions = this.getFailedConditions(conditions, measures);
 
-            return {
-              failedConditions,
-              key,
-              name,
-              status,
-              branchLike: projectBranchLike,
-            };
-          });
+              return {
+                failedConditions,
+                caycStatus,
+                key,
+                name,
+                status,
+                branchLike: projectBranchLike,
+              };
+            })
+            .sort((a, b) => Math.sign(b.failedConditions.length - a.failedConditions.length));
 
           this.setState({
             loadingStatus: false,
@@ -238,12 +241,13 @@ export default class BranchOverview extends React.PureComponent<Props, State> {
     this.loadMeasuresAndMeta(key, branch, metricKeys).then(
       ({ measures, metrics, period }) => {
         if (this.mounted && measures) {
-          const { ignoredConditions, status } = projectStatus;
+          const { ignoredConditions, caycStatus, status } = projectStatus;
           const conditions = extractStatusConditionsFromProjectStatus(projectStatus);
           const failedConditions = this.getFailedConditions(conditions, measures);
 
           const qgStatus = {
             ignoredConditions,
+            caycStatus,
             failedConditions,
             key,
             name,

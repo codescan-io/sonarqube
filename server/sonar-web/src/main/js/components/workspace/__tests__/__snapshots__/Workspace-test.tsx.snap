@@ -1,14 +1,13 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`should correctly store data locally 1`] = `"[{\\"branchLike\\":{\\"analysisDate\\":\\"2018-01-01\\",\\"excludedFromPurge\\":true,\\"isMain\\":false,\\"name\\":\\"branch-6.7\\"},\\"key\\":\\"foo\\",\\"__type__\\":\\"component\\"},{\\"key\\":\\"foo\\",\\"__type__\\":\\"rule\\"}]"`;
+exports[`should correctly store data locally 1`] = `"[{"branchLike":{"analysisDate":"2018-01-01","excludedFromPurge":true,"isMain":false,"name":"branch-6.7"},"key":"foo","__type__":"component"},{"key":"foo","__type__":"rule"}]"`;
 
 exports[`should render correctly: default 1`] = `
 <ContextProvider
   value={
-    Object {
-      "externalRulesRepoNames": Object {},
+    {
+      "externalRulesRepoNames": {},
       "openComponent": [Function],
-      "openRule": [Function],
     }
   }
 >
@@ -22,10 +21,9 @@ exports[`should render correctly: default 1`] = `
 exports[`should render correctly: open component 1`] = `
 <ContextProvider
   value={
-    Object {
-      "externalRulesRepoNames": Object {},
+    {
+      "externalRulesRepoNames": {},
       "openComponent": [Function],
-      "openRule": [Function],
     }
   }
 >
@@ -35,9 +33,9 @@ exports[`should render correctly: open component 1`] = `
   <WorkspacePortal>
     <WorkspaceNav
       components={
-        Array [
-          Object {
-            "branchLike": Object {
+        [
+          {
+            "branchLike": {
               "analysisDate": "2018-01-01",
               "excludedFromPurge": true,
               "isMain": false,
@@ -49,19 +47,16 @@ exports[`should render correctly: open component 1`] = `
       }
       onComponentClose={[Function]}
       onComponentOpen={[Function]}
-      onRuleClose={[Function]}
-      onRuleOpen={[Function]}
       open={
-        Object {
+        {
           "component": "foo",
         }
       }
-      rules={Array []}
     />
     <withBranchStatusActions(WorkspaceComponentViewer)
       component={
-        Object {
-          "branchLike": Object {
+        {
+          "branchLike": {
             "analysisDate": "2018-01-01",
             "excludedFromPurge": true,
             "isMain": false,
@@ -77,57 +72,6 @@ exports[`should render correctly: open component 1`] = `
       onMaximize={[Function]}
       onMinimize={[Function]}
       onResize={[Function]}
-    />
-  </WorkspacePortal>
-</ContextProvider>
-`;
-
-exports[`should render correctly: open rule 1`] = `
-<ContextProvider
-  value={
-    Object {
-      "externalRulesRepoNames": Object {},
-      "openComponent": [Function],
-      "openRule": [Function],
-    }
-  }
->
-  <div
-    className="child"
-  />
-  <WorkspacePortal>
-    <WorkspaceNav
-      components={Array []}
-      onComponentClose={[Function]}
-      onComponentOpen={[Function]}
-      onRuleClose={[Function]}
-      onRuleOpen={[Function]}
-      open={
-        Object {
-          "rule": "foo",
-        }
-      }
-      rules={
-        Array [
-          Object {
-            "key": "foo",
-          },
-        ]
-      }
-    />
-    <WorkspaceRuleViewer
-      height={300}
-      onClose={[Function]}
-      onCollapse={[Function]}
-      onLoad={[Function]}
-      onMaximize={[Function]}
-      onMinimize={[Function]}
-      onResize={[Function]}
-      rule={
-        Object {
-          "key": "foo",
-        }
-      }
     />
   </WorkspacePortal>
 </ContextProvider>

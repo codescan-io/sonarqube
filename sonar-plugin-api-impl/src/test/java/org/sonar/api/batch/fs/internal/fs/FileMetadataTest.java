@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -291,8 +291,9 @@ public class FileMetadataTest {
     String hash1a = new FileMetadata(analysisWarnings).readMetadata(new FileInputStream(file1a), StandardCharsets.UTF_8, file1a.getName()).hash();
     String hash2 = new FileMetadata(analysisWarnings).readMetadata(new FileInputStream(file2), StandardCharsets.UTF_8, file2.getName()).hash();
 
-    assertThat(hash1).isEqualTo(hash1a);
-    assertThat(hash1).isNotEqualTo(hash2);
+    assertThat(hash1)
+      .isEqualTo(hash1a)
+      .isNotEqualTo(hash2);
   }
 
   @Test

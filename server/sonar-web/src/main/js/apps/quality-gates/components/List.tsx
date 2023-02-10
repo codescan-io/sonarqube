@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,9 +19,11 @@
  */
 import * as React from 'react';
 import { NavLink } from 'react-router-dom';
+import Tooltip from '../../../components/controls/Tooltip';
+import AlertWarnIcon from '../../../components/icons/AlertWarnIcon';
 import { translate } from '../../../helpers/l10n';
 import { getQualityGateUrl } from '../../../helpers/urls';
-import { QualityGate } from '../../../types/types';
+import { CaycStatus, QualityGate } from '../../../types/types';
 import BuiltInQualityGateBadge from './BuiltInQualityGateBadge';
 
 interface Props {
@@ -39,11 +41,23 @@ export default function List({ qualityGates }: Props) {
           key={qualityGate.id}
           to={getQualityGateUrl(String(qualityGate.id))}
         >
-          <span className="flex-1">{qualityGate.name}</span>
+          <span className="flex-1 text-ellipsis" title={qualityGate.name}>
+            {qualityGate.name}
+          </span>
           {qualityGate.isDefault && (
             <span className="badge little-spacer-left">{translate('default')}</span>
           )}
           {qualityGate.isBuiltIn && <BuiltInQualityGateBadge className="little-spacer-left" />}
+
+          {qualityGate.caycStatus === CaycStatus.NonCompliant && (
+            <>
+              {/* Adding a11y-hidden span for accessibility */}
+              <span className="a11y-hidden">{translate('quality_gates.cayc.tooltip.message')}</span>
+              <Tooltip overlay={translate('quality_gates.cayc.tooltip.message')} accessible={false}>
+                <AlertWarnIcon className="spacer-left" />
+              </Tooltip>
+            </>
+          )}
         </NavLink>
       ))}
     </div>

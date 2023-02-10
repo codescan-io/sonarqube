@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -145,8 +145,8 @@ public class SmallChangesetQualityGateSpecialCaseTest {
 
     QualityGateMeasuresStep.MetricEvaluationResult modified = underTest.apply(original);
 
-    assertThat(modified.evaluationResult.getLevel()).isSameAs(OK);
-    assertThat(modified.evaluationResult.getValue()).isSameAs(value);
+    assertThat(modified.evaluationResult.level()).isSameAs(OK);
+    assertThat(modified.evaluationResult.value()).isSameAs(value);
     assertThat(modified.condition).isSameAs(condition);
   }
 

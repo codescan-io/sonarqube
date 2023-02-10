@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -81,7 +81,7 @@ public class FPOrWontFixNotificationHandlerTest {
 
   @Test
   public void getMetadata_returns_same_instance_as_static_method() {
-    assertThat(underTest.getMetadata().get()).isSameAs(FPOrWontFixNotificationHandler.newMetadata());
+    assertThat(underTest.getMetadata()).containsSame(FPOrWontFixNotificationHandler.newMetadata());
   }
 
   @Test
@@ -337,7 +337,7 @@ public class FPOrWontFixNotificationHandlerTest {
     verify(emailNotificationChannel).deliverAll(captor.capture());
     verifyNoMoreInteractions(emailNotificationChannel);
     ListMultimap<String, EmailDeliveryRequest> requestsByRecipientEmail = captor.getValue().stream()
-      .collect(index(EmailDeliveryRequest::getRecipientEmail));
+      .collect(index(EmailDeliveryRequest::recipientEmail));
     assertThat(requestsByRecipientEmail.get(emailOf(subscriber1.getLogin())))
       .containsOnly(
         Stream.of(
@@ -418,7 +418,7 @@ public class FPOrWontFixNotificationHandlerTest {
     verify(emailNotificationChannel).deliverAll(captor.capture());
     verifyNoMoreInteractions(emailNotificationChannel);
     ListMultimap<String, EmailDeliveryRequest> requestsByRecipientEmail = captor.getValue().stream()
-      .collect(index(EmailDeliveryRequest::getRecipientEmail));
+      .collect(index(EmailDeliveryRequest::recipientEmail));
     assertThat(requestsByRecipientEmail.get(emailOf(subscriber1.getLogin())))
       .containsOnly(
         new EmailDeliveryRequest(emailOf(subscriber1.getLogin()), new FPOrWontFixNotification(

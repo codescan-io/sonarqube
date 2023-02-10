@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,7 +19,7 @@
  */
 import * as React from 'react';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
-import { sanitizeString } from '../../../helpers/sanitize';
+import { sanitizeUserInput } from '../../../helpers/sanitize';
 import { IssueComment } from '../../../types/types';
 import { DeleteButton, EditButton } from '../../controls/buttons';
 import DateTimeFormatter from '../../intl/DateTimeFormatter';
@@ -84,7 +84,7 @@ export default class CommentTile extends React.PureComponent<CommentTileProps, C
             <div
               className="flex-1 markdown"
               // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{ __html: sanitizeString(comment.htmlText) }}
+              dangerouslySetInnerHTML={{ __html: sanitizeUserInput(comment.htmlText) }}
             />
           )}
           {showEditArea && (

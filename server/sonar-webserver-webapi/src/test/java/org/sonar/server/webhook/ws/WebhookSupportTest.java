@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -111,7 +111,7 @@ public class WebhookSupportTest {
   public void itThrowsIllegalExceptionIfGettingNetworkInterfaceAddressesFails() throws SocketException {
     when(networkInterfaceProvider.getNetworkInterfaceAddresses()).thenThrow(new SocketException());
 
-    assertThatThrownBy(() -> underTest.checkUrlPattern("https://good-url.com", "msg"))
+    assertThatThrownBy(() -> underTest.checkUrlPattern("https://sonarsource.com", "msg"))
       .hasMessageContaining("Can not retrieve a network interfaces")
       .isInstanceOf(IllegalStateException.class);
 

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -76,6 +76,13 @@ it('should ask for PAT when it is not set yet and show the import project featur
     )
   ).toBeInTheDocument();
 
+  expect(
+    screen.getByText('onboarding.create_project.pat.expired.info_message')
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText('onboarding.create_project.pat.expired.info_message_contact')
+  ).toBeInTheDocument();
+
   expect(screen.getByRole('button', { name: 'save' })).toBeDisabled();
 
   await user.click(
@@ -113,7 +120,9 @@ it('should show import project feature when PAT is already set', async () => {
   expect(screen.getByText('BitbucketCloud Repo 1')).toBeInTheDocument();
   expect(screen.getByText('BitbucketCloud Repo 2')).toBeInTheDocument();
 
-  projectItem = screen.getByRole('row', { name: /BitbucketCloud Repo 1/ });
+  projectItem = screen.getByRole('row', {
+    name: 'qualifier.TRK BitbucketCloud Repo 1 project opens_in_new_window onboarding.create_project.bitbucketcloud.link onboarding.create_project.repository_imported',
+  });
   expect(
     within(projectItem).getByText('onboarding.create_project.repository_imported')
   ).toBeInTheDocument();
@@ -126,7 +135,9 @@ it('should show import project feature when PAT is already set', async () => {
     '/dashboard?id=key'
   );
 
-  projectItem = screen.getByRole('row', { name: /BitbucketCloud Repo 2/ });
+  projectItem = screen.getByRole('row', {
+    name: 'BitbucketCloud Repo 2 project opens_in_new_window onboarding.create_project.bitbucketcloud.link onboarding.create_project.set_up',
+  });
   const importProjectButton = within(projectItem).getByRole('button', {
     name: 'onboarding.create_project.set_up',
   });
@@ -152,7 +163,7 @@ it('should show search filter when PAT is already set', async () => {
   );
 
   const inputSearch = screen.getByRole('searchbox', {
-    name: 'search_verb',
+    name: 'onboarding.create_project.search_prompt',
   });
   await user.click(inputSearch);
   await user.keyboard('search');

@@ -10,7 +10,6 @@ exports[`should render 1`] = `
     loading={false}
   >
     <a
-      className=""
       data-qualifier="TRK"
       href="#"
       onClick={[Function]}
@@ -23,7 +22,7 @@ exports[`should render 1`] = `
           defaultMessage="search.show_more.hint"
           id="search.show_more.hint"
           values={
-            Object {
+            {
               "key": <span
                 className="shortcut-button shortcut-button-small"
               >

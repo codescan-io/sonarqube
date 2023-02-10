@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -49,9 +49,9 @@ public class VisitorsCrawler implements ComponentCrawler {
   }
 
   public VisitorsCrawler(Collection<ComponentVisitor> visitors, boolean computeDuration) {
-    List<VisitorWrapper> visitorWrappers = visitors.stream().map(ToVisitorWrapper.INSTANCE).collect(Collectors.toList());
-    this.preOrderVisitorWrappers = visitorWrappers.stream().filter(MathPreOrderVisitor.INSTANCE).collect(Collectors.toList());
-    this.postOrderVisitorWrappers = visitorWrappers.stream().filter(MatchPostOrderVisitor.INSTANCE).collect(Collectors.toList());
+    List<VisitorWrapper> visitorWrappers = visitors.stream().map(ToVisitorWrapper.INSTANCE).toList();
+    this.preOrderVisitorWrappers = visitorWrappers.stream().filter(MathPreOrderVisitor.INSTANCE).toList();
+    this.postOrderVisitorWrappers = visitorWrappers.stream().filter(MatchPostOrderVisitor.INSTANCE).toList();
     this.computeDuration = computeDuration;
     this.visitorCumulativeDurations = computeDuration ? visitors.stream().collect(Collectors.toMap(v -> v, v -> new VisitorDuration())) : Collections.emptyMap();
   }
@@ -77,8 +77,8 @@ public class VisitorsCrawler implements ComponentCrawler {
 
   private void visitImpl(Component component) {
     MatchVisitorMaxDepth visitorMaxDepth = MatchVisitorMaxDepth.forComponent(component);
-    List<VisitorWrapper> preOrderVisitorWrappersToExecute = preOrderVisitorWrappers.stream().filter(visitorMaxDepth).collect(Collectors.toList());
-    List<VisitorWrapper> postOrderVisitorWrappersToExecute = postOrderVisitorWrappers.stream().filter(visitorMaxDepth).collect(Collectors.toList());
+    List<VisitorWrapper> preOrderVisitorWrappersToExecute = preOrderVisitorWrappers.stream().filter(visitorMaxDepth).toList();
+    List<VisitorWrapper> postOrderVisitorWrappersToExecute = postOrderVisitorWrappers.stream().filter(visitorMaxDepth).toList();
     if (preOrderVisitorWrappersToExecute.isEmpty() && postOrderVisitorWrappersToExecute.isEmpty()) {
       return;
     }
@@ -149,10 +149,10 @@ public class VisitorsCrawler implements ComponentCrawler {
 
     @Override
     public VisitorWrapper apply(@Nonnull ComponentVisitor componentVisitor) {
-      if (componentVisitor instanceof TypeAwareVisitor) {
-        return new TypeAwareVisitorWrapper((TypeAwareVisitor) componentVisitor);
-      } else if (componentVisitor instanceof PathAwareVisitor) {
-        return new PathAwareVisitorWrapper((PathAwareVisitor) componentVisitor);
+      if (componentVisitor instanceof TypeAwareVisitor typeAwareVisitor) {
+        return new TypeAwareVisitorWrapper(typeAwareVisitor);
+      } else if (componentVisitor instanceof PathAwareVisitor<?> pathAwareVisitor) {
+        return new PathAwareVisitorWrapper(pathAwareVisitor);
       } else {
         throw new IllegalArgumentException("Only TypeAwareVisitor and PathAwareVisitor can be used");
       }

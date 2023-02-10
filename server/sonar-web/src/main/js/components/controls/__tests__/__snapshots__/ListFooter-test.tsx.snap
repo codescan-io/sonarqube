@@ -5,14 +5,24 @@ exports[`should render correctly: default 1`] = `
   className="list-footer spacer-top note text-center"
   tabIndex={-1}
 >
-  x_of_y_shown.3.5
+  <span
+    aria-busy={false}
+    aria-live="polite"
+  >
+    x_of_y_shown.3.5
+  </span>
   <Button
     className="spacer-left"
     data-test="show-more"
+    disabled={false}
     onClick={[Function]}
   >
     show_more
   </Button>
+  <DeferredSpinner
+    className="text-bottom spacer-left position-absolute"
+    loading={false}
+  />
 </div>
 `;
 
@@ -21,7 +31,16 @@ exports[`should render correctly: empty if everything is loaded 1`] = `
   className="list-footer spacer-top note text-center"
   tabIndex={-1}
 >
-  x_of_y_shown.5.5
+  <span
+    aria-busy={false}
+    aria-live="polite"
+  >
+    x_of_y_shown.5.5
+  </span>
+  <DeferredSpinner
+    className="text-bottom spacer-left position-absolute"
+    loading={false}
+  />
 </div>
 `;
 
@@ -30,7 +49,16 @@ exports[`should render correctly: empty if no loadMore nor reload props 1`] = `
   className="list-footer spacer-top note text-center"
   tabIndex={-1}
 >
-  x_of_y_shown.3.5
+  <span
+    aria-busy={false}
+    aria-live="polite"
+  >
+    x_of_y_shown.3.5
+  </span>
+  <DeferredSpinner
+    className="text-bottom spacer-left position-absolute"
+    loading={false}
+  />
 </div>
 `;
 
@@ -39,14 +67,24 @@ exports[`should render correctly: force show load more button if count % pageSiz
   className="list-footer spacer-top note text-center"
   tabIndex={-1}
 >
-  x_show.60
+  <span
+    aria-busy={false}
+    aria-live="polite"
+  >
+    x_show.60
+  </span>
   <Button
     className="spacer-left"
     data-test="show-more"
+    disabled={false}
     onClick={[Function]}
   >
     show_more
   </Button>
+  <DeferredSpinner
+    className="text-bottom spacer-left position-absolute"
+    loading={false}
+  />
 </div>
 `;
 
@@ -55,7 +93,12 @@ exports[`should render correctly: loading 1`] = `
   className="list-footer spacer-top note text-center"
   tabIndex={-1}
 >
-  x_of_y_shown.3.5
+  <span
+    aria-busy={true}
+    aria-live="polite"
+  >
+    x_of_y_shown.3.5
+  </span>
   <Button
     className="spacer-left"
     data-test="show-more"
@@ -66,6 +109,7 @@ exports[`should render correctly: loading 1`] = `
   </Button>
   <DeferredSpinner
     className="text-bottom spacer-left position-absolute"
+    loading={true}
   />
 </div>
 `;
@@ -75,14 +119,24 @@ exports[`should render correctly: reload 1`] = `
   className="list-footer spacer-top note text-center"
   tabIndex={-1}
 >
-  x_of_y_shown.3.5
+  <span
+    aria-busy={false}
+    aria-live="polite"
+  >
+    x_of_y_shown.3.5
+  </span>
   <Button
     className="spacer-left"
     data-test="reload"
+    disabled={false}
     onClick={[MockFunction]}
   >
     reload
   </Button>
+  <DeferredSpinner
+    className="text-bottom spacer-left position-absolute"
+    loading={false}
+  />
 </div>
 `;
 
@@ -91,7 +145,12 @@ exports[`should render correctly: reload, loading 1`] = `
   className="list-footer spacer-top note text-center"
   tabIndex={-1}
 >
-  x_of_y_shown.3.5
+  <span
+    aria-busy={true}
+    aria-live="polite"
+  >
+    x_of_y_shown.3.5
+  </span>
   <Button
     className="spacer-left"
     data-test="reload"
@@ -102,6 +161,7 @@ exports[`should render correctly: reload, loading 1`] = `
   </Button>
   <DeferredSpinner
     className="text-bottom spacer-left position-absolute"
+    loading={true}
   />
 </div>
 `;
@@ -111,6 +171,15 @@ exports[`should render correctly: total undefined 1`] = `
   className="list-footer spacer-top note text-center"
   tabIndex={-1}
 >
-  x_show.3
+  <span
+    aria-busy={false}
+    aria-live="polite"
+  >
+    x_show.3
+  </span>
+  <DeferredSpinner
+    className="text-bottom spacer-left position-absolute"
+    loading={false}
+  />
 </div>
 `;

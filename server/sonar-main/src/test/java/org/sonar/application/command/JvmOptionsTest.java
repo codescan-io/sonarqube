@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -338,7 +338,7 @@ public class JvmOptionsTest {
   public void toString_prints_all_jvm_options() {
     underTest.add("-foo").add("-bar");
 
-    assertThat(underTest.toString()).isEqualTo("[-foo, -bar]");
+    assertThat(underTest).hasToString("[-foo, -bar]");
   }
 
   private void expectJvmOptionNotNullNPE(ThrowingCallable callback) {

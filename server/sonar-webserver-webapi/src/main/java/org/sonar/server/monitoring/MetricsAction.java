@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -38,9 +38,10 @@ public class MetricsAction extends SafeModeMonitoringMetricAction {
   public void define(WebService.NewController context) {
     context.createAction("metrics")
       .setSince("9.3")
-      .setDescription("Return monitoring metrics in Prometheus format. \n" +
-        "Support content type 'text/plain' (default) and 'application/openmetrics-text'.\n" +
-        "this endpoint can be access using a Bearer token, that needs to be defined in sonar.properties with the 'sonar.web.systemPasscode' key.")
+      .setDescription("""
+        Return monitoring metrics in Prometheus format.\s
+        Support content type 'text/plain' (default) and 'application/openmetrics-text'.
+        this endpoint can be access using a Bearer token, that needs to be defined in sonar.properties with the 'sonar.web.systemPasscode' key.""")
       .setResponseExample(getClass().getResource("monitoring-metrics.txt"))
       .setHandler(this);
 

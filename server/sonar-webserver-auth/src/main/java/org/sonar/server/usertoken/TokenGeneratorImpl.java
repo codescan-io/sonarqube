@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -36,11 +36,6 @@ public class TokenGeneratorImpl implements TokenGenerator {
 
   private static String buildIdentifiablePartOfToken(TokenType tokenType) {
     return SONARQUBE_TOKEN_PREFIX + tokenType.getIdentifier() + "_";
-  }
-
-  @Override
-  public String generateProjectBadgeToken() {
-    return generateRawToken();
   }
 
   private static String generateRawToken() {

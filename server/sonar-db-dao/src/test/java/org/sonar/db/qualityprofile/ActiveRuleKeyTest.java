@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -35,7 +35,7 @@ public class ActiveRuleKeyTest {
     ActiveRuleKey key = ActiveRuleKey.of(profile, ruleKey);
     assertThat(key.getRuleProfileUuid()).isEqualTo(profile.getRulesProfileUuid());
     assertThat(key.getRuleKey()).isSameAs(ruleKey);
-    assertThat(key.toString()).isEqualTo(profile.getRulesProfileUuid() + ":xoo:R1");
+    assertThat(key).hasToString(profile.getRulesProfileUuid() + ":xoo:R1");
   }
 
   @Test
@@ -45,7 +45,7 @@ public class ActiveRuleKeyTest {
     ActiveRuleKey key = ActiveRuleKey.of(profile, ruleKey);
     assertThat(key.getRuleProfileUuid()).isEqualTo(profile.getRulesProfileUuid());
     assertThat(key.getRuleKey()).isSameAs(ruleKey);
-    assertThat(key.toString()).isEqualTo(profile.getRulesProfileUuid() + ":java:Key:With:Some::Colons");
+    assertThat(key).hasToString(profile.getRulesProfileUuid() + ":java:Key:With:Some::Colons");
   }
 
   @Test

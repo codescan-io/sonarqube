@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -21,14 +21,12 @@ import { omit, uniqBy } from 'lodash';
 import * as React from 'react';
 import { getRulesApp } from '../../api/rules';
 import { get, save } from '../../helpers/storage';
-import { Dict, Organization } from '../../types/types';
+import { Dict } from '../../types/types';
 import { ComponentDescriptor, RuleDescriptor, WorkspaceContext } from './context';
 import './styles.css';
 import WorkspaceComponentViewer from './WorkspaceComponentViewer';
 import WorkspaceNav from './WorkspaceNav';
 import WorkspacePortal from './WorkspacePortal';
-import WorkspaceRuleViewer from './WorkspaceRuleViewer';
-import withCurrentUserContext from "../../app/components/current-user/withCurrentUserContext";
 
 const WORKSPACE = 'sonarqube-workspace';
 interface State {
@@ -36,12 +34,8 @@ interface State {
   externalRulesRepoNames: Dict<string>;
   height: number;
   maximized?: boolean;
-  open: { component?: string; rule?: string };
+  open: { component?: string };
   rules: RuleDescriptor[];
-}
-
-interface WorkspaceProps {
-  userOrganizations: Organization[];
 }
 
 export const MIN_HEIGHT = 0.05;
@@ -54,10 +48,10 @@ export enum WorkspaceTypes {
   Component = 'component',
 }
 
-class Workspace extends React.PureComponent<WorkspaceProps, State> {
+export default class Workspace extends React.PureComponent<{}, State> {
   mounted = false;
 
-  constructor(props: WorkspaceProps) {
+  constructor(props: {}) {
     super(props);
     this.state = {
       externalRulesRepoNames: {},
@@ -83,7 +77,7 @@ class Workspace extends React.PureComponent<WorkspaceProps, State> {
   }
 
   fetchRuleNames = async () => {
-    const { repositories } = await getRulesApp(this.props.userOrganizations[0].kee);
+    const { repositories } = await getRulesApp();
     const externalRulesRepoNames: Dict<string> = {};
     repositories
       .filter(({ key }) => key.startsWith('external_'))
@@ -130,33 +124,12 @@ class Workspace extends React.PureComponent<WorkspaceProps, State> {
     this.setState({ open: { component: componentKey } });
   };
 
-  handleOpenRule = (rule: RuleDescriptor) => {
-    this.setState((state: State) => ({
-      open: { rule: rule.key },
-      rules: uniqBy([...state.rules, rule], (r) => r.key),
-    }));
-  };
-
-  handleRuleReopen = (ruleKey: string) => {
-    this.setState({ open: { rule: ruleKey } });
-  };
-
   handleComponentClose = (componentKey: string) => {
     this.setState((state: State) => ({
       components: state.components.filter((x) => x.key !== componentKey),
       open: {
         ...state.open,
         component: state.open.component === componentKey ? undefined : state.open.component,
-      },
-    }));
-  };
-
-  handleRuleClose = (ruleKey: string) => {
-    this.setState((state: State) => ({
-      rules: state.rules.filter((x) => x.key !== ruleKey),
-      open: {
-        ...state.open,
-        rule: state.open.rule === ruleKey ? undefined : state.open.rule,
       },
     }));
   };
@@ -168,15 +141,6 @@ class Workspace extends React.PureComponent<WorkspaceProps, State> {
         components: state.components.map((component) =>
           component.key === key ? { ...component, name, qualifier } : component
         ),
-      }));
-    }
-  };
-
-  handleRuleLoad = (details: { key: string; name: string }) => {
-    if (this.mounted) {
-      const { key, name } = details;
-      this.setState((state: State) => ({
-        rules: state.rules.map((rule) => (rule.key === key ? { ...rule, name } : rule)),
       }));
     }
   };
@@ -205,7 +169,6 @@ class Workspace extends React.PureComponent<WorkspaceProps, State> {
     const { components, externalRulesRepoNames, height, maximized, open, rules } = this.state;
 
     const openComponent = open.component && components.find((x) => x.key === open.component);
-    const openRule = open.rule && rules.find((x) => x.key === open.rule);
 
     const actualHeight = maximized ? window.innerHeight * MAX_HEIGHT : height;
 
@@ -214,7 +177,6 @@ class Workspace extends React.PureComponent<WorkspaceProps, State> {
         value={{
           externalRulesRepoNames,
           openComponent: this.handleOpenComponent,
-          openRule: this.handleOpenRule,
         }}
       >
         {this.props.children}
@@ -224,10 +186,7 @@ class Workspace extends React.PureComponent<WorkspaceProps, State> {
               components={components}
               onComponentClose={this.handleComponentClose}
               onComponentOpen={this.handleComponentReopen}
-              onRuleClose={this.handleRuleClose}
-              onRuleOpen={this.handleRuleReopen}
               open={open}
-              rules={rules}
             />
           )}
           {openComponent && (
@@ -243,23 +202,8 @@ class Workspace extends React.PureComponent<WorkspaceProps, State> {
               onResize={this.handleResize}
             />
           )}
-          {openRule && (
-            <WorkspaceRuleViewer
-              height={actualHeight}
-              maximized={maximized}
-              onClose={this.handleRuleClose}
-              onCollapse={this.handleCollapse}
-              onLoad={this.handleRuleLoad}
-              onMaximize={this.handleMaximize}
-              onMinimize={this.handleMinimize}
-              onResize={this.handleResize}
-              rule={openRule}
-            />
-          )}
         </WorkspacePortal>
       </WorkspaceContext.Provider>
     );
   }
 }
-
-export default withCurrentUserContext(Workspace);

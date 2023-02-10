@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -85,7 +85,7 @@ class CallRecorderPathAwareVisitor extends PathAwareVisitorAdapter<Integer> {
   }
 
   private static List<Integer> toValueList(Path<Integer> path) {
-    return StreamSupport.stream(path.getCurrentPath().spliterator(), false).map(PathElement::getElement).collect(Collectors.toList());
+    return StreamSupport.stream(path.getCurrentPath().spliterator(), false).map(PathElement::element).collect(Collectors.toList());
   }
 
   private static Integer getParent(Path<Integer> path) {

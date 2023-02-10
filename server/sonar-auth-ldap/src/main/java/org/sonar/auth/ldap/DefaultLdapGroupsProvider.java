@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -56,7 +56,7 @@ public class DefaultLdapGroupsProvider implements LdapGroupsProvider {
    */
   @Override
   public Collection<String> doGetGroups(Context context) {
-    return getGroups(context.getServerKey(), context.getUsername());
+    return getGroups(context.serverKey(), context.username());
   }
 
   private Collection<String> getGroups(String serverKey, String username) {

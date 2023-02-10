@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -60,7 +60,7 @@ public class QualityGateHolderImplTest {
 
     holder.setQualityGate(QUALITY_GATE);
 
-    assertThat(holder.getQualityGate().get()).isSameAs(QUALITY_GATE);
+    assertThat(holder.getQualityGate()).containsSame(QUALITY_GATE);
   }
 
   @Test
@@ -94,7 +94,7 @@ public class QualityGateHolderImplTest {
     EvaluatedQualityGate evaluation = mock(EvaluatedQualityGate.class);
     holder.setEvaluation(evaluation);
 
-    assertThat(holder.getEvaluation().get()).isSameAs(evaluation);
+    assertThat(holder.getEvaluation()).containsSame(evaluation);
   }
 
 }

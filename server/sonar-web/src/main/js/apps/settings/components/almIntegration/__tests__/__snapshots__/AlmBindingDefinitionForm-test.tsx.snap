@@ -3,10 +3,9 @@
 exports[`should render correctly: create 1`] = `
 <AlmBindingDefinitionFormRenderer
   alm="github"
-  alreadyHaveInstanceConfigured={false}
   canSubmit={false}
   formData={
-    Object {
+    {
       "appId": "",
       "clientId": "",
       "clientSecret": "",
@@ -28,10 +27,9 @@ exports[`should render correctly: create 1`] = `
 exports[`should render correctly: edit 1`] = `
 <AlmBindingDefinitionFormRenderer
   alm="github"
-  alreadyHaveInstanceConfigured={false}
   canSubmit={false}
   formData={
-    Object {
+    {
       "appId": "123456",
       "clientId": "client1",
       "clientSecret": "**clientsecret**",

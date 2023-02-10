@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -142,7 +142,7 @@ public class HealthTest {
 
   @Test
   public void verify_toString() {
-    assertThat(Health.GREEN.toString()).isEqualTo("Health{GREEN, causes=[]}");
+    assertThat(Health.GREEN).hasToString("Health{GREEN, causes=[]}");
     Health.Builder builder = Health.builder().setStatus(anyStatus);
     randomCauses.forEach(builder::addCause);
 

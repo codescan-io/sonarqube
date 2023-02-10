@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,14 +19,17 @@
  */
 package org.sonar.server.qualitygate.ws;
 
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.db.DbClient;
+import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
 import org.sonar.db.qualitygate.QualityGateDto;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.component.TestComponentFinder;
+import org.sonar.server.qualitygate.QualityGateCaycChecker;
 import org.sonar.server.qualitygate.QualityGateFinder;
 import org.sonar.server.tester.UserSessionRule;
 import org.sonar.server.ws.WsActionTester;
@@ -35,8 +38,15 @@ import org.sonarqube.ws.Qualitygates.ListWsResponse.QualityGate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.tuple;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.sonar.db.permission.GlobalPermission.ADMINISTER_QUALITY_GATES;
 import static org.sonar.db.permission.GlobalPermission.ADMINISTER_QUALITY_PROFILES;
+import static org.sonar.server.qualitygate.QualityGateCaycStatus.COMPLIANT;
+import static org.sonar.server.qualitygate.QualityGateCaycStatus.NON_COMPLIANT;
+import static org.sonar.server.qualitygate.QualityGateCaycStatus.OVER_COMPLIANT;
 import static org.sonar.test.JsonAssert.assertJson;
 import static org.sonarqube.ws.Qualitygates.ListWsResponse;
 
@@ -50,8 +60,15 @@ public class ListActionTest {
   private final DbClient dbClient = db.getDbClient();
   private final QualityGateFinder qualityGateFinder = new QualityGateFinder(dbClient);
 
+  private final QualityGateCaycChecker qualityGateCaycChecker = mock(QualityGateCaycChecker.class);
+
   private final WsActionTester ws = new WsActionTester(new ListAction(db.getDbClient(),
-    new QualityGatesWsSupport(dbClient, userSession, TestComponentFinder.from(db)), qualityGateFinder));
+    new QualityGatesWsSupport(dbClient, userSession, TestComponentFinder.from(db)), qualityGateFinder, qualityGateCaycChecker));
+
+  @Before
+  public void setUp() {
+    when(qualityGateCaycChecker.checkCaycCompliant(any(), any())).thenReturn(COMPLIANT);
+  }
 
   @Test
   public void list_quality_gates() {
@@ -83,6 +100,28 @@ public class ListActionTest {
       .containsExactlyInAnyOrder(
         tuple(qualityGate1.getUuid(), true),
         tuple(qualityGate2.getUuid(), false));
+  }
+
+  @Test
+  public void test_caycStatus_flag() {
+    QualityGateDto qualityGate1 = db.qualityGates().insertQualityGate();
+    QualityGateDto qualityGate2 = db.qualityGates().insertQualityGate();
+    QualityGateDto qualityGate3 = db.qualityGates().insertQualityGate();
+    when(qualityGateCaycChecker.checkCaycCompliant(any(DbSession.class), eq(qualityGate1.getUuid()))).thenReturn(COMPLIANT);
+    when(qualityGateCaycChecker.checkCaycCompliant(any(DbSession.class), eq(qualityGate2.getUuid()))).thenReturn(NON_COMPLIANT);
+    when(qualityGateCaycChecker.checkCaycCompliant(any(DbSession.class), eq(qualityGate3.getUuid()))).thenReturn(OVER_COMPLIANT);
+
+    db.qualityGates().setDefaultQualityGate(qualityGate1);
+
+    ListWsResponse response = ws.newRequest()
+      .executeProtobuf(ListWsResponse.class);
+
+    assertThat(response.getQualitygatesList())
+      .extracting(QualityGate::getId, QualityGate::getCaycStatus)
+      .containsExactlyInAnyOrder(
+        tuple(qualityGate1.getUuid(), COMPLIANT.toString()),
+        tuple(qualityGate2.getUuid(), NON_COMPLIANT.toString()),
+        tuple(qualityGate3.getUuid(), OVER_COMPLIANT.toString()));
   }
 
   @Test

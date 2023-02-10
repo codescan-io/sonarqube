@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -31,11 +31,19 @@ export interface Application {
   description?: string;
   key: string;
   name: string;
-  projects: ApplicationProject[];
+  projects: ApplicationProjectBranch[];
   visibility: Visibility;
 }
 
 export interface ApplicationProject {
+  enabled?: boolean;
+  key: string;
+  name: string;
+  selected?: boolean;
+  accessible?: boolean;
+}
+
+export interface ApplicationProjectBranch {
   branch: string;
   enabled?: boolean;
   isMain: boolean;

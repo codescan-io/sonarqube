@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -38,13 +38,13 @@ public class EvaluationResultTest {
     Measure.Level level = Measure.Level.OK;
 
     EvaluationResult evaluationResult = new EvaluationResult(level, value);
-    assertThat(evaluationResult.getLevel()).isEqualTo(level);
-    assertThat(evaluationResult.getValue()).isEqualTo(value);
+    assertThat(evaluationResult.level()).isEqualTo(level);
+    assertThat(evaluationResult.value()).isEqualTo(value);
   }
 
   @Test
   public void toString_is_defined() {
-    assertThat(new EvaluationResult(Measure.Level.OK, "toto").toString())
-      .isEqualTo("EvaluationResult{level=OK, value=toto}");
+    assertThat(new EvaluationResult(Measure.Level.OK, "toto"))
+      .hasToString("EvaluationResult{level=OK, value=toto}");
   }
 }

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -20,7 +20,6 @@
 package org.sonar.server.component.index;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
@@ -54,7 +53,7 @@ public class ComponentIndexResults {
     }
 
     public Builder setQualifiers(Stream<ComponentHitsPerQualifier> qualifiers) {
-      this.qualifiers = qualifiers.collect(Collectors.toList());
+      this.qualifiers = qualifiers.toList();
       return this;
     }
 

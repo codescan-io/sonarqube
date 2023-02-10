@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -116,11 +116,11 @@ public interface PathAwareVisitor<T> extends ComponentVisitor {
     /**
      * The Component on the path.
      */
-    Component getComponent();
+    Component component();
 
     /**
      * The stacked element for the Component of this PathElement.
      */
-    T getElement();
+    T element();
   }
 }

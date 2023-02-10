@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+import { clone } from 'lodash';
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { fetchQualityGate } from '../../../api/quality-gates';
@@ -84,8 +85,14 @@ export default class Details extends React.PureComponent<Props, State> {
         return null;
       }
       addGlobalSuccessMessage(translate('quality_gates.condition_added'));
+
+      const updatedQualityGate = addCondition(clone(qualityGate), condition);
+      if (qualityGate.caycStatus !== updatedQualityGate.caycStatus) {
+        this.props.refreshQualityGates();
+      }
+
       return {
-        qualityGate: addCondition(qualityGate, condition),
+        qualityGate: updatedQualityGate,
         updatedConditionId: condition.id,
       };
     });
@@ -97,8 +104,12 @@ export default class Details extends React.PureComponent<Props, State> {
         return null;
       }
       addGlobalSuccessMessage(translate('quality_gates.condition_updated'));
+      const updatedQualityGate = replaceCondition(clone(qualityGate), newCondition, oldCondition);
+      if (qualityGate.caycStatus !== updatedQualityGate.caycStatus) {
+        this.props.refreshQualityGates();
+      }
       return {
-        qualityGate: replaceCondition(qualityGate, newCondition, oldCondition),
+        qualityGate: updatedQualityGate,
         updatedConditionId: newCondition.id,
       };
     });
@@ -110,8 +121,12 @@ export default class Details extends React.PureComponent<Props, State> {
         return null;
       }
       addGlobalSuccessMessage(translate('quality_gates.condition_deleted'));
+      const updatedQualityGate = deleteCondition(clone(qualityGate), condition);
+      if (qualityGate.caycStatus !== updatedQualityGate.caycStatus) {
+        this.props.refreshQualityGates();
+      }
       return {
-        qualityGate: deleteCondition(qualityGate, condition),
+        qualityGate: updatedQualityGate,
         updatedConditionId: undefined,
       };
     });

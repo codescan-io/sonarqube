@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -129,7 +129,7 @@ class PrMeasureFix {
       }
     }
 
-    List<MetricDto> toRemove = measuresByComponentUuidAndMetric.columnKeySet().stream().filter(m -> !requestedMetricKeys.contains(m.getKey())).collect(Collectors.toList());
+    List<MetricDto> toRemove = measuresByComponentUuidAndMetric.columnKeySet().stream().filter(m -> !requestedMetricKeys.contains(m.getKey())).toList();
     measuresByComponentUuidAndMetric.columnKeySet().removeAll(toRemove);
   }
 

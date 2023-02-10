@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -59,6 +59,7 @@ export interface AzureProjectCreateRendererProps {
   submittingToken?: boolean;
   tokenValidationFailed: boolean;
   onSelectedAlmInstanceChange: (instance: AlmSettingsInstance) => void;
+  firstConnection?: boolean;
 }
 
 export default function AzureProjectCreateRenderer(props: AzureProjectCreateRendererProps) {
@@ -78,6 +79,7 @@ export default function AzureProjectCreateRenderer(props: AzureProjectCreateRend
     submittingToken,
     tokenValidationFailed,
     selectedAlmInstance,
+    firstConnection,
   } = props;
 
   const showCountError = !loading && (!almInstances || almInstances?.length === 0);
@@ -157,6 +159,7 @@ export default function AzureProjectCreateRenderer(props: AzureProjectCreateRend
               onPersonalAccessTokenCreate={props.onPersonalAccessTokenCreate}
               submitting={submittingToken}
               validationFailed={tokenValidationFailed}
+              firstConnection={firstConnection}
             />
           </div>
         ) : (

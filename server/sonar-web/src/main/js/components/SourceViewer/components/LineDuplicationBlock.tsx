@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -48,7 +48,7 @@ export function LineDuplicationBlock(props: LineDuplicationBlockProps) {
 
   return duplicated ? (
     <td className={className} data-index={index} data-line-number={line.line}>
-      <Tooltip overlay={tooltip} placement="right">
+      <Tooltip overlay={tooltip} placement="right" accessible={false}>
         <div>
           <Toggler
             onRequestClose={() => setDropdownOpen(false)}

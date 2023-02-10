@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -26,27 +26,6 @@ public interface LdapGroupsProvider {
 
   Collection<String> doGetGroups(Context context);
 
-  final class Context {
-    private final String serverKey;
-    private final String username;
-    private final HttpServletRequest request;
-
-    public Context(String serverKey, String username, HttpServletRequest request) {
-      this.serverKey = serverKey;
-      this.username = username;
-      this.request = request;
-    }
-
-    public String getServerKey() {
-      return serverKey;
-    }
-
-    public String getUsername() {
-      return username;
-    }
-
-    public HttpServletRequest getRequest() {
-      return request;
-    }
+  record Context(String serverKey, String username, HttpServletRequest request) {
   }
 }

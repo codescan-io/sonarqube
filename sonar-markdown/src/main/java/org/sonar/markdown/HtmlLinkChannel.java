@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -47,9 +47,10 @@ class HtmlLinkChannel extends RegexChannel<MarkdownOutput> {
     matcher.matches();
     String content = matcher.group(1);
     String url = matcher.group(2);
+    boolean isRelativeUrl = !url.contains("://");
     output.append("<a href=\"");
     output.append(url);
-    output.append("\" target=\"_blank\">");
+    output.append(isRelativeUrl ? "\">" : "\" target=\"_blank\" rel=\"noopener noreferrer\">");
     output.append(content);
     output.append("</a>");
   }

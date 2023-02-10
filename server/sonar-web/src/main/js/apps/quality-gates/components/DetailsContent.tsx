@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -37,20 +37,18 @@ export interface DetailsContentProps {
 
 export function DetailsContent(props: DetailsContentProps) {
   const { isDefault, qualityGate, updatedConditionId } = props;
-  const conditions = qualityGate.conditions || [];
   const actions = qualityGate.actions || {};
 
   return (
     <div className="layout-page-main-inner">
-      {isDefault && (qualityGate.conditions === undefined || qualityGate.conditions.length === 0) && (
-        <Alert className="big-spacer-bottom" variant="warning">
-          {translate('quality_gates.is_default_no_conditions')}
-        </Alert>
-      )}
+      {isDefault &&
+        (qualityGate.conditions === undefined || qualityGate.conditions.length === 0) && (
+          <Alert className="big-spacer-bottom" variant="warning">
+            {translate('quality_gates.is_default_no_conditions')}
+          </Alert>
+        )}
 
       <Conditions
-        canEdit={Boolean(actions.manageConditions)}
-        conditions={conditions}
         onAddCondition={props.onAddCondition}
         onRemoveCondition={props.onRemoveCondition}
         onSaveCondition={props.onSaveCondition}

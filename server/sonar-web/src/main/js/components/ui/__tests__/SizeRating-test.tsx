@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -23,7 +23,7 @@ import SizeRating, { Props } from '../SizeRating';
 
 it('should render correctly', () => {
   expect(shallowRender()).toMatchSnapshot();
-  expect(shallowRender({ muted: true, small: true, value: 1000 })).toMatchSnapshot();
+  expect(shallowRender({ muted: true, value: 1000 })).toMatchSnapshot();
   expect(shallowRender({ value: 10000 })).toMatchSnapshot();
   expect(shallowRender({ value: 100000 })).toMatchSnapshot();
   expect(shallowRender({ value: 500000 })).toMatchSnapshot();

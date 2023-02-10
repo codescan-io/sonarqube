@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -188,7 +188,7 @@ public class QProfileBackuperImpl implements QProfileBackuper {
   private static void checkIfRulesFromExternalEngines(Collection<RuleDto> ruleDefinitions) {
     List<RuleDto> externalRules = ruleDefinitions.stream()
       .filter(RuleDto::isExternal)
-      .collect(Collectors.toList());
+      .toList();
 
     if (!externalRules.isEmpty()) {
       throw new IllegalArgumentException("The quality profile cannot be restored as it contains rules from external rule engines: "
@@ -200,7 +200,7 @@ public class QProfileBackuperImpl implements QProfileBackuper {
     List<NewCustomRule> customRulesToCreate = rules.stream()
       .filter(r -> ruleDefinitionsByKey.get(r.getRuleKey()) == null && r.isCustomRule())
       .map(QProfileBackuperImpl::importedRuleToNewCustomRule)
-      .collect(Collectors.toList());
+      .toList();
 
     if (!customRulesToCreate.isEmpty()) {
       return db.ruleDao().selectByKeys(dbSession, ruleCreator.create(dbSession, customRulesToCreate))

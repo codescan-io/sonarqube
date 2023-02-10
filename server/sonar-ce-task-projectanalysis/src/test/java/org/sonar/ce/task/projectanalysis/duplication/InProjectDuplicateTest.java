@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -85,8 +85,8 @@ public class InProjectDuplicateTest {
 
   @Test
   public void verify_toString() {
-    assertThat(new InProjectDuplicate(FILE_1, new TextBlock(1, 2)).toString())
-      .isEqualTo("InProjectDuplicate{file=ReportComponent{ref=1, key='key_1', type=FILE}, textBlock=TextBlock{start=1, end=2}}");
+    assertThat(new InProjectDuplicate(FILE_1, new TextBlock(1, 2)))
+      .hasToString("InProjectDuplicate{file=ReportComponent{ref=1, key='key_1', type=FILE}, textBlock=TextBlock{start=1, end=2}}");
   }
 
 }

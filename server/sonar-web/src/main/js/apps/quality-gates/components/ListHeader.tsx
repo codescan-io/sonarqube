@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -31,7 +31,7 @@ interface Props {
 
 export default function ListHeader({ canCreate, refreshQualityGates }: Props) {
   return (
-    <header className="page-header">
+    <div className="page-header">
       {canCreate && (
         <div className="page-actions">
           <ModalButton
@@ -61,6 +61,6 @@ export default function ListHeader({ canCreate, refreshQualityGates }: Props) {
           ]}
         />
       </div>
-    </header>
+    </div>
   );
 }

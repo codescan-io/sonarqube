@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -22,7 +22,6 @@ package org.sonar.server.rule;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import org.sonar.api.resources.Language;
 import org.sonar.api.resources.Languages;
 import org.sonar.api.rule.Severity;
@@ -40,7 +39,19 @@ import static org.sonar.server.rule.CommonRuleKeys.commonRepositoryForLang;
 // It replaces the common-rules that are still embedded within plugins.
 public class CommonRuleDefinitionsImpl implements CommonRuleDefinitions {
 
-  private static final List<String> LANGUAGES_TO_SKIP = List.of("terraform", "cloudformation", "kubernetes", "docker", "web", "css", "xml", "yaml", "json", "jsp", "text");
+  private static final List<String> LANGUAGES_TO_SKIP = List.of(
+    "terraform",
+    "cloudformation",
+    "kubernetes",
+    "docker",
+    "web",
+    "css",
+    "xml",
+    "yaml",
+    "json",
+    "jsp",
+    "text",
+    "secrets");
   private static final String MINUTES_10 = "10min";
 
   private final Languages languages;
@@ -67,7 +78,7 @@ public class CommonRuleDefinitionsImpl implements CommonRuleDefinitions {
   private static List<Language> getActiveLanguages(Language[] allLanguages) {
     return Arrays.stream(allLanguages)
       .filter(Predicate.not(language -> LANGUAGES_TO_SKIP.contains(language.getKey())))
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private static void defineBranchCoverageRule(RulesDefinition.NewRepository repo) {

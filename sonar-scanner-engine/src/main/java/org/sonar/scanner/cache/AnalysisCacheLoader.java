@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -20,8 +20,8 @@
 package org.sonar.scanner.cache;
 
 import java.util.Optional;
-import org.sonar.scanner.protocol.internal.ScannerInternal;
+import org.sonar.scanner.protocol.internal.SensorCacheData;
 
 public interface AnalysisCacheLoader {
-  Optional<ScannerInternal.AnalysisCacheMsg> load();
+  Optional<SensorCacheData> load();
 }

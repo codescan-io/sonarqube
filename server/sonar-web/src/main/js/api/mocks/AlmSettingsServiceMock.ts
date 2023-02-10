@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -27,8 +27,9 @@ export default class AlmSettingsServiceMock {
   defaultSetting: AlmSettingsInstance[] = [
     mockAlmSettingsInstance({ key: 'conf-final-1', alm: AlmKeys.GitLab }),
     mockAlmSettingsInstance({ key: 'conf-final-2', alm: AlmKeys.GitLab }),
-    mockAlmSettingsInstance({ key: 'conf-github-1', alm: AlmKeys.GitHub, url: 'url' }),
-    mockAlmSettingsInstance({ key: 'conf-github-2', alm: AlmKeys.GitHub, url: 'url' }),
+    mockAlmSettingsInstance({ key: 'conf-github-1', alm: AlmKeys.GitHub, url: 'http://url' }),
+    mockAlmSettingsInstance({ key: 'conf-github-2', alm: AlmKeys.GitHub, url: 'http://url' }),
+    mockAlmSettingsInstance({ key: 'conf-github-3', alm: AlmKeys.GitHub, url: 'javascript://url' }),
     mockAlmSettingsInstance({ key: 'conf-azure-1', alm: AlmKeys.Azure, url: 'url' }),
     mockAlmSettingsInstance({ key: 'conf-azure-2', alm: AlmKeys.Azure, url: 'url' }),
     mockAlmSettingsInstance({

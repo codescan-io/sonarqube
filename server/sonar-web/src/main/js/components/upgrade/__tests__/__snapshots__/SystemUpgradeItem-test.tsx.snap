@@ -23,7 +23,7 @@ exports[`should display correctly 1`] = `
       defaultMessage="system.version_is_availble"
       id="system.version_is_availble"
       values={
-        Object {
+        {
           "version": <b>
             SonarQube 
             5.6.7
@@ -57,8 +57,8 @@ exports[`should display correctly 1`] = `
   <SystemUpgradeIntermediate
     className="spacer-top"
     upgrades={
-      Array [
-        Object {
+      [
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.6 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -66,7 +66,7 @@ exports[`should display correctly 1`] = `
           "releaseDate": "2017-04-02",
           "version": "5.6.6",
         },
-        Object {
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.5 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -89,13 +89,12 @@ exports[`should display correctly 1`] = `
     >
       system.download_x.5.6.7
     </a>
-    <ForwardRef(Link)
+    <withAppStateContext(DocLink)
       className="spacer-left"
-      target="_blank"
-      to="https://redirect.sonarsource.com/doc/upgrading.html"
+      to="/setup-and-upgrade/upgrade-the-server/upgrade-guide/"
     >
       system.how_to_upgrade
-    </ForwardRef(Link)>
+    </withAppStateContext(DocLink)>
   </div>
 </div>
 `;
@@ -123,7 +122,7 @@ exports[`should display correctly 2`] = `
       defaultMessage="system.version_is_availble"
       id="system.version_is_availble"
       values={
-        Object {
+        {
           "version": <b>
             SonarQube 
             5.6.7
@@ -157,8 +156,8 @@ exports[`should display correctly 2`] = `
   <SystemUpgradeIntermediate
     className="spacer-top"
     upgrades={
-      Array [
-        Object {
+      [
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.6 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -166,7 +165,7 @@ exports[`should display correctly 2`] = `
           "releaseDate": "2017-04-02",
           "version": "5.6.6",
         },
-        Object {
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.5 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -189,13 +188,12 @@ exports[`should display correctly 2`] = `
     >
       system.download_x.5.6.7
     </a>
-    <ForwardRef(Link)
+    <withAppStateContext(DocLink)
       className="spacer-left"
-      target="_blank"
-      to="https://redirect.sonarsource.com/doc/upgrading.html"
+      to="/setup-and-upgrade/upgrade-the-server/upgrade-guide/"
     >
       system.how_to_upgrade
-    </ForwardRef(Link)>
+    </withAppStateContext(DocLink)>
   </div>
 </div>
 `;
@@ -216,7 +214,7 @@ exports[`should display correctly 3`] = `
       defaultMessage="system.version_is_availble"
       id="system.version_is_availble"
       values={
-        Object {
+        {
           "version": <b>
             SonarQube 
             5.6.7
@@ -250,8 +248,8 @@ exports[`should display correctly 3`] = `
   <SystemUpgradeIntermediate
     className="spacer-top"
     upgrades={
-      Array [
-        Object {
+      [
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.6 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -259,7 +257,7 @@ exports[`should display correctly 3`] = `
           "releaseDate": "2017-04-02",
           "version": "5.6.6",
         },
-        Object {
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.5 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -282,13 +280,12 @@ exports[`should display correctly 3`] = `
     >
       system.download_x.5.6.7
     </a>
-    <ForwardRef(Link)
+    <withAppStateContext(DocLink)
       className="spacer-left"
-      target="_blank"
-      to="https://redirect.sonarsource.com/doc/upgrading.html"
+      to="/setup-and-upgrade/upgrade-the-server/upgrade-guide/"
     >
       system.how_to_upgrade
-    </ForwardRef(Link)>
+    </withAppStateContext(DocLink)>
   </div>
 </div>
 `;
@@ -316,7 +313,7 @@ exports[`should display correctly 4`] = `
       defaultMessage="system.version_is_availble"
       id="system.version_is_availble"
       values={
-        Object {
+        {
           "version": <b>
             SonarQube 
             5.6.7
@@ -350,8 +347,8 @@ exports[`should display correctly 4`] = `
   <SystemUpgradeIntermediate
     className="spacer-top"
     upgrades={
-      Array [
-        Object {
+      [
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.6 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -359,7 +356,7 @@ exports[`should display correctly 4`] = `
           "releaseDate": "2017-04-02",
           "version": "5.6.6",
         },
-        Object {
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.5 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -382,13 +379,12 @@ exports[`should display correctly 4`] = `
     >
       system.download_x.5.6.7
     </a>
-    <ForwardRef(Link)
+    <withAppStateContext(DocLink)
       className="spacer-left"
-      target="_blank"
-      to="https://redirect.sonarsource.com/doc/upgrading.html"
+      to="/setup-and-upgrade/upgrade-the-server/upgrade-guide/"
     >
       system.how_to_upgrade
-    </ForwardRef(Link)>
+    </withAppStateContext(DocLink)>
   </div>
 </div>
 `;
@@ -416,7 +412,7 @@ exports[`should display correctly 5`] = `
       defaultMessage="system.version_is_availble"
       id="system.version_is_availble"
       values={
-        Object {
+        {
           "version": <b>
             SonarQube 
             5.6.7
@@ -450,8 +446,8 @@ exports[`should display correctly 5`] = `
   <SystemUpgradeIntermediate
     className="spacer-top"
     upgrades={
-      Array [
-        Object {
+      [
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.6 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -459,7 +455,7 @@ exports[`should display correctly 5`] = `
           "releaseDate": "2017-04-02",
           "version": "5.6.6",
         },
-        Object {
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.5 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -482,13 +478,12 @@ exports[`should display correctly 5`] = `
     >
       system.download_x.5.6.7
     </a>
-    <ForwardRef(Link)
+    <withAppStateContext(DocLink)
       className="spacer-left"
-      target="_blank"
-      to="https://redirect.sonarsource.com/doc/upgrading.html"
+      to="/setup-and-upgrade/upgrade-the-server/upgrade-guide/"
     >
       system.how_to_upgrade
-    </ForwardRef(Link)>
+    </withAppStateContext(DocLink)>
   </div>
 </div>
 `;
@@ -516,7 +511,7 @@ exports[`should display correctly 6`] = `
       defaultMessage="system.version_is_availble"
       id="system.version_is_availble"
       values={
-        Object {
+        {
           "version": <b>
             SonarQube 
             5.6.7
@@ -550,8 +545,8 @@ exports[`should display correctly 6`] = `
   <SystemUpgradeIntermediate
     className="spacer-top"
     upgrades={
-      Array [
-        Object {
+      [
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.6 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -559,7 +554,7 @@ exports[`should display correctly 6`] = `
           "releaseDate": "2017-04-02",
           "version": "5.6.6",
         },
-        Object {
+        {
           "changeLogUrl": "http://changelog.url/",
           "description": "Version 5.6.5 description",
           "downloadDeveloperUrl": "http://download.url/developer",
@@ -582,13 +577,12 @@ exports[`should display correctly 6`] = `
     >
       system.download_x.5.6.7
     </a>
-    <ForwardRef(Link)
+    <withAppStateContext(DocLink)
       className="spacer-left"
-      target="_blank"
-      to="https://redirect.sonarsource.com/doc/upgrading.html"
+      to="/setup-and-upgrade/upgrade-the-server/upgrade-guide/"
     >
       system.how_to_upgrade
-    </ForwardRef(Link)>
+    </withAppStateContext(DocLink)>
   </div>
 </div>
 `;
@@ -616,7 +610,7 @@ exports[`should display correctly 7`] = `
       defaultMessage="system.version_is_availble"
       id="system.version_is_availble"
       values={
-        Object {
+        {
           "version": <b>
             SonarQube 
             5.6.7
@@ -649,7 +643,7 @@ exports[`should display correctly 7`] = `
   </div>
   <SystemUpgradeIntermediate
     className="spacer-top"
-    upgrades={Array []}
+    upgrades={[]}
   />
   <div
     className="big-spacer-top"
@@ -663,13 +657,12 @@ exports[`should display correctly 7`] = `
     >
       system.download_x.5.6.7
     </a>
-    <ForwardRef(Link)
+    <withAppStateContext(DocLink)
       className="spacer-left"
-      target="_blank"
-      to="https://redirect.sonarsource.com/doc/upgrading.html"
+      to="/setup-and-upgrade/upgrade-the-server/upgrade-guide/"
     >
       system.how_to_upgrade
-    </ForwardRef(Link)>
+    </withAppStateContext(DocLink)>
   </div>
 </div>
 `;

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.sonar.core.util.stream.MoreCollectors;
 import org.sonar.db.DbClient;
@@ -40,10 +39,10 @@ import org.sonar.server.es.IndexType;
 import org.sonar.server.es.IndexingResult;
 import org.sonar.server.es.OneToOneResilientIndexingListener;
 import org.sonar.server.es.ProjectIndexer;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import static java.util.Collections.emptyList;
 import static org.sonar.core.util.stream.MoreCollectors.toArrayList;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Populates the types "authorization" of each index requiring project
@@ -106,22 +105,15 @@ public class PermissionIndexer implements ProjectIndexer {
 
   @Override
   public Collection<EsQueueDto> prepareForRecovery(DbSession dbSession, Collection<String> projectUuids, ProjectIndexer.Cause cause) {
-    switch (cause) {
-      case MEASURE_CHANGE:
-      case PROJECT_KEY_UPDATE:
-      case PROJECT_TAGS_UPDATE:
+    return switch (cause) {
+      case MEASURE_CHANGE, PROJECT_KEY_UPDATE, PROJECT_TAGS_UPDATE ->
         // nothing to change. Measures, project key and tags are not part of this index
-        return emptyList();
-
-      case PROJECT_CREATION:
-      case PROJECT_DELETION:
-      case PERMISSION_CHANGE:
-        return insertIntoEsQueue(dbSession, projectUuids);
-
-      default:
+        emptyList();
+      case PROJECT_CREATION, PROJECT_DELETION, PERMISSION_CHANGE -> insertIntoEsQueue(dbSession, projectUuids);
+      default ->
         // defensive case
         throw new IllegalStateException("Unsupported cause: " + cause);
-    }
+    };
   }
 
   private Collection<EsQueueDto> insertIntoEsQueue(DbSession dbSession, Collection<String> projectUuids) {
@@ -164,7 +156,7 @@ public class PermissionIndexer implements ProjectIndexer {
       .map(indexTypeByFormat::get)
       .filter(Objects::nonNull)
       .map(indexType -> new BulkIndexer(esClient, indexType, Size.REGULAR, new OneToOneResilientIndexingListener(dbClient, dbSession, items)))
-      .collect(Collectors.toList());
+      .toList();
 
     if (bulkIndexers.isEmpty()) {
       return result;

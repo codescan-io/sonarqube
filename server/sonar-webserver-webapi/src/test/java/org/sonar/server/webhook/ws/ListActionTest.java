@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -110,7 +110,7 @@ public class ListActionTest {
     ListResponse response = wsActionTester.newRequest().executeProtobuf(ListResponse.class);
 
     List<Webhooks.ListResponseElement> elements = response.getWebhooksList();
-    assertThat(elements.size()).isEqualTo(2);
+    assertThat(elements).hasSize(2);
 
     assertThat(elements.get(0)).extracting(Webhooks.ListResponseElement::getKey).isEqualTo(webhook1.getUuid());
     assertThat(elements.get(0)).extracting(Webhooks.ListResponseElement::getName).isEqualTo("aaa");
@@ -133,7 +133,7 @@ public class ListActionTest {
     ListResponse response = wsActionTester.newRequest().executeProtobuf(ListResponse.class);
 
     List<Webhooks.ListResponseElement> elements = response.getWebhooksList();
-    assertThat(elements.size()).isEqualTo(2);
+    assertThat(elements).hasSize(2);
 
     assertThat(elements.get(0)).extracting(Webhooks.ListResponseElement::getKey).isEqualTo(webhook1.getUuid());
     assertThat(elements.get(0)).extracting(Webhooks.ListResponseElement::getName).isEqualTo("aaa");

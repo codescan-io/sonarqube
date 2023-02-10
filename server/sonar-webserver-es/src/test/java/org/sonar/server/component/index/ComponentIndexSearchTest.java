@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -21,7 +21,6 @@ package org.sonar.server.component.index;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.Rule;
 import org.junit.Test;
@@ -105,7 +104,7 @@ public class ComponentIndexSearchTest {
   public void paginate_results() {
     List<ComponentDto> projects = IntStream.range(0, 9)
       .mapToObj(i -> db.components().insertPrivateProject(p -> p.setName("project " + i)))
-      .collect(Collectors.toList());
+      .toList();
     index(projects.toArray(new ComponentDto[0]));
 
     SearchIdResult<String> result = underTest.search(ComponentQuery.builder().build(), new SearchOptions().setPage(2, 3));

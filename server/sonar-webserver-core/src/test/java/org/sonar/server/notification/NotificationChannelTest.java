@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -31,7 +31,7 @@ public class NotificationChannelTest {
   public void defaultMethods() {
     NotificationChannel channel = new FakeNotificationChannel();
     assertThat(channel.getKey()).isEqualTo("FakeNotificationChannel");
-    assertThat(channel.toString()).isEqualTo("FakeNotificationChannel");
+    assertThat(channel).hasToString("FakeNotificationChannel");
   }
 
   private static class FakeNotificationChannel extends NotificationChannel {

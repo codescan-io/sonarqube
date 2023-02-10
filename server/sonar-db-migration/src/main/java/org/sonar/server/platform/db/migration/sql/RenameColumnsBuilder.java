@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -21,7 +21,6 @@ package org.sonar.server.platform.db.migration.sql;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import org.sonar.db.dialect.Dialect;
 import org.sonar.db.dialect.H2;
@@ -73,15 +72,14 @@ public class RenameColumnsBuilder {
         switch (dialect.getId()) {
           case H2.ID:
             return "ALTER TABLE " + tableName + " ALTER COLUMN " + r.getOldColumnName() + " RENAME TO " + r.getNewColumnName();
-          case Oracle.ID:
-          case PostgreSql.ID:
+          case Oracle.ID, PostgreSql.ID:
             return "ALTER TABLE " + tableName + " RENAME COLUMN " + r.getOldColumnName() + " TO " + r.getNewColumnName();
           case MsSql.ID:
             return "EXEC sp_rename '" + tableName + "." + r.getOldColumnName() + "', '" + r.getNewColumnName() + "', 'COLUMN'";
           default:
             throw new IllegalArgumentException("Unsupported dialect id " + dialect.getId());
         }
-      }).collect(Collectors.toList());
+      }).toList();
   }
 
   private static class Renaming implements ColumnDef {

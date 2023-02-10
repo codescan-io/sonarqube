@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -130,7 +130,7 @@ public class ModuleSensorExtensionDictionaryTest {
     ModuleSensorExtensionDictionary selector = newSelector(Marker.class, a, b);
     List<Object> extensions = new ArrayList<>(selector.select(Marker.class, true, null));
 
-    assertThat(extensions.size()).isEqualTo(2);
+    assertThat(extensions).hasSize(2);
     assertThat(extensions.get(0)).isEqualTo(a);
     assertThat(extensions.get(1)).isEqualTo(b);
 

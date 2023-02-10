@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -20,23 +20,12 @@
 import { shallow } from 'enzyme';
 import * as React from 'react';
 import { mockIssue } from '../../../../helpers/testMocks';
-import { waitAndUpdate } from '../../../../helpers/testUtils';
 import IssuesList from '../IssuesList';
 
-beforeAll(() => {
-  jest.useFakeTimers();
-});
-
-afterAll(() => {
-  jest.runOnlyPendingTimers();
-  jest.useRealTimers();
-});
-
-it('should render correctly', async () => {
-  const wrapper = shallowRender();
+it('should render correctly', () => {
+  const wrapper = shallowRender({ issues: [] });
   expect(wrapper).toMatchSnapshot();
-  jest.runAllTimers();
-  await waitAndUpdate(wrapper);
+  wrapper.setProps({ issues: [mockIssue(), mockIssue(false, { key: 'AVsae-CQS-9G3txfbFN3' })] });
   expect(wrapper).toMatchSnapshot();
 });
 

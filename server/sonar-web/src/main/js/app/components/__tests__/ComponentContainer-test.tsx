@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -160,6 +160,21 @@ it('updates branches on change', async () => {
   expect(getPullRequests).toHaveBeenCalledWith('projectKey');
   await waitAndUpdate(wrapper);
   expect(updateBranchStatus).toHaveBeenCalledTimes(2);
+});
+
+it('sets main branch when current branch is not found', async () => {
+  const router = mockRouter();
+  const wrapper = shallowRender({
+    hasFeature: () => true,
+    location: mockLocation({ query: { id: 'portfolioKey', branch: 'any-branch' } }),
+    router,
+  });
+  await waitAndUpdate(wrapper);
+
+  wrapper.instance().handleBranchesChange();
+  await waitAndUpdate(wrapper);
+
+  expect(router.replace).toHaveBeenCalledWith({ query: { id: 'portfolioKey' } });
 });
 
 it('fetches status', async () => {

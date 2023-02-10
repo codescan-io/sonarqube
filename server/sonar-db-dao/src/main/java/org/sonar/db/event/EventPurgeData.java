@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -21,20 +21,9 @@ package org.sonar.db.event;
 
 import static java.util.Objects.requireNonNull;
 
-public final class EventPurgeData {
-  private final String componentUuid;
-  private final String analysisUuid;
-
+public record EventPurgeData(String componentUuid, String analysisUuid) {
   public EventPurgeData(String componentUuid, String analysisUuid) {
     this.componentUuid = requireNonNull(componentUuid);
     this.analysisUuid = requireNonNull(analysisUuid);
-  }
-
-  public String getComponentUuid() {
-    return componentUuid;
-  }
-
-  public String getAnalysisUuid() {
-    return analysisUuid;
   }
 }

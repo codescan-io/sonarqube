@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -70,7 +70,7 @@ public class ProjectMeasuresQueryTest {
   public void set_quality_gate_status() {
     underTest.setQualityGateStatus(OK);
 
-    assertThat(underTest.getQualityGateStatus().get()).isEqualTo(Level.OK);
+    assertThat(underTest.getQualityGateStatus()).contains(Level.OK);
   }
 
   @Test

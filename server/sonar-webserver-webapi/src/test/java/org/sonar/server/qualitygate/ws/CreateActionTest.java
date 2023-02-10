@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -22,19 +22,25 @@ package org.sonar.server.qualitygate.ws;
 import com.tngtech.java.junit.dataprovider.DataProvider;
 import com.tngtech.java.junit.dataprovider.DataProviderRunner;
 import com.tngtech.java.junit.dataprovider.UseDataProvider;
+import java.util.Collection;
 import java.util.Optional;
 import javax.annotation.Nullable;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.sonar.api.measures.Metric;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.utils.System2;
 import org.sonar.core.util.UuidFactoryFast;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
+import org.sonar.db.metric.MetricDto;
+import org.sonar.db.qualitygate.QualityGateConditionDto;
 import org.sonar.db.qualitygate.QualityGateDto;
 import org.sonar.server.exceptions.ForbiddenException;
+import org.sonar.server.qualitygate.QualityGateConditionsUpdater;
 import org.sonar.server.qualitygate.QualityGateUpdater;
 import org.sonar.server.tester.UserSessionRule;
 import org.sonar.server.ws.TestRequest;
@@ -44,11 +50,12 @@ import org.sonarqube.ws.Qualitygates.CreateResponse;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.sonar.db.permission.GlobalPermission.ADMINISTER_QUALITY_GATES;
+import static org.sonar.server.qualitygate.QualityGateCaycChecker.CAYC_METRICS;
+import static org.sonar.server.qualitygate.ws.CreateAction.DEFAULT_METRIC_VALUES;
 import static org.sonar.server.qualitygate.ws.QualityGatesWsParameters.PARAM_NAME;
 
 @RunWith(DataProviderRunner.class)
 public class CreateActionTest {
-
 
   @Rule
   public UserSessionRule userSession = UserSessionRule.standalone();
@@ -58,26 +65,17 @@ public class CreateActionTest {
 
   private final DbClient dbClient = db.getDbClient();
   private final DbSession dbSession = db.getSession();
-  private final CreateAction underTest = new CreateAction(dbClient, userSession, new QualityGateUpdater(dbClient, UuidFactoryFast.getInstance()));
+  private final CreateAction underTest = new CreateAction(dbClient, userSession, new QualityGateUpdater(dbClient, UuidFactoryFast.getInstance()),
+    new QualityGateConditionsUpdater(dbClient));
   private final WsActionTester ws = new WsActionTester(underTest);
 
-  @Test
-  public void default_is_used_when_no_parameter() {
-    logInAsQualityGateAdmin();
-
-    String qgName = "Default";
-    CreateResponse response = executeRequest(qgName);
-
-    assertThat(response.getName()).isEqualTo(qgName);
-    assertThat(response.getId()).isNotNull();
-    dbSession.commit();
-
-    QualityGateDto qualityGateDto = dbClient.qualityGateDao().selectByName(dbSession, qgName);
-    assertThat(qualityGateDto).isNotNull();
+  @Before
+  public void setup() {
+    CAYC_METRICS.forEach(this::insertMetric);
   }
 
   @Test
-  public void create_quality_gate() {
+  public void create_quality_gate_with_cayc_conditions() {
     logInAsQualityGateAdmin();
 
     String qgName = "Default";
@@ -89,6 +87,13 @@ public class CreateActionTest {
 
     QualityGateDto qualityGateDto = dbClient.qualityGateDao().selectByName(dbSession, qgName);
     assertThat(qualityGateDto).isNotNull();
+
+    var conditions = getConditions(dbSession, qualityGateDto);
+
+    CAYC_METRICS.stream()
+      .map(m -> dbClient.metricDao().selectByKey(dbSession, m.getKey()))
+      .forEach(metricDto -> assertThat(conditions)
+        .anyMatch(c -> metricDto.getUuid().equals(c.getMetricUuid()) && c.getErrorThreshold().equals(String.valueOf(getDefaultCaycValue(metricDto)))));
   }
 
   @Test
@@ -136,11 +141,15 @@ public class CreateActionTest {
 
   @DataProvider
   public static Object[][] nullOrEmpty() {
-    return new Object[][]{
+    return new Object[][] {
       {null},
       {""},
       {"  "}
     };
+  }
+
+  private Collection<QualityGateConditionDto> getConditions(DbSession dbSession, QualityGateDto qualityGate) {
+    return dbClient.gateConditionDao().selectForQualityGate(dbSession, qualityGate.getUuid());
   }
 
   private CreateResponse executeRequest(String qualitGateName) {
@@ -152,4 +161,23 @@ public class CreateActionTest {
   private void logInAsQualityGateAdmin() {
     userSession.logIn().addPermission(ADMINISTER_QUALITY_GATES);
   }
+
+  private void insertMetric(Metric metric) {
+    db.measures().insertMetric(m -> m
+      .setKey(metric.getKey())
+      .setValueType(metric.getType().name())
+      .setHidden(metric.isHidden())
+      .setDirection(metric.getDirection()));
+  }
+
+  private Integer getDefaultCaycValue(MetricDto metricDto) {
+    return DEFAULT_METRIC_VALUES.containsKey(metricDto.getKey())
+      ? DEFAULT_METRIC_VALUES.get(metricDto.getKey())
+      : CAYC_METRICS.stream()
+        .filter(metric -> metricDto.getKey().equals(metric.getKey()))
+        .findAny()
+        .orElseThrow()
+        .getBestValue().intValue();
+  }
+
 }

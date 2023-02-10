@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -26,7 +26,6 @@ import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { formatMeasure } from '../../../helpers/measures';
 import { getComponentIssuesUrl } from '../../../helpers/urls';
 import { BranchLike } from '../../../types/branch-like';
-import { RuleStatus } from '../../../types/rules';
 import { Issue } from '../../../types/types';
 import LocationIndex from '../../common/LocationIndex';
 import IssueChangelog from './IssueChangelog';
@@ -76,13 +75,9 @@ export default function IssueTitleBar(props: IssueTitleBarProps) {
   return (
     <div className="issue-row">
       <IssueMessage
-        engine={issue.externalRuleEngine}
-        quickFixAvailable={issue.quickFixAvailable}
+        issue={issue}
+        branchLike={props.branchLike}
         displayWhyIsThisAnIssue={displayWhyIsThisAnIssue}
-        message={issue.message}
-        messageFormattings={issue.messageFormattings}
-        ruleKey={issue.rule}
-        ruleStatus={issue.ruleStatus as RuleStatus | undefined}
       />
       <div className="issue-row-meta">
         <div className="issue-meta-list">

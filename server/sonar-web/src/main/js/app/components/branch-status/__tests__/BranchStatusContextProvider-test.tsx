@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -22,7 +22,7 @@ import * as React from 'react';
 import { getQualityGateProjectStatus } from '../../../../api/quality-gates';
 import { mockBranch } from '../../../../helpers/mocks/branch-like';
 import { waitAndUpdate } from '../../../../helpers/testUtils';
-import { QualityGateProjectStatus } from '../../../../types/quality-gates';
+import { BranchStatusData } from '../../../../types/branch-like';
 import BranchStatusContextProvider from '../BranchStatusContextProvider';
 
 jest.mock('../../../../api/quality-gates', () => ({
@@ -33,7 +33,7 @@ describe('fetchBranchStatus', () => {
   it('should get the branch status', async () => {
     const projectKey = 'projectKey';
     const branchName = 'branch-6.7';
-    const status: QualityGateProjectStatus = {
+    const status: BranchStatusData = {
       status: 'OK',
       conditions: [],
       ignoredConditions: false,

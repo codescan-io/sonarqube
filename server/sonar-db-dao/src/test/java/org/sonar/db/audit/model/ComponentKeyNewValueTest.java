@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -34,6 +34,6 @@ public class ComponentKeyNewValueTest {
 
     JSONObject jsonObject = (JSONObject) new JSONParser().parse(newValue.toString());
 
-    assertThat(jsonObject.size()).isEqualTo(3);
+    assertThat(jsonObject).hasSize(3);
   }
 }

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -24,7 +24,6 @@ import com.google.common.collect.Ordering;
 import com.google.common.collect.TreeMultimap;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
@@ -179,7 +178,7 @@ public class UsersAction implements PermissionsWsAction {
     if (users.isEmpty()) {
       return emptyList();
     }
-    List<String> userUuids = users.stream().map(UserDto::getUuid).collect(Collectors.toList());
+    List<String> userUuids = users.stream().map(UserDto::getUuid).toList();
     PermissionQuery.Builder queryBuilder = PermissionQuery.builder()
       .setOrganizationUuid(org.getUuid())
       .withAtLeastOnePermission();

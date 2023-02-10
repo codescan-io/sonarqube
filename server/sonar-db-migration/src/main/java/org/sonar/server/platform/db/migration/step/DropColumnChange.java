@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -22,7 +22,9 @@ package org.sonar.server.platform.db.migration.step;
 import java.sql.SQLException;
 import org.sonar.db.Database;
 import org.sonar.db.DatabaseUtils;
+import org.sonar.db.dialect.MsSql;
 import org.sonar.server.platform.db.migration.sql.DropColumnsBuilder;
+import org.sonar.server.platform.db.migration.sql.DropMsSQLDefaultConstraintsBuilder;
 
 public abstract class DropColumnChange extends DdlChange {
 
@@ -36,11 +38,14 @@ public abstract class DropColumnChange extends DdlChange {
   }
 
   @Override
-  public void execute(DdlChange.Context context) throws SQLException {
+  public void execute(Context context) throws SQLException {
     if (!checkIfUseManagedColumnExists()) {
       return;
     }
 
+    if (MsSql.ID.equals(getDatabase().getDialect().getId())) {
+      context.execute(new DropMsSQLDefaultConstraintsBuilder(getDatabase()).setTable(tableName).setColumns(columnName).build());
+    }
     context.execute(new DropColumnsBuilder(getDatabase().getDialect(), tableName, columnName).build());
   }
 

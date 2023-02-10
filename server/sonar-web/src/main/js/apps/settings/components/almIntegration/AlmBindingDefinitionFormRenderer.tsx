@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -41,7 +41,6 @@ export interface AlmBindingDefinitionFormProps {
   alm: AlmKeys;
   isUpdate: boolean;
   canSubmit: boolean;
-  alreadyHaveInstanceConfigured: boolean;
   onCancel: () => void;
   onSubmit: () => void;
   onFieldChange: (fieldId: keyof AlmBindingDefinition, value: string) => void;
@@ -98,8 +97,7 @@ export default class AlmBindingDefinitionFormRenderer extends React.PureComponen
   };
 
   render() {
-    const { isUpdate, alreadyHaveInstanceConfigured, canSubmit, submitting, validationError } =
-      this.props;
+    const { isUpdate, canSubmit, submitting, validationError } = this.props;
     const header = translate('settings.almintegration.form.header', isUpdate ? 'edit' : 'create');
 
     const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
@@ -120,11 +118,6 @@ export default class AlmBindingDefinitionFormRenderer extends React.PureComponen
           </div>
 
           <div className="modal-body modal-container">
-            {alreadyHaveInstanceConfigured && !isUpdate && (
-              <Alert className="big-spacer-bottom" variant="warning">
-                {translate('settings.almintegration.form.second_instance_warning')}
-              </Alert>
-            )}
             {this.renderForm()}
             {validationError && !canSubmit && (
               <Alert variant="error">

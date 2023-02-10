@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -28,6 +28,7 @@ import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
 import javax.annotation.Nullable;
 import org.sonar.db.component.SnapshotDto;
+import org.sonar.server.qualitygate.QualityGateCaycStatus;
 import org.sonarqube.ws.Qualitygates.ProjectStatusResponse;
 import org.sonarqube.ws.Qualitygates.ProjectStatusResponse.NewCodePeriod;
 import org.sonarqube.ws.Qualitygates.ProjectStatusResponse.Period;
@@ -38,11 +39,13 @@ import static org.sonar.api.utils.DateUtils.formatDateTime;
 public class QualityGateDetailsFormatter {
   private final Optional<String> optionalMeasureData;
   private final Optional<SnapshotDto> optionalSnapshot;
+  private final QualityGateCaycStatus caycStatus;
   private final ProjectStatusResponse.ProjectStatus.Builder projectStatusBuilder;
 
-  public QualityGateDetailsFormatter(Optional<String> measureData, Optional<SnapshotDto> snapshot) {
-    this.optionalMeasureData = measureData;
-    this.optionalSnapshot = snapshot;
+  public QualityGateDetailsFormatter(@Nullable String measureData, @Nullable SnapshotDto snapshot, QualityGateCaycStatus caycStatus) {
+    this.optionalMeasureData = Optional.ofNullable(measureData);
+    this.optionalSnapshot = Optional.ofNullable(snapshot);
+    this.caycStatus = caycStatus;
     this.projectStatusBuilder = ProjectStatusResponse.ProjectStatus.newBuilder();
   }
 
@@ -55,6 +58,7 @@ public class QualityGateDetailsFormatter {
 
     ProjectStatusResponse.Status qualityGateStatus = measureLevelToQualityGateStatus(json.get("level").getAsString());
     projectStatusBuilder.setStatus(qualityGateStatus);
+    projectStatusBuilder.setCaycStatus(caycStatus.toString());
 
     formatIgnoredConditions(json);
     formatConditions(json.getAsJsonArray("conditions"));
@@ -200,8 +204,8 @@ public class QualityGateDetailsFormatter {
     throw new IllegalStateException(String.format("Unknown quality gate comparator '%s'", measureOp));
   }
 
-  private static ProjectStatusResponse.ProjectStatus newResponseWithoutQualityGateDetails() {
-    return ProjectStatusResponse.ProjectStatus.newBuilder().setStatus(ProjectStatusResponse.Status.NONE).build();
+  private ProjectStatusResponse.ProjectStatus newResponseWithoutQualityGateDetails() {
+    return ProjectStatusResponse.ProjectStatus.newBuilder().setStatus(ProjectStatusResponse.Status.NONE).setCaycStatus(caycStatus.toString()).build();
   }
 
   private static Predicate<JsonObject> isConditionOnValidPeriod() {

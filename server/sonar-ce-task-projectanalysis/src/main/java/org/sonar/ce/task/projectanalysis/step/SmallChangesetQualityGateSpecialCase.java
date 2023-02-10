@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -46,7 +46,7 @@ public class SmallChangesetQualityGateSpecialCase {
 
   public boolean appliesTo(Component project, @Nullable MetricEvaluationResult metricEvaluationResult) {
     return metricEvaluationResult != null
-      && metricEvaluationResult.evaluationResult.getLevel() != Measure.Level.OK
+      && metricEvaluationResult.evaluationResult.level() != Measure.Level.OK
       && METRICS_TO_IGNORE_ON_SMALL_CHANGESETS.contains(metricEvaluationResult.condition.getMetric().getKey())
       && config.getConfiguration().getBoolean(CoreProperties.QUALITY_GATE_IGNORE_SMALL_CHANGES).orElse(true)
       && isSmallChangeset(project);
@@ -54,7 +54,7 @@ public class SmallChangesetQualityGateSpecialCase {
 
   MetricEvaluationResult apply(MetricEvaluationResult metricEvaluationResult) {
     return new MetricEvaluationResult(
-      new EvaluationResult(Measure.Level.OK, metricEvaluationResult.evaluationResult.getValue()), metricEvaluationResult.condition);
+      new EvaluationResult(Measure.Level.OK, metricEvaluationResult.evaluationResult.value()), metricEvaluationResult.condition);
   }
 
   private boolean isSmallChangeset(Component project) {

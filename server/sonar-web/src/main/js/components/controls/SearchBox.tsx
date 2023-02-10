@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import classNames from 'classnames';
-import { Cancelable, debounce } from 'lodash';
+import { debounce, DebouncedFunc } from 'lodash';
 import * as React from 'react';
 import { KeyboardKeys } from '../../helpers/keycodes';
 import { translate, translateWithParameters } from '../../helpers/l10n';
@@ -48,15 +48,16 @@ interface State {
 }
 
 const DEFAULT_MAX_LENGTH = 100;
+const DEBOUNCE_DELAY = 250;
 
 export default class SearchBox extends React.PureComponent<Props, State> {
-  debouncedOnChange: ((query: string) => void) & Cancelable;
+  debouncedOnChange: DebouncedFunc<(query: string) => void>;
   input?: HTMLInputElement | null;
 
   constructor(props: Props) {
     super(props);
     this.state = { value: props.value || '' };
-    this.debouncedOnChange = debounce(this.props.onChange, 250);
+    this.debouncedOnChange = debounce(this.props.onChange, DEBOUNCE_DELAY);
   }
 
   componentDidUpdate(prevProps: Props) {
@@ -142,7 +143,7 @@ export default class SearchBox extends React.PureComponent<Props, State> {
         }
       >
         <input
-          aria-label={translate('search_verb')}
+          aria-label={this.props.placeholder}
           autoComplete="off"
           autoFocus={this.props.autoFocus}
           className={inputClassName}
@@ -170,11 +171,11 @@ export default class SearchBox extends React.PureComponent<Props, State> {
           />
         )}
 
-        {tooShort && minLength !== undefined && (
-          <span aria-live="assertive" className="search-box-note">
-            {translateWithParameters('select2.tooShort', minLength)}
-          </span>
-        )}
+        <span aria-live="polite" className="search-box-note">
+          {tooShort &&
+            minLength !== undefined &&
+            translateWithParameters('select2.tooShort', minLength)}
+        </span>
       </div>
     );
   }

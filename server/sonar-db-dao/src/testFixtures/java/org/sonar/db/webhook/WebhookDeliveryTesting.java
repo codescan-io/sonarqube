@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -20,7 +20,6 @@
 package org.sonar.db.webhook;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import org.sonar.core.util.Uuids;
 import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
@@ -68,6 +67,6 @@ public class WebhookDeliveryTesting {
     return dbTester.select(dbSession, "select uuid as \"uuid\" from webhook_deliveries")
       .stream()
       .map(columns -> (String) columns.get("uuid"))
-      .collect(Collectors.toList());
+      .toList();
   }
 }

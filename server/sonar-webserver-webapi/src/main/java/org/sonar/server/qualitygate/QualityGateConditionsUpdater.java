@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.sonar.api.measures.Metric.ValueType;
 import org.sonar.core.util.Uuids;
@@ -75,7 +74,7 @@ public class QualityGateConditionsUpdater {
     ValueType.RATING,
     ValueType.WORK_DUR);
 
-  private static final List<String> RATING_VALID_INT_VALUES = stream(Rating.values()).map(r -> Integer.toString(r.getIndex())).collect(Collectors.toList());
+  private static final List<String> RATING_VALID_INT_VALUES = stream(Rating.values()).map(r -> Integer.toString(r.getIndex())).toList();
 
   private final DbClient dbClient;
 
@@ -176,21 +175,16 @@ public class QualityGateConditionsUpdater {
     try {
       ValueType valueType = ValueType.valueOf(metric.getValueType());
       switch (valueType) {
-        case BOOL:
-        case INT:
-        case RATING:
+        case BOOL, INT, RATING:
           parseInt(errorThreshold);
           return;
-        case MILLISEC:
-        case WORK_DUR:
+        case MILLISEC, WORK_DUR:
           parseLong(errorThreshold);
           return;
-        case FLOAT:
-        case PERCENT:
+        case FLOAT, PERCENT:
           parseDouble(errorThreshold);
           return;
-        case STRING:
-        case LEVEL:
+        case STRING, LEVEL:
           return;
         default:
           throw new IllegalArgumentException(format("Unsupported value type %s. Cannot convert condition value", valueType));

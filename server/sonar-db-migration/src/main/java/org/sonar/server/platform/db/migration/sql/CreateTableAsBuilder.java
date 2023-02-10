@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -78,7 +78,7 @@ public class CreateTableAsBuilder {
       sql.add(sb.toString());
     }
 
-    List<Column> notNullColumns = columns.stream().filter(c -> !c.definition().isNullable()).collect(Collectors.toList());
+    List<Column> notNullColumns = columns.stream().filter(c -> !c.definition().isNullable()).toList();
     for (Column c : notNullColumns) {
       sql.addAll(new AlterColumnsBuilder(dialect, tableName).updateColumn(c.definition()).build());
     }

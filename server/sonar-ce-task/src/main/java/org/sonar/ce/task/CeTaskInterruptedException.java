@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -37,8 +37,8 @@ public abstract class CeTaskInterruptedException extends RuntimeException {
   }
 
   public static Optional<CeTaskInterruptedException> isTaskInterruptedException(Throwable e) {
-    if (e instanceof CeTaskInterruptedException) {
-      return Optional.of((CeTaskInterruptedException) e);
+    if (e instanceof CeTaskInterruptedException ceTaskInterruptedException) {
+      return Optional.of(ceTaskInterruptedException);
     }
     return isCauseInterruptedException(e);
   }
@@ -48,8 +48,8 @@ public abstract class CeTaskInterruptedException extends RuntimeException {
     if (cause == null || cause == e) {
       return Optional.empty();
     }
-    if (cause instanceof CeTaskInterruptedException) {
-      return Optional.of((CeTaskInterruptedException) cause);
+    if (cause instanceof CeTaskInterruptedException ceTaskInterruptedException) {
+      return Optional.of(ceTaskInterruptedException);
     }
     return isCauseInterruptedException(cause);
   }

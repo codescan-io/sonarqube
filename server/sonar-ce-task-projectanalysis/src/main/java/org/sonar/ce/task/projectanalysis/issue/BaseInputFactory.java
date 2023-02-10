@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -44,7 +44,7 @@ public abstract class BaseInputFactory {
     BaseLazyInput(DbClient dbClient, Component component, @Nullable MovedFilesRepository.OriginalFile originalFile) {
       this.dbClient = dbClient;
       this.component = component;
-      this.effectiveUuid = originalFile == null ? component.getUuid() : originalFile.getUuid();
+      this.effectiveUuid = originalFile == null ? component.getUuid() : originalFile.uuid();
     }
 
     @Override

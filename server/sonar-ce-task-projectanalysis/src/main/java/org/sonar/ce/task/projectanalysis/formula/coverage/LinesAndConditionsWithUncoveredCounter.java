@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -32,10 +32,10 @@ public final class LinesAndConditionsWithUncoveredCounter extends ElementsAndCov
 
   @Override
   protected void initializeForSupportedLeaf(CounterInitializationContext counterContext) {
-    this.elements = getLongMeasureValue(counterContext, metricKeys.getLines())
-      + getLongMeasureValue(counterContext, metricKeys.getConditions());
+    this.elements = getLongMeasureValue(counterContext, metricKeys.lines())
+      + getLongMeasureValue(counterContext, metricKeys.conditions());
     this.coveredElements = this.elements
-      - getLongMeasureValue(counterContext, metricKeys.getUncoveredLines())
-      - getLongMeasureValue(counterContext, metricKeys.getUncoveredConditions());
+      - getLongMeasureValue(counterContext, metricKeys.uncoveredLines())
+      - getLongMeasureValue(counterContext, metricKeys.uncoveredConditions());
   }
 }

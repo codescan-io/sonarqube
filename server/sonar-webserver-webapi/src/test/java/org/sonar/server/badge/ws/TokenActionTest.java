@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -74,7 +74,7 @@ public class TokenActionTest {
   public void should_generate_token() {
     ComponentDto project = db.components().insertPrivateProject();
     userSession.logIn().addProjectPermission(UserRole.USER, project);
-    when(tokenGenerator.generateProjectBadgeToken()).thenReturn("generated_token");
+    when(tokenGenerator.generate(TokenType.PROJECT_BADGE_TOKEN)).thenReturn("generated_token");
 
     TestResponse response = ws.newRequest().setParam("project", project.getKey()).execute();
 
@@ -85,7 +85,7 @@ public class TokenActionTest {
   public void should_reuse_generated_token() {
     ComponentDto project = db.components().insertPrivateProject();
     userSession.logIn().addProjectPermission(UserRole.USER, project);
-    when(tokenGenerator.generateProjectBadgeToken()).thenReturn("generated_token");
+    when(tokenGenerator.generate(TokenType.PROJECT_BADGE_TOKEN)).thenReturn("generated_token");
 
     // first call, generating the token
     TestResponse firstResponse = ws.newRequest().setParam("project", project.getKey()).execute();

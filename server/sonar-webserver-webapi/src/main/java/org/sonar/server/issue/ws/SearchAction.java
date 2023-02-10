@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -65,7 +65,6 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Optional.ofNullable;
-import static java.util.stream.Collectors.toList;
 import static org.sonar.api.issue.Issue.RESOLUTIONS;
 import static org.sonar.api.issue.Issue.RESOLUTION_FIXED;
 import static org.sonar.api.issue.Issue.RESOLUTION_REMOVED;
@@ -109,9 +108,9 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_FILES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_IN_NEW_CODE_PERIOD;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_LANGUAGES;
-import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_OWASP_ASVS_LEVEL;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ON_COMPONENT_ONLY;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_OWASP_ASVS_40;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_OWASP_ASVS_LEVEL;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_OWASP_TOP_10;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_OWASP_TOP_10_2021;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_PCI_DSS_32;
@@ -309,7 +308,7 @@ public class SearchAction implements IssuesWsAction {
       .setDescription("Comma-separated list of SonarSource security categories. Use '" + SQCategory.OTHERS.getKey() + "' to select issues not associated" +
         " with any category")
       .setSince("7.8")
-      .setPossibleValues(Arrays.stream(SQCategory.values()).map(SQCategory::getKey).collect(Collectors.toList()));
+      .setPossibleValues(Arrays.stream(SQCategory.values()).map(SQCategory::getKey).toList());
     action.createParam(PARAM_AUTHOR)
       .setDescription("SCM accounts. To set several values, the parameter must be called once for each value.")
       .setExampleValue("author=torvalds@linux-foundation.org&author=linux@fondation.org");
@@ -510,7 +509,7 @@ public class SearchAction implements IssuesWsAction {
     if (typeFacet != null) {
       typeFacet.remove(RuleType.SECURITY_HOTSPOT.name());
     }
-    addMandatoryValuesToFacet(facets, PARAM_TYPES, ALL_RULE_TYPES_EXCEPT_SECURITY_HOTSPOTS.stream().map(Enum::name).collect(Collectors.toList()));
+    addMandatoryValuesToFacet(facets, PARAM_TYPES, ALL_RULE_TYPES_EXCEPT_SECURITY_HOTSPOTS.stream().map(Enum::name).toList());
   }
 
   private static void addMandatoryValuesToFacet(Facets facets, String facetName, @Nullable Iterable<String> mandatoryValues) {
@@ -596,7 +595,7 @@ public class SearchAction implements IssuesWsAction {
 
   private static List<String> allRuleTypesExceptHotspotsIfEmpty(@Nullable List<String> types) {
     if (types == null || types.isEmpty()) {
-      return ALL_RULE_TYPES_EXCEPT_SECURITY_HOTSPOTS.stream().map(Enum::name).collect(toList());
+      return ALL_RULE_TYPES_EXCEPT_SECURITY_HOTSPOTS.stream().map(Enum::name).toList();
     }
     return types;
   }
@@ -617,7 +616,7 @@ public class SearchAction implements IssuesWsAction {
     }
 
     List<UserDto> userDtos = dbClient.userDao().selectByLogins(dbSession, userLogins);
-    List<String> assigneeUuid = userDtos.stream().map(UserDto::getUuid).collect(toList());
+    List<String> assigneeUuid = userDtos.stream().map(UserDto::getUuid).toList();
 
     if ((assigneeLogins != null) && firstNonNull(assigneeUuid, emptyList()).isEmpty()) {
       assigneeUuid = List.of("non-existent-uuid");

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -29,10 +29,12 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbTester;
 import org.sonar.db.ce.CeQueueDto;
 import org.sonar.db.component.ComponentDto;
+import org.sonar.server.platform.NodeInformation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.Mockito.mock;
 
 public class ExportSubmitterImplTest {
 
@@ -43,7 +45,7 @@ public class ExportSubmitterImplTest {
   public DbTester db = DbTester.create(system2);
 
   private final DbClient dbClient = db.getDbClient();
-  private final CeQueue ceQueue = new CeQueueImpl(system2, db.getDbClient(), UuidFactoryFast.getInstance());
+  private final CeQueue ceQueue = new CeQueueImpl(system2, db.getDbClient(), UuidFactoryFast.getInstance(), mock(NodeInformation.class));
 
   private final ExportSubmitterImpl underTest = new ExportSubmitterImpl(ceQueue, dbClient);
 

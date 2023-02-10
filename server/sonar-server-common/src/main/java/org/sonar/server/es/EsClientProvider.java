@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -80,7 +80,7 @@ public class EsClientProvider {
     return Arrays.stream(config.getStringArray(CLUSTER_SEARCH_HOSTS.getKey()))
       .map(HostAndPort::fromString)
       .map(EsClientProvider::toHttpHost)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private static HttpHost toHttpHost(HostAndPort host) {

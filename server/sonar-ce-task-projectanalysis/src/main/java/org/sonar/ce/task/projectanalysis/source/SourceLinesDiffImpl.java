@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -74,7 +74,7 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
         uuid = newCodeReferenceBranchComponentUuids.getComponentUuid(component.getKey());
       } else {
         Optional<MovedFilesRepository.OriginalFile> originalFile = movedFilesRepository.getOriginalFile(component);
-        uuid = originalFile.map(MovedFilesRepository.OriginalFile::getUuid).orElse(component.getUuid());
+        uuid = originalFile.map(MovedFilesRepository.OriginalFile::uuid).orElse(component.getUuid());
       }
 
       if (uuid == null) {

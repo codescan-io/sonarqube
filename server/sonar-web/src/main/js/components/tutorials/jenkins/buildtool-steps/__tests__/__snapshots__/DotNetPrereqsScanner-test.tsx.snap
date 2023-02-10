@@ -6,7 +6,7 @@ exports[`should render correctly 1`] = `
 >
   <SentenceWithHighlights
     highlightKeys={
-      Array [
+      [
         "default_scanner",
       ]
     }
@@ -18,13 +18,13 @@ exports[`should render correctly 1`] = `
   >
     onboarding.tutorial.with.jenkins.dotnet.scanner.prereqs.info
   </Alert>
-  <ul
-    className="list-styled"
+  <ol
+    className="list-styled list-roman"
   >
     <li>
       <SentenceWithHighlights
         highlightKeys={
-          Array [
+          [
             "path",
           ]
         }
@@ -34,7 +34,7 @@ exports[`should render correctly 1`] = `
     <li>
       <SentenceWithHighlights
         highlightKeys={
-          Array [
+          [
             "default_scanner",
             "add_scanner_for_msbuild",
           ]
@@ -45,7 +45,7 @@ exports[`should render correctly 1`] = `
     <li>
       <SentenceWithHighlights
         highlightKeys={
-          Array [
+          [
             "name",
           ]
         }
@@ -63,13 +63,13 @@ exports[`should render correctly 1`] = `
     <li>
       <SentenceWithHighlights
         highlightKeys={
-          Array [
+          [
             "install_from",
           ]
         }
         translationKey="onboarding.tutorial.with.jenkins.dotnet.scanner.prereqs.step5"
       />
     </li>
-  </ul>
+  </ol>
 </li>
 `;

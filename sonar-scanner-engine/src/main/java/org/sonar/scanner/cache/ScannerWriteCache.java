@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,9 +19,8 @@
  */
 package org.sonar.scanner.cache;
 
-import java.util.Map;
 import org.sonar.api.batch.sensor.cache.WriteCache;
 
 public interface ScannerWriteCache extends WriteCache {
-  Map<String, byte[]> getCache();
+  void close();
 }

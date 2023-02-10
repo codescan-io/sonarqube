@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -30,7 +30,7 @@ import static org.sonar.api.PropertyType.INTEGER;
 
 public class ScannerProperties {
 
-  public static final String BRANCHES_DOC_LINK = "https://redirect.sonarsource.com/doc/branches.html";
+  public static final String BRANCHES_DOC_LINK = "https://docs.sonarqube.org/latest/analyzing-source-code/branches/branch-analysis/";
 
   public static final String ORGANIZATION = "sonar.organization";
 

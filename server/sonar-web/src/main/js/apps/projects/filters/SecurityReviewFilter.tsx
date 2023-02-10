@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -92,7 +92,7 @@ function renderAccessibleLabel(option: number) {
 function renderOption(option: number, selected: boolean) {
   return (
     <span>
-      <Rating muted={!selected} small={true} value={option} />
+      <Rating muted={!selected} value={option} />
       <span className="spacer-left">{labels[option]}</span>
     </span>
   );

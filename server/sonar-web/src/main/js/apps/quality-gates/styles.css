@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -28,4 +28,67 @@
 
 .quality-gate-permissions .permission-list-item:hover {
   background-color: var(--rowHoverHighlight);
+}
+
+.quality-gate-section tbody {
+  border: 1px solid var(--disableGrayBorder);
+}
+
+.quality-gate-section tr {
+  background-color: white !important;
+  border-bottom: 1px solid var(--disableGrayBorder);
+}
+
+.quality-gate-section td {
+  height: 24px;
+}
+
+.quality-gate-section tr th {
+  font-weight: 400 !important;
+  font-size: 11px;
+}
+
+.quality-gate-section thead tr {
+  background-color: transparent !important;
+  border: none;
+}
+
+.quality-gate-section thead:after {
+  display: none !important;
+}
+
+.cayc-success-banner ul {
+  list-style: disc;
+}
+
+.bordered-bottom-cayc {
+  border-bottom: 1px solid var(--whitea18);
+}
+
+.cayc-warning-header {
+  color: var(--alertTextWarning);
+}
+
+.cayc-success-header {
+  color: var(--alertTextSuccess);
+}
+
+.cayc-over-compliant-header {
+  color: var(--veryDarkBlue);
+}
+
+.cayc-warning-description {
+  line-height: 18px;
+}
+
+.red-text {
+  color: var(--red);
+}
+
+.green-text {
+  color: var(--success500);
+}
+
+.strike-through {
+  text-decoration: line-through;
 }

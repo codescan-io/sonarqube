@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -33,6 +33,9 @@ import org.sonar.db.dialect.MsSql;
 
 import static java.lang.String.format;
 
+/**
+ * See SONAR-13948. Some columns created in SQ < 5.6 were created with the default command which generated constraints on MS SQL server.
+ */
 public class DropMsSQLDefaultConstraintsBuilder {
   private final Database db;
   private String tableName;

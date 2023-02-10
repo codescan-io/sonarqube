@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -97,6 +97,11 @@ const StyledAlert = styled.div<{ isInline: boolean; variantInfo: AlertVariantInf
 
   a,
   .button-link {
+    border-color: ${colors.primarya40};
+  }
+
+  a: hover,
+  .button-link:hover {
     border-color: ${colors.darkBlue};
   }
 `;

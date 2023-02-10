@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -27,7 +27,6 @@ import org.sonar.db.user.UserDto;
 import org.sonar.server.es.EsTester;
 
 import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
 
 public class PermissionIndexerTester {
 
@@ -39,7 +38,7 @@ public class PermissionIndexerTester {
   }
 
   public PermissionIndexerTester allowOnlyAnyone(ComponentDto... projects) {
-    return allow(stream(projects).map(project -> new IndexPermissions(project.uuid(), project.qualifier()).allowAnyone()).collect(toList()));
+    return allow(stream(projects).map(project -> new IndexPermissions(project.uuid(), project.qualifier()).allowAnyone()).toList());
   }
 
   public PermissionIndexerTester allowOnlyUser(ComponentDto project, UserDto user) {
@@ -55,7 +54,7 @@ public class PermissionIndexerTester {
   }
 
   public PermissionIndexerTester allow(IndexPermissions... indexPermissions) {
-    return allow(stream(indexPermissions).collect(toList()));
+    return allow(stream(indexPermissions).toList());
   }
 
   public PermissionIndexerTester allow(List<IndexPermissions> indexPermissions) {

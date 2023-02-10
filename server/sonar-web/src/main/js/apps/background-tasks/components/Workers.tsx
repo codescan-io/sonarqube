@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -125,6 +125,7 @@ export default class Workers extends React.PureComponent<{}, State> {
         {!loading && canSetWorkerCount && (
           <Tooltip overlay={translate('background_tasks.change_number_of_workers')}>
             <EditButton
+              aria-label={translate('background_tasks.change_number_of_workers')}
               className="js-edit button-small spacer-left"
               onClick={this.handleChangeClick}
               title={translate('edit')}

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -43,7 +43,6 @@ import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.FileMoveRowDto;
 
 import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.sonar.ce.task.projectanalysis.component.ComponentVisitor.Order.POST_ORDER;
 
@@ -137,7 +136,7 @@ public class PullRequestFileMoveDetectionStep implements ComputationStep {
       .values()
       .stream()
       .filter(file -> Objects.nonNull(file.getFileAttributes().getOldRelativePath()))
-      .collect(toList());
+      .toList();
   }
 
   private static Optional<DbComponent> retrieveDbFile(Map<String, DbComponent> dbFilesByPathReference, Component file) {
@@ -161,7 +160,7 @@ public class PullRequestFileMoveDetectionStep implements ComputationStep {
   private static ResultHandler<FileMoveRowDto> accumulateFilesForFileMove(Map<String, DbComponent> accumulator) {
     return resultContext -> {
       DbComponent component = rowToDbComponent(resultContext.getResultObject());
-      accumulator.put(component.getUuid(), component);
+      accumulator.put(component.uuid(), component);
     };
   }
 
@@ -177,7 +176,7 @@ public class PullRequestFileMoveDetectionStep implements ComputationStep {
   private static Map<String, DbComponent> toDbFilesByPathReferenceMap(Collection<DbComponent> dbFiles) {
     return dbFiles
       .stream()
-      .collect(toMap(DbComponent::getPath, identity()));
+      .collect(toMap(DbComponent::path, identity()));
   }
 
   private static Map<String, Component> getReportFilesByUuid(Component root) {
@@ -195,6 +194,6 @@ public class PullRequestFileMoveDetectionStep implements ComputationStep {
   }
 
   private static OriginalFile toOriginalFile(DbComponent dbComponent) {
-    return new OriginalFile(dbComponent.getUuid(), dbComponent.getKey());
+    return new OriginalFile(dbComponent.uuid(), dbComponent.key());
   }
 }

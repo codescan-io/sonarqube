@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -78,21 +78,13 @@ class ConditionEvaluator {
   private static Comparable getThreshold(Condition condition, ValueType valueType) {
     String valString = condition.getErrorThreshold();
     try {
-      switch (valueType) {
-        case INT:
-        case RATING:
-          return parseInteger(valString);
-        case MILLISEC:
-        case WORK_DUR:
-          return Long.parseLong(valString);
-        case FLOAT:
-        case PERCENT:
-          return Double.parseDouble(valString);
-        case LEVEL:
-          return valueType;
-        default:
-          throw new IllegalArgumentException(format("Unsupported value type %s. Cannot convert condition value", valueType));
-      }
+      return switch (valueType) {
+        case INT, RATING -> parseInteger(valString);
+        case MILLISEC, WORK_DUR -> Long.parseLong(valString);
+        case FLOAT, PERCENT -> Double.parseDouble(valString);
+        case LEVEL -> valueType;
+        default -> throw new IllegalArgumentException(format("Unsupported value type %s. Cannot convert condition value", valueType));
+      };
     } catch (NumberFormatException badValueFormat) {
       throw new IllegalArgumentException(format(
         "Quality Gate: unable to parse threshold '%s' to compare against %s", valString, condition.getMetricKey()));
@@ -128,19 +120,12 @@ class ConditionEvaluator {
   }
 
   private static Comparable getNumericValue(ValueType type, double value) {
-    switch (type) {
-      case INT:
-      case RATING:
-        return (int) value;
-      case FLOAT:
-      case PERCENT:
-        return value;
-      case MILLISEC:
-      case WORK_DUR:
-        return (long) value;
-      default:
-        throw new IllegalArgumentException("Condition on numeric value is not allowed for type " + type);
-    }
+    return switch (type) {
+      case INT, RATING -> (int) value;
+      case FLOAT, PERCENT -> value;
+      case MILLISEC, WORK_DUR -> (long) value;
+      default -> throw new IllegalArgumentException("Condition on numeric value is not allowed for type " + type);
+    };
   }
 
   private static int parseInteger(String value) {

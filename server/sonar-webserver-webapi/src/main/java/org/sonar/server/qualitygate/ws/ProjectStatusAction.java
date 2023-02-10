@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -41,6 +41,8 @@ import org.sonar.db.permission.GlobalPermission;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.server.component.ComponentFinder;
 import org.sonar.server.exceptions.BadRequestException;
+import org.sonar.server.qualitygate.QualityGateCaycChecker;
+import org.sonar.server.qualitygate.QualityGateCaycStatus;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.ws.KeyExamples;
 import org.sonarqube.ws.Qualitygates.ProjectStatusResponse;
@@ -67,11 +69,13 @@ public class ProjectStatusAction implements QualityGatesWsAction {
   private final DbClient dbClient;
   private final ComponentFinder componentFinder;
   private final UserSession userSession;
+  private final QualityGateCaycChecker qualityGateCaycChecker;
 
-  public ProjectStatusAction(DbClient dbClient, ComponentFinder componentFinder, UserSession userSession) {
+  public ProjectStatusAction(DbClient dbClient, ComponentFinder componentFinder, UserSession userSession, QualityGateCaycChecker qualityGateCaycChecker) {
     this.dbClient = dbClient;
     this.componentFinder = componentFinder;
     this.userSession = userSession;
+    this.qualityGateCaycChecker = qualityGateCaycChecker;
   }
 
   @Override
@@ -87,11 +91,12 @@ public class ProjectStatusAction implements QualityGatesWsAction {
         "<li>'Administer' rights on the specified project</li>" +
         "<li>'Browse' on the specified project</li>" +
         "<li>'Execute Analysis' on the specified project</li>" +
-        "</ul>",MSG_ONE_PROJECT_PARAMETER_ONLY, QG_STATUSES_ONE_LINE, ProjectStatusResponse.Status.NONE))
+        "</ul>", MSG_ONE_PROJECT_PARAMETER_ONLY, QG_STATUSES_ONE_LINE, ProjectStatusResponse.Status.NONE))
       .setResponseExample(getClass().getResource("project_status-example.json"))
       .setSince("5.3")
       .setHandler(this)
       .setChangelog(
+        new Change("9.9", "'caycStatus' field is added to the response"),
         new Change("9.5", "The 'Execute Analysis' permission also allows to access the endpoint"),
         new Change("8.5", "The field 'periods' in the response is deprecated. Use 'period' instead"),
         new Change("7.7", "The parameters 'branch' and 'pullRequest' were added"),
@@ -148,9 +153,10 @@ public class ProjectStatusAction implements QualityGatesWsAction {
     ProjectAndSnapshot projectAndSnapshot = getProjectAndSnapshot(dbSession, analysisId, projectUuid, projectKey, branchKey, pullRequestId);
     checkPermission(projectAndSnapshot.project);
     Optional<String> measureData = loadQualityGateDetails(dbSession, projectAndSnapshot, analysisId != null);
+    QualityGateCaycStatus caycStatus = qualityGateCaycChecker.checkCaycCompliantFromProject(dbSession, projectAndSnapshot.project.getUuid());
 
     return ProjectStatusResponse.newBuilder()
-      .setProjectStatus(new QualityGateDetailsFormatter(measureData, projectAndSnapshot.snapshotDto).format())
+      .setProjectStatus(new QualityGateDetailsFormatter(measureData.orElse(null), projectAndSnapshot.snapshotDto.orElse(null), caycStatus).format())
       .build();
   }
 

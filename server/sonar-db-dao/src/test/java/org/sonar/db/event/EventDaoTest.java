@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -152,7 +152,7 @@ public class EventDaoTest {
     SnapshotDto analysis = dbTester.components().insertProjectAndSnapshot(project);
     List<EventDto> events = IntStream.range(0, 1 + new Random().nextInt(10))
       .mapToObj(i -> dbTester.events().insertEvent(newEvent(analysis).setCategory("cat_" + i)))
-      .collect(toList());
+      .toList();
 
     List<EventDto> dtos = underTest.selectByComponentUuid(dbTester.getSession(), project.uuid());
     assertThat(dtos)

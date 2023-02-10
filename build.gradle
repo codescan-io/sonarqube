@@ -1,20 +1,22 @@
 import groovy.json.JsonOutput
 
+import static org.gradle.api.JavaVersion.VERSION_17
+
 plugins {
   // Ordered alphabetically
   id 'com.github.hierynomus.license' version '0.16.1'
   id "com.github.hierynomus.license-report" version "0.16.1" apply false
   id 'com.github.johnrengelman.shadow' version '7.1.2' apply false
   id 'com.google.protobuf' version '0.8.19' apply false
-  id 'com.jfrog.artifactory' version '4.29.3'
+  id 'com.jfrog.artifactory' version '4.30.1'
   id "de.undercouch.download" version "5.3.0" apply false
   id 'io.spring.dependency-management' version '1.1.0'
   id "org.cyclonedx.bom" version "1.6.1" apply false
   id 'org.sonarqube' version '3.5.0.2730'
 }
 
-if (!JavaVersion.current().java11Compatible) {
-  throw new GradleException("JDK 11+ is required to perform this build. It's currently " + System.getProperty("java.home") + ".")
+if (!JavaVersion.current().isCompatibleWith(VERSION_17)) {
+  throw new GradleException("JDK 17+ is required to perform this build. It's currently " + System.getProperty("java.home") + ".")
 }
 
 /**
@@ -146,9 +148,6 @@ subprojects {
   // do not deploy to Artifactory by default
   artifactoryPublish.skip = true
 
-  // Produce Java 11 bytecode while making sure the code does not use any APIs from Java 17
-  compileJava.options.release = 11
-
   compileJava.options.encoding = "UTF-8"
   compileTestJava.options.encoding = "UTF-8"
 
@@ -158,7 +157,7 @@ subprojects {
   }
 
   ext {
-    protobufVersion = '3.21.7'
+    protobufVersion = '3.21.12'
   }
 
   sonar {
@@ -173,44 +172,44 @@ subprojects {
       // bundled plugin list -- keep it alphabetically ordered
       dependency 'com.sonarsource.abap:sonar-abap-plugin:3.11.0.4030'
       dependency 'com.sonarsource.cobol:sonar-cobol-plugin:5.2.0.5949'
-      dependency 'com.sonarsource.cpp:sonar-cfamily-plugin:6.40.0.60596'
-      dependency 'com.sonarsource.dbd:sonar-dbd-plugin:1.9.0.2901'
-      dependency 'com.sonarsource.dbd:sonar-dbd-java-frontend-plugin:1.9.0.2901'
-      dependency 'com.sonarsource.dbd:sonar-dbd-python-frontend-plugin:1.9.0.2901'
+      dependency 'com.sonarsource.cpp:sonar-cfamily-plugin:6.41.0.60884'
+      dependency 'com.sonarsource.dbd:sonar-dbd-plugin:1.10.0.3046'
+      dependency 'com.sonarsource.dbd:sonar-dbd-java-frontend-plugin:1.10.0.3046'
+      dependency 'com.sonarsource.dbd:sonar-dbd-python-frontend-plugin:1.10.0.3046'
       dependency 'com.sonarsource.pli:sonar-pli-plugin:1.12.0.3443'
       dependency 'com.sonarsource.plsql:sonar-plsql-plugin:3.8.0.4948'
       dependency 'com.sonarsource.plugins.vb:sonar-vb-plugin:2.9.0.3341'
       dependency 'com.sonarsource.rpg:sonar-rpg-plugin:3.3.0.3147'
-      dependency 'com.sonarsource.security:sonar-security-csharp-frontend-plugin:9.8.0.18639'
-      dependency 'com.sonarsource.security:sonar-security-java-frontend-plugin:9.8.0.18639'
-      dependency 'com.sonarsource.security:sonar-security-php-frontend-plugin:9.8.0.18639'
-      dependency 'com.sonarsource.security:sonar-security-plugin:9.8.0.18639'
-      dependency 'com.sonarsource.security:sonar-security-python-frontend-plugin:9.8.0.18639'
-      dependency 'com.sonarsource.security:sonar-security-js-frontend-plugin:9.8.0.18639'
+      dependency 'com.sonarsource.security:sonar-security-csharp-frontend-plugin:9.9.0.19083'
+      dependency 'com.sonarsource.security:sonar-security-java-frontend-plugin:9.9.0.19083'
+      dependency 'com.sonarsource.security:sonar-security-php-frontend-plugin:9.9.0.19083'
+      dependency 'com.sonarsource.security:sonar-security-plugin:9.9.0.19083'
+      dependency 'com.sonarsource.security:sonar-security-python-frontend-plugin:9.9.0.19083'
+      dependency 'com.sonarsource.security:sonar-security-js-frontend-plugin:9.9.0.19083'
       dependency 'com.sonarsource.slang:sonar-apex-plugin:1.11.0.3905'
       dependency 'com.sonarsource.swift:sonar-swift-plugin:4.8.0.5759'
       dependency 'com.sonarsource.tsql:sonar-tsql-plugin:1.7.0.5449'
       dependency 'org.sonarsource.config:sonar-config-plugin:1.2.0.267'
-      dependency 'org.sonarsource.dotnet:sonar-csharp-plugin:8.50.0.58025'
-      dependency 'org.sonarsource.dotnet:sonar-vbnet-plugin:8.50.0.58025'
+      dependency 'org.sonarsource.dotnet:sonar-csharp-plugin:8.51.0.59060'
+      dependency 'org.sonarsource.dotnet:sonar-vbnet-plugin:8.51.0.59060'
       dependency 'org.sonarsource.flex:sonar-flex-plugin:2.8.0.3166'
       dependency 'org.sonarsource.html:sonar-html-plugin:3.7.1.3306'
-      dependency 'org.sonarsource.jacoco:sonar-jacoco-plugin:1.1.1.1157'
-      dependency 'org.sonarsource.java:sonar-java-plugin:7.15.0.30507'
-      dependency 'org.sonarsource.javascript:sonar-javascript-plugin:9.12.0.20319'
-      dependency 'org.sonarsource.php:sonar-php-plugin:3.25.0.9077'
-      dependency 'org.sonarsource.python:sonar-python-plugin:3.21.0.10628'
+      dependency 'org.sonarsource.jacoco:sonar-jacoco-plugin:1.3.0.1538'
+      dependency 'org.sonarsource.java:sonar-java-plugin:7.16.0.30901'
+      dependency 'org.sonarsource.javascript:sonar-javascript-plugin:9.13.0.20537'
+      dependency 'org.sonarsource.php:sonar-php-plugin:3.27.1.9352'
+      dependency 'org.sonarsource.python:sonar-python-plugin:3.24.0.10784'
       dependency 'org.sonarsource.slang:sonar-go-plugin:1.11.0.3905'
       dependency 'org.sonarsource.kotlin:sonar-kotlin-plugin:2.12.0.1956'
       dependency 'org.sonarsource.slang:sonar-ruby-plugin:1.11.0.3905'
       dependency 'org.sonarsource.slang:sonar-scala-plugin:1.11.0.3905'
-      dependency 'org.sonarsource.api.plugin:sonar-plugin-api:9.13.0.360'
-      dependency 'org.sonarsource.xml:sonar-xml-plugin:2.6.1.3686'
-      dependency 'org.sonarsource.iac:sonar-iac-plugin:1.9.2.2279'
-      dependency 'org.sonarsource.text:sonar-text-plugin:1.2.0.510'
+      dependency 'org.sonarsource.api.plugin:sonar-plugin-api:9.14.0.375'
+      dependency 'org.sonarsource.xml:sonar-xml-plugin:2.7.0.3820'
+      dependency 'org.sonarsource.iac:sonar-iac-plugin:1.11.0.2847'
+      dependency 'org.sonarsource.text:sonar-text-plugin:2.0.1.611'
 
       // please keep this list alphabetically ordered
-      dependencySet(group: 'ch.qos.logback', version: '1.2.9') {
+      dependencySet(group: 'ch.qos.logback', version: '1.2.10') {
         entry 'logback-access'
         entry 'logback-classic'
         entry 'logback-core'
@@ -222,9 +221,9 @@ subprojects {
       dependency 'commons-dbutils:commons-dbutils:1.7'
       dependency 'commons-io:commons-io:2.11.0'
       dependency 'commons-lang:commons-lang:2.6'
-      imports { mavenBom 'com.fasterxml.jackson:jackson-bom:2.13.4.20221013' }
+      imports { mavenBom 'com.fasterxml.jackson:jackson-bom:2.14.1' }
       dependency 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
-      dependencySet(group: 'com.github.scribejava', version: '8.3.1') {
+      dependencySet(group: 'com.github.scribejava', version: '8.3.2') {
         entry 'scribejava-apis'
         entry 'scribejava-core'
       }
@@ -240,7 +239,7 @@ subprojects {
       dependency 'io.prometheus:simpleclient_common:0.16.0'
       dependency 'io.prometheus:simpleclient_servlet:0.16.0'
       dependency 'com.google.code.findbugs:jsr305:3.0.2'
-      dependency 'com.google.code.gson:gson:2.9.1'
+      dependency 'com.google.code.gson:gson:2.10'
       dependency('com.google.guava:guava:31.1-jre') {
         exclude 'com.google.errorprone:error_prone_annotations'
         exclude 'com.google.guava:listenablefuture'
@@ -250,16 +249,15 @@ subprojects {
       }
       dependency "com.google.protobuf:protobuf-java:${protobufVersion}"
       dependency 'com.h2database:h2:2.1.214'
-      dependencySet(group: 'com.hazelcast', version: '4.2.4') {
+      dependencySet(group: 'com.hazelcast', version: '5.2.1') {
         entry 'hazelcast'
       }
-      dependency 'com.hazelcast:hazelcast-kubernetes:2.2.3'
       // Documentation must be updated if mssql-jdbc is updated: https://github.com/SonarSource/sonarqube/commit/03e4773ebf6cba854cdcf57a600095f65f4f53e7
-      dependency('com.microsoft.sqlserver:mssql-jdbc:11.2.1.jre11') {
+      dependency('com.microsoft.sqlserver:mssql-jdbc:11.2.2.jre17') {
         exclude 'com.fasterxml.jackson.core:jackson-databind'
       }
       dependency 'com.onelogin:java-saml:2.9.0'
-      dependency 'com.oracle.database.jdbc:ojdbc8:21.7.0.0'
+      dependency 'com.oracle.database.jdbc:ojdbc11:21.8.0.0'
       dependency 'org.aspectj:aspectjtools:1.9.9.1'
       dependencySet(group: 'com.squareup.okhttp3', version: '4.10.0') {
         entry 'okhttp'
@@ -267,13 +265,13 @@ subprojects {
       }
       dependency 'org.json:json:20220924'
       dependency 'com.tngtech.java:junit-dataprovider:1.13.1'
-      dependencySet(group: 'io.jsonwebtoken', version: '0.11.2') {
+      dependencySet(group: 'io.jsonwebtoken', version: '0.11.5') {
         entry 'jjwt-api'
         entry 'jjwt-impl'
         entry 'jjwt-jackson'
       }
-      dependency 'com.auth0:java-jwt:4.1.0'
-      dependency 'io.netty:netty-all:4.1.84.Final'
+      dependency 'com.auth0:java-jwt:4.2.1'
+      dependency 'io.netty:netty-all:4.1.86.Final'
       dependency 'com.sun.mail:javax.mail:1.6.2'
       dependency 'javax.annotation:javax.annotation-api:1.3.2'
       dependency 'javax.inject:javax.inject:1'
@@ -288,11 +286,11 @@ subprojects {
       dependency 'org.apache.commons:commons-csv:1.9.0'
       dependency 'org.apache.commons:commons-email:1.5'
       dependency 'com.zaxxer:HikariCP:5.0.1'
-      dependency('org.apache.httpcomponents:httpclient:4.5.13'){
+      dependency('org.apache.httpcomponents:httpclient:4.5.14') {
         exclude 'commons-logging:commons-logging'
       }
       // Be aware that Log4j is used by Elasticsearch client
-      dependencySet(group: 'org.apache.logging.log4j', version: '2.17.1') {
+      dependencySet(group: 'org.apache.logging.log4j', version: '2.19.0') {
         entry 'log4j-core'
         entry 'log4j-api'
         entry 'log4j-to-slf4j'
@@ -316,25 +314,25 @@ subprojects {
         entry 'jetty-servlet'
       }
       // "elasticsearchDownloadUrlFile" and "elasticsearchDownloadSha512" must also be updated in gradle.properties
-      dependency('org.elasticsearch.client:elasticsearch-rest-high-level-client:7.17.6') {
+      dependency('org.elasticsearch.client:elasticsearch-rest-high-level-client:7.17.8') {
         exclude 'org.apache.logging.log4j:log4j-core'
       }
-      dependency 'org.elasticsearch.plugin:transport-netty4-client:7.17.6'
+      dependency 'org.elasticsearch.plugin:transport-netty4-client:7.17.8'
       dependency 'org.elasticsearch:mocksocket:1.2'
       dependency 'org.codelibs.elasticsearch.module:analysis-common:7.17.1'
       dependency 'org.codelibs.elasticsearch.module:reindex:7.17.1'
-      dependency 'org.eclipse.jgit:org.eclipse.jgit:6.3.0.202209071007-r'
-      dependency 'org.tmatesoft.svnkit:svnkit:1.10.8'
+      dependency 'org.eclipse.jgit:org.eclipse.jgit:6.4.0.202211300538-r'
+      dependency 'org.tmatesoft.svnkit:svnkit:1.10.9'
       dependency 'org.hamcrest:hamcrest-all:1.3'
       dependency 'org.jsoup:jsoup:1.15.3'
       dependency 'org.mindrot:jbcrypt:0.4'
-      dependency('org.mockito:mockito-core:4.8.0') {
+      dependency('org.mockito:mockito-core:4.10.0') {
         exclude 'org.hamcrest:hamcrest-core'
       }
-      dependency('org.mockito:mockito-inline:4.8.0')
+      dependency('org.mockito:mockito-inline:4.10.0')
       dependency 'org.mybatis:mybatis:3.5.11'
       dependency 'org.nanohttpd:nanohttpd:2.3.1'
-      dependencySet(group: 'org.slf4j', version: '1.7.30') {
+      dependencySet(group: 'org.slf4j', version: '1.7.36') {
         entry 'jcl-over-slf4j'
         entry 'jul-to-slf4j'
         entry 'log4j-over-slf4j'

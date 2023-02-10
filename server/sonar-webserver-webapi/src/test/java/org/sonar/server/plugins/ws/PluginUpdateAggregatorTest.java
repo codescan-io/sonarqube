@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -71,10 +71,11 @@ public class PluginUpdateAggregatorTest {
 
     assertThat(aggregates).hasSize(1);
     Collection<PluginUpdate> releases = aggregates.iterator().next().getUpdates();
-    assertThat(releases).hasSize(3);
-    assertThat(releases).contains(pluginUpdate1);
-    assertThat(releases).contains(pluginUpdate2);
-    assertThat(releases).contains(pluginUpdate3);
+    assertThat(releases)
+      .hasSize(3)
+      .contains(pluginUpdate1)
+      .contains(pluginUpdate2)
+      .contains(pluginUpdate3);
   }
 
   private PluginUpdate createPluginUpdate(String pluginKey) {

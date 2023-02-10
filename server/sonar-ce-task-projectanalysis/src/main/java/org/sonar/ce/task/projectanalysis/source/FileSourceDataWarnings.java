@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -53,7 +53,7 @@ public class FileSourceDataWarnings {
     requireNonNull(file, "file can't be null");
     requireNonNull(readError, "readError can't be null");
 
-    fileErrorsPerData.compute(readError.getData(), (data, existingList) -> {
+    fileErrorsPerData.compute(readError.data(), (data, existingList) -> {
       Set<Component> res = existingList == null ? new HashSet<>() : existingList;
       res.add(file);
       return res;

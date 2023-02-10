@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -55,7 +55,7 @@ describe.each([
     jest.useFakeTimers();
     renderCheckbox({ label: 'me', children, loading: true });
     jest.runAllTimers();
-    expect(screen.getByLabelText('me')).toMatchSnapshot();
+    expect(screen.getByTestId('deferred-spinner')).toMatchSnapshot();
     jest.useRealTimers();
   });
 });

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -47,6 +47,7 @@ import org.sonar.db.ce.CeQueueDao;
 import org.sonar.db.ce.CeQueueDto;
 import org.sonar.db.ce.CeTaskCharacteristicDto;
 import org.sonar.db.component.ComponentDto;
+import org.sonar.server.platform.NodeInformation;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
@@ -65,8 +66,8 @@ public class InternalCeQueueImpl extends CeQueueImpl implements InternalCeQueue 
   private final NextPendingTaskPicker nextPendingTaskPicker;
 
   public InternalCeQueueImpl(System2 system2, DbClient dbClient, UuidFactory uuidFactory, CEQueueStatus queueStatus,
-    ComputeEngineStatus computeEngineStatus, NextPendingTaskPicker nextPendingTaskPicker) {
-    super(system2, dbClient, uuidFactory);
+    ComputeEngineStatus computeEngineStatus, NextPendingTaskPicker nextPendingTaskPicker, NodeInformation nodeInformation) {
+    super(system2, dbClient, uuidFactory, nodeInformation);
     this.dbClient = dbClient;
     this.queueStatus = queueStatus;
     this.computeEngineStatus = computeEngineStatus;
@@ -113,6 +114,7 @@ public class InternalCeQueueImpl extends CeQueueImpl implements InternalCeQueue 
       CeQueueDto queueDto = dbClient.ceQueueDao().selectByUuid(dbSession, task.getUuid())
         .orElseThrow(() -> new IllegalStateException("Task does not exist anymore: " + task));
       CeActivityDto activityDto = new CeActivityDto(queueDto);
+      activityDto.setNodeName(nodeInformation.getNodeName().orElse(null));
       activityDto.setStatus(status);
       executionTimeInMs = updateExecutionFields(activityDto);
       updateTaskResult(activityDto, taskResult);
@@ -152,8 +154,8 @@ public class InternalCeQueueImpl extends CeQueueImpl implements InternalCeQueue 
     if (stacktrace != null) {
       activityDto.setErrorStacktrace(stacktrace);
     }
-    if (error instanceof TypedException) {
-      activityDto.setErrorType(((TypedException) error).getType());
+    if (error instanceof TypedException typedException) {
+      activityDto.setErrorType(typedException.getType());
     }
   }
 
@@ -176,6 +178,7 @@ public class InternalCeQueueImpl extends CeQueueImpl implements InternalCeQueue 
       List<CeQueueDto> wornOutTasks = dbClient.ceQueueDao().selectWornout(dbSession);
       wornOutTasks.forEach(queueDto -> {
         CeActivityDto activityDto = new CeActivityDto(queueDto);
+        activityDto.setNodeName(nodeInformation.getNodeName().orElse(null));
         activityDto.setStatus(CeActivityDto.Status.CANCELED);
         updateExecutionFields(activityDto);
         remove(dbSession, queueDto, activityDto);

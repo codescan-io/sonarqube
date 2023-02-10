@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -73,8 +73,8 @@ public class ConditionTest {
   public void all_fields_are_displayed_in_toString() {
     when(SOME_METRIC.toString()).thenReturn("metric1");
 
-    assertThat(new Condition(SOME_METRIC, SOME_OPERATOR, "error_l").toString())
-      .isEqualTo("Condition{metric=metric1, operator=LESS_THAN, errorThreshold=error_l}");
+    assertThat(new Condition(SOME_METRIC, SOME_OPERATOR, "error_l"))
+      .hasToString("Condition{metric=metric1, operator=LESS_THAN, errorThreshold=error_l}");
 
   }
 

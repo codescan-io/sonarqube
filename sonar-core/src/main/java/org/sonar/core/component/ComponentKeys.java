@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -27,6 +27,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public final class ComponentKeys {
 
+  /**
+   * Should be in sync with DefaultIndexedFile.MAX_KEY_LENGTH
+   */
   public static final int MAX_COMPONENT_KEY_LENGTH = 400;
 
   public static final String ALLOWED_CHARACTERS_MESSAGE = "Allowed characters are alphanumeric, '-', '_', '.' and ':', with at least one non-digit";

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -89,9 +89,10 @@ export default class AlmIntegrationsServiceMock {
       id: '1',
       sqProjectKey: 'key',
       sqProjectName: 'Gitlab project 1',
+      slug: 'Gitlab_project_1',
     }),
-    mockGitlabProject({ name: 'Gitlab project 2', id: '2' }),
-    mockGitlabProject({ name: 'Gitlab project 3', id: '3' }),
+    mockGitlabProject({ name: 'Gitlab project 2', id: '2', slug: 'Gitlab_project_2' }),
+    mockGitlabProject({ name: 'Gitlab project 3', id: '3', slug: 'Gitlab_project_3' }),
   ];
 
   defaultPagination = {

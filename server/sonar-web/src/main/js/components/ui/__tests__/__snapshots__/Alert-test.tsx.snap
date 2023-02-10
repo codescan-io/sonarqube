@@ -1,7 +1,7 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`should render banner alert with correct css 1`] = `
-.emotion-3 {
+.emotion-0 {
   border: 1px solid;
   border-radius: 2px;
   margin-bottom: 8px;
@@ -11,16 +11,21 @@ exports[`should render banner alert with correct css 1`] = `
   display: block;
 }
 
-.emotion-3:empty {
+.emotion-0:empty {
   display: none;
 }
 
-.emotion-3 a,
-.emotion-3 .button-link {
+.emotion-0 a,
+.emotion-0 .button-link {
+  border-color: rgba(35, 107, 151, 0.40);
+}
+
+.emotion-0 a:hover,
+.emotion-0 .button-link:hover {
   border-color: #236a97;
 }
 
-.emotion-2 {
+.emotion-1 {
   display: -webkit-box;
   display: -webkit-flex;
   display: -ms-flexbox;
@@ -38,7 +43,7 @@ exports[`should render banner alert with correct css 1`] = `
   box-sizing: border-box;
 }
 
-.emotion-0 {
+.emotion-2 {
   -webkit-flex: 0 0 auto;
   -ms-flex: 0 0 auto;
   flex: 0 0 auto;
@@ -59,7 +64,7 @@ exports[`should render banner alert with correct css 1`] = `
   border-color: #f4b1b0;
 }
 
-.emotion-1 {
+.emotion-3 {
   -webkit-flex: 1 1 auto;
   -ms-flex: 1 1 auto;
   flex: 1 1 auto;
@@ -70,15 +75,15 @@ exports[`should render banner alert with correct css 1`] = `
 
 <div
   aria-label="alert.tooltip.error"
-  class="alert alert-test emotion-3"
+  class="alert alert-test emotion-0"
   id="error-message"
   role="alert"
 >
   <div
-    class="emotion-2"
+    class="emotion-1"
   >
     <div
-      class="emotion-0"
+      class="emotion-2"
     >
       <svg
         height="16"
@@ -96,7 +101,7 @@ exports[`should render banner alert with correct css 1`] = `
       </svg>
     </div>
     <div
-      class="alert-content emotion-1"
+      class="alert-content emotion-3"
     >
       This is an error!
     </div>
@@ -112,7 +117,7 @@ exports[`should render properly 1`] = `
   isInline={false}
   role="alert"
   variantInfo={
-    Object {
+    {
       "backGroundColor": "#f2dede",
       "borderColor": "#f4b1b0",
       "color": "#862422",
@@ -129,7 +134,7 @@ exports[`should render properly 1`] = `
     <Styled(div)
       isBanner={false}
       variantInfo={
-        Object {
+        {
           "backGroundColor": "#f2dede",
           "borderColor": "#f4b1b0",
           "color": "#862422",
@@ -154,7 +159,7 @@ exports[`should render properly 1`] = `
 `;
 
 exports[`verification of all variants of alert 1`] = `
-Object {
+{
   "backGroundColor": "#f2dede",
   "borderColor": "#f4b1b0",
   "color": "#862422",
@@ -166,7 +171,7 @@ Object {
 `;
 
 exports[`verification of all variants of alert 2`] = `
-Object {
+{
   "backGroundColor": "#fcf8e3",
   "borderColor": "#faebcc",
   "color": "#6f4f17",
@@ -178,7 +183,7 @@ Object {
 `;
 
 exports[`verification of all variants of alert 3`] = `
-Object {
+{
   "backGroundColor": "#dff0d8",
   "borderColor": "#d6e9c6",
   "color": "#215821",
@@ -190,7 +195,7 @@ Object {
 `;
 
 exports[`verification of all variants of alert 4`] = `
-Object {
+{
   "backGroundColor": "#d9edf7",
   "borderColor": "#b1dff3",
   "color": "#0e516f",
@@ -202,7 +207,7 @@ Object {
 `;
 
 exports[`verification of all variants of alert 5`] = `
-Object {
+{
   "backGroundColor": "#d9edf7",
   "borderColor": "#b1dff3",
   "color": "#0e516f",

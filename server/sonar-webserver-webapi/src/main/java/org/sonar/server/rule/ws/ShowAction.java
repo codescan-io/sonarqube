@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -80,7 +80,6 @@ public class ShowAction implements RulesWsAction {
         new Change("7.5", "The field 'scope' has been added"),
         new Change("9.5", "The field 'htmlDesc' has been deprecated use 'descriptionSections' instead"),
         new Change("9.5", "The field 'descriptionSections' has been added to the payload"),
-        new Change("9.5", "The field 'descriptionSections' has been added to the 'f' parameter"),
         new Change("9.6", "'descriptionSections' can optionally embed a context field"),
         new Change("9.6", "'educationPrinciples' has been added")
       );

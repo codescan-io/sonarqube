@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -78,22 +78,7 @@ public class RecoveryIndexer implements Startable {
     this.loopLimit = getSetting(PROPERTY_LOOP_LIMIT, DEFAULT_LOOP_LIMIT);
   }
 
-  private static final class Indexer {
-    private final IndexType indexType;
-    private final ResilientIndexer delegate;
-
-    private Indexer(IndexType indexType, ResilientIndexer delegate) {
-      this.indexType = indexType;
-      this.delegate = delegate;
-    }
-
-    public IndexType getIndexType() {
-      return indexType;
-    }
-
-    public ResilientIndexer getDelegate() {
-      return delegate;
-    }
+  private record Indexer(IndexType indexType, ResilientIndexer delegate) {
   }
 
   @Override

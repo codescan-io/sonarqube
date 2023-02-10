@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,9 +19,9 @@
  */
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { UserEvent } from '@testing-library/user-event/dist/types/setup';
+import { UserEvent } from '@testing-library/user-event/dist/types/setup/setup';
 import selectEvent from 'react-select-event';
-import { byLabelText, byRole, byText } from 'testing-library-selector';
+import { byRole, byText } from 'testing-library-selector';
 import { getMyProjects, getScannableProjects } from '../../../api/components';
 import NotificationsMock from '../../../api/mocks/NotificationsMock';
 import UserTokensMock from '../../../api/mocks/UserTokensMock';
@@ -469,7 +469,7 @@ describe('notifications page', () => {
     title: byRole('button', { name: 'my_profile.per_project_notifications.add' }),
     addButton: byRole('button', { name: 'my_profile.per_project_notifications.add' }),
     addModalButton: byRole('button', { name: 'add_verb' }),
-    searchInput: byLabelText('search_verb', { selector: 'input' }),
+    searchInput: byRole('searchbox', { name: 'search.placeholder' }),
     sonarQubeProject: byRole('heading', { name: 'SonarQube' }),
     checkbox: (type: NotificationProjectType) =>
       byRole('checkbox', {
@@ -554,7 +554,7 @@ describe('notifications page', () => {
     await user.click(
       screen.getByRole('button', { name: 'my_profile.per_project_notifications.add' })
     );
-    expect(await screen.findByLabelText('search_verb', { selector: 'input' })).toBeInTheDocument();
+    expect(screen.getByLabelText('search.placeholder', { selector: 'input' })).toBeInTheDocument();
     await user.keyboard('sonarqube');
 
     await user.click(screen.getByText('SonarQube'));

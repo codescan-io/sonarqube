@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -91,6 +91,7 @@ import org.sonar.scanner.report.ContextPropertiesPublisher;
 import org.sonar.scanner.report.JavaArchitectureInformationProvider;
 import org.sonar.scanner.report.MetadataPublisher;
 import org.sonar.scanner.report.ReportPublisher;
+import org.sonar.scanner.report.ScannerFileStructureProvider;
 import org.sonar.scanner.report.SourcePublisher;
 import org.sonar.scanner.report.TestExecutionPublisher;
 import org.sonar.scanner.repository.ContextPropertiesCache;
@@ -242,6 +243,7 @@ public class SpringProjectScanContainer extends SpringComponentContainer {
       ScannerMetrics.class,
       JavaArchitectureInformationProvider.class,
       ReportPublisher.class,
+      ScannerFileStructureProvider.class,
       AnalysisContextReportPublisher.class,
       MetadataPublisher.class,
       ActiveRulesPublisher.class,
@@ -344,7 +346,7 @@ public class SpringProjectScanContainer extends SpringComponentContainer {
 
     properties.get("sonar.branch").ifPresent(deprecatedBranch -> {
       throw MessageException.of("The 'sonar.branch' parameter is no longer supported. You should stop using it. " +
-        "Branch analysis is available in Developer Edition and above. See https://redirect.sonarsource.com/editions/developer.html for more information.");
+        "Branch analysis is available in Developer Edition and above. See https://www.sonarsource.com/plans-and-pricing/developer/ for more information.");
     });
 
     BranchConfiguration branchConfig = getComponentByType(BranchConfiguration.class);

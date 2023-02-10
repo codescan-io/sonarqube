@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -28,14 +28,16 @@ public class MacAddressProviderTest {
   @Test
   public void getSecureMungedAddress() {
     byte[] address = MacAddressProvider.getSecureMungedAddress();
-    assertThat(address).isNotEmpty();
-    assertThat(address).hasSize(6);
+    assertThat(address)
+      .isNotEmpty()
+      .hasSize(6);
   }
 
   @Test
   public void constructDummyMulticastAddress() {
     byte[] address = MacAddressProvider.constructDummyMulticastAddress();
-    assertThat(address).isNotEmpty();
-    assertThat(address).hasSize(6);
+    assertThat(address)
+      .isNotEmpty()
+      .hasSize(6);
   }
 }

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -276,7 +276,7 @@ public class EventComponentChangeDaoTest {
     Arrays.stream(event1Dtos).forEach(dto -> underTest.insert(dbSession, dto, doesNotMatter));
     Arrays.stream(event2Dtos).forEach(dto -> underTest.insert(dbSession, dto, doesNotMatter));
 
-    assertThat(underTest.selectByAnalysisUuids(dbSession, singletonList(doesNotMatter.getAnalysisUuid())))
+    assertThat(underTest.selectByAnalysisUuids(dbSession, singletonList(doesNotMatter.analysisUuid())))
       .extracting(
         EventComponentChangeDto::getUuid,
         EventComponentChangeDto::getEventUuid,

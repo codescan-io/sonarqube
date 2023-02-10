@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -17,7 +17,6 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
 import { RuleDescriptionSection } from '../apps/coding-rules/rule';
 import { ComponentQualifier } from './component';
 import { MessageFormatting } from './issues';
@@ -91,6 +90,9 @@ export interface Component extends LightComponent {
   visibility?: Visibility;
 }
 
+export interface NavigationComponent
+  extends Omit<Component, 'alm' | 'qualifier' | 'leakPeriodDate' | 'path' | 'tags'> {}
+
 interface ComponentConfiguration {
   canApplyPermissionTemplate?: boolean;
   canBrowseProject?: boolean;
@@ -114,6 +116,7 @@ export interface ComponentQualityProfile {
 }
 
 export interface ComponentMeasureIntern {
+  analysisDate?: string;
   branch?: string;
   description?: string;
   isFavorite?: boolean;
@@ -471,6 +474,13 @@ export interface PermissionUser extends UserActive {
   permissions: string[];
 }
 
+export interface PermissionTemplateGroup {
+  key: string;
+  usersCount: number;
+  groupsCount: number;
+  withProjectCreator?: boolean;
+}
+
 export interface PermissionTemplate {
   defaultFor: string[];
   id: string;
@@ -479,12 +489,7 @@ export interface PermissionTemplate {
   projectKeyPattern?: string;
   createdAt: string;
   updatedAt?: string;
-  permissions: Array<{
-    key: string;
-    usersCount: number;
-    groupsCount: number;
-    withProjectCreator?: boolean;
-  }>;
+  permissions: Array<PermissionTemplateGroup>;
 }
 
 export interface ProfileInheritanceDetails {
@@ -502,6 +507,12 @@ export interface ProjectLink {
   url: string;
 }
 
+export enum CaycStatus {
+  Compliant = 'compliant',
+  NonCompliant = 'non-compliant',
+  OverCompliant = 'over-compliant',
+}
+
 export interface QualityGate {
   actions?: {
     associateProjects?: boolean;
@@ -515,6 +526,7 @@ export interface QualityGate {
   conditions?: Condition[];
   id: string;
   isBuiltIn?: boolean;
+  caycStatus?: CaycStatus;
   isDefault?: boolean;
   name: string;
 }

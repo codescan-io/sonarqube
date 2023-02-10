@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -29,6 +29,7 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.project.ProjectBadgeTokenDto;
 import org.sonar.db.project.ProjectDto;
+import org.sonar.db.user.TokenType;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.usertoken.TokenGenerator;
 import org.sonarqube.ws.ProjectBadgeToken.TokenWsResponse;
@@ -79,7 +80,7 @@ public class TokenAction implements ProjectBadgesWsAction {
       ProjectBadgeTokenDto projectBadgeTokenDto = dbClient.projectBadgeTokenDao().selectTokenByProject(dbSession, projectDto);
 
       if (projectBadgeTokenDto == null) {
-        String token = tokenGenerator.generateProjectBadgeToken();
+        String token = tokenGenerator.generate(TokenType.PROJECT_BADGE_TOKEN);
         projectBadgeTokenDto = dbClient.projectBadgeTokenDao().insert(dbSession, token, projectDto, userSession.getUuid(), userSession.getLogin());
         dbSession.commit();
       }

@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,12 +19,14 @@
  */
 package org.sonar.scanner.scan.filesystem;
 
+import org.sonar.api.notifications.AnalysisWarnings;
 import org.sonar.scanner.scan.ModuleConfiguration;
 
 public class ModuleExclusionFilters extends AbstractExclusionFilters {
 
-  public ModuleExclusionFilters(ModuleConfiguration moduleConfiguration) {
-    super(moduleConfiguration::getStringArray);
+
+  public ModuleExclusionFilters(ModuleConfiguration moduleConfiguration, AnalysisWarnings analysisWarnings) {
+    super(analysisWarnings, moduleConfiguration::getStringArray);
   }
 
 }

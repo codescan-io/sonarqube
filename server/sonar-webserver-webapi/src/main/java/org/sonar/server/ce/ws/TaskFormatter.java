@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonar.api.utils.DateUtils;
@@ -107,6 +106,7 @@ public class TaskFormatter {
     builder.setId(dto.getUuid());
     builder.setStatus(Ce.TaskStatus.valueOf(dto.getStatus().name()));
     builder.setType(dto.getTaskType());
+    ofNullable(dto.getNodeName()).ifPresent(builder::setNodeName);
     ofNullable(dto.getComponentUuid()).ifPresent(uuid -> setComponent(builder, uuid, cache).setComponentId(uuid));
     String analysisUuid = dto.getAnalysisUuid();
     ofNullable(analysisUuid).ifPresent(builder::setAnalysisId);
@@ -173,7 +173,7 @@ public class TaskFormatter {
         .stream()
         .collect(uniqueIndex(ComponentDto::uuid));
       Multimap<String, CeTaskCharacteristicDto> characteristicsByTaskUuid = dbClient.ceTaskCharacteristicsDao()
-        .selectByTaskUuids(dbSession, ceQueueDtos.stream().map(CeQueueDto::getUuid).collect(Collectors.toList()))
+        .selectByTaskUuids(dbSession, ceQueueDtos.stream().map(CeQueueDto::getUuid).toList())
         .stream().collect(MoreCollectors.index(CeTaskCharacteristicDto::getTaskUuid));
       Set<String> submitterUuids = ceQueueDtos.stream().map(CeQueueDto::getSubmitterUuid).filter(Objects::nonNull).collect(toSet());
       Map<String, UserDto> usersByUuid = dbClient.userDao().selectByUuids(dbSession, submitterUuids).stream().collect(uniqueIndex(UserDto::getUuid));
@@ -195,7 +195,7 @@ public class TaskFormatter {
         .stream()
         .collect(uniqueIndex(ComponentDto::uuid));
       Multimap<String, CeTaskCharacteristicDto> characteristicsByTaskUuid = dbClient.ceTaskCharacteristicsDao()
-        .selectByTaskUuids(dbSession, ceActivityDtos.stream().map(CeActivityDto::getUuid).collect(Collectors.toList()))
+        .selectByTaskUuids(dbSession, ceActivityDtos.stream().map(CeActivityDto::getUuid).toList())
         .stream().collect(MoreCollectors.index(CeTaskCharacteristicDto::getTaskUuid));
       Set<String> submitterUuids = ceActivityDtos.stream().map(CeActivityDto::getSubmitterUuid).filter(Objects::nonNull).collect(toSet());
       Map<String, UserDto> usersByUuid = dbClient.userDao().selectByUuids(dbSession, submitterUuids).stream().collect(uniqueIndex(UserDto::getUuid));

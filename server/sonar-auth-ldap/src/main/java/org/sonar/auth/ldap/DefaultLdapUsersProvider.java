@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -55,7 +55,7 @@ public class DefaultLdapUsersProvider implements LdapUsersProvider {
 
   @Override
   public LdapUserDetails doGetUserDetails(Context context) {
-    return getUserDetails(context.getServerKey(), context.getUsername());
+    return getUserDetails(context.serverKey(), context.username());
   }
 
   /**

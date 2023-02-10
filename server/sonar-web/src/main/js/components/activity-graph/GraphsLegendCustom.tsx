@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -50,7 +50,12 @@ export default function GraphsLegendCustom(props: GraphsLegendCustomProps) {
               key={serie.name}
               overlay={translate('project_activity.graphs.custom.metric_no_history')}
             >
-              <li className="spacer-left spacer-right">{legendItem}</li>
+              <li
+                className="spacer-left spacer-right"
+                aria-label={translate('project_activity.graphs.custom.metric_no_history')}
+              >
+                {legendItem}
+              </li>
             </Tooltip>
           );
         }

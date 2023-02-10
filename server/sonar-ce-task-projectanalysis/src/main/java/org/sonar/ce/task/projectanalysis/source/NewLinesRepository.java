@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2022 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -81,7 +81,7 @@ public class NewLinesRepository {
     // in PRs, we consider changes introduced in this analysis as new, hence subtracting 1.
     long referenceDate = useAnalysisDateAsReferenceDate() ? (analysisMetadataHolder.getAnalysisDate() - 1) : periodHolder.getPeriod().getDate();
     for (int i = 0; i < allChangesets.length; i++) {
-      if (isLineInPeriod(allChangesets[i].getDate(), referenceDate)) {
+      if (allChangesets[i] != null && isLineInPeriod(allChangesets[i].getDate(), referenceDate)) {
         lines.add(i + 1);
       }
     }
