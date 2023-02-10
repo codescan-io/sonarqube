@@ -54,6 +54,16 @@ export default class GlobalNavMenu extends React.PureComponent<Props> {
     );
   }
 
+  renderDashboard(){
+    return (
+      <li>
+        <Link activeClassName="active" to="/dashboard">
+          {translate('dashboard.page')}
+        </Link>
+      </li>
+    );
+  }
+
   renderPortfolios() {
     return (
       <li>
@@ -182,6 +192,7 @@ export default class GlobalNavMenu extends React.PureComponent<Props> {
 
     return (
       <ul className="global-navbar-menu">
+        {this.renderDashboard()}
         {this.renderProjects()}
         {governanceInstalled && this.renderPortfolios()}
         {this.renderIssuesLink()}

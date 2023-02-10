@@ -335,6 +335,12 @@ export default function startReactApp(
                         />
                       </>
                     )}
+                    <Route
+                      path="dashboard"
+                      component={lazyLoadComponent(() =>
+                        import('../../apps/dashboard/components/DashboardApp')
+                      )}
+                    />
                     <RouteWithChildRoutes path="organizations" childRoutes={organizationsRoutes} />
                     <RouteWithChildRoutes path="projects" childRoutes={projectsRoutes} />
                     <RouteWithChildRoutes path="quality_gates" childRoutes={qualityGatesRoutes} />
