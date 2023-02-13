@@ -159,6 +159,7 @@ function renderRedirects(canAdmin?: boolean, canCustomerAdmin?: boolean) {
 function renderComponentRoutes() {
   return (
     <Route component={lazyLoadComponent(() => import('../components/ComponentContainer'))}>
+      
       <RouteWithChildRoutes path="code" childRoutes={codeRoutes} />
       <RouteWithChildRoutes path="component_measures" childRoutes={componentMeasuresRoutes} />
       <RouteWithChildRoutes path="dashboard" childRoutes={overviewRoutes} />
@@ -294,6 +295,7 @@ export default function startReactApp(
                 component={lazyLoadComponent(() => import('../components/MarkdownHelp'))}
               />
 
+
               <Route component={lazyLoadComponent(() => import('../components/SimpleContainer'))}>
                 <Route path="maintenance">{maintenanceRoutes}</Route>
                 <Route path="setup">{setupRoutes}</Route>
@@ -339,6 +341,10 @@ export default function startReactApp(
                     )}
                     <RouteWithChildRoutes path="organizations" childRoutes={organizationsRoutes} />
                     <RouteWithChildRoutes path="projects" childRoutes={projectsRoutes} />
+                    <Route
+                path="home"
+                component={lazyLoadComponent(() => import('../../apps/home/components/home'))}
+              />
                     <RouteWithChildRoutes path="quality_gates" childRoutes={qualityGatesRoutes} />
                     <Route
                       path="portfolios"
