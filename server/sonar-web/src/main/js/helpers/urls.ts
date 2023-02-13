@@ -265,6 +265,9 @@ export function getHomePageUrl(homepage: T.HomePage) {
       return { pathname: '/issues', query: { resolved: 'false' } };
   }
 
+  // TODO --  Logic to differentiate between the landing page
+  // whether to show projects, project analysis, screen chooser  page
+  //
   // should never happen, but just in case...
   return '/projects';
 }
