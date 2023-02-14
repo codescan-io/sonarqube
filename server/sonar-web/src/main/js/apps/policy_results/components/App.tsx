@@ -1,3 +1,37 @@
+// /*
+//  * SonarQube
+//  * Copyright (C) 2009-2020 SonarSource SA
+//  * mailto:info AT sonarsource DOT com
+//  *
+//  * This program is free software; you can redistribute it and/or
+//  * modify it under the terms of the GNU Lesser General Public
+//  * License as published by the Free Software Foundation; either
+//  * version 3 of the License, or (at your option) any later version.
+//  *
+//  * This program is distributed in the hope that it will be useful,
+//  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//  * Lesser General Public License for more details.
+//  *
+//  * You should have received a copy of the GNU Lesser General Public License
+//  * along with this program; if not, write to the Free Software Foundation,
+//  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+//  */
+// import * as React from 'react';
+// interface Props {
+// }
+
+// export  default class App extends React.PureComponent<Props> {
+//   render() {
+    
+//     return (
+//       <>
+//         Policy Results Page Coming Soon!!!!
+//       </>
+//     ) 
+//   }
+// }
+
 /*
  * SonarQube
  * Copyright (C) 2009-2020 SonarSource SA
@@ -18,16 +52,60 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
+import { lazyLoadComponent } from 'sonar-ui-common/components/lazyLoadComponent';
+import Suggestions from '../../../app/components/embed-docs-modal/Suggestions';
+import { Router, withRouter } from '../../../components/hoc/withRouter';
+import { isPullRequest } from '../../../helpers/branch-like';
+import { BranchLike } from '../../../types/branch-like';
+import { isPortfolioLike } from '../../../types/component';
+import BranchOverview from '../../overview/branches/BranchOverview';
+
+const EmptyOverview = lazyLoadComponent(() => import('../../overview/components/EmptyOverview'));
+const PullRequestOverview = lazyLoadComponent(() => import('../../overview/pullRequests/PullRequestOverview'));
+
 interface Props {
+  branchLike?: BranchLike;
+  branchLikes: BranchLike[];
+  component: T.Component;
+  isInProgress?: boolean;
+  isPending?: boolean;
+  router: Pick<Router, 'replace'>;
 }
 
-export  default class App extends React.PureComponent<Props> {
+export class App extends React.PureComponent<Props> {
+  isPortfolio = () => {
+    return isPortfolioLike(this.props.component.qualifier);
+  };
+
   render() {
-    
-    return (
+    const { branchLike, branchLikes, component } = this.props;
+
+    if (this.isPortfolio()) {
+      return null;
+    }
+
+    return isPullRequest(branchLike) ? (
       <>
-        Policy Results Page Coming Soon!!!!
+        <Suggestions suggestions="pull_requests" />
+        <PullRequestOverview branchLike={branchLike} component={component} />
       </>
-    ) 
+    ) : (
+      <>
+        <Suggestions suggestions="overview" />
+
+        {!component.analysisDate ? (
+          <EmptyOverview
+            branchLike={branchLike}
+            branchLikes={branchLikes}
+            component={component}
+            hasAnalyses={this.props.isPending || this.props.isInProgress}
+          />
+        ) : (
+          <BranchOverview branch={branchLike} component={component} />
+        )}
+      </>
+    );
   }
 }
+
+export default withRouter(App);
