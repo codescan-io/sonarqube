@@ -20,7 +20,7 @@
 import * as React from 'react';
 import { Button } from '../../components/controls/buttons';
 import { translate } from '../../helpers/l10n';
-import { Visibility } from '../../types/types';
+import { Visibility } from '../../types/component';
 import ChangeDefaultVisibilityForm from './ChangeDefaultVisibilityForm';
 
 export interface Props {
@@ -80,7 +80,7 @@ export default class Header extends React.PureComponent<Props, State> {
 
         {visibilityForm && (
           <ChangeDefaultVisibilityForm
-            defaultVisibility={defaultProjectVisibility || 'public'}
+            defaultVisibility={defaultProjectVisibility || Visibility.Public}
             onClose={this.closeVisiblityForm}
             onConfirm={this.props.onChangeDefaultProjectVisibility}
           />

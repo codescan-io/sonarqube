@@ -30,8 +30,8 @@ import MandatoryFieldMarker from '../../components/ui/MandatoryFieldMarker';
 import MandatoryFieldsExplanation from '../../components/ui/MandatoryFieldsExplanation';
 import { translate } from '../../helpers/l10n';
 import { getProjectUrl } from '../../helpers/urls';
+import { Visibility } from '../../types/component';
 import { GlobalSettingKeys } from '../../types/settings';
-import { Visibility } from '../../types/types';
 import { OrganizationContextProps, withOrganizationContext } from "../organizations/OrganizationContext";
 
 interface Props extends OrganizationContextProps {
@@ -231,7 +231,7 @@ class CreateProjectForm extends React.PureComponent<Props, State> {
                   visibility={this.state.visibility}
                 />
               </div> */}
-              
+
             </div>
 
             <footer className="modal-foot">

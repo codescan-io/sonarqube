@@ -24,6 +24,8 @@ import * as api from '../../../../api/permissions';
 import withComponentContext from '../../../../app/components/componentContext/withComponentContext';
 import VisibilitySelector from '../../../../components/common/VisibilitySelector';
 import { translate } from '../../../../helpers/l10n';
+import { Visibility } from '../../../../types/component';
+import { Permissions } from '../../../../types/permissions';
 import { Component, Organization, Paging, PermissionGroup, PermissionUser } from '../../../../types/types';
 import AllHoldersList from '../../shared/components/AllHoldersList';
 import { FilterOption } from '../../shared/components/SearchForm';
@@ -51,7 +53,7 @@ interface State {
   usersPaging?: Paging;
 }
 
-export class App extends React.PureComponent<Props, State> {
+export class PermissionsProjectApp extends React.PureComponent<Props, State> {
   mounted = false;
 
   constructor(props: Props) {
@@ -74,12 +76,6 @@ export class App extends React.PureComponent<Props, State> {
   componentWillUnmount() {
     this.mounted = false;
   }
-
-  stopLoading = () => {
-    if (this.mounted) {
-      this.setState({ loading: false });
-    }
-  };
 
   loadUsersAndGroups = (userPage?: number, groupsPage?: number) => {
     const { component } = this.props;
@@ -202,10 +198,7 @@ export class App extends React.PureComponent<Props, State> {
 
   grantPermissionToGroup = (group: string, permission: string) => {
     if (this.mounted) {
-      this.setState({
-        loading: true,
-        groups: this.addPermissionToGroup(group, permission),
-      });
+      this.setState({ loading: true });
       return api
         .grantPermissionToGroup({
           projectKey: this.props.component.key,
@@ -213,24 +206,21 @@ export class App extends React.PureComponent<Props, State> {
           groupName: group,
           permission,
         })
-        .then(this.stopLoading, () => {
+        .then(() => {
           if (this.mounted) {
             this.setState({
               loading: false,
-              groups: this.removePermissionFromGroup(group, permission),
+              groups: this.addPermissionToGroup(group, permission),
             });
           }
-        });
+        }, this.stopLoading);
     }
     return Promise.resolve();
   };
 
   grantPermissionToUser = (user: string, permission: string) => {
     if (this.mounted) {
-      this.setState({
-        loading: true,
-        users: this.addPermissionToUser(user, permission),
-      });
+      this.setState({ loading: true });
       return api
         .grantPermissionToUser({
           projectKey: this.props.component.key,
@@ -238,24 +228,21 @@ export class App extends React.PureComponent<Props, State> {
           login: user,
           permission,
         })
-        .then(this.stopLoading, () => {
+        .then(() => {
           if (this.mounted) {
             this.setState({
               loading: false,
-              users: this.removePermissionFromUser(user, permission),
+              users: this.addPermissionToUser(user, permission),
             });
           }
-        });
+        }, this.stopLoading);
     }
     return Promise.resolve();
   };
 
   revokePermissionFromGroup = (group: string, permission: string) => {
     if (this.mounted) {
-      this.setState({
-        loading: true,
-        groups: this.removePermissionFromGroup(group, permission),
-      });
+      this.setState({ loading: true });
       return api
         .revokePermissionFromGroup({
           projectKey: this.props.component.key,
@@ -263,24 +250,21 @@ export class App extends React.PureComponent<Props, State> {
           groupName: group,
           permission,
         })
-        .then(this.stopLoading, () => {
+        .then(() => {
           if (this.mounted) {
             this.setState({
               loading: false,
-              groups: this.addPermissionToGroup(group, permission),
+              groups: this.removePermissionFromGroup(group, permission),
             });
           }
-        });
+        }, this.stopLoading);
     }
     return Promise.resolve();
   };
 
   revokePermissionFromUser = (user: string, permission: string) => {
     if (this.mounted) {
-      this.setState({
-        loading: true,
-        users: this.removePermissionFromUser(user, permission),
-      });
+      this.setState({ loading: true });
       return api
         .revokePermissionFromUser({
           projectKey: this.props.component.key,
@@ -288,20 +272,20 @@ export class App extends React.PureComponent<Props, State> {
           login: user,
           permission,
         })
-        .then(this.stopLoading, () => {
+        .then(() => {
           if (this.mounted) {
             this.setState({
               loading: false,
-              users: this.addPermissionToUser(user, permission),
+              users: this.removePermissionFromUser(user, permission),
             });
           }
-        });
+        }, this.stopLoading);
     }
     return Promise.resolve();
   };
 
   handleVisibilityChange = (visibility: string) => {
-    if (visibility === 'public') {
+    if (visibility === Visibility.Public) {
       this.openDisclaimer();
     } else {
       this.turnProjectToPrivate();
@@ -309,31 +293,19 @@ export class App extends React.PureComponent<Props, State> {
   };
 
   turnProjectToPublic = () => {
-    this.props.onComponentChange({ visibility: 'public' });
-    api.changeProjectVisibility(this.props.component.key, 'public').then(
-      () => {
-        this.loadHolders();
-      },
-      () => {
-        this.props.onComponentChange({
-          visibility: 'private',
-        });
-      }
-    );
+    this.setState({ loading: true });
+    return api.changeProjectVisibility(this.props.component.key, Visibility.Public).then(() => {
+      this.props.onComponentChange({ visibility: Visibility.Public });
+      this.loadHolders();
+    });
   };
 
   turnProjectToPrivate = () => {
-    this.props.onComponentChange({ visibility: 'private' });
-    api.changeProjectVisibility(this.props.component.key, 'private').then(
-      () => {
-        this.loadHolders();
-      },
-      () => {
-        this.props.onComponentChange({
-          visibility: 'public',
-        });
-      }
-    );
+    this.setState({ loading: true });
+    return api.changeProjectVisibility(this.props.component.key, Visibility.Private).then(() => {
+      this.props.onComponentChange({ visibility: Visibility.Private });
+      this.loadHolders();
+    });
   };
 
   openDisclaimer = () => {
@@ -345,6 +317,12 @@ export class App extends React.PureComponent<Props, State> {
   closeDisclaimer = () => {
     if (this.mounted) {
       this.setState({ disclaimer: false });
+    }
+  };
+
+  stopLoading = () => {
+    if (this.mounted) {
+      this.setState({ loading: false });
     }
   };
 
@@ -363,8 +341,8 @@ export class App extends React.PureComponent<Props, State> {
     } = this.state;
 
     let order = PERMISSIONS_ORDER_BY_QUALIFIER[component.qualifier];
-    if (component.visibility === 'public') {
-      order = without(order, 'user', 'codeviewer');
+    if (component.visibility === Visibility.Public) {
+      order = without(order, Permissions.Browse, Permissions.CodeViewer);
     }
     const permissions = convertToPermissionDefinitions(order, 'projects_role');
 
@@ -405,4 +383,4 @@ export class App extends React.PureComponent<Props, State> {
   }
 }
 
-export default withComponentContext(withOrganizationContext(App));
+export default withComponentContext(withOrganizationContext(PermissionsProjectApp));
