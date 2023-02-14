@@ -300,7 +300,10 @@ export default function startReactApp(
                 <Route path="maintenance">{maintenanceRoutes}</Route>
                 <Route path="setup">{setupRoutes}</Route>
               </Route>
-
+              <Route
+                path="home"
+                component={lazyLoadComponent(() => import('../../apps/home/components/home'))}
+              />
               <Route component={MigrationContainer}>
                 <Route
                   component={lazyLoadComponent(() =>
@@ -341,10 +344,7 @@ export default function startReactApp(
                     )}
                     <RouteWithChildRoutes path="organizations" childRoutes={organizationsRoutes} />
                     <RouteWithChildRoutes path="projects" childRoutes={projectsRoutes} />
-                    <Route
-                path="home"
-                component={lazyLoadComponent(() => import('../../apps/home/components/home'))}
-              />
+                    
                     <RouteWithChildRoutes path="quality_gates" childRoutes={qualityGatesRoutes} />
                     <Route
                       path="portfolios"
