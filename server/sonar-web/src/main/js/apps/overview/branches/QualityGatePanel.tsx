@@ -56,8 +56,10 @@ export function QualityGatePanel(props: QualityGatePanelProps) {
     let title = translate('overview.quality_gate');
     let helpMsg = translate('overview.quality_gate.help');
     if(grc){
-      title = translate('grc.overview.quality_gate');
-      helpMsg = translate('grc.overview.quality_gate.help');
+      // title = translate('grc.overview.quality_gate');
+      // helpMsg = translate('grc.overview.quality_gate.help');
+      title = "Analysis Gate Status";
+      helpMsg = "Analysis Gate is a set of measure-based Boolean conditions. It helps you know immediately whether your project is production-ready. If your current status is not Passed, you'll see which measures caused the problem and the values required to pass.";
     }
 
   return (

@@ -76,9 +76,9 @@ export function MeasuresPanel(props: MeasuresPanelProps) {
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [loading, hasDiffMeasures]);
 
-  const newCodeLabel = grc ? translate('grc.new_violations') : translate('overview.new_code');
+  const newCodeLabel = grc ? "New Violations" : translate('overview.new_code');
   const overallCodeLabel = grc
-    ? translate('grc.existing_violations')
+    ? "Existing Violations"
     : translate('overview.overall_code');
 
   const tabs = [
