@@ -33,10 +33,11 @@ export interface IssueRatingProps {
   measures: T.MeasureEnhanced[];
   type: IssueType;
   useDiffMetric?: boolean;
+  grc:boolean;
 }
 
 function renderRatingLink(props: IssueRatingProps) {
-  const { branchLike, component, useDiffMetric = false, measures, type } = props;
+  const { branchLike, component, useDiffMetric = false, measures, type, grc } = props;
   const rating = getIssueRatingMetricKey(type, useDiffMetric);
   const measure = findMeasure(measures, rating);
 
@@ -49,7 +50,7 @@ function renderRatingLink(props: IssueRatingProps) {
   }
 
   const value = measure && (useDiffMetric ? getLeakValue(measure) : measure.value);
-  const tooltip = value && getRatingTooltip(rating, Number(value));
+  const tooltip = value && getRatingTooltip(rating, Number(value), grc);
 
   return (
     <Tooltip overlay={tooltip}>
@@ -67,11 +68,11 @@ function renderRatingLink(props: IssueRatingProps) {
 }
 
 export function IssueRating(props: IssueRatingProps) {
-  const { type } = props;
+  const { type, grc } = props;
 
   return (
     <>
-      <span className="flex-1 big-spacer-right text-right">{getIssueRatingName(type)}</span>
+      <span className="flex-1 big-spacer-right text-right">{getIssueRatingName(type, grc)}</span>
       {renderRatingLink(props)}
     </>
   );
