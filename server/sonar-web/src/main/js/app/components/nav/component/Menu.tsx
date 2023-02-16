@@ -507,17 +507,21 @@ export class Menu extends React.PureComponent<Props> {
     );
   };
 
+  clickHandler=()=>{
+    const p1 = window.location.origin+"/policy_results?"
+    const p2 = window.location.href.split('?')[1];
+    window.location.href = p1+p2;
+  }
+
   renderExtension = ({ key, name }: T.Extension, isAdmin: boolean, baseQuery: Query) => {
     let pathname = isAdmin ? `/project/admin/extension/${key}` : `/project/extension/${key}`;
     let query = { ...baseQuery, qualifier: this.props.component.qualifier };
     
     if(key==="policy_results"){
-      pathname = "../../../policy_results?id="+baseQuery.id;
+      pathname = "../../../policy_results";
       return (
-        <li key={key}>
-          <Link activeClassName="active" to={{ pathname }}>
+        <li key={key} style={{padding:"2px 0 2px 16px"}} onClick={this.clickHandler}>
             {name}
-          </Link>
         </li>
       );
     }

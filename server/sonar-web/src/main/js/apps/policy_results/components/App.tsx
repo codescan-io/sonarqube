@@ -25,6 +25,8 @@ import { isPullRequest } from '../../../helpers/branch-like';
 import { BranchLike } from '../../../types/branch-like';
 import { isPortfolioLike } from '../../../types/component';
 import BranchOverview from '../../overview/branches/BranchOverview';
+import { fetchProjects } from '../../projects/utils';
+
 
 const EmptyOverview = lazyLoadComponent(() => import('../../overview/components/EmptyOverview'));
 const PullRequestOverview = lazyLoadComponent(() => import('../../overview/pullRequests/PullRequestOverview'));
@@ -38,13 +40,51 @@ interface Props {
   router: Pick<Router, 'replace'>;
 }
 
-export class App extends React.PureComponent<Props> {
+interface State {
+  projects : any;
+  loading:boolean;
+  selectedOption:string
+}
+
+export class App extends React.PureComponent<Props, State> {
+
+  mounted = false;
+  state : State = {
+      projects:[],
+      loading:false,
+      selectedOption:"none"
+  }
+
+  componentDidMount() {
+    this.mounted = true;
+    this.setState({loading:true})
+    fetchProjects({},false,undefined,1).then((res) =>{
+        this.setState({projects:res.projects})
+        this.setState({loading:false})
+    })
+    const params = new Proxy(new URLSearchParams(window.location.search), {
+      get: (searchParams, prop) => searchParams.get(prop),
+    });
+    this.setState({selectedOption:params.id});
+  }
+
+  componentWillUnmount() {
+    this.mounted = false;
+  }
+
   isPortfolio = () => {
     return isPortfolioLike(this.props.component.qualifier);
   };
 
+  handleChange = ({target} : any) => {
+    this.setState({selectedOption:target.value});
+    window.location.href = window.location.search.split("=")[0]+"="+target.value;
+  }
+
   render() {
     const { branchLike, branchLikes, component } = this.props;
+    const {loading, projects, selectedOption} = this.state;
+  
 
     if (this.isPortfolio()) {
       return null;
@@ -58,7 +98,23 @@ export class App extends React.PureComponent<Props> {
     ) : (
       <>
         <Suggestions suggestions="overview" />
-
+        {loading?(<i className='loader'></i>):(
+          <div className="page page-limited" style={{paddingBottom: "0"}}>
+          <div className="display-flex-row">
+              <div className="width-25 big-spacer-right">
+                    <span>Select Project: </span>
+                    <br/>
+                    <select style={{maxWidth:"100%"}}  
+                      value={selectedOption}
+                      onChange={this.handleChange}>
+                        {projects.map(({ key, name }, index) => <option key={key} value={key}>{key}</option>)}
+                        <option value="none">None</option>
+                        
+                    </select>
+                </div>
+            </div>
+            </div>
+        )}
         {!component.analysisDate ? (
           <EmptyOverview
             branchLike={branchLike}
