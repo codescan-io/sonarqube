@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { differenceWith, map, sortBy, uniqBy } from 'lodash';
+import { differenceWith, map, uniqBy } from 'lodash';
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
 import withAvailableFeatures, {
@@ -30,7 +30,6 @@ import { Button } from '../../../components/controls/buttons';
 import ModalButton, { ModalProps } from '../../../components/controls/ModalButton';
 import { Alert } from '../../../components/ui/Alert';
 import { getLocalizedMetricName, translate } from '../../../helpers/l10n';
-import { isDiffMetric } from '../../../helpers/measures';
 import { Feature } from '../../../types/features';
 import { MetricKey } from '../../../types/metrics';
 import {
@@ -40,6 +39,7 @@ import {
   Metric,
   QualityGate,
 } from '../../../types/types';
+import { groupAndSortByPriorityConditions } from '../utils';
 import ConditionModal from './ConditionModal';
 import CaycReviewUpdateConditionsModal from './ConditionReviewAndUpdateModal';
 import ConditionsTable from './ConditionsTable';
@@ -143,16 +143,9 @@ export class Conditions extends React.PureComponent<Props, State> {
     const { unlockEditing } = this.state;
     const { conditions = [] } = qualityGate;
     const existingConditions = conditions.filter((condition) => metrics[condition.metric]);
-    const sortedConditions = sortBy(
+    const { overallCodeConditions, newCodeConditions } = groupAndSortByPriorityConditions(
       existingConditions,
-      (condition) => metrics[condition.metric] && metrics[condition.metric].name
-    );
-
-    const sortedConditionsOnOverallMetrics = sortedConditions.filter(
-      (condition) => !isDiffMetric(condition.metric)
-    );
-    const sortedConditionsOnNewMetrics = sortedConditions.filter((condition) =>
-      isDiffMetric(condition.metric)
+      metrics
     );
 
     const duplicates: ConditionType[] = [];
@@ -261,7 +254,7 @@ export class Conditions extends React.PureComponent<Props, State> {
           </Alert>
         )}
 
-        {sortedConditionsOnNewMetrics.length > 0 && (
+        {newCodeConditions.length > 0 && (
           <div className="big-spacer-top">
             <h3 className="medium text-normal">
               {translate('quality_gates.conditions.new_code', 'long')}
@@ -278,7 +271,7 @@ export class Conditions extends React.PureComponent<Props, State> {
               onRemoveCondition={onRemoveCondition}
               onSaveCondition={onSaveCondition}
               updatedConditionId={updatedConditionId}
-              conditions={sortedConditionsOnNewMetrics}
+              conditions={newCodeConditions}
               showEdit={this.state.unlockEditing}
               scope="new"
               organization={this.props.organization}
@@ -286,7 +279,7 @@ export class Conditions extends React.PureComponent<Props, State> {
           </div>
         )}
 
-        {sortedConditionsOnOverallMetrics.length > 0 && (
+        {overallCodeConditions.length > 0 && (
           <div className="big-spacer-top">
             <h3 className="medium text-normal">
               {translate('quality_gates.conditions.overall_code', 'long')}
@@ -305,7 +298,7 @@ export class Conditions extends React.PureComponent<Props, State> {
               onRemoveCondition={onRemoveCondition}
               onSaveCondition={onSaveCondition}
               updatedConditionId={updatedConditionId}
-              conditions={sortedConditionsOnOverallMetrics}
+              conditions={overallCodeConditions}
               scope="overall"
               organization={this.props.organization}
             />
