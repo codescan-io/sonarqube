@@ -508,7 +508,7 @@ export class Menu extends React.PureComponent<Props> {
   };
 
   clickHandler=()=>{
-    const p1 = window.location.origin+"/policy_results?"
+    const p1 = window.location.origin+"/policy-results?"
     const p2 = window.location.href.split('?')[1];
     window.location.href = p1+p2;
   }
@@ -517,8 +517,8 @@ export class Menu extends React.PureComponent<Props> {
     let pathname = isAdmin ? `/project/admin/extension/${key}` : `/project/extension/${key}`;
     let query = { ...baseQuery, qualifier: this.props.component.qualifier };
     
-    if(key==="policy_results"){
-      pathname = "../../../policy_results";
+    if(key==="policy-results"){
+      pathname = "../../../policy-results";
       return (
         <li key={key} style={{padding:"2px 0 2px 16px"}} onClick={this.clickHandler}>
             {name}
@@ -544,10 +544,10 @@ export class Menu extends React.PureComponent<Props> {
     
     const extensions = this.props.component.extensions || [];
     
-    const policyResults = extensions.filter(ext => ext.key === "policy_results");
+    const policyResults = extensions.filter(ext => ext.key === "policy-results");
 
     if(policyResults.length==0){
-      extensions.push({key:"policy_results", name:"Policy Results"})
+      extensions.push({key:"policy-results", name:"Policy Results"})
     }
     
     const withoutSecurityExtension = extensions.filter(

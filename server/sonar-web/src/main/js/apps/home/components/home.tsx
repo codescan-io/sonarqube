@@ -74,7 +74,7 @@ class Home extends React.PureComponent<Props, State> {
         console.log("current User");
         console.log(currentUser);
         const {loading,firstProjectKey} = this.state;
-        const url = "/policy_results?id="+firstProjectKey;
+        const url = "/policy-results?id="+firstProjectKey;
         return (
             <div className="landing">
                 <div className="home">
