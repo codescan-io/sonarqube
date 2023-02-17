@@ -21,16 +21,15 @@ import * as React from 'react';
 import { connect } from 'react-redux';
 import { fetchLanguages } from '../../../../js/store/rootActions';
 import { fetchMyOrganizations } from '../../../apps/account/organizations/actions';
-import { fetchProjects } from '../../../apps/projects/utils';
 import { Link } from 'react-router';
 import { getAppState, getCurrentUser } from '../../../../js/store/rootReducer';
 import { Store } from '../../../../js/store/rootReducer';
 import "./home.css"
+import { searchProjects } from '../../../api/components';
 
 interface StateProps {
     appState: T.AppState | undefined;
     currentUser: T.CurrentUser | undefined;
-
 }
 
 interface State {
@@ -55,9 +54,12 @@ class Home extends React.PureComponent<Props, State> {
     componentDidMount() {
         this.mounted = true;
         this.setState({loading:true})
-        fetchProjects({},false,undefined,1).then((res) =>{
-
-            this.setState({firstProjectKey:res.projects[0].key})
+        searchProjects({filter: 'tags=policy'}).then((res) =>{
+            if(res.components.length>0){
+                this.setState({firstProjectKey:res.components[0].key});
+            }else{
+                this.setState({firstProjectKey:"zero-projects-found"});
+            }
             this.setState({loading:false})
         })
       }
@@ -68,6 +70,9 @@ class Home extends React.PureComponent<Props, State> {
     }
 
     render() {
+        const {currentUser} = this.props;
+        console.log("current User");
+        console.log(currentUser);
         const {loading,firstProjectKey} = this.state;
         const url = "/policy_results?id="+firstProjectKey;
         return (

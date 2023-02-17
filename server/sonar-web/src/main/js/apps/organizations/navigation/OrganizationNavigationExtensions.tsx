@@ -52,6 +52,13 @@ export default function OrganizationNavigationExtensions({ location, organizatio
               </Link>
             </li>
           ))}
+           <li key="policy_results">
+              <Link
+                activeClassName="active"
+                to={`/organizations/${organization.key}/policy_results`}>
+                Policy Results
+              </Link>
+            </li>
         </ul>
       }
       tagName="li">
