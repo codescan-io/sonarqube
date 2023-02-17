@@ -20,6 +20,7 @@
 import classNames from 'classnames';
 import * as React from 'react';
 import ContextNavBar from '../../../../components/ui/ContextNavBar';
+import { translate } from '../../../../helpers/l10n';
 import {
   ProjectAlmBindingConfigurationErrors,
   ProjectAlmBindingResponse,
@@ -122,6 +123,7 @@ export default function ComponentNav(props: ComponentNavProps) {
     <ContextNavBar
       height={contextNavHeight}
       id="context-navigation"
+      label={translate('qualifier', component.qualifier)}
       notif={
         <>
           {bgTaskNotifComponent}

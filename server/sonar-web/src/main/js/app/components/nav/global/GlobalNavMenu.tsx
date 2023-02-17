@@ -153,13 +153,15 @@ export class GlobalNavMenu extends React.PureComponent<Props> {
     );
 
     return (
-      <ul className="global-navbar-menu">
-        {this.renderProjects()}
-        {governanceInstalled && this.renderPortfolios()}
-        {this.renderIssuesLink()}
-        {this.renderAdministrationLink()}
-        {this.renderMore()}
-      </ul>
+      <nav aria-label={translate('global')}>
+        <ul className="global-navbar-menu">
+          {this.renderProjects()}
+          {governanceInstalled && this.renderPortfolios()}
+          {this.renderIssuesLink()}
+          {this.renderAdministrationLink()}
+          {this.renderMore()}
+        </ul>
+      </nav>
     );
   }
 }

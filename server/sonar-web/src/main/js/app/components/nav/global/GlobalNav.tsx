@@ -19,9 +19,8 @@
  */
 import * as React from 'react';
 import EmbedDocsPopupHelper from '../../../../components/embed-docs-modal/EmbedDocsPopupHelper';
-import NavBar from '../../../../components/ui/NavBar';
 import { CurrentUser, isLoggedIn } from '../../../../types/users';
-import { rawSizes } from '../../../theme';
+import { sizes } from '../../../theme';
 import withCurrentUserContext from '../../current-user/withCurrentUserContext';
 import Search from '../../search/Search';
 import './GlobalNav.css';
@@ -40,18 +39,22 @@ export interface GlobalNavProps {
 export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
   return (
-    <NavBar className="navbar-global" height={rawSizes.globalNavHeightRaw} id="global-navigation">
-      <GlobalNavBranding />
+    <div style={{ height: sizes.globalNavHeight }}>
+      <div className="navbar global-navbar" id="global-navigation">
+        <div className="global-navbar-inner">
+          <GlobalNavBranding />
 
-      <GlobalNavMenu currentUser={currentUser} location={location} />
+          <GlobalNavMenu currentUser={currentUser} location={location} />
 
-      <div className="global-navbar-menu global-navbar-menu-right">
-        <EmbedDocsPopupHelper />
-        <Search />
-        {isLoggedIn(currentUser) && <GlobalNavPlus />}
-        <GlobalNavUser currentUser={currentUser} userOrganizations={userOrganizations} />
+          <div className="global-navbar-menu global-navbar-menu-right">
+            <EmbedDocsPopupHelper />
+            <Search />
+            {isLoggedIn(currentUser) && <GlobalNavPlus />}
+            <GlobalNavUser currentUser={currentUser} userOrganizations={userOrganizations} />
+          </div>
+        </div>
       </div>
-    </NavBar>
+    </div>
   );
 }
 
