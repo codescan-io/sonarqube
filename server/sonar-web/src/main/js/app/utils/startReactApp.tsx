@@ -43,7 +43,7 @@ import Issues from '../../apps/issues/components/AppContainer';
 import { maintenanceRoutes, setupRoutes } from '../../apps/maintenance/routes';
 import marketplaceRoutes from '../../apps/marketplace/routes';
 import overviewRoutes from '../../apps/overview/routes';
-import policyResultRoutes from '../../apps/policy_results/routes';
+import policyResultRoutes from '../../apps/policy-results/routes';
 import organizationsRoutes from '../../apps/organizations/routes';
 import permissionTemplatesRoutes from '../../apps/permission-templates/routes';
 import { globalPermissionsRoutes, projectPermissionsRoutes } from '../../apps/permissions/routes';
@@ -163,7 +163,7 @@ function renderComponentRoutes() {
       <RouteWithChildRoutes path="code" childRoutes={codeRoutes} />
       <RouteWithChildRoutes path="component_measures" childRoutes={componentMeasuresRoutes} />
       <RouteWithChildRoutes path="dashboard" childRoutes={overviewRoutes} />
-      <RouteWithChildRoutes path="policy_results" childRoutes={policyResultRoutes} />
+      <RouteWithChildRoutes path="policy-results" childRoutes={policyResultRoutes} />
       <RouteWithChildRoutes path="portfolio" childRoutes={portfolioRoutes} />
       <RouteWithChildRoutes path="project/activity" childRoutes={projectActivityRoutes} />
       <Route
