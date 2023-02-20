@@ -53,28 +53,17 @@ class Home extends React.PureComponent<Props, State> {
     }
     componentDidMount() {
         this.mounted = true;
-        this.setState({loading:true})
-        searchProjects({filter: 'tags=policy'}).then((res) =>{
-            if(res.components.length>0){
-                this.setState({firstProjectKey:res.components[0].key});
-            }else{
-                this.setState({firstProjectKey:"zero-projects-found"});
-            }
-            this.setState({loading:false})
-        })
-      }
+    }
     
-      componentWillUnmount() {
+    componentWillUnmount() {
         this.mounted = false;
-        this.setState({loading:false})  
     }
 
     render() {
-        const {currentUser} = this.props;
-        console.log("current User");
-        console.log(currentUser);
-        const {loading,firstProjectKey} = this.state;
-        const url = "/policy-results?id="+firstProjectKey;
+        const defaultOrg = this.props.appState?.defaultOrganization;
+
+        const {loading} = this.state;
+        const url = "/organizations/"+defaultOrg+"/policy-results";
         return (
             <div className="landing">
                 <div className="home">
