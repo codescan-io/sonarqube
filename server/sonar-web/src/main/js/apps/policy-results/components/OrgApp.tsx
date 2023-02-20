@@ -98,10 +98,10 @@ export class OrgApp extends React.PureComponent<Props, State> {
         if(res.components.length>0){
             this.setState({selectedOption:res.components[0].key})
             setTimeout(()=>{
-              this.fetchComponent();
-            },100)
-            
-        
+      this.fetchComponent();
+    },100)
+    
+
         }
         this.setState({loadingProjects:false})
     })
@@ -368,7 +368,9 @@ fetchComponent() {
                     </div>
             </>)}
             {
-                loading ? (<><br/>Loading Info... </>):(
+                loading ? ( <><br/>
+                  {projects.length>0 ? <>Loading Info...</> : <></>} 
+                </>):(
                   <div style= {{marginLeft: "-20px"}} >
                     <BranchOverview branch={branchLike} component={component} grc={true}/>
                   </div>
