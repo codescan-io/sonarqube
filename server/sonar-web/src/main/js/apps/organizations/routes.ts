@@ -57,7 +57,7 @@ const routes = [
         path: 'policy-results',
         component: OrganizationContainer,
         childRoutes: [
-          { indexRoute: { component: lazyLoadComponent(() => import('../../../js/app/components/ComponentContainer')) } }
+          { indexRoute: { component: lazyLoadComponent(() => import('../policy-results/components/OrgApp')) } }
         ]
       },
       {
