@@ -40,7 +40,7 @@ export default function GlobalFooterSonarCloud() {
         	Version {translate('footer.codescan_version')}
         </li>
         <li className="page-footer-menu-item">
-            <a rel="noopener noreferrer" target="_blank" href="https://www.gnu.org/licenses/lgpl-3.0.txt">LGPL v4</a>
+            <a rel="noopener noreferrer" target="_blank" href="https://www.gnu.org/licenses/lgpl-3.0.txt">LGPL v3</a>
         </li>
         <li className="page-footer-menu-item">
         	<a rel="noopener noreferrer" target="_blank" href="https://www.codescan.io/tos/">{translate('footer.terms')}</a>
