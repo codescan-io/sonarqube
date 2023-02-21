@@ -19,11 +19,11 @@
  */
 import { without } from 'lodash';
 import * as React from 'react';
-import GroupIcon from '../../../../components/icons/GroupIcon';
-import { translate } from '../../../../helpers/l10n';
-import { Permissions } from '../../../../types/permissions';
-import { PermissionDefinitions, PermissionGroup } from '../../../../types/types';
-import { isPermissionDefinitionGroup } from '../../utils';
+import { translate } from '../../helpers/l10n';
+import { isPermissionDefinitionGroup } from '../../helpers/permissions';
+import { Permissions } from '../../types/permissions';
+import { PermissionDefinitions, PermissionGroup } from '../../types/types';
+import GroupIcon from '../icons/GroupIcon';
 import PermissionCell from './PermissionCell';
 
 interface Props {

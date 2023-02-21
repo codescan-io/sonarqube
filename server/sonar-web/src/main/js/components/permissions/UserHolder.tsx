@@ -19,10 +19,10 @@
  */
 import { without } from 'lodash';
 import * as React from 'react';
-import Avatar from '../../../../components/ui/Avatar';
-import { translate } from '../../../../helpers/l10n';
-import { PermissionDefinitions, PermissionUser } from '../../../../types/types';
-import { isPermissionDefinitionGroup } from '../../utils';
+import { translate } from '../../helpers/l10n';
+import { isPermissionDefinitionGroup } from '../../helpers/permissions';
+import { PermissionDefinitions, PermissionUser } from '../../types/types';
+import Avatar from '../ui/Avatar';
 import PermissionCell from './PermissionCell';
 
 interface Props {
