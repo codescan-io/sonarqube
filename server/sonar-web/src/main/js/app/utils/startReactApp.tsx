@@ -17,6 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+import { ThemeProvider } from '@emotion/react';
+import { lightTheme } from 'design-system';
 import * as React from 'react';
 import { render } from 'react-dom';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
@@ -189,73 +191,75 @@ export default function startReactApp(
         <AvailableFeaturesContext.Provider value={availableFeatures ?? DEFAULT_AVAILABLE_FEATURES}>
           <CurrentUserContextProvider currentUser={currentUser} userOrganizations={userOrganizations}>
             <IntlProvider defaultLocale={lang} locale={lang}>
-              <GlobalMessagesContainer />
-              <BrowserRouter basename={getBaseUrl()}>
-                <Helmet titleTemplate={translate('page_title.template.default')} />
-                <Routes>
-                  {renderRedirects()}
+              <ThemeProvider theme={lightTheme}>
+                <GlobalMessagesContainer />
+                <BrowserRouter basename={getBaseUrl()}>
+                  <Helmet titleTemplate={translate('page_title.template.default')} />
+                  <Routes>
+                    {renderRedirects()}
 
-                  <Route path="formatting/help" element={<FormattingHelp />} />
+                    <Route path="formatting/help" element={<FormattingHelp />} />
 
-                  <Route element={<SimpleContainer />}>{maintenanceRoutes()}</Route>
+                    <Route element={<SimpleContainer />}>{maintenanceRoutes()}</Route>
 
-                  <Route element={<MigrationContainer />}>
-                    {sessionsRoutes()}
+                    <Route element={<MigrationContainer />}>
+                      {sessionsRoutes()}
 
-                    <Route path="/" element={<App />}>
-                      <Route index={true} element={<Landing />} />
+                      <Route path="/" element={<App />}>
+                        <Route index={true} element={<Landing />} />
 
-                      <Route element={<GlobalContainer />}>
-                        {accountRoutes()}
+                        <Route element={<GlobalContainer />}>
+                          {accountRoutes()}
 
+                          <Route
+                            path="extension/:pluginKey/:extensionKey"
+                            element={<GlobalPageExtension />}
+                          />
+
+                          {globalIssuesRoutes()}
+
+                          {organizationsRoutes()}
+
+                          {projectsRoutes()}
+
+                          <Route path="portfolios" element={<PortfoliosPage />} />
+
+                          <Route path="sonarlint/auth" element={<SonarLintConnection />} />
+
+                          {webAPIRoutes()}
+
+                          {renderComponentRoutes()}
+
+                          {renderAdminRoutes(canAdmin!)}
+                        </Route>
                         <Route
-                          path="extension/:pluginKey/:extensionKey"
-                          element={<GlobalPageExtension />}
+                          // We don't want this route to have any menu.
+                          // That is why we can not have it under the accountRoutes
+                          path="account/reset_password"
+                          element={<ResetPassword />}
                         />
 
-                        {globalIssuesRoutes()}
+                        <Route
+                          // We don't want this route to have any menu. This is why we define it here
+                          // rather than under the admin routes.
+                          path="admin/change_admin_password"
+                          element={<ChangeAdminPasswordApp />}
+                        />
 
-                        {organizationsRoutes()}
-
-                        {projectsRoutes()}
-
-                        <Route path="portfolios" element={<PortfoliosPage />} />
-
-                        <Route path="sonarlint/auth" element={<SonarLintConnection />} />
-
-                        {webAPIRoutes()}
-
-                        {renderComponentRoutes()}
-
-                        {renderAdminRoutes(canAdmin!)}
+                        <Route
+                          // We don't want this route to have any menu. This is why we define it here
+                          // rather than under the admin routes.
+                          path="admin/plugin_risk_consent"
+                          element={<PluginRiskConsent />}
+                        />
+                        <Route path="home" element={<Home />} />
+                        <Route path="not_found" element={<NotFound />} />
+                        <Route path="*" element={<NotFound />} />
                       </Route>
-                      <Route
-                        // We don't want this route to have any menu.
-                        // That is why we can not have it under the accountRoutes
-                        path="account/reset_password"
-                        element={<ResetPassword />}
-                      />
-
-                      <Route
-                        // We don't want this route to have any menu. This is why we define it here
-                        // rather than under the admin routes.
-                        path="admin/change_admin_password"
-                        element={<ChangeAdminPasswordApp />}
-                      />
-
-                      <Route
-                        // We don't want this route to have any menu. This is why we define it here
-                        // rather than under the admin routes.
-                        path="admin/plugin_risk_consent"
-                        element={<PluginRiskConsent />}
-                      />
-                      <Route path="home" element={<Home />} />
-                      <Route path="not_found" element={<NotFound />} />
-                      <Route path="*" element={<NotFound />} />
                     </Route>
-                  </Route>
-                </Routes>
-              </BrowserRouter>
+                  </Routes>
+                </BrowserRouter>
+              </ThemeProvider>
             </IntlProvider>
           </CurrentUserContextProvider>
         </AvailableFeaturesContext.Provider>

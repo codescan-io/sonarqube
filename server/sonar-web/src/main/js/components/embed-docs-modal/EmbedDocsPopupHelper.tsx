@@ -17,84 +17,79 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+import {
+  Dropdown,
+  InteractiveIcon,
+  MenuHelpIcon,
+  PopupPlacement,
+  PopupZLevel,
+  Tooltip,
+} from 'design-system';
 import * as React from 'react';
 import { translate } from '../../helpers/l10n';
-import { ButtonLink, ClearButton } from '../controls/buttons';
-import Toggler from '../controls/Toggler';
-import HelpIcon from '../icons/HelpIcon';
 import EmbedDocsPopup from './EmbedDocsPopup';
 import Modal from "../controls/Modal";
 import { getBaseUrl } from "../../helpers/system";
+import { ClearButton } from "../controls/buttons";
 
-interface State {
-  helpOpen: boolean;
-  aboutCodescanOpen: boolean;
-}
+export default function EmbedDocsPopupHelper() {
 
-export default class EmbedDocsPopupHelper extends React.PureComponent<{}, State> {
-  mounted = false;
-  state: State = { helpOpen: false, aboutCodescanOpen: false };
+  const [aboutCodescanOpen, setAboutCodescanOpen] = React.useState(false);
 
-  setHelpDisplay = (helpOpen: boolean) => {
-    this.setState({ helpOpen });
-  };
-
-  handleClick = () => {
-    this.toggleHelp();
-  };
-
-  toggleHelp = () => {
-    this.setState((state) => {
-      return { helpOpen: !state.helpOpen };
-    });
-  };
-
-  closeHelp = () => {
-    this.setState({ helpOpen: false });
-  };
-
-  renderAboutCodescan(link: string, icon: string, text: string) {
+  const renderAboutCodescan = (link: string, icon: string, text: string) => {
     return (
-        <Modal
-            className="abs-width-auto"
-            onRequestClose={() => this.setState({ aboutCodescanOpen: false })}
-            contentLabel=''
-        >
-          <a href={link} rel="noopener noreferrer" target="_blank">
-            <img alt={text} src={`${getBaseUrl()}/images/${icon}`}/>
-          </a>
-          <span className="cross-button">
-            <ClearButton onClick={() => this.setState({ aboutCodescanOpen: false })}/>
-          </span>
-        </Modal>
+      <Modal
+        className="abs-width-auto"
+        onRequestClose={() => setAboutCodescanOpen(false)}
+        contentLabel=''
+      >
+        <a href={link} rel="noopener noreferrer" target="_blank">
+          <img alt={text} src={`${getBaseUrl()}/images/${icon}`}/>
+        </a>
+        <span className="cross-button">
+          <ClearButton onClick={() => setAboutCodescanOpen(false)}/>
+        </span>
+      </Modal>
     );
   }
 
-  render() {
-    return (
-      <div className="dropdown">
-        <Toggler
-          onRequestClose={this.closeHelp}
-          open={this.state.helpOpen}
-          overlay={<EmbedDocsPopup onClose={this.closeHelp} showAboutCodescanPopup={() => this.setState({aboutCodescanOpen: true})} />}
-        >
-          <ButtonLink
-            aria-expanded={this.state.helpOpen}
-            aria-haspopup={true}
-            className="navbar-help navbar-icon"
-            onClick={this.handleClick}
-            title={translate('help')}
+  console.info('aboutCodescanOpen', aboutCodescanOpen)
+
+  return (
+    <div className="dropdown">
+      <Dropdown
+        id="help-menu-dropdown"
+        placement={PopupPlacement.BottomRight}
+        overlay={<EmbedDocsPopup setAboutCodescanOpen={setAboutCodescanOpen} />}
+        allowResizing={true}
+        zLevel={PopupZLevel.Global}
+      >
+        {({ onToggleClick, open }) => (
+          <Tooltip
+            mouseLeaveDelay={0.2}
+            overlay={translate('help')}
+            visible={open ? false : undefined}
           >
-            <HelpIcon />
-          </ButtonLink>
-        </Toggler>
-
-        {this.state.aboutCodescanOpen && this.renderAboutCodescan(
-            'https://knowledgebase.autorabit.com/codescan/docs/codescan-release-notes',
-            'embed-doc/codescan-version-24_0_11.png',
-            translate('embed_docs.codescan_version')
+            <InteractiveIcon
+              Icon={MenuHelpIcon}
+              aria-expanded={open}
+              aria-controls="help-menu-dropdown"
+              aria-haspopup={true}
+              aria-label={translate('help')}
+              currentColor={true}
+              onClick={onToggleClick}
+              size="medium"
+              stopPropagation={false}
+            />
+          </Tooltip>
         )}
-      </div>
-    );
-  }
+      </Dropdown>
+
+      {aboutCodescanOpen && renderAboutCodescan(
+        'https://knowledgebase.autorabit.com/codescan/docs/codescan-release-notes',
+        'embed-doc/codescan-version-24_0_11.png',
+        translate('embed_docs.codescan_version')
+      )}
+    </div>
+  );
 }

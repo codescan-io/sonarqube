@@ -19,8 +19,7 @@
  */
 import * as React from 'react';
 import { Outlet } from 'react-router-dom';
-import NavBar from '../../components/ui/NavBar';
-import { rawSizes } from '../theme';
+import MainSonarQubeBar from './nav/global/MainSonarQubeBar';
 import GlobalFooterCodescan from './GlobalFooterCodescan';
 
 /*
@@ -31,7 +30,7 @@ export default function SimpleContainer({ children }: { children?: React.ReactNo
   return (
     <div className="global-container">
       <div className="page-wrapper" id="container">
-        <NavBar className="global-navbar" height={rawSizes.globalNavHeightRaw} />
+        <MainSonarQubeBar />
         {children !== undefined ? children : <Outlet />}
       </div>
       <GlobalFooterCodescan />

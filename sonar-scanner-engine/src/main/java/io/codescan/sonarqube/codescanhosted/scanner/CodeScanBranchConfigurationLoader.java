@@ -61,7 +61,8 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
     public BranchConfiguration load(Map<String, String> projectSettings, ProjectBranches branches) {
 
         if (BRANCH_ANALYSIS_PARAMETERS.stream().anyMatch(projectSettings::containsKey)) {
-            return createBranchConfiguration(projectSettings, branches);
+            throw new IllegalArgumentException("The sonar.branch.target argument is not supported anymore!");
+            // return createBranchConfiguration(projectSettings, branches);
         } else if (PULL_REQUEST_ANALYSIS_PARAMETERS.stream().anyMatch(projectSettings::containsKey)) {
             return createPullRequestConfiguration(projectSettings, branches);
         } else if (COMPARISON_BRANCH_ANALYSIS_PARAMETERS.stream().anyMatch(projectSettings::containsKey)) {
@@ -71,6 +72,7 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
         return new DefaultBranchConfiguration();
     }
 
+    /*
     private BranchConfiguration createBranchConfiguration(Map<String, String> projectSettings,
             ProjectBranches branches) {
         String branchName = StringUtils.trimToNull(projectSettings.get(ScannerProperties.BRANCH_NAME));
@@ -132,6 +134,7 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
           For short living branches, we look at sonar.branch.target (default to default branch). If it exists but is
           a short living branch or PR, we will transitively use its own target.
          */
+        /*
         String referenceBranchName = branchTarget;
 
         // Get info of existing branch.
@@ -160,6 +163,7 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
         }
         return new CodeScanBranchConfiguration(branchType, branchName, targetScmBranch, referenceBranchName, null);
     }
+    */
 
     private static BranchConfiguration createPullRequestConfiguration(Map<String, String> projectSettings,
             ProjectBranches branches) {

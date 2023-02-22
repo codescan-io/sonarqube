@@ -18,18 +18,17 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import classNames from 'classnames';
+import { MainMenu, MainMenuItem } from 'design-system';
 import * as React from 'react';
 import { NavLink } from 'react-router-dom';
+import { isMySet } from '../../../../apps/issues/utils';
 import Link from '../../../../components/common/Link';
-import Dropdown from '../../../../components/controls/Dropdown';
-import DropdownIcon from '../../../../components/icons/DropdownIcon';
 import { translate } from '../../../../helpers/l10n';
 import { AppState } from '../../../../types/appstate';
 import { ComponentQualifier } from '../../../../types/component';
-import { Extension } from '../../../../types/types';
-import { CurrentUser, LoggedInUser } from '../../../../types/users';
+import { CurrentUser } from '../../../../types/users';
 import withAppStateContext from '../../app-state/withAppStateContext';
-import handleRequiredAuthentication from '../../../../helpers/handleRequiredAuthentication';
+import GlobalNavMore from './GlobalNavMore';
 
 interface Props {
   appState: AppState;
@@ -38,14 +37,15 @@ interface Props {
 }
 
 const ACTIVE_CLASS_NAME = 'active';
-export class GlobalNavMenu extends React.PureComponent<Props> {
+
+class GlobalNavMenu extends React.PureComponent<Props> {
   renderProjects() {
     const active =
       this.props.location.pathname.startsWith('/projects') &&
       this.props.location.pathname !== '/projects/create';
 
     return (
-      <li>
+      <MainMenuItem>
         <Link
           aria-current={active ? 'page' : undefined}
           className={classNames({ active })}
@@ -53,35 +53,36 @@ export class GlobalNavMenu extends React.PureComponent<Props> {
         >
           {translate('projects.page')}
         </Link>
-      </li>
+      </MainMenuItem>
     );
   }
 
   renderPortfolios() {
     return (
-      <li>
+      <MainMenuItem>
         <NavLink className={({ isActive }) => (isActive ? ACTIVE_CLASS_NAME : '')} to="/portfolios">
           {translate('portfolios.page')}
         </NavLink>
-      </li>
+      </MainMenuItem>
     );
   }
 
   renderIssuesLink() {
-    if (!this.props.currentUser.isLoggedIn) {
-          handleRequiredAuthentication();
-          return;
-      }
-    const search = new URLSearchParams({ resolved: 'false', myIssues: 'true' }).toString();
+    const search = (
+      this.props.currentUser.isLoggedIn && isMySet()
+        ? new URLSearchParams({ resolved: 'false', myIssues: 'true' })
+        : new URLSearchParams({ resolved: 'false' })
+    ).toString();
+
     return (
-      <li>
+      <MainMenuItem>
         <NavLink
           className={({ isActive }) => (isActive ? ACTIVE_CLASS_NAME : '')}
-          to={{pathname: '/issues', search }}
+          to={{ pathname: '/issues', search }}
         >
-          {translate('myissues.page')}
+          {translate('issues.page')}
         </NavLink>
-      </li>
+      </MainMenuItem>
     );
   }
 
@@ -98,53 +99,16 @@ export class GlobalNavMenu extends React.PureComponent<Props> {
 
       if ((appState.canAdmin && isSonarAdminGroupAvailable) || (!appState.canAdmin && appState.canCustomerAdmin)) {
         return (
-            <li>
-              <Link to="/admin/settings">
-                {translate('layout.settings')}
-              </Link>
-            </li>
+          <li>
+            <Link to="/admin/settings">
+              {translate('layout.settings')}
+            </Link>
+          </li>
         );
       }
     }
 
     return null;
-  }
-
-  renderGlobalPageLink = ({ key, name }: Extension) => {
-    return (
-      <li key={key}>
-        <Link to={`/extension/${key}`}>{name}</Link>
-      </li>
-    );
-  };
-
-  renderMore() {
-    const { globalPages = [] } = this.props.appState;
-    const withoutPortfolios = globalPages.filter((page) => page.key !== 'governance/portfolios');
-    if (withoutPortfolios.length === 0) {
-      return null;
-    }
-    return (
-      <Dropdown
-        overlay={<ul className="menu">{withoutPortfolios.map(this.renderGlobalPageLink)}</ul>}
-        tagName="li"
-      >
-        {({ onToggleClick, open }) => (
-          <a
-            aria-expanded={open}
-            aria-haspopup="menu"
-            role="button"
-            className={classNames('dropdown-toggle', { active: open })}
-            href="#"
-            id="global-navigation-more"
-            onClick={onToggleClick}
-          >
-            {translate('more')}
-            <DropdownIcon className="little-spacer-left text-middle" />
-          </a>
-        )}
-      </Dropdown>
-    );
   }
 
   render() {
@@ -154,13 +118,13 @@ export class GlobalNavMenu extends React.PureComponent<Props> {
 
     return (
       <nav aria-label={translate('global')}>
-        <ul className="global-navbar-menu">
+        <MainMenu>
           {this.renderProjects()}
           {governanceInstalled && this.renderPortfolios()}
           {this.renderIssuesLink()}
           {this.renderAdministrationLink()}
-          {this.renderMore()}
-        </ul>
+          <GlobalNavMore />
+        </MainMenu>
       </nav>
     );
   }

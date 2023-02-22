@@ -17,6 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+import { ThemeProvider } from '@emotion/react';
+import { lightTheme } from 'design-system';
 import * as React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import A11yProvider from '../../components/a11y/A11yProvider';
@@ -39,35 +41,36 @@ export default function GlobalContainer() {
   const location = useLocation();
 
   return (
-    <SuggestionsProvider>
-      <A11yProvider>
-        <StartupModal>
-          <A11ySkipLinks />
-          <div className="global-container">
-            <div className="page-wrapper" id="container">
-              <div className="page-container">
-                <BranchStatusContextProvider>
-                  <Workspace>
-                    <IndexationContextProvider>
-                      <LanguagesContextProvider>
-                        <MetricsContextProvider>
-                          <SystemAnnouncement />
-                          <IndexationNotification />
-                          <UpdateNotification dismissable={true} />
-                          <GlobalNav location={location} />
-                          <Outlet />
-                        </MetricsContextProvider>
-                      </LanguagesContextProvider>
-                    </IndexationContextProvider>
-                  </Workspace>
-                </BranchStatusContextProvider>
+    <ThemeProvider theme={lightTheme}>
+      <SuggestionsProvider>
+        <A11yProvider>
+          <StartupModal>
+            <A11ySkipLinks />
+            <div className="global-container">
+              <div className="page-wrapper" id="container">
+                <div className="page-container">
+                  <BranchStatusContextProvider>
+                    <Workspace>
+                      <IndexationContextProvider>
+                        <LanguagesContextProvider>
+                          <MetricsContextProvider>
+                            <SystemAnnouncement />
+                            <IndexationNotification />
+                            <UpdateNotification dismissable={true} />
+                            <GlobalNav location={location} />
+                            <Outlet />
+                          </MetricsContextProvider>
+                        </LanguagesContextProvider>
+                      </IndexationContextProvider>
+                    </Workspace>
+                  </BranchStatusContextProvider>
+                </div>
               </div>
-              {/* <PromotionNotification /> */}
+              <GlobalFooterCodescan />
             </div>
-            <GlobalFooterCodescan />
-          </div>
-        </StartupModal>
-      </A11yProvider>
-    </SuggestionsProvider>
+          </StartupModal>
+        </A11yProvider>
+      </SuggestionsProvider>
+    </ThemeProvider>
   );
 }
