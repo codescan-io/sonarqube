@@ -56,12 +56,14 @@ public class CreateTemplateAction implements PermissionsWsAction {
   private final UserSession userSession;
   private final System2 system;
   private final PermissionWsSupport wsSupport;
+  private final WsParameters wsParameters;
 
-  public CreateTemplateAction(DbClient dbClient, UserSession userSession, System2 system, PermissionWsSupport wsSupport) {
+  public CreateTemplateAction(DbClient dbClient, UserSession userSession, System2 system, PermissionWsSupport wsSupport, WsParameters wsParameters) {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.system = system;
     this.wsSupport = wsSupport;
+    this.wsParameters = wsParameters;
   }
 
   private static CreateTemplateRequest toCreateTemplateWsRequest(Request request) {
@@ -92,6 +94,7 @@ public class CreateTemplateAction implements PermissionsWsAction {
       .setDescription("Name")
       .setExampleValue("Financial Service Permissions");
 
+    wsParameters.createOrganizationParameter(action);
     WsParameters.createTemplateProjectKeyPatternParameter(action);
     WsParameters.createTemplateDescriptionParameter(action);
   }

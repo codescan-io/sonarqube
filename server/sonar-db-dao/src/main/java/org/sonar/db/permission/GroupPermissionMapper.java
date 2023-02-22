@@ -43,15 +43,15 @@ public interface GroupPermissionMapper {
 
   void insert(GroupPermissionDto dto);
 
-  int delete(@Param("permission") String permission, @Nullable @Param("groupUuid") String groupUuid, @Nullable @Param("rootComponentUuid") String rootComponentUuid);
+  int delete(@Param("permission") String permission, @Param("organizationUuid") String organizationUuid, @Nullable @Param("groupUuid") String groupUuid, @Nullable @Param("rootComponentUuid") String rootComponentUuid);
 
   List<String> selectGlobalPermissionsOfGroups(@Nullable @Param("groupUuid") String groupUuid);
 
   List<String> selectGlobalPermissionsOfGroup(@Param("organizationUuid") String organizationUuid, @Nullable @Param("groupUuid") String groupUuid);
 
-  List<String> selectProjectPermissionsOfGroup(@Nullable @Param("groupUuid") String groupUuid, @Param("projectUuid") String projectUuid);
+  List<String> selectProjectPermissionsOfGroup(@Param("organizationUuid") String organizationUuid, @Nullable @Param("groupUuid") String groupUuid, @Param("projectUuid") String projectUuid);
 
-  void selectAllPermissionsByGroupUuid(@Param("groupUuid") String groupUuid, ResultHandler<GroupPermissionDto> resultHandler);
+  void selectAllPermissionsByGroupUuid(@Param("organizationUuid") String organizationUuid, @Param("groupUuid") String groupUuid, ResultHandler<GroupPermissionDto> resultHandler);
 
   /**
    * Lists uuid of groups with at least one permission on the specified root component but which do not have the specified

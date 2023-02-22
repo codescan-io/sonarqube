@@ -57,14 +57,19 @@ public class AppAction implements RulesWsAction {
       .setHandler(this);
     action.createParam(PARAM_ORGANIZATION)
             .setDescription("Organization key")
-            .setRequired(true)
+            .setRequired(false)
             .setExampleValue("my-org");
   }
 
   @Override
   public void handle(Request request, Response response) throws Exception {
     try (DbSession dbSession = dbClient.openSession(false)) {
-      OrganizationDto organization = wsSupport.getOrganizationByKey(dbSession, request.param(PARAM_ORGANIZATION));
+      OrganizationDto organization;
+      if (request.param(PARAM_ORGANIZATION) != null) {
+        organization = wsSupport.getOrganizationByKey(dbSession, request.param(PARAM_ORGANIZATION));
+      } else {
+        organization = dbClient.organizationDao().getDefaultOrganization(dbSession);
+      }
       JsonWriter json = response.newJsonWriter();
       json.beginObject();
       addPermissions(organization, json);

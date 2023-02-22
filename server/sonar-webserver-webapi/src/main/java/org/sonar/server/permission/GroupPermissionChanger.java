@@ -122,6 +122,7 @@ public class GroupPermissionChanger {
     GroupPermissionDto addedDto = new GroupPermissionDto()
       .setUuid(uuidFactory.create())
       .setRole(change.getPermission())
+      .setOrganizationUuid(change.getOrganizationUuid())
       .setGroupUuid(groupUuid)
       .setComponentName(change.getProjectName())
       .setComponentUuid(change.getProjectUuid());
@@ -153,6 +154,7 @@ public class GroupPermissionChanger {
 
     dbClient.groupPermissionDao().delete(dbSession,
       change.getPermission(),
+      change.getOrganizationUuid(),
       groupUuid,
       groupName,
       change.getProjectUuid(),
@@ -164,6 +166,7 @@ public class GroupPermissionChanger {
     String projectUuid = change.getProjectUuid();
     if (projectUuid != null) {
       return dbClient.groupPermissionDao().selectProjectPermissionsOfGroup(dbSession,
+        change.getOrganizationUuid(),
         change.getGroupUuidOrAnyone().getUuid(),
         projectUuid);
     }

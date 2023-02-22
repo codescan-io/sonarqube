@@ -129,6 +129,10 @@ public class WsParameters {
     action.createParam(PARAM_TEMPLATE_NAME)
       .setDescription("Template name")
       .setExampleValue("Default Permission Template for Projects");
+    action.createParam(PARAM_ORGANIZATION)
+            .setDescription("Key of organization, used when group name is set")
+            .setExampleValue("my-org")
+            .setRequired(false);
   }
 
   public static void createTemplateProjectKeyPatternParameter(WebService.NewAction action) {

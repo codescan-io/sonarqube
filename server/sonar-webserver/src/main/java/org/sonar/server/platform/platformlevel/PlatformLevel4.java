@@ -139,6 +139,7 @@ import org.sonar.server.monitoring.devops.GitlabMetricsTask;
 import org.sonar.server.newcodeperiod.ws.NewCodePeriodsWsModule;
 import org.sonar.server.notification.NotificationModule;
 import org.sonar.server.notification.ws.NotificationWsModule;
+import org.sonar.server.organization.ws.OrganizationsWsModule;
 import org.sonar.server.permission.DefaultTemplatesResolverImpl;
 import org.sonar.server.permission.GroupPermissionChanger;
 import org.sonar.server.permission.PermissionTemplateService;
@@ -303,6 +304,9 @@ public class PlatformLevel4 extends PlatformLevel {
 
       // update center
       new UpdateCenterModule(),
+
+      // organizations
+      new OrganizationsWsModule(),
 
       // quality profile
       BuiltInQProfileRepositoryImpl.class,

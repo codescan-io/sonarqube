@@ -85,8 +85,8 @@ public class GroupPermissionDao implements Dao {
    * Select global and project permissions of a given group (Anyone group is NOT supported)
    * Each row returns a {@link GroupPermissionDto}
    */
-  public void selectAllPermissionsByGroupUuid(DbSession dbSession, String groupUuid, ResultHandler<GroupPermissionDto> resultHandler) {
-    mapper(dbSession).selectAllPermissionsByGroupUuid(groupUuid, resultHandler);
+  public void selectAllPermissionsByGroupUuid(DbSession dbSession, String organizationUuid, String groupUuid, ResultHandler<GroupPermissionDto> resultHandler) {
+    mapper(dbSession).selectAllPermissionsByGroupUuid(organizationUuid, groupUuid, resultHandler);
   }
 
   /**
@@ -124,8 +124,8 @@ public class GroupPermissionDao implements Dao {
    * Selects the permissions granted to group and project. An empty list is returned if the
    * group or project do not exist.
    */
-  public List<String> selectProjectPermissionsOfGroup(DbSession session, @Nullable String groupUuid, String projectUuid) {
-    return mapper(session).selectProjectPermissionsOfGroup(groupUuid, projectUuid);
+  public List<String> selectProjectPermissionsOfGroup(DbSession session, String organizationUuid, @Nullable String groupUuid, String projectUuid) {
+    return mapper(session).selectProjectPermissionsOfGroup(organizationUuid, groupUuid, projectUuid);
   }
 
   /**
@@ -210,10 +210,10 @@ public class GroupPermissionDao implements Dao {
    * @param groupUuid         if null, then anyone, else uuid of group
    * @param rootComponentUuid if null, then global permission, otherwise the uuid of root component (project)
    */
-  public void delete(DbSession dbSession, String permission, @Nullable String groupUuid,
+  public void delete(DbSession dbSession, String permission, String organizationUuid, @Nullable String groupUuid,
     @Nullable String groupName, @Nullable String rootComponentUuid, @Nullable ComponentDto componentDto) {
 
-    int deletedRecords = mapper(dbSession).delete(permission, groupUuid, rootComponentUuid);
+    int deletedRecords = mapper(dbSession).delete(permission, organizationUuid, groupUuid, rootComponentUuid);
 
     if (deletedRecords > 0) {
       String qualifier = (componentDto != null) ? componentDto.qualifier() : null;

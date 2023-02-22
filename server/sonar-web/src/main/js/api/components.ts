@@ -37,6 +37,7 @@ import {
 export interface BaseSearchProjectsParameters {
   analyzedBefore?: string;
   onProvisionedOnly?: boolean;
+  organization: string;
   projects?: string;
   q?: string;
   qualifiers?: string;

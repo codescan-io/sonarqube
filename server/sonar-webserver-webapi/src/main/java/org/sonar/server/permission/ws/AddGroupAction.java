@@ -35,7 +35,6 @@ import org.sonar.server.permission.PermissionService;
 import org.sonar.server.permission.PermissionUpdater;
 import org.sonar.server.user.UserSession;
 
-import static org.sonar.server.permission.PermissionPrivilegeChecker.checkProjectAdmin;
 import static org.sonar.server.permission.ws.WsParameters.createGroupIdParameter;
 import static org.sonar.server.permission.ws.WsParameters.createGroupNameParameter;
 import static org.sonar.server.permission.ws.WsParameters.createProjectParameters;
@@ -79,6 +78,7 @@ public class AddGroupAction implements PermissionsWsAction {
       .setHandler(this);
 
     wsParameters.createPermissionParameter(action, "The permission you would like to grant to the group.");
+    wsParameters.createOrganizationParameter(action);
     createGroupNameParameter(action);
     createGroupIdParameter(action);
     createProjectParameters(action);

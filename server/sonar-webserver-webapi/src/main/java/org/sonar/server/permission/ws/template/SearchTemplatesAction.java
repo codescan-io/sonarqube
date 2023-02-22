@@ -43,6 +43,7 @@ import org.sonar.server.permission.DefaultTemplatesResolver.ResolvedDefaultTempl
 import org.sonar.server.permission.PermissionService;
 import org.sonar.server.permission.ws.PermissionWsSupport;
 import org.sonar.server.permission.ws.PermissionsWsAction;
+import org.sonar.server.permission.ws.WsParameters;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.Permissions;
 import org.sonarqube.ws.Permissions.Permission;
@@ -68,32 +69,36 @@ public class SearchTemplatesAction implements PermissionsWsAction {
   private final DefaultTemplatesResolver defaultTemplatesResolver;
   private final PermissionService permissionService;
   private final PermissionWsSupport wsSupport;
+  private final WsParameters wsParameters;
 
   public SearchTemplatesAction(DbClient dbClient, UserSession userSession, I18n i18n, DefaultTemplatesResolver defaultTemplatesResolver,
-    PermissionService permissionService, PermissionWsSupport wsSupport) {
+    PermissionService permissionService, PermissionWsSupport wsSupport, WsParameters wsParameters) {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.i18n = i18n;
     this.defaultTemplatesResolver = defaultTemplatesResolver;
     this.permissionService = permissionService;
     this.wsSupport = wsSupport;
+    this.wsParameters = wsParameters;
   }
 
   @Override
   public void define(WebService.NewController context) {
-    context.createAction("search_templates")
+    WebService.NewAction action = context.createAction("search_templates")
       .setDescription("List permission templates.<br />" +
         "Requires the following permission: 'Administer System'.")
       .setResponseExample(getClass().getResource("search_templates-example-without-views.json"))
       .setSince("5.2")
       .addSearchQuery("defau", "permission template names")
       .setHandler(this);
+
+    wsParameters.createOrganizationParameter(action).setSince("6.2");
   }
 
   @Override
   public void handle(Request wsRequest, Response wsResponse) throws Exception {
     try (DbSession dbSession = dbClient.openSession(false)) {
-      OrganizationDto org = wsSupport.findOrganization(dbSession, wsRequest.param(PARAM_ORGANIZATION));
+      OrganizationDto org = wsSupport.findOrganization(dbSession, wsRequest.mandatoryParam(PARAM_ORGANIZATION));
       SearchTemplatesRequest request = new SearchTemplatesRequest().setOrganizationUuid(org.getUuid()).setQuery(wsRequest.param(Param.TEXT_QUERY));
       checkGlobalAdmin(userSession, request.getOrganizationUuid());
 

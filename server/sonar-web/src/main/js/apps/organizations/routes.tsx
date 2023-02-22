@@ -33,13 +33,13 @@ import IssuesApp from "../issues/components/IssuesApp";
 import QualityProfilesApp from "../quality-profiles/components/QualityProfilesApp";
 import qualityGatesRoutes from "../quality-gates/routes";
 import RulesApp from "../coding-rules/components/App";
-import UsersApp from "../users/UsersApp";
 import ChangelogContainer from '../quality-profiles/changelog/ChangelogContainer';
 import ComparisonContainer from '../quality-profiles/compare/ComparisonContainer';
 import ProfileContainer from '../quality-profiles/components/ProfileContainer';
 import ProfileDetails from '../quality-profiles/details/ProfileDetails';
 import HomeContainer from '../quality-profiles/home/HomeContainer';
 import OrganizationPageExtension from "../../app/components/extensions/OrganizationPageExtension";
+import OrganizationMembers from "../organizationMembers/OrganizationMembers";
 
 const routes = () => (
     <Route path="organizations">
@@ -64,7 +64,7 @@ const routes = () => (
            </Route>
         </Route>
         <Route path="rules" element={<RulesApp />}/>
-        <Route path="members" element={<UsersApp />}/>
+        <Route path="members" element={<OrganizationMembers />}/>
         <Route path="extension/:pluginKey/:extensionKey" element={<OrganizationPageExtension />} />
       </Route>
       <Route path="create" element={<CreateOrganizationPage/>}/>

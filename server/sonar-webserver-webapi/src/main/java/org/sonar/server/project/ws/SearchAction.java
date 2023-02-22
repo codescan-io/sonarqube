@@ -105,6 +105,8 @@ public class SearchAction implements ProjectsWsAction {
       .setPossibleValues(PROJECT, VIEW, APP)
       .setDefaultValue(PROJECT);
 
+    wsSupport.addOrganizationParam(action);
+
     action.createParam(PARAM_VISIBILITY)
       .setDescription("Filter the projects that should be visible to everyone (%s), or only specific user/groups (%s).<br/>" +
           "If no visibility is specified, the default project visibility will be used.",

@@ -64,7 +64,7 @@ public class UserPermissionDaoWithPersisterTest {
     assertNewValue(newValue, dto.getUuid(), user.getUuid(), user.getLogin(), null, dto.getPermission(), null, null, null);
     assertThat(newValue.toString()).doesNotContain("projectUuid");
 
-    underTest.deleteGlobalPermission(dbSession, user, SYSTEM_ADMIN);
+    underTest.deleteGlobalPermission(dbSession, user, SYSTEM_ADMIN, null);
 
     verify(auditPersister).deleteUserPermission(eq(dbSession), newValueCaptor.capture());
     newValue = newValueCaptor.getValue();

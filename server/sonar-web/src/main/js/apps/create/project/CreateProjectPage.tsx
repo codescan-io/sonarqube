@@ -79,7 +79,6 @@ export class CreateProjectPage extends React.PureComponent<CreateProjectPageProp
 
   componentDidMount() {
     this.mounted = true;
-    this.fetchAlmBindings();
   }
 
   componentWillUnmount() {
@@ -132,8 +131,6 @@ export class CreateProjectPage extends React.PureComponent<CreateProjectPageProp
     let { creatingAlmDefinition: createdAlmDefinition } = this.state;
 
     this.setState({ creatingAlmDefinition: undefined });
-
-    await this.fetchAlmBindings();
 
     if (this.mounted && createdAlmDefinition) {
       const { bitbucketCloudSettings } = this.state;

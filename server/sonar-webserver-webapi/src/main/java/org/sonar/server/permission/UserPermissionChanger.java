@@ -111,7 +111,7 @@ public class UserPermissionChanger {
     if (project != null) {
       dbClient.userPermissionDao().deleteProjectPermission(dbSession, change.getUserId(), change.getPermission(), project);
     } else {
-      dbClient.userPermissionDao().deleteGlobalPermission(dbSession, change.getUserId(), change.getPermission());
+      dbClient.userPermissionDao().deleteGlobalPermission(dbSession, change.getUserId(), change.getPermission(), change.getOrganizationUuid());
     }
     return true;
   }
@@ -121,7 +121,7 @@ public class UserPermissionChanger {
     if (projectUuid != null) {
       return dbClient.userPermissionDao().selectProjectPermissionsOfUser(dbSession, change.getUserId().getUuid(), projectUuid);
     }
-    return dbClient.userPermissionDao().selectGlobalPermissionsOfUser(dbSession, change.getUserId().getUuid());
+    return dbClient.userPermissionDao().selectGlobalPermissionsOfUser(dbSession, change.getUserId().getUuid(), change.getOrganizationUuid());
   }
 
   private void checkOtherAdminsExist(DbSession dbSession, UserPermissionChange change) {
