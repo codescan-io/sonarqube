@@ -19,6 +19,7 @@
  */
 import * as React from 'react';
 import Link from '../../../components/common/Link';
+import DeferredSpinner from '../../../components/ui/DeferredSpinner';
 import { translate } from '../../../helpers/l10n';
 import { Organization, PermissionTemplate } from '../../../types/types';
 import ActionsCell from './ActionsCell';
@@ -32,7 +33,7 @@ interface Props {
 }
 
 export default function TemplateHeader(props: Props) {
-  const { template, organization } = props;
+  const { template, organization, loading } = props;
   const pathname = `/organizations/${organization.kee}/permission_templates`;
   return (
     <header className="page-header" id="project-permissions-header">
@@ -42,7 +43,7 @@ export default function TemplateHeader(props: Props) {
 
       <h1 className="page-title">{template.name}</h1>
 
-      {props.loading && <i className="spinner" />}
+      <DeferredSpinner loading={loading} />
 
       <div className="pull-right">
         <ActionsCell

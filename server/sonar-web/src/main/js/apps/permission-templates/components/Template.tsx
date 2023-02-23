@@ -79,7 +79,7 @@ export default class Template extends React.PureComponent<Props, State> {
       filter !== 'groups'
         ? api.getPermissionTemplateUsers({
             templateId: template.id,
-            q: query || null,
+            q: query || undefined,
             permission: selectedPermission,
             organization: organization.kee,
             p: usersPage,
@@ -90,7 +90,7 @@ export default class Template extends React.PureComponent<Props, State> {
       filter !== 'users'
         ? api.getPermissionTemplateGroups({
             templateId: template.id,
-            q: query || null,
+            q: query || undefined,
             permission: selectedPermission,
             organization: organization.kee,
             p: groupsPage,
@@ -319,28 +319,29 @@ export default class Template extends React.PureComponent<Props, State> {
           topQualifiers={topQualifiers}
           organization={this.props.organization}
         />
+        <main>
+          <TemplateDetails template={template} />
 
-        <TemplateDetails template={template} />
-
-        <AllHoldersList
-          filter={filter}
-          onGrantPermissionToGroup={this.grantPermissionToGroup}
-          onGrantPermissionToUser={this.grantPermissionToUser}
-          groups={groups}
-          groupsPaging={groupsPaging}
-          loading={loading}
-          onFilter={this.handleFilter}
-          onLoadMore={this.onLoadMore}
-          onQuery={this.handleSearch}
-          query={query}
-          onRevokePermissionFromGroup={this.revokePermissionFromGroup}
-          onRevokePermissionFromUser={this.revokePermissionFromUser}
-          users={allUsers}
-          usersPaging={usersPagingWithCreator}
-          permissions={permissions}
-          selectedPermission={selectedPermission}
-          onSelectPermission={this.handleSelectPermission}
-        />
+          <AllHoldersList
+            filter={filter}
+            onGrantPermissionToGroup={this.grantPermissionToGroup}
+            onGrantPermissionToUser={this.grantPermissionToUser}
+            groups={groups}
+            groupsPaging={groupsPaging}
+            loading={loading}
+            onFilter={this.handleFilter}
+            onLoadMore={this.onLoadMore}
+            onQuery={this.handleSearch}
+            query={query}
+            onRevokePermissionFromGroup={this.revokePermissionFromGroup}
+            onRevokePermissionFromUser={this.revokePermissionFromUser}
+            users={allUsers}
+            usersPaging={usersPagingWithCreator}
+            permissions={permissions}
+            selectedPermission={selectedPermission}
+            onSelectPermission={this.handleSelectPermission}
+          />
+        </main>
       </div>
     );
   }

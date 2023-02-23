@@ -27,7 +27,7 @@ import {
 import ActionsDropdown, { ActionsDropdownItem } from '../../../components/controls/ActionsDropdown';
 import { Router, withRouter } from '../../../components/hoc/withRouter';
 import QualifierIcon from '../../../components/icons/QualifierIcon';
-import { translate } from '../../../helpers/l10n';
+import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { queryToSearch } from '../../../helpers/urls';
 import { Organization, PermissionTemplate } from '../../../types/types';
 import DeleteForm from './DeleteForm';
@@ -48,7 +48,7 @@ interface State {
   updateModal: boolean;
 }
 
-export class ActionsCell extends React.PureComponent<Props, State> {
+class ActionsCell extends React.PureComponent<Props, State> {
   mounted = false;
   state: State = { deleteForm: false, updateModal: false };
 
@@ -159,7 +159,9 @@ export class ActionsCell extends React.PureComponent<Props, State> {
 
     return (
       <>
-        <ActionsDropdown>
+        <ActionsDropdown
+          label={translateWithParameters('permission_templates.show_actions_for_x', t.name)}
+        >
           {this.renderSetDefaultsControl()}
 
           {!this.props.fromDetails && (

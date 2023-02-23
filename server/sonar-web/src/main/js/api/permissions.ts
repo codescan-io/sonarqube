@@ -78,15 +78,24 @@ export function getPermissionTemplates(organization: string): Promise<GetPermiss
   return organization ? getJSON(url, { organization }) : getJSON(url);
 }
 
-export function createPermissionTemplate(data: RequestData) {
+export function createPermissionTemplate(data: {
+  name: string;
+  description?: string;
+  projectKeyPattern?: string;
+}): Promise<{ permissionTemplate: Omit<PermissionTemplate, 'defaultFor'> }> {
   return postJSON('/api/permissions/create_template', data);
 }
 
-export function updatePermissionTemplate(data: RequestData): Promise<void> {
+export function updatePermissionTemplate(data: {
+  id: string;
+  description?: string;
+  name?: string;
+  projectKeyPattern?: string;
+}): Promise<void> {
   return post('/api/permissions/update_template', data);
 }
 
-export function deletePermissionTemplate(data: RequestData) {
+export function deletePermissionTemplate(data: { templateId?: string; templateName?: string }) {
   return post('/api/permissions/delete_template', data).catch(throwGlobalError);
 }
 
@@ -198,7 +207,7 @@ export function getGlobalPermissionsGroups(data: {
 
 export function getPermissionTemplateUsers(data: {
   templateId: string;
-  q?: string | null;
+  q?: string;
   permission?: string;
   organization?: string;
   p?: number;
@@ -212,7 +221,7 @@ export function getPermissionTemplateUsers(data: {
 
 export function getPermissionTemplateGroups(data: {
   templateId: string;
-  q?: string | null;
+  q?: string;
   permission?: string;
   organization?: string;
   p?: number;
