@@ -36,7 +36,8 @@ public interface HomepageTypes {
     /**
      * This type is only available when organizations are enabled
      */
-    ORGANIZATION
+    ORGANIZATION,
+    POLICY_RESULTS
   }
 
   List<Type> getTypes();

@@ -143,6 +143,7 @@ public class SetHomepageAction implements UsersWsAction {
       case ISSUES:
       case MY_PROJECTS:
       case MY_ISSUES:
+      case POLICY_RESULTS:
         checkArgument(isBlank(componentParameter), "Parameter '%s' must not be provided when type is '%s'", PARAM_COMPONENT, type.name());
         checkArgument(isBlank(organizationParameter), "Parameter '%s' must not be provided when type is '%s'", PARAM_ORGANIZATION, type.name());
         return null;
