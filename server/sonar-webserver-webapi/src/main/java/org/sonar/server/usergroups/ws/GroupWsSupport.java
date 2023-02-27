@@ -173,15 +173,19 @@ public class GroupWsSupport {
   }
 
   static void defineGroupWsParameters(WebService.NewAction action) {
+    defineOrganizationKeyWsParameter(action);
     defineGroupNameWsParameter(action);
   }
 
-  private static void defineGroupNameWsParameter(WebService.NewAction action) {
+  private static void defineOrganizationKeyWsParameter(WebService.NewAction action) {
     action.createParam(PARAM_ORGANIZATION_KEY)
             .setDescription("Key of organization")
             .setExampleValue("my-org")
             .setInternal(true)
             .setRequired(true);
+  }
+
+  private static void defineGroupNameWsParameter(WebService.NewAction action) {
     action.createParam(PARAM_GROUP_NAME)
       .setRequired(true)
       .setDescription("Group name")
