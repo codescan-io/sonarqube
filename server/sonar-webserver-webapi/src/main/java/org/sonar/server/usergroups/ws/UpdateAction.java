@@ -25,7 +25,6 @@ import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService.NewAction;
 import org.sonar.api.server.ws.WebService.NewController;
-import org.sonar.api.user.UserGroupValidation;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
@@ -100,35 +99,20 @@ public class UpdateAction implements UserGroupsWsAction {
       String currentName = request.mandatoryParam(PARAM_GROUP_CURRENT_NAME);
 
       GroupDto group = dbClient.groupDao().selectByName(dbSession, null /* TODO */, currentName)
-          .orElseThrow(() -> new NotFoundException(format("Could not find a user group with name '%s'.", currentName)));
+        .orElseThrow(() -> new NotFoundException(format("Could not find a user group with name '%s'.", currentName)));
 
-      Optional<OrganizationDto> orgOpt = dbClient.organizationDao().selectByUuid(dbSession, group.getOrganizationUuid());
-      checkFoundWithOptional(orgOpt, "Could not find organization with id '%s'.", group.getOrganizationUuid());
+      OrganizationDto org = checkFoundWithOptional(dbClient.organizationDao().selectByUuid(dbSession, group.getOrganizationUuid()),
+          "Could not find organization with id '%s'.", group.getOrganizationUuid());
 
-      userSession.checkPermission(OrganizationPermission.ADMINISTER, orgOpt.get());
-      support.checkGroupIsNotDefault(dbSession, group);
+      userSession.checkPermission(OrganizationPermission.ADMINISTER, org);
 
-      boolean changed = false;
       String newName = request.param(PARAM_GROUP_NAME);
-      if (newName != null) {
-        changed = true;
-        UserGroupValidation.validateGroupName(newName);
-        support.checkNameDoesNotExist(dbSession, group.getOrganizationUuid(), newName);
-        group.setName(newName);
-      }
-
       String description = request.param(PARAM_GROUP_DESCRIPTION);
-      if (description != null) {
-        changed = true;
-        group.setDescription(description);
-      }
 
-      if (changed) {
-        dbClient.groupDao().update(dbSession, group);
-        dbSession.commit();
-      }
+      GroupDto updatedGroup = support.updateGroup(dbSession, group, newName, description);
+      dbSession.commit();
 
-      writeResponse(dbSession, request, response, orgOpt.get(), group);
+      writeResponse(dbSession, request, response, org, updatedGroup);
     }
   }
 

@@ -20,13 +20,16 @@
 package org.sonar.server.usergroups.ws;
 
 import java.util.Optional;
+import javax.annotation.Nullable;
 import org.sonar.api.security.DefaultGroups;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.WebService;
+import org.sonar.api.user.UserGroupValidation;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.user.GroupDto;
+import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.permission.GroupUuid;
 import org.sonar.server.permission.GroupUuidOrAnyone;
@@ -113,7 +116,40 @@ public class GroupWsSupport {
     return org.get();
   }
 
-  void checkNameDoesNotExist(DbSession dbSession, String organizationUuid, String name) {
+  public GroupDto updateGroup(DbSession dbSession, GroupDto group, @Nullable String newName) {
+    checkGroupIsNotDefault(dbSession, group);
+    return updateName(dbSession, group, newName);
+  }
+
+  public GroupDto updateGroup(DbSession dbSession, GroupDto group, @Nullable String newName, @Nullable String newDescription) {
+    checkGroupIsNotDefault(dbSession, group);
+    GroupDto withUpdatedName = updateName(dbSession, group, newName);
+    return updateDescription(dbSession, withUpdatedName, newDescription);
+  }
+
+  private GroupDto updateName(DbSession dbSession, GroupDto group, @Nullable String newName) {
+    if (newName != null && !newName.equals(group.getName())) {
+      try {
+        UserGroupValidation.validateGroupName(newName);
+      } catch (IllegalArgumentException e) {
+        BadRequestException.throwBadRequestException(e.getMessage());
+      }
+      checkNameDoesNotExist(dbSession, newName, group.getOrganizationUuid());
+      group.setName(newName);
+      return dbClient.groupDao().update(dbSession, group);
+    }
+    return group;
+  }
+
+  private GroupDto updateDescription(DbSession dbSession, GroupDto group, @Nullable String newDescription) {
+    if (newDescription != null) {
+      group.setDescription(newDescription);
+      return dbClient.groupDao().update(dbSession, group);
+    }
+    return group;
+  }
+
+  void checkNameDoesNotExist(DbSession dbSession, String name, String organizationUuid) {
     // There is no database constraint on column groups.name
     // because MySQL cannot create a unique index
     // on a UTF-8 VARCHAR larger than 255 characters on InnoDB
