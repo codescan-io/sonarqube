@@ -271,9 +271,6 @@ export function getHomePageUrl(homepage: T.HomePage) {
       return getPolicyResultsUrl(homepage.organization);
   }
 
-  // TODO --  Logic to differentiate between the landing page
-  // whether to show projects, project analysis, screen chooser  page
-  //
   // should never happen, but just in case...
   return '/projects';
 }

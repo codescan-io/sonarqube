@@ -131,7 +131,6 @@ addQualifier = (component: T.Component) => ({
 fetchComponent() {
     // const { branch, selectedOption: key, pullRequest } = this.state;
     const key = this.state.selectedOption;
-    console.log("key ::" + key);
     const branch = undefined;
     const pullRequest = undefined
     
