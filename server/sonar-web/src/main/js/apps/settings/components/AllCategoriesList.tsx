@@ -42,7 +42,7 @@ export interface CategoriesListProps extends WithAvailableFeaturesProps {
   appState: AppState;
 }
 
-export function CategoriesList(props: CategoriesListProps) {
+function CategoriesList(props: CategoriesListProps) {
   const { categories, component, defaultCategory, selectedCategory } = props;
   const { canAdmin } = props.appState;
   let categoriesWithName;
