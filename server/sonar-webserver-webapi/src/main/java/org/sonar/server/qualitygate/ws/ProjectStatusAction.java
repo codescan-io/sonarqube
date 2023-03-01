@@ -70,14 +70,12 @@ public class ProjectStatusAction implements QualityGatesWsAction {
   private final ComponentFinder componentFinder;
   private final UserSession userSession;
   private final QualityGateCaycChecker qualityGateCaycChecker;
-  private final QualityGatesWsSupport wsSupport;
 
-  public ProjectStatusAction(DbClient dbClient, ComponentFinder componentFinder, UserSession userSession, QualityGateCaycChecker qualityGateCaycChecker, QualityGatesWsSupport wsSupport) {
+  public ProjectStatusAction(DbClient dbClient, ComponentFinder componentFinder, UserSession userSession, QualityGateCaycChecker qualityGateCaycChecker) {
     this.dbClient = dbClient;
     this.componentFinder = componentFinder;
     this.userSession = userSession;
     this.qualityGateCaycChecker = qualityGateCaycChecker;
-    this.wsSupport = wsSupport;
   }
 
   @Override
@@ -128,8 +126,6 @@ public class ProjectStatusAction implements QualityGatesWsAction {
       .setSince("7.7")
       .setDescription("Pull request id")
       .setExampleValue(KeyExamples.KEY_PULL_REQUEST_EXAMPLE_001);
-
-    wsSupport.createOrganizationParam(action);
   }
 
   @Override
@@ -147,17 +143,18 @@ public class ProjectStatusAction implements QualityGatesWsAction {
     checkRequest(isNullOrEmpty(branchKey) || isNullOrEmpty(pullRequestId), MSG_ONE_BRANCH_PARAMETER_ONLY);
 
     try (DbSession dbSession = dbClient.openSession(false)) {
-      OrganizationDto organization = wsSupport.getOrganization(dbSession, request);
-      ProjectStatusResponse projectStatusResponse = doHandle(dbSession, organization, analysisId, projectId, projectKey, branchKey, pullRequestId);
+      ProjectStatusResponse projectStatusResponse = doHandle(dbSession, analysisId, projectId, projectKey, branchKey, pullRequestId);
       writeProtobuf(projectStatusResponse, request, response);
     }
   }
 
-  private ProjectStatusResponse doHandle(DbSession dbSession, OrganizationDto organization, @Nullable String analysisId, @Nullable String projectUuid,
+  private ProjectStatusResponse doHandle(DbSession dbSession, @Nullable String analysisId, @Nullable String projectUuid,
     @Nullable String projectKey, @Nullable String branchKey, @Nullable String pullRequestId) {
     ProjectAndSnapshot projectAndSnapshot = getProjectAndSnapshot(dbSession, analysisId, projectUuid, projectKey, branchKey, pullRequestId);
     checkPermission(projectAndSnapshot.project);
     Optional<String> measureData = loadQualityGateDetails(dbSession, projectAndSnapshot, analysisId != null);
+    OrganizationDto organization = dbClient.organizationDao().selectByUuid(dbSession, projectAndSnapshot.project.getOrganizationUuid())
+            .orElseThrow(IllegalArgumentException::new);
     QualityGateCaycStatus caycStatus = qualityGateCaycChecker.checkCaycCompliantFromProject(dbSession, organization, projectAndSnapshot.project.getUuid());
 
     return ProjectStatusResponse.newBuilder()

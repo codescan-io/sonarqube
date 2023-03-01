@@ -41,6 +41,8 @@ public class ScannerProperties {
   public static final String PULL_REQUEST_KEY = "sonar.pullrequest.key";
   public static final String PULL_REQUEST_BRANCH = "sonar.pullrequest.branch";
   public static final String PULL_REQUEST_BASE = "sonar.pullrequest.base";
+  public static final String COMPARISON_BRANCH = "sonar.comparison.branch";
+  public static final String COMPARISON_BASE = "sonar.comparison.base";
   public static final String FILE_SIZE_LIMIT = "sonar.filesize.limit";
   public static final String LINKS_SOURCES_DEV = "sonar.links.scm_dev";
   public static final String DISABLE_PROJECT_AND_ORG_AUTODETECTION = "sonar.keys_autodetection.disabled";

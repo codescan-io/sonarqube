@@ -20,14 +20,10 @@
 
 package ce;
 
-import static org.apache.commons.lang.StringUtils.isEmpty;
-import static org.apache.commons.lang.StringUtils.trimToNull;
-
 import javax.annotation.Nullable;
 import org.apache.commons.lang.StringUtils;
 import org.sonar.api.utils.MessageException;
 import org.sonar.ce.task.projectanalysis.analysis.Branch;
-import org.sonar.core.component.ComponentKeys;
 import org.sonar.db.component.BranchType;
 
 /**
@@ -97,27 +93,6 @@ class CodeScanBranch implements Branch {
     @Override
     public String getTargetBranchName() {
         return targetBranchName;
-    }
-
-    public String generateKey(String projectKey, @Nullable String fileOrDirPath) {
-        String effectiveKey;
-        if (isEmpty(fileOrDirPath)) {
-            effectiveKey = projectKey;
-        } else {
-            effectiveKey = ComponentKeys.createEffectiveKey(projectKey, trimToNull(fileOrDirPath));
-        }
-
-        return generateKey(effectiveKey);
-    }
-
-    public String generateKey(String projectKey) {
-        if (this.isMain) {
-            return projectKey;
-        }
-        if (BranchType.PULL_REQUEST == branchType) {
-            return pullRequestKey;
-        }
-        return branchName;
     }
 
     public String toString() {

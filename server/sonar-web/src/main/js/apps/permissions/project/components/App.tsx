@@ -24,17 +24,19 @@ import * as api from '../../../../api/permissions';
 import withComponentContext from '../../../../app/components/componentContext/withComponentContext';
 import VisibilitySelector from '../../../../components/common/VisibilitySelector';
 import { translate } from '../../../../helpers/l10n';
-import { Component, Paging, PermissionGroup, PermissionUser } from '../../../../types/types';
+import { Component, Organization, Paging, PermissionGroup, PermissionUser } from '../../../../types/types';
 import AllHoldersList from '../../shared/components/AllHoldersList';
 import { FilterOption } from '../../shared/components/SearchForm';
 import '../../styles.css';
 import { convertToPermissionDefinitions, PERMISSIONS_ORDER_BY_QUALIFIER } from '../../utils';
 import PageHeader from './PageHeader';
 import PublicProjectDisclaimer from './PublicProjectDisclaimer';
+import { withOrganizationContext } from "../../../organizations/OrganizationContext";
 
 interface Props {
   component: Component;
   onComponentChange: (changes: Partial<Component>) => void;
+  organization: Organization;
 }
 
 interface State {
@@ -80,7 +82,7 @@ export class App extends React.PureComponent<Props, State> {
   };
 
   loadUsersAndGroups = (userPage?: number, groupsPage?: number) => {
-    const { component } = this.props;
+    const { component, organization } = this.props;
     const { filter, query, selectedPermission } = this.state;
 
     const getUsers: Promise<{ paging?: Paging; users: PermissionUser[] }> =
@@ -89,6 +91,7 @@ export class App extends React.PureComponent<Props, State> {
             projectKey: component.key,
             q: query || undefined,
             permission: selectedPermission,
+            organization: organization.kee,
             p: userPage,
           })
         : Promise.resolve({ paging: undefined, users: [] });
@@ -405,4 +408,4 @@ export class App extends React.PureComponent<Props, State> {
   }
 }
 
-export default withComponentContext(App);
+export default withComponentContext(withOrganizationContext(App));

@@ -98,10 +98,10 @@ public class ReportSubmitter {
         branchComponent = mainBranchComponent;
       } else if(componentKey.getBranchName().isPresent()) {
         branchComponent = dbClient.componentDao().selectByKeyAndBranch(dbSession, componentKey.getKey(), componentKey.getBranchName().get())
-          .orElseGet(() -> branchSupport.createBranchComponent(dbSession, componentKey, mainBranchComponent, mainBranch));
+          .orElseGet(() -> branchSupport.createBranchComponent(dbSession, componentKey, organizationDto, mainBranchComponent, mainBranch));
       } else {
         branchComponent = dbClient.componentDao().selectByKeyAndPullRequest(dbSession, componentKey.getKey(), componentKey.getPullRequestKey().get())
-          .orElseGet(() -> branchSupport.createBranchComponent(dbSession, componentKey, mainBranchComponent, mainBranch));
+          .orElseGet(() -> branchSupport.createBranchComponent(dbSession, componentKey, organizationDto, mainBranchComponent, mainBranch));
       }
 
       if (projectCreated) {

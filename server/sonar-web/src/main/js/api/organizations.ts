@@ -32,7 +32,7 @@ export function createOrganization(data: OrganizationBase): Promise<Organization
   return postJSONBody('/_codescan/organizations', data).catch(throwGlobalError);
 }
 
-export function getOrganization(key: string): Promise<Organization | undefined> {
+export function getOrganization(key: string): Promise<Organization> {
   return getJSON(`/_codescan/organizations/${key}`);
 }
 

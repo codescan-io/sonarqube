@@ -32,9 +32,9 @@ export interface ProjectPageExtensionProps {
   };
 }
 
-function ProjectPageExtension({ params, userOrganizations }: ProjectPageExtensionProps & CurrentUserContextInterface) {
+function ProjectPageExtension({ params }: ProjectPageExtensionProps & CurrentUserContextInterface) {
   const { extensionKey, pluginKey } = useParams();
-  const { branchLike, component } = React.useContext(ComponentContext);
+  const { branchLike, component, organization } = React.useContext(ComponentContext);
 
   if (component === undefined) {
     return null;
@@ -47,7 +47,7 @@ function ProjectPageExtension({ params, userOrganizations }: ProjectPageExtensio
 
   const extension = component.extensions && component.extensions.find((p) => p.key === fullKey);
   return extension ? (
-    <Extension extension={extension} options={{ branchLike, component, organizations: userOrganizations }} />
+    <Extension extension={extension} options={{ branchLike, component, organization }} />
   ) : (
     <NotFound withContainer={false} />
   );

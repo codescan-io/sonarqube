@@ -48,6 +48,7 @@ export function getRuleRepositories(parameters: {
 export function getRuleDetails(parameters: {
   actives?: boolean;
   key: string;
+  organization: string;
 }): Promise<{ actives?: RuleActivation[]; rule: RuleDetails }> {
   return getJSON('/api/rules/show', parameters).catch(throwGlobalError);
 }
