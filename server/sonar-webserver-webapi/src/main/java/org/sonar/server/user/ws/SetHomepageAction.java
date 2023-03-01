@@ -133,6 +133,7 @@ public class SetHomepageAction implements UsersWsAction {
       case APPLICATION:
         checkArgument(isNotBlank(componentParameter), PARAMETER_REQUIRED, type.name(), PARAM_COMPONENT);
         return componentFinder.getByKey(dbSession, componentParameter).uuid();
+      case POLICY_RESULTS:
       case ORGANIZATION:
         checkArgument(isNotBlank(organizationParameter), PARAMETER_REQUIRED, type.name(), PARAM_ORGANIZATION);
         return dbClient.organizationDao().selectByKey(dbSession, organizationParameter)
@@ -143,7 +144,6 @@ public class SetHomepageAction implements UsersWsAction {
       case ISSUES:
       case MY_PROJECTS:
       case MY_ISSUES:
-      case POLICY_RESULTS:
         checkArgument(isBlank(componentParameter), "Parameter '%s' must not be provided when type is '%s'", PARAM_COMPONENT, type.name());
         checkArgument(isBlank(organizationParameter), "Parameter '%s' must not be provided when type is '%s'", PARAM_ORGANIZATION, type.name());
         return null;
