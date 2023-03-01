@@ -69,6 +69,7 @@ export class App extends React.PureComponent<Props, State> {
 
   getScopeParams = ({ component } = this.props) => {
     return {
+      organization: component && component.organization,
       project: component && component.key,
     };
   };
