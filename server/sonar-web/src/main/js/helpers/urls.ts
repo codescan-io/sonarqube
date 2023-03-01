@@ -242,7 +242,7 @@ export function getOrganizationUrl(organization: string) {
   return `/organizations/${organization}`;
 }
 
-export function getOrganizationPolicyResultsUrl(organization: string) {
+export function getPolicyResultsUrl(organization: string) {
   return `/organizations/${organization}/policy-results`;
 }
 
@@ -268,7 +268,7 @@ export function getHomePageUrl(homepage: T.HomePage) {
     case 'MY_ISSUES':
       return { pathname: '/issues', query: { resolved: 'false' } };
     case 'POLICY_RESULTS':
-      return getOrganizationPolicyResultsUrl(homepage.organization);
+      return getPolicyResultsUrl(homepage.organization);
   }
 
   // TODO --  Logic to differentiate between the landing page
