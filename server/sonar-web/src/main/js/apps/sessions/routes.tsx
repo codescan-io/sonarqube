@@ -29,6 +29,7 @@ const routes = () => (
     <Route path="new" element={<LoginContainer />} />
     <Route path="logout" element={<Logout />} />
     <Route path="unauthorized" element={<Unauthorized />} />
+    <Route path="sso" element={<SamlLogin/>}/>
   </Route>
 );
 
