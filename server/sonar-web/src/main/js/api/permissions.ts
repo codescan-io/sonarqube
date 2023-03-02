@@ -73,7 +73,7 @@ interface GetPermissionTemplatesResponse {
   permissions: Array<Permission>;
 }
 
-export function getPermissionTemplates(organization?: string): Promise<GetPermissionTemplatesResponse> {
+export function getPermissionTemplates(organization: string): Promise<GetPermissionTemplatesResponse> {
   const url = '/api/permissions/search_templates';
   return organization ? getJSON(url, { organization }) : getJSON(url);
 }

@@ -236,6 +236,7 @@ export class ProjectManagementApp extends React.PureComponent<Props, State> {
           selection={this.state.selection}
           total={this.state.total}
           visibility={this.state.visibility}
+          organization={this.props.organization.kee}
         />
 
         <Projects

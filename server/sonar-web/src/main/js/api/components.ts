@@ -49,6 +49,7 @@ export interface ProjectBase {
   name: string;
   qualifier: string;
   visibility: Visibility;
+  organization: string;
 }
 
 export interface Project extends ProjectBase {
