@@ -25,7 +25,7 @@ import { Link } from 'react-router';
 import { getAppState, getCurrentUser } from '../../../../js/store/rootReducer';
 import { Store } from '../../../../js/store/rootReducer';
 import "./home.css"
-import { searchProjects } from '../../../api/components';
+import { setHomePage,skipOnboarding } from '../../../api/users';
 
 interface StateProps {
     appState: T.AppState | undefined;
@@ -51,6 +51,7 @@ class Home extends React.PureComponent<Props, State> {
         firstProjectKey:undefined,
         loading:false
     }
+
     componentDidMount() {
         this.mounted = true;
     }
@@ -59,10 +60,28 @@ class Home extends React.PureComponent<Props, State> {
         this.mounted = false;
     }
 
-    render() {
-        const defaultOrg = this.props.appState?.defaultOrganization;
+    handleProjectsClick = () => {
+        const url = "projects";
+        const type: any = {type:"PROJECTS"}
+        Promise.all([setHomePage(type),
+                     skipOnboarding()]).then(()=>{
+            window.location.href = window.location.href.replace("home",url);
+        }); 
+    }
 
+    handlePolicyClick = () => { 
+        const defaultOrg = this.props.appState?.defaultOrganization;
+        const type: any = {type:"POLICY_RESULTS", organization: defaultOrg}
+        Promise.all([setHomePage(type),
+                     skipOnboarding()]).then(()=>{
+            const url = "organizations/"+defaultOrg+"/policy-results";
+            window.location.href = window.location.href.replace("home",url);
+        }); 
+    }
+
+    render() {
         const {loading} = this.state;
+        const defaultOrg = this.props.appState?.defaultOrganization;
         const url = "/organizations/"+defaultOrg+"/policy-results";
         return (
             <div className="landing">
@@ -73,14 +92,14 @@ class Home extends React.PureComponent<Props, State> {
                         loading?(<div className="welcome-block"><i className="spinner"></i></div>):(
                             <div className="welcome-block">
                         <div className="block" style={{ marginRight: "20px" }}>
-                            <Link to="/projects">
-                                <img className="grc-icon" src='/images/grc/codescan-dashboard.svg' alt="" />
+                            <Link onClick={this.handleProjectsClick}>
+                                <img className="grc-icon" src='/images/grc/codescan-dashboard.svg' alt="" /><br/>
                                 <p>Application Security Testing</p>
-                            </Link>
+                            </Link >
                         </div>
                         <div className="block">
-                            <Link to={url}>
-                                <img className="grc-icon" src='/images/grc/orgscan-dashboard.svg' alt="" />
+                            <Link onClick={this.handlePolicyClick}>
+                                <img className="grc-icon" src='/images/grc/orgscan-dashboard.svg' alt="" /><br/>
                                 <p>Policy Management</p>
                             </Link>
                         </div>        
