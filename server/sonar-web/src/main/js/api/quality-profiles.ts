@@ -214,25 +214,28 @@ export function compareProfiles(leftKey: string, rightKey: string): Promise<Comp
   return getJSON('/api/qualityprofiles/compare', { leftKey, rightKey });
 }
 
-export function associateProject({ language, name: qualityProfile }: Profile, project: string) {
+export function associateProject({ language, name: qualityProfile, organization }: Profile, project: string) {
   return post('/api/qualityprofiles/add_project', {
     language,
     qualityProfile,
+    organization,
     project,
   }).catch(throwGlobalError);
 }
 
-export function dissociateProject({ language, name: qualityProfile }: Profile, project: string) {
+export function dissociateProject({ language, name: qualityProfile, organization }: Profile, project: string) {
   return post('/api/qualityprofiles/remove_project', {
     language,
     qualityProfile,
     project,
+    organization,
   }).catch(throwGlobalError);
 }
 
 export interface SearchUsersGroupsParameters {
   language: string;
   qualityProfile: string;
+  organization: string;
   q?: string;
   selected?: 'all' | 'selected' | 'deselected';
 }
@@ -261,6 +264,7 @@ export interface AddRemoveUserParameters {
   language: string;
   login: string;
   qualityProfile: string;
+  organization: string;
 }
 
 export function addUser(parameters: AddRemoveUserParameters): Promise<void | Response> {
@@ -275,6 +279,7 @@ export interface AddRemoveGroupParameters {
   group: string;
   language: string;
   qualityProfile: string;
+  organization: string;
 }
 
 export function addGroup(parameters: AddRemoveGroupParameters): Promise<void | Response> {

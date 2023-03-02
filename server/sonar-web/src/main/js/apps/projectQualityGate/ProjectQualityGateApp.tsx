@@ -88,6 +88,7 @@ export class ProjectQualityGateApp extends React.PureComponent<Props, State> {
     const selected = await searchProjects({
       gateName: qualityGate.name,
       query: component.key,
+      organization: component.organization,
     })
       .then(({ results }) => {
         return Boolean(results.find((r) => r.key === component.key)?.selected);
@@ -102,7 +103,7 @@ export class ProjectQualityGateApp extends React.PureComponent<Props, State> {
     const { qualitygates } = await fetchQualityGates({organization: this.props.organization.kee});
     return Promise.all(
       qualitygates.map(async (qg) => {
-        const detailedQp = await fetchQualityGate({ id: qg.id }).catch(() => qg);
+        const detailedQp = await fetchQualityGate({ id: qg.id, organization: this.props.organization.kee }).catch(() => qg);
         return { ...detailedQp, ...qg };
       })
     );
@@ -114,7 +115,7 @@ export class ProjectQualityGateApp extends React.PureComponent<Props, State> {
 
     const [allQualityGates, currentQualityGate] = await Promise.all([
       this.fetchDetailedQualityGates(),
-      getGateForProject({ project: component.key }),
+      getGateForProject({ organization: component.organization, project: component.key }),
     ]).catch(() => []);
 
     if (allQualityGates && currentQualityGate) {
@@ -150,6 +151,7 @@ export class ProjectQualityGateApp extends React.PureComponent<Props, State> {
     if (selectedQualityGateId === USE_SYSTEM_DEFAULT) {
       await dissociateGateWithProject({
         gateId: currentQualityGate.id,
+        organization: component.organization,
         projectKey: component.key,
       }).catch(() => {
         /* noop */
@@ -157,6 +159,7 @@ export class ProjectQualityGateApp extends React.PureComponent<Props, State> {
     } else {
       await associateGateWithProject({
         gateId: selectedQualityGateId,
+        organization: component.organization,
         projectKey: component.key,
       }).catch(() => {
         /* noop */

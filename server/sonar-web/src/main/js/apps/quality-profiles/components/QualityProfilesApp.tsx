@@ -106,6 +106,7 @@ export class QualityProfilesApp extends React.PureComponent<Props, State> {
       languages: finalLanguages,
       exporters: exporters || [],
       updateProfiles: this.updateProfiles,
+      organization: this.props.organization.kee,
     };
 
     return <Outlet context={context} />;

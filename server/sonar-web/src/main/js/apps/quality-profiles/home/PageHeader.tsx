@@ -36,6 +36,7 @@ interface Props {
   profiles: Profile[];
   router: Router;
   updateProfiles: () => Promise<void>;
+  organization: string;
 }
 
 interface State {
@@ -56,7 +57,7 @@ export class PageHeader extends React.PureComponent<Props, State> {
   handleCreate = (profile: Profile) => {
     this.props.updateProfiles().then(
       () => {
-        this.props.router.push(getProfilePath(profile.name, profile.language));
+        this.props.router.push(getProfilePath(profile.name, profile.language, this.props.organization));
       },
       () => {}
     );

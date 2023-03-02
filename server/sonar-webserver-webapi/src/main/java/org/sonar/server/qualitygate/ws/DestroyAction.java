@@ -69,6 +69,8 @@ public class DestroyAction implements QualityGatesWsAction {
       .setMaximumLength(NAME_MAXIMUM_LENGTH)
       .setSince("8.4")
       .setExampleValue("SonarSource Way");
+
+    wsSupport.createOrganizationParam(action);
   }
 
   @Override

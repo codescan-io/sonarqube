@@ -93,6 +93,8 @@ public class SearchUsersAction implements QualityGatesWsAction {
       .setDescription("Quality Gate name")
       .setRequired(true)
       .setExampleValue("Recommended quality gate");
+
+    wsSupport.createOrganizationParam(action);
   }
 
   @Override

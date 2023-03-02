@@ -309,8 +309,8 @@ export function getComponentPermissionsUrl(componentKey: string): To {
 /**
  * Generate URL for a quality profile
  */
-export function getQualityProfileUrl(name: string, language: string): To {
-  return getProfilePath(name, language);
+export function getQualityProfileUrl(name: string, language: string, organization: string): To {
+  return getProfilePath(name, language, organization);
 }
 
 export function getQualityGateUrl(organizationKey: string, key: string): To {
@@ -345,20 +345,20 @@ export function getProjectSettingsUrl(id: string, category?: string): Partial<Pa
 /**
  * Generate URL for the rules page
  */
-export function getRulesUrl(query: Query): To {
-  return { pathname: '/coding_rules', search: queryToSearch(query) };
+export function getRulesUrl(query: Query, organization: string): To {
+  return { pathname: `/organizations/${organization}/rules`, search: queryToSearch(query) };
 }
 
 /**
  * Generate URL for the rules page filtering only active deprecated rules
  */
-export function getDeprecatedActiveRulesUrl(query: Query = {}): To {
+export function getDeprecatedActiveRulesUrl(query: Query = {}, organization: string): To {
   const baseQuery = { activation: 'true', statuses: 'DEPRECATED' };
-  return getRulesUrl({ ...query, ...baseQuery });
+  return getRulesUrl({ ...query, ...baseQuery }, organization);
 }
 
-export function getRuleUrl(rule: string) {
-  return getRulesUrl({ open: rule, rule_key: rule });
+export function getRuleUrl(rule: string, organization: string) {
+  return getRulesUrl({ open: rule, rule_key: rule }, organization);
 }
 
 export function getFormattingHelpUrl(): string {

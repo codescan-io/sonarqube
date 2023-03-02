@@ -88,7 +88,7 @@ export interface Component extends LightComponent {
   tags?: string[];
   version?: string;
   visibility?: Visibility;
-  organization?: string;
+  organization: string;
 }
 
 export interface NavigationComponent

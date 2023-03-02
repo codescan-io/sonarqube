@@ -105,6 +105,7 @@ export function ProjectInformationRenderer(props: ProjectInformationRendererProp
                 <MetaQualityProfiles
                   headerClassName={component.qualityGate ? 'big-spacer-top' : undefined}
                   profiles={component.qualityProfiles}
+                  organization={component.organization ? component.organization : ''}
                 />
               )}
             </div>

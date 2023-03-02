@@ -28,6 +28,8 @@ public interface QualityGateMapper {
 
   void insertQualityGate(QualityGateDto qualityGate);
 
+  void insertOrgQualityGate(@Param("uuid") String uuid, @Param("organizationUuid") String organizationUuid, @Param("qualityGateUuid") String qualityGateUuuid);
+
   List<QualityGateDto> selectAll(@Param("organizationUuid") String organizationUuid);
 
   QualityGateDto selectByName(String name);

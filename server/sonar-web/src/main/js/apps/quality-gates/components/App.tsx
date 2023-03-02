@@ -131,9 +131,10 @@ class App extends React.PureComponent<Props, State> {
                     <ListHeader
                       canCreate={canCreate}
                       refreshQualityGates={this.fetchQualityGates}
+                      organization={this.props.organization.kee}
                     />
                     <DeferredSpinner loading={this.state.loading}>
-                      <List qualityGates={qualityGates} />
+                      <List organization={this.props.organization.kee} qualityGates={qualityGates} />
                     </DeferredSpinner>
                   </div>
                 </div>
@@ -143,7 +144,7 @@ class App extends React.PureComponent<Props, State> {
 
           {id !== undefined && (
             <Details
-              organizationKee={this.props.organization.kee}
+              organization={this.props.organization.kee}
               id={id}
               onSetDefault={this.handleSetDefault}
               qualityGates={this.state.qualityGates}

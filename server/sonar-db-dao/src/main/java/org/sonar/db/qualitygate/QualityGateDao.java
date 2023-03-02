@@ -44,6 +44,10 @@ public class QualityGateDao implements Dao {
     return newQualityGate;
   }
 
+  public void associate(DbSession dbSession, String uuid, OrganizationDto organization, QualityGateDto qualityGate) {
+    mapper(dbSession).insertOrgQualityGate(uuid, organization.getUuid(), qualityGate.getUuid());
+  }
+
   public Collection<QualityGateDto> selectAll(DbSession session, OrganizationDto organization) {
     return mapper(session).selectAll(organization.getUuid());
   }

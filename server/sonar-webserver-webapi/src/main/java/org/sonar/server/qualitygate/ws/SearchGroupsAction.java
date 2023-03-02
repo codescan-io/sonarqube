@@ -88,6 +88,8 @@ public class SearchGroupsAction implements QualityGatesWsAction {
       .setDescription("Quality Gate name")
       .setRequired(true)
       .setExampleValue("SonarSource Way");
+
+    wsSupport.createOrganizationParam(action);
   }
 
   @Override

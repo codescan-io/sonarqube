@@ -34,6 +34,12 @@ export enum NoticeType {
   SONARLINT_AD = 'sonarlintAd',
 }
 
+export interface UserOrgGroup {
+  organizationKey: string;
+  organizationName: string;
+  organizationGroups: string;
+}
+
 export interface LoggedInUser extends CurrentUser, UserActive {
   externalIdentity?: string;
   externalProvider?: string;
@@ -44,6 +50,7 @@ export interface LoggedInUser extends CurrentUser, UserActive {
   scmAccounts: string[];
   settings?: CurrentUserSetting[];
   sonarLintAdSeen?: boolean;
+  orgGroups?: UserOrgGroup[];
 }
 
 export type HomePage =

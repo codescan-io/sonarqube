@@ -350,7 +350,7 @@ export class App extends React.PureComponent<Props, State> {
       return;
     }
     this.setState({ loadingRule: true });
-    const openRuleDetails = await getRuleDetails({ key: openIssue.rule })
+    const openRuleDetails = await getRuleDetails({ key: openIssue.rule, organization: this.props.organization?.kee})
       .then((response) => response.rule)
       .catch(() => undefined);
     if (this.mounted) {
@@ -910,6 +910,7 @@ export class App extends React.PureComponent<Props, State> {
         <Sidebar
           branchLike={branchLike}
           component={component}
+          organization={this.props.organization}
           createdAfterIncludesTime={this.createdAfterIncludesTime()}
           facets={this.state.facets}
           loadSearchResultCount={this.loadSearchResultCount}

@@ -113,6 +113,7 @@ public class OrgQProfileDto {
   public static OrgQProfileDto from(QProfileDto qProfileDto) {
     return new OrgQProfileDto()
       .setUuid(qProfileDto.getKee())
+      .setOrganizationUuid(qProfileDto.getOrganizationUuid())
       .setRulesProfileUuid(qProfileDto.getRulesProfileUuid())
       .setParentUuid(qProfileDto.getParentKee())
       .setLastUsed(qProfileDto.getLastUsed())
