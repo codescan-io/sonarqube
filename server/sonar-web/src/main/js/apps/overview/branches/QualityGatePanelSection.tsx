@@ -45,8 +45,10 @@ export function QualityGatePanelSection(props: QualityGatePanelSectionProps) {
   let newCodeTitle = translate('quality_gates.conditions.new_code');
   let existingCodeTitle = translate('quality_gates.conditions.overall_code');
   if(grc){
-    newCodeTitle = translate('grc.quality_gates.conditions.new_code');
-    existingCodeTitle = translate('grc.quality_gates.conditions.overall_code');
+    //newCodeTitle = translate('grc.quality_gates.conditions.new_code');
+    //existingCodeTitle = translate('grc.quality_gates.conditions.overall_code');
+    newCodeTitle = "On New Violations";
+    existingCodeTitle = "On Overall Violations";
   }
 
   return (
