@@ -70,7 +70,7 @@ class Home extends React.PureComponent<Props, State> {
     }
 
     handlePolicyClick = () => { 
-        const defaultOrg = this.props.appState?.defaultOrganization;
+        const defaultOrg = (this.props.currentUser as any).orgGroups[0].organizationKey;
         const type: any = {type:"POLICY_RESULTS", organization: defaultOrg}
         Promise.all([setHomePage(type),
                      skipOnboarding()]).then(()=>{
@@ -81,7 +81,7 @@ class Home extends React.PureComponent<Props, State> {
 
     render() {
         const {loading} = this.state;
-        const defaultOrg = this.props.appState?.defaultOrganization;
+        const defaultOrg = (this.props.currentUser as any).orgGroups[0].organizationKey
         const url = "/organizations/"+defaultOrg+"/policy-results";
         return (
             <div className="landing">
