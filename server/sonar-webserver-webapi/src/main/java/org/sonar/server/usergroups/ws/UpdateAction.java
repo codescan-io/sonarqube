@@ -40,23 +40,19 @@ import static org.sonar.api.user.UserGroupValidation.GROUP_NAME_MAX_LENGTH;
 import static org.sonar.core.util.Uuids.UUID_EXAMPLE_01;
 import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOptional;
 import static org.sonar.server.qualitygate.ws.QualityGatesWsParameters.PARAM_CURRENT_NAME;
-import static org.sonar.server.usergroups.ws.GroupWsSupport.DESCRIPTION_MAX_LENGTH;
-import static org.sonar.server.usergroups.ws.GroupWsSupport.PARAM_GROUP_CURRENT_NAME;
-import static org.sonar.server.usergroups.ws.GroupWsSupport.PARAM_GROUP_DESCRIPTION;
-import static org.sonar.server.usergroups.ws.GroupWsSupport.PARAM_GROUP_NAME;
-import static org.sonar.server.usergroups.ws.GroupWsSupport.toProtobuf;
+import static org.sonar.server.usergroups.ws.GroupWsSupport.*;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
 
 public class UpdateAction implements UserGroupsWsAction {
 
   private final DbClient dbClient;
   private final UserSession userSession;
-  private final GroupWsSupport support;
+  private final GroupService groupService;
 
-  public UpdateAction(DbClient dbClient, UserSession userSession, GroupWsSupport support) {
+  public UpdateAction(DbClient dbClient, UserSession userSession, GroupService groupService) {
     this.dbClient = dbClient;
     this.userSession = userSession;
-    this.support = support;
+    this.groupService = groupService;
   }
 
   @Override
@@ -73,6 +69,8 @@ public class UpdateAction implements UserGroupsWsAction {
         new Change("8.5", "Parameter 'id' deprecated in favor of 'currentName'"),
         new Change("8.4", "Parameter 'id' format changes from integer to string"),
         new Change("6.4", "The default group is no longer editable"));
+
+    defineOrganizationKeyWsParameter(action);
 
     action.createParam(PARAM_GROUP_CURRENT_NAME)
       .setDescription("Name of the group to be updated.")
@@ -96,23 +94,21 @@ public class UpdateAction implements UserGroupsWsAction {
   @Override
   public void handle(Request request, Response response) throws Exception {
     try (DbSession dbSession = dbClient.openSession(false)) {
+      OrganizationDto organization = groupService.findOrganizationByKey(dbSession, request.mandatoryParam(PARAM_ORGANIZATION_KEY));
+      userSession.checkPermission(OrganizationPermission.ADMINISTER, organization);
+
       String currentName = request.mandatoryParam(PARAM_GROUP_CURRENT_NAME);
 
-      GroupDto group = dbClient.groupDao().selectByName(dbSession, null /* TODO */, currentName)
+      GroupDto group = dbClient.groupDao().selectByName(dbSession, organization.getUuid(), currentName)
         .orElseThrow(() -> new NotFoundException(format("Could not find a user group with name '%s'.", currentName)));
-
-      OrganizationDto org = checkFoundWithOptional(dbClient.organizationDao().selectByUuid(dbSession, group.getOrganizationUuid()),
-          "Could not find organization with id '%s'.", group.getOrganizationUuid());
-
-      userSession.checkPermission(OrganizationPermission.ADMINISTER, org);
 
       String newName = request.param(PARAM_GROUP_NAME);
       String description = request.param(PARAM_GROUP_DESCRIPTION);
 
-      GroupDto updatedGroup = support.updateGroup(dbSession, group, newName, description);
+      GroupDto updatedGroup = groupService.updateGroup(dbSession, organization, group, newName, description);
       dbSession.commit();
 
-      writeResponse(dbSession, request, response, org, updatedGroup);
+      writeResponse(dbSession, request, response, organization, updatedGroup);
     }
   }
 

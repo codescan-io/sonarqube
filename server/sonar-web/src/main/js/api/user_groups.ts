@@ -54,7 +54,7 @@ export function createGroup(data: { description?: string; name: string; organiza
   return postJSON('/api/user_groups/create', data).then((r) => r.group, throwGlobalError);
 }
 
-export function updateGroup(data: { description?: string; currentName: string; name?: string }) {
+export function updateGroup(data: { description?: string; currentName: string; name?: string; organization?: string; }) {
   return post('/api/user_groups/update', data).catch(throwGlobalError);
 }
 

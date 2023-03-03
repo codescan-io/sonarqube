@@ -20,16 +20,13 @@
 package org.sonar.server.usergroups.ws;
 
 import java.util.Optional;
-import javax.annotation.Nullable;
 import org.sonar.api.security.DefaultGroups;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.WebService;
-import org.sonar.api.user.UserGroupValidation;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.user.GroupDto;
-import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.permission.GroupUuid;
 import org.sonar.server.permission.GroupUuidOrAnyone;
@@ -38,7 +35,6 @@ import org.sonarqube.ws.UserGroups;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Optional.ofNullable;
-import static org.sonar.server.exceptions.BadRequestException.checkRequest;
 import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOptional;
 
 /**
@@ -46,7 +42,6 @@ import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOption
  */
 public class GroupWsSupport {
 
-  static final String PARAM_GROUP_ID = "id";
   static final String PARAM_ORGANIZATION_KEY = "organization";
   static final String PARAM_GROUP_NAME = "name";
   static final String PARAM_GROUP_CURRENT_NAME = "currentName";
@@ -64,6 +59,17 @@ public class GroupWsSupport {
   public GroupWsSupport(DbClient dbClient, DefaultGroupFinder defaultGroupFinder) {
     this.dbClient = dbClient;
     this.defaultGroupFinder = defaultGroupFinder;
+  }
+
+  /**
+   * Loads organization from database by its key.
+   * @param dbSession
+   * @param key the organization key
+   * @return non-null organization
+   * @throws NotFoundException if no organizations match the provided key
+   */
+  public OrganizationDto findOrganizationByKey(DbSession dbSession, String key) {
+    return checkFoundWithOptional(dbClient.organizationDao().selectByKey(dbSession, key), "No organization with key '%s'", key);
   }
 
   /**
@@ -103,59 +109,6 @@ public class GroupWsSupport {
     return GroupUuidOrAnyone.from(group.get());
   }
 
-  /**
-   * Loads organization from database by its key.
-   * @param dbSession
-   * @param key the organization key
-   * @return non-null organization
-   * @throws NotFoundException if no organizations match the provided key
-   */
-  public OrganizationDto findOrganizationByKey(DbSession dbSession, String key) {
-    Optional<OrganizationDto> org = dbClient.organizationDao().selectByKey(dbSession, key);
-    checkFoundWithOptional(org, "No organization with key '%s'", key);
-    return org.get();
-  }
-
-  public GroupDto updateGroup(DbSession dbSession, GroupDto group, @Nullable String newName) {
-    checkGroupIsNotDefault(dbSession, group);
-    return updateName(dbSession, group, newName);
-  }
-
-  public GroupDto updateGroup(DbSession dbSession, GroupDto group, @Nullable String newName, @Nullable String newDescription) {
-    checkGroupIsNotDefault(dbSession, group);
-    GroupDto withUpdatedName = updateName(dbSession, group, newName);
-    return updateDescription(dbSession, withUpdatedName, newDescription);
-  }
-
-  private GroupDto updateName(DbSession dbSession, GroupDto group, @Nullable String newName) {
-    if (newName != null && !newName.equals(group.getName())) {
-      try {
-        UserGroupValidation.validateGroupName(newName);
-      } catch (IllegalArgumentException e) {
-        BadRequestException.throwBadRequestException(e.getMessage());
-      }
-      checkNameDoesNotExist(dbSession, newName, group.getOrganizationUuid());
-      group.setName(newName);
-      return dbClient.groupDao().update(dbSession, group);
-    }
-    return group;
-  }
-
-  private GroupDto updateDescription(DbSession dbSession, GroupDto group, @Nullable String newDescription) {
-    if (newDescription != null) {
-      group.setDescription(newDescription);
-      return dbClient.groupDao().update(dbSession, group);
-    }
-    return group;
-  }
-
-  void checkNameDoesNotExist(DbSession dbSession, String name, String organizationUuid) {
-    // There is no database constraint on column groups.name
-    // because MySQL cannot create a unique index
-    // on a UTF-8 VARCHAR larger than 255 characters on InnoDB
-    checkRequest(!dbClient.groupDao().selectByName(dbSession, organizationUuid, name).isPresent(), "Group '%s' already exists", name);
-  }
-
   void checkGroupIsNotDefault(DbSession dbSession, GroupDto groupDto) {
     GroupDto defaultGroup = defaultGroupFinder.findDefaultGroup(dbSession, groupDto.getOrganizationUuid());
     checkArgument(!defaultGroup.getUuid().equals(groupDto.getUuid()), "Default group '%s' cannot be used to perform this action", groupDto.getName());
@@ -177,7 +130,7 @@ public class GroupWsSupport {
     defineGroupNameWsParameter(action);
   }
 
-  private static void defineOrganizationKeyWsParameter(WebService.NewAction action) {
+  public static void defineOrganizationKeyWsParameter(WebService.NewAction action) {
     action.createParam(PARAM_ORGANIZATION_KEY)
             .setDescription("Key of organization")
             .setExampleValue("my-org")

@@ -24,10 +24,6 @@ import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService.NewAction;
 import org.sonar.api.server.ws.WebService.NewController;
-import org.sonar.api.user.UserGroupValidation;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
-import org.sonar.core.util.UuidFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
@@ -38,26 +34,19 @@ import org.sonarqube.ws.UserGroups;
 
 import static java.lang.String.format;
 import static org.sonar.api.user.UserGroupValidation.GROUP_NAME_MAX_LENGTH;
-import static org.sonar.server.usergroups.ws.GroupWsSupport.DESCRIPTION_MAX_LENGTH;
-import static org.sonar.server.usergroups.ws.GroupWsSupport.PARAM_GROUP_DESCRIPTION;
-import static org.sonar.server.usergroups.ws.GroupWsSupport.PARAM_GROUP_NAME;
-import static org.sonar.server.usergroups.ws.GroupWsSupport.PARAM_ORGANIZATION_KEY;
-import static org.sonar.server.usergroups.ws.GroupWsSupport.toProtobuf;
+import static org.sonar.server.usergroups.ws.GroupWsSupport.*;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
 
 public class CreateAction implements UserGroupsWsAction {
 
   private final DbClient dbClient;
   private final UserSession userSession;
-  private final GroupWsSupport support;
-  private final UuidFactory uuidFactory;
-  private final Logger logger = Loggers.get(CreateAction.class);
+  private final GroupService groupService;
 
-  public CreateAction(DbClient dbClient, UserSession userSession, GroupWsSupport support, UuidFactory uuidFactory) {
+  public CreateAction(DbClient dbClient, UserSession userSession, GroupService groupService) {
     this.dbClient = dbClient;
     this.userSession = userSession;
-    this.support = support;
-    this.uuidFactory = uuidFactory;
+    this.groupService = groupService;
   }
 
   @Override
@@ -72,11 +61,7 @@ public class CreateAction implements UserGroupsWsAction {
       .setChangelog(
         new Change("8.4", "Field 'id' format in the response changes from integer to string."));
 
-    action.createParam(PARAM_ORGANIZATION_KEY)
-            .setDescription("Key of organization.")
-            .setExampleValue("my-org")
-            .setSince("6.2")
-            .setRequired(true);
+    defineOrganizationKeyWsParameter(action);
 
     action.createParam(PARAM_GROUP_NAME)
       .setRequired(true)
@@ -95,23 +80,13 @@ public class CreateAction implements UserGroupsWsAction {
   public void handle(Request request, Response response) throws Exception {
 
     try (DbSession dbSession = dbClient.openSession(false)) {
-      OrganizationDto organization = support.findOrganizationByKey(dbSession, request.param(PARAM_ORGANIZATION_KEY));
+      OrganizationDto organization = groupService.findOrganizationByKey(dbSession, request.mandatoryParam(PARAM_ORGANIZATION_KEY));
       userSession.checkPermission(OrganizationPermission.ADMINISTER, organization);
-      GroupDto group = new GroupDto()
-        .setUuid(uuidFactory.create())
-        .setOrganizationUuid(organization.getUuid())
-        .setName(request.mandatoryParam(PARAM_GROUP_NAME))
-        .setDescription(request.param(PARAM_GROUP_DESCRIPTION));
-      logger.info("Create Group Request :: groupName: {} and organization: {}, orgId: {}", group.getName(),
-              organization.getKey(), organization.getUuid());
 
-      // validations
-      UserGroupValidation.validateGroupName(group.getName());
-      support.checkNameDoesNotExist(dbSession, group.getOrganizationUuid(), group.getName());
-
-      dbClient.groupDao().insert(dbSession, group);
+      String groupName = request.mandatoryParam(PARAM_GROUP_NAME);
+      String groupDescription = request.param(PARAM_GROUP_DESCRIPTION);
+      GroupDto group = groupService.createGroup(dbSession, organization, groupName, groupDescription);
       dbSession.commit();
-
       writeResponse(request, response, organization, group);
     }
   }

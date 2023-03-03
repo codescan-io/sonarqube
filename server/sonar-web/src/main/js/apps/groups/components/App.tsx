@@ -41,9 +41,9 @@ interface State {
   groups?: Group[];
   editedGroup?: Group;
   groupToBeDeleted?: Group;
-  loading: boolean;
+  loading?: boolean;
   paging?: Paging;
-  query: string;
+  query?: string;
 }
 
 class App extends React.PureComponent<Props, State> {
@@ -176,6 +176,7 @@ class App extends React.PureComponent<Props, State> {
     const data = {
       currentName: editedGroup.name,
       description,
+      organization: this.organization,
       // pass `name` only if it has changed, otherwise the WS fails
       ...omitNil({ name: name !== editedGroup.name ? name : undefined }),
     };

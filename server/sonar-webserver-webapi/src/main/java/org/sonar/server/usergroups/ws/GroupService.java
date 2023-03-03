@@ -23,19 +23,24 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import javax.annotation.Nullable;
 import org.sonar.api.security.DefaultGroups;
 import org.sonar.api.server.ServerSide;
+import org.sonar.api.user.UserGroupValidation;
+import org.sonar.core.util.UuidFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
+import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.NotFoundException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOptional;
+import static org.sonar.server.exceptions.BadRequestException.checkRequest;
 
 @ServerSide
 public class GroupService {
@@ -43,9 +48,11 @@ public class GroupService {
   private static final Logger logger = LoggerFactory.getLogger(GroupService.class);
 
   private final DbClient dbClient;
+  private final UuidFactory uuidFactory;
 
-  public GroupService(DbClient dbClient) {
+  public GroupService(DbClient dbClient, UuidFactory uuidFactory) {
     this.dbClient = dbClient;
+    this.uuidFactory = uuidFactory;
   }
 
   /**
@@ -82,9 +89,60 @@ public class GroupService {
     removeGroup(dbSession, group);
   }
 
-  void checkGroupIsNotDefault(DbSession dbSession, GroupDto groupDto) {
-    GroupDto defaultGroup = findDefaultGroup(dbSession, groupDto.getOrganizationUuid());
-    checkArgument(!defaultGroup.getUuid().equals(groupDto.getUuid()), "Default group '%s' cannot be used to perform this action", groupDto.getName());
+  public GroupDto updateGroup(DbSession dbSession, OrganizationDto organization, GroupDto group, @Nullable String newName, @Nullable String newDescription) {
+    logger.info("Update Group Request :: groupName: {} and organization: {}, orgId: {}, newName: {}", group.getName(),
+        organization.getKey(), organization.getUuid(), newName);
+
+    GroupDto withUpdatedName = updateName(dbSession, organization, group, newName);
+    return updateDescription(dbSession, withUpdatedName, newDescription);
+  }
+
+  public GroupDto createGroup(DbSession dbSession, OrganizationDto organization, String name, @Nullable String description) {
+    validateGroupName(name);
+    checkNameDoesNotExist(dbSession, organization.getUuid(), name);
+
+    logger.info("Create Group Request :: groupName: {} and organization: {}, orgId: {}", name,
+        organization.getKey(), organization.getUuid());
+
+    GroupDto group = new GroupDto()
+      .setUuid(uuidFactory.create())
+      .setName(name)
+      .setOrganizationUuid(organization.getUuid())
+      .setDescription(description);
+    return dbClient.groupDao().insert(dbSession, group);
+  }
+
+  private GroupDto updateName(DbSession dbSession, OrganizationDto organization, GroupDto group, @Nullable String newName) {
+    if (newName != null && !newName.equals(group.getName())) {
+      validateGroupName(newName);
+      checkNameDoesNotExist(dbSession, organization.getUuid(), newName);
+      group.setName(newName);
+      return dbClient.groupDao().update(dbSession, group);
+    }
+    return group;
+  }
+
+  private static void validateGroupName(String name) {
+    try {
+      UserGroupValidation.validateGroupName(name);
+    } catch (IllegalArgumentException e) {
+      BadRequestException.throwBadRequestException(e.getMessage());
+    }
+  }
+
+  private void checkNameDoesNotExist(DbSession dbSession, String organizationUuid, String name) {
+    // There is no database constraint on column groups.name
+    // because MySQL cannot create a unique index
+    // on a UTF-8 VARCHAR larger than 255 characters on InnoDB
+    checkRequest(!dbClient.groupDao().selectByName(dbSession, organizationUuid, name).isPresent(), "Group '%s' already exists", name);
+  }
+
+  private GroupDto updateDescription(DbSession dbSession, GroupDto group, @Nullable String newDescription) {
+    if (newDescription != null) {
+      group.setDescription(newDescription);
+      return dbClient.groupDao().update(dbSession, group);
+    }
+    return group;
   }
 
   private GroupDto findDefaultGroup(DbSession dbSession, String organizationUuid) {
