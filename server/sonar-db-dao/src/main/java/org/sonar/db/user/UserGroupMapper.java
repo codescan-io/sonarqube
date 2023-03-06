@@ -19,7 +19,6 @@
  */
 package org.sonar.db.user;
 
-import java.util.List;
 import java.util.Set;
 import org.apache.ibatis.annotations.Param;
 
@@ -37,7 +36,4 @@ public interface UserGroupMapper {
 
   int deleteByUserUuid(@Param("userUuid") String userUuid);
 
-  int deleteFromGroupByUserUuids(@Param("groupUuid") String groupUuid, @Param("userUuids") List<String> userUuids);
-
-  Set<UserDto> selectScimMembersByGroupUuid(@Param("groupUuid") String groupUuid);
 }

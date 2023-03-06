@@ -33,7 +33,6 @@ import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.user.GroupDto;
-import org.sonar.db.user.UserDto;
 import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.NotFoundException;
 
@@ -188,8 +187,4 @@ public class GroupService {
     dbClient.groupDao().deleteByUuid(dbSession, group.getUuid(), group.getName());
   }
 
-  public void deleteScimMembersByGroup(DbSession dbSession, GroupDto groupDto) {
-    Set<UserDto> scimUsers = dbClient.userGroupDao().selectScimMembersByGroupUuid(dbSession, groupDto);
-    dbClient.userGroupDao().deleteFromGroupByUserUuids(dbSession, groupDto, scimUsers);
-  }
 }
