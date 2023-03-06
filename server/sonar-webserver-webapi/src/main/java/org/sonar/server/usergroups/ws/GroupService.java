@@ -144,11 +144,6 @@ public class GroupService {
     return group;
   }
 
-  private GroupDto findDefaultGroup(DbSession dbSession, String organizationUuid) {
-    return dbClient.groupDao().selectByName(dbSession, organizationUuid, DefaultGroups.USERS)
-      .orElseThrow(() -> new IllegalStateException("Default group cannot be found"));
-  }
-
   private void checkNotTryingToDeleteLastAdminGroup(DbSession dbSession, GroupDto group) {
     int remaining = dbClient.authorizationDao().countUsersWithGlobalPermissionExcludingGroup(dbSession,
         group.getOrganizationUuid(), OrganizationPermission.ADMINISTER.getKey(), group.getUuid());
