@@ -25,6 +25,7 @@ import java.net.UnknownHostException;
 import okhttp3.HttpUrl;
 import org.sonar.api.config.Configuration;
 import org.sonar.db.organization.OrganizationDto;
+import org.sonar.api.web.UserRole;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.user.UserSession;
@@ -32,7 +33,6 @@ import org.sonar.server.user.UserSession;
 import static java.lang.String.format;
 import static org.sonar.api.CoreProperties.SONAR_VALIDATE_WEBHOOKS_DEFAULT_VALUE;
 import static org.sonar.api.CoreProperties.SONAR_VALIDATE_WEBHOOKS_PROPERTY;
-import static org.sonar.api.web.UserRole.ADMIN;
 import static org.sonar.db.permission.OrganizationPermission.ADMINISTER;
 
 public class WebhookSupport {
@@ -48,7 +48,7 @@ public class WebhookSupport {
   }
 
   void checkPermission(ProjectDto projectDto) {
-    userSession.checkProjectPermission(ADMIN, projectDto);
+    userSession.checkProjectPermission(UserRole.ADMIN, projectDto);
   }
 
   void checkPermission(OrganizationDto organizationDto) {
