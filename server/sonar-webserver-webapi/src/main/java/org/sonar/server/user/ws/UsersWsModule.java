@@ -46,11 +46,12 @@ public class UsersWsModule extends Module {
       UserJsonWriter.class,
       SetHomepageAction.class,
       HomepageTypesImpl.class,
-      SetSettingAction.class);
+      SetSettingAction.class,
+      SkipOnboardingTutorialAction.class);
 
-    if (configuration.getBoolean(ProcessProperties.Property.SONARCLOUD_ENABLED.getKey()).orElse(false)) {
+    /*if (configuration.getBoolean(ProcessProperties.Property.SONARCLOUD_ENABLED.getKey()).orElse(false)) {
       // onboarding tutorial is available only in SonarCloud
       add(SkipOnboardingTutorialAction.class);
-    }
+    }*/
   }
 }
