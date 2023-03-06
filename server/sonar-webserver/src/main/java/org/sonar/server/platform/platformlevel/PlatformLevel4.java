@@ -120,6 +120,7 @@ import org.sonar.server.language.LanguageValidation;
 import org.sonar.server.language.ws.LanguageWs;
 import org.sonar.server.log.ServerLogging;
 import org.sonar.server.loginmessage.LoginMessageFeature;
+import org.sonar.server.management.DelegatingManagedInstanceService;
 import org.sonar.server.measure.index.ProjectsEsModule;
 import org.sonar.server.measure.live.LiveMeasureModule;
 import org.sonar.server.measure.ws.MeasuresWsModule;
@@ -301,6 +302,7 @@ public class PlatformLevel4 extends PlatformLevel {
       new MonitoringWsModule(),
       DefaultBranchNameResolver.class,
       DefaultDocumentationLinkGenerator.class,
+      DelegatingManagedInstanceService.class,
 
       // batch
       new BatchWsModule(),
@@ -634,8 +636,7 @@ public class PlatformLevel4 extends PlatformLevel {
 
       MainCollector.class,
 
-      PluginsRiskConsentFilter.class
-    );
+      PluginsRiskConsentFilter.class);
 
     // system info
     add(new SystemInfoWriterModule(getWebServer()));
