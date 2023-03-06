@@ -56,7 +56,6 @@ import org.sonarqube.ws.client.projectlinks.ProjectLinksService;
 import org.sonarqube.ws.client.projectpullrequests.ProjectPullRequestsService;
 import org.sonarqube.ws.client.projects.ProjectsService;
 import org.sonarqube.ws.client.projecttags.ProjectTagsService;
-import org.sonarqube.ws.client.properties.PropertiesService;
 import org.sonarqube.ws.client.push.SonarLintServerPushService;
 import org.sonarqube.ws.client.qualitygates.QualitygatesService;
 import org.sonarqube.ws.client.qualityprofiles.QualityprofilesService;
@@ -69,7 +68,6 @@ import org.sonarqube.ws.client.settings.SettingsService;
 import org.sonarqube.ws.client.sources.SourcesService;
 import org.sonarqube.ws.client.support.SupportService;
 import org.sonarqube.ws.client.system.SystemService;
-import org.sonarqube.ws.client.timemachine.TimemachineService;
 import org.sonarqube.ws.client.updatecenter.UpdatecenterService;
 import org.sonarqube.ws.client.usergroups.UserGroupsService;
 import org.sonarqube.ws.client.users.UsersService;
@@ -124,7 +122,6 @@ class DefaultWsClient implements WsClient {
   private final ProjectPullRequestsService projectPullRequestsService;
   private final ProjectTagsService projectTagsService;
   private final ProjectsService projectsService;
-  private final PropertiesService propertiesService;
   private final QualitygatesService qualitygatesService;
   private final QualityprofilesService qualityprofilesService;
   private final RootsService rootsService;
@@ -134,7 +131,6 @@ class DefaultWsClient implements WsClient {
   private final SourcesService sourcesService;
   private final SupportService supportService;
   private final SystemService systemService;
-  private final TimemachineService timemachineService;
   private final UpdatecenterService updatecenterService;
   private final UserGroupsService userGroupsService;
   private final UserTokensService userTokensService;
@@ -185,7 +181,6 @@ class DefaultWsClient implements WsClient {
     this.projectPullRequestsService = new ProjectPullRequestsService(wsConnector);
     this.projectTagsService = new ProjectTagsService(wsConnector);
     this.projectsService = new ProjectsService(wsConnector);
-    this.propertiesService = new PropertiesService(wsConnector);
     this.qualitygatesService = new QualitygatesService(wsConnector);
     this.qualityprofilesService = new QualityprofilesService(wsConnector);
     this.rootsService = new RootsService(wsConnector);
@@ -195,7 +190,6 @@ class DefaultWsClient implements WsClient {
     this.sourcesService = new SourcesService(wsConnector);
     this.supportService = new SupportService(wsConnector);
     this.systemService = new SystemService(wsConnector);
-    this.timemachineService = new TimemachineService(wsConnector);
     this.updatecenterService = new UpdatecenterService(wsConnector);
     this.userGroupsService = new UserGroupsService(wsConnector);
     this.userTokensService = new UserTokensService(wsConnector);
@@ -401,11 +395,6 @@ class DefaultWsClient implements WsClient {
   }
 
   @Override
-  public PropertiesService properties() {
-    return propertiesService;
-  }
-
-  @Override
   public QualitygatesService qualitygates() {
     return qualitygatesService;
   }
@@ -448,11 +437,6 @@ class DefaultWsClient implements WsClient {
   @Override
   public SystemService system() {
     return systemService;
-  }
-
-  @Override
-  public TimemachineService timemachine() {
-    return timemachineService;
   }
 
   @Override

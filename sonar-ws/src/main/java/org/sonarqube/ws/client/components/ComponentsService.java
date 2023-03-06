@@ -53,7 +53,6 @@ public class ComponentsService extends BaseService {
       new GetRequest(path("app"))
         .setParam("branch", request.getBranch())
         .setParam("component", request.getComponent())
-        .setParam("componentId", request.getComponentId())
         .setParam("pullRequest", request.getPullRequest())
         .setMediaType(MediaTypes.JSON)
       ).content();
@@ -111,7 +110,6 @@ public class ComponentsService extends BaseService {
       new GetRequest(path("show"))
         .setParam("branch", request.getBranch())
         .setParam("component", request.getComponent())
-        .setParam("componentId", request.getComponentId())
         .setParam("pullRequest", request.getPullRequest()),
       ShowWsResponse.parser());
   }
@@ -145,7 +143,6 @@ public class ComponentsService extends BaseService {
         .setParam("asc", request.getAsc())
         .setParam("branch", request.getBranch())
         .setParam("component", request.getComponent())
-        .setParam("componentId", request.getComponentId())
         .setParam("p", request.getP())
         .setParam("ps", request.getPs())
         .setParam("pullRequest", request.getPullRequest())
