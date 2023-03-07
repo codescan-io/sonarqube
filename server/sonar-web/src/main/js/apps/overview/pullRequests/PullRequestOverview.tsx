@@ -55,6 +55,7 @@ interface DispatchProps {
 interface OwnProps {
   branchLike: PullRequest;
   component: T.Component;
+  grc:boolean;
 }
 
 type Props = StateProps & DispatchProps & OwnProps;
@@ -146,7 +147,7 @@ export class PullRequestOverview extends React.PureComponent<Props, State> {
   };
 
   render() {
-    const { branchLike, component, conditions, ignoredConditions, status } = this.props;
+    const { grc, branchLike, component, conditions, ignoredConditions, status } = this.props;
     const { loading, measures } = this.state;
 
     if (loading) {
@@ -209,6 +210,7 @@ export class PullRequestOverview extends React.PureComponent<Props, State> {
                   collapsible={true}
                   component={component}
                   failedConditions={failedConditions}
+                  grc={grc}
                 />
               </div>
             )}
@@ -233,6 +235,8 @@ export class PullRequestOverview extends React.PureComponent<Props, State> {
                         measures={measures}
                         type={type}
                         useDiffMetric={true}
+                        grc={false}
+                        renderLink={true}
                       />
                     </div>
                     <div className="overview-panel-big-padded overview-measures-aside display-flex-center">
@@ -242,6 +246,7 @@ export class PullRequestOverview extends React.PureComponent<Props, State> {
                         measures={measures}
                         type={type}
                         useDiffMetric={true}
+                        grc={grc}
                       />
                     </div>
                   </div>

@@ -21,6 +21,7 @@ import { sortBy, uniq } from 'lodash';
 import * as React from 'react';
 import { parseDate, toNotSoISOString } from 'sonar-ui-common/helpers/dates';
 import { isDefined } from 'sonar-ui-common/helpers/types';
+import { getAppState, Store } from '../../../store/rootReducer';
 import { getApplicationDetails, getApplicationLeak } from '../../../api/application';
 import { getMeasuresWithPeriodAndMetrics } from '../../../api/measures';
 import { getProjectActivity } from '../../../api/projectActivity';
@@ -51,10 +52,12 @@ import { QualityGateStatus, QualityGateStatusCondition } from '../../../types/qu
 import '../styles.css';
 import { HISTORY_METRICS_LIST, METRICS } from '../utils';
 import BranchOverviewRenderer from './BranchOverviewRenderer';
+import { connect } from 'react-redux';
 
 interface Props {
   branch?: Branch;
   component: T.Component;
+  grc:boolean;
 }
 
 interface State {
@@ -75,7 +78,7 @@ export const BRANCH_OVERVIEW_ACTIVITY_GRAPH = 'sonar_branch_overview.graph';
 // Get all history data over the past year.
 const FROM_DATE = toNotSoISOString(new Date().setFullYear(new Date().getFullYear() - 1));
 
-export default class BranchOverview extends React.PureComponent<Props, State> {
+class BranchOverview extends React.PureComponent<Props, State> {
   mounted = false;
   state: State;
 
@@ -388,7 +391,7 @@ export default class BranchOverview extends React.PureComponent<Props, State> {
   };
 
   render() {
-    const { branch, component } = this.props;
+    const { branch, component, grc } = this.props;
     const {
       analyses,
       appLeak,
@@ -401,6 +404,7 @@ export default class BranchOverview extends React.PureComponent<Props, State> {
       period,
       qgStatuses
     } = this.state;
+    const isGRC = grc === undefined ? false: grc;
 
     const projectIsEmpty =
       loadingStatus === false &&
@@ -425,7 +429,16 @@ export default class BranchOverview extends React.PureComponent<Props, State> {
         period={period}
         projectIsEmpty={projectIsEmpty}
         qgStatuses={qgStatuses}
+        grc={isGRC}
       />
     );
   }
 }
+
+
+
+const mapStateToProps = (state: Store) => ({
+  appState: getAppState(state)
+});
+
+export default connect(mapStateToProps)(BranchOverview);

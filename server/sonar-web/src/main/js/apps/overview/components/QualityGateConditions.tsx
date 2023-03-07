@@ -33,12 +33,13 @@ export interface QualityGateConditionsProps {
   component: Pick<T.Component, 'key'>;
   collapsible?: boolean;
   failedConditions: QualityGateStatusConditionEnhanced[];
+  grc:boolean
 }
 
 const MAX_CONDITIONS = 5;
 
 export function QualityGateConditions(props: QualityGateConditionsProps) {
-  const { branchLike, collapsible, component, failedConditions } = props;
+  const { branchLike, collapsible, component, failedConditions,grc } = props;
   const [collapsed, toggleCollapsed] = React.useState(Boolean(collapsible));
 
   if (failedConditions.length === 0) {
@@ -69,6 +70,7 @@ export function QualityGateConditions(props: QualityGateConditionsProps) {
           component={component}
           condition={condition}
           key={condition.measure.metric.key}
+          grc={grc}
         />
       ))}
       {renderCollapsed && (

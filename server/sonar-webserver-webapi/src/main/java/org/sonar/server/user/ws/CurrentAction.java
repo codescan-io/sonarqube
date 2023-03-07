@@ -56,10 +56,7 @@ import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang.StringUtils.EMPTY;
 import static org.sonar.api.web.UserRole.USER;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
-import static org.sonarqube.ws.Users.CurrentWsResponse.HomepageType.APPLICATION;
-import static org.sonarqube.ws.Users.CurrentWsResponse.HomepageType.ORGANIZATION;
-import static org.sonarqube.ws.Users.CurrentWsResponse.HomepageType.PORTFOLIO;
-import static org.sonarqube.ws.Users.CurrentWsResponse.HomepageType.PROJECT;
+import static org.sonarqube.ws.Users.CurrentWsResponse.HomepageType.*;
 import static org.sonarqube.ws.Users.CurrentWsResponse.Permissions;
 import static org.sonarqube.ws.Users.CurrentWsResponse.OrganizationGroup;
 import static org.sonarqube.ws.Users.CurrentWsResponse.newBuilder;
@@ -197,6 +194,10 @@ public class CurrentAction implements UsersWsAction {
       return organizationHomepage(dbSession, user);
     }
 
+    if (POLICY_RESULTS.toString().equals(user.getHomepageType())) {
+      return organizationPolicyResultsHomepage(dbSession, user);
+    }
+
     return of(CurrentWsResponse.Homepage.newBuilder()
       .setType(CurrentWsResponse.HomepageType.valueOf(user.getHomepageType()))
       .build());
@@ -253,6 +254,19 @@ public class CurrentAction implements UsersWsAction {
       .setType(CurrentWsResponse.HomepageType.valueOf(user.getHomepageType()))
       .setOrganization(organizationOptional.get().getKey())
       .build());
+  }
+
+  private Optional<CurrentWsResponse.Homepage> organizationPolicyResultsHomepage(DbSession dbSession, UserDto user) {
+    Optional<OrganizationDto> organizationOptional = dbClient.organizationDao().selectByUuid(dbSession, of(user.getHomepageParameter()).orElse(EMPTY));
+    if (!organizationOptional.isPresent()) {
+      cleanUserHomepageInDb(dbSession, user);
+      return empty();
+    }
+
+    return of(CurrentWsResponse.Homepage.newBuilder()
+            .setType(CurrentWsResponse.HomepageType.valueOf(user.getHomepageType()))
+            .setOrganization(organizationOptional.get().getKey())
+            .build());
   }
 
   private void cleanUserHomepageInDb(DbSession dbSession, UserDto user) {

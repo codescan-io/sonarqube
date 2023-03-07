@@ -132,6 +132,7 @@ message CurrentWsResponse {
     PORTFOLIO = 7;
     PORTFOLIOS = 8;
     APPLICATION = 9;
+    POLICY_RESULTS = 10;
   }
 
   message Homepage {

@@ -53,7 +53,7 @@ export class App extends React.PureComponent<Props> {
     return isPullRequest(branchLike) ? (
       <>
         <Suggestions suggestions="pull_requests" />
-        <PullRequestOverview branchLike={branchLike} component={component} />
+        <PullRequestOverview branchLike={branchLike} component={component} grc={false}/>
       </>
     ) : (
       <>
@@ -67,7 +67,7 @@ export class App extends React.PureComponent<Props> {
             hasAnalyses={this.props.isPending || this.props.isInProgress}
           />
         ) : (
-          <BranchOverview branch={branchLike} component={component} />
+          <BranchOverview branch={branchLike} component={component} grc={false}/>
         )}
       </>
     );

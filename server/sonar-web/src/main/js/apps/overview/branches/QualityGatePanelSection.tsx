@@ -29,10 +29,11 @@ export interface QualityGatePanelSectionProps {
   branchLike?: BranchLike;
   component: Pick<T.Component, 'key' | 'qualifier'>;
   qgStatus: QualityGateStatus;
+  grc:boolean;
 }
 
 export function QualityGatePanelSection(props: QualityGatePanelSectionProps) {
-  const { component, qgStatus } = props;
+  const { component, qgStatus, grc } = props;
   const newCodeFailedConditions = qgStatus.failedConditions.filter(c => isDiffMetric(c.metric));
   const overallFailedConditions = qgStatus.failedConditions.filter(c => !isDiffMetric(c.metric));
 
@@ -41,6 +42,14 @@ export function QualityGatePanelSection(props: QualityGatePanelSectionProps) {
   }
 
   const showName = component.qualifier === ComponentQualifier.Application;
+  let newCodeTitle = translate('quality_gates.conditions.new_code');
+  let existingCodeTitle = translate('quality_gates.conditions.overall_code');
+  if(grc){
+    //newCodeTitle = translate('grc.quality_gates.conditions.new_code');
+    //existingCodeTitle = translate('grc.quality_gates.conditions.overall_code');
+    newCodeTitle = "On New Violations";
+    existingCodeTitle = "On Overall Violations";
+  }
 
   return (
     <div className="overview-quality-gate-conditions">
@@ -51,12 +60,13 @@ export function QualityGatePanelSection(props: QualityGatePanelSectionProps) {
       {newCodeFailedConditions.length > 0 && (
         <>
           <h4 className="overview-quality-gate-conditions-section-title">
-            {translate('quality_gates.conditions.new_code')}
+            {newCodeTitle}
           </h4>
           <QualityGateConditions
             component={qgStatus}
             branchLike={qgStatus.branchLike}
             failedConditions={newCodeFailedConditions}
+            grc={grc}
           />
         </>
       )}
@@ -64,9 +74,10 @@ export function QualityGatePanelSection(props: QualityGatePanelSectionProps) {
       {overallFailedConditions.length > 0 && (
         <>
           <h4 className="overview-quality-gate-conditions-section-title">
-            {translate('quality_gates.conditions.overall_code')}
+            {existingCodeTitle}
           </h4>
           <QualityGateConditions
+            grc={grc}
             component={qgStatus}
             branchLike={qgStatus.branchLike}
             failedConditions={overallFailedConditions}
