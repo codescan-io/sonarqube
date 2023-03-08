@@ -231,6 +231,7 @@ export interface IdentityProvider {
   iconPath: string;
   key: string;
   name: string;
+  manage?: boolean;
 }
 
 export interface Issue {
@@ -703,6 +704,7 @@ export interface SysInfoCluster extends SysInfoBase {
     'High Availability': true;
     'Server ID': string;
     Version: string;
+    'External Users and Groups Provisioning'?: string;
   };
 }
 
