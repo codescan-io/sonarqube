@@ -43,7 +43,6 @@ import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.index.query.QueryBuilders.matchQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
-import static org.elasticsearch.index.query.QueryBuilders.termsQuery;
 import static org.sonar.server.es.newindex.DefaultIndexSettingsElement.SORTABLE_ANALYZER;
 import static org.sonar.server.es.newindex.DefaultIndexSettingsElement.USER_SEARCH_GRAMS_ANALYZER;
 import static org.sonar.server.user.index.UserIndexDefinition.FIELD_ACTIVE;
@@ -102,10 +101,6 @@ public class UserIndex {
             .ifPresent(o -> filter.must(termQuery(FIELD_ORGANIZATION_UUIDS, o)));
     userQuery.getExcludedOrganizationUuid()
             .ifPresent(o -> filter.mustNot(termQuery(FIELD_ORGANIZATION_UUIDS, o)));
-    // UserQuery for SearchAction uses a list of multiple organizations.
-    if (!userQuery.getOrganizationUuids().isEmpty()) {
-      filter.must(termsQuery(FIELD_ORGANIZATION_UUIDS, userQuery.getOrganizationUuids()));
-    }
 
     QueryBuilder esQuery = matchAllQuery();
     Optional<String> textQuery = userQuery.getTextQuery();
