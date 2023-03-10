@@ -45,6 +45,7 @@ interface Props {
   onClose: () => void;
   onCreate: Function;
   profiles: Profile[];
+  organization: string;
 }
 
 interface State {
@@ -129,14 +130,14 @@ export default class CreateProfileForm extends React.PureComponent<Props, State>
     event.preventDefault();
 
     this.setState({ loading: true });
+    const { organization } = this.props;
     const { action, language, name, profile: parent } = this.state;
-
     try {
       if (action === ProfileActionModals.Copy && parent && name) {
         const profile = await copyProfile(parent, name);
         this.props.onCreate(profile);
       } else if (action === ProfileActionModals.Extend) {
-        const { profile } = await createQualityProfile({ language, name });
+        const { profile } = await createQualityProfile({ language, name, organization });
 
         const parentProfile = this.props.profiles.find((p) => p.key === parent);
         if (parentProfile) {
@@ -145,6 +146,7 @@ export default class CreateProfileForm extends React.PureComponent<Props, State>
 
         this.props.onCreate(profile);
       } else {
+
         const data = new FormData(event.currentTarget);
         const { profile } = await createQualityProfile(data);
         this.props.onCreate(profile);
