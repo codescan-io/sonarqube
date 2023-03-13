@@ -118,7 +118,8 @@ export class AllProjects extends React.PureComponent<Props, State> {
 
   fetchMoreProjects = () => {
     const { pageIndex, projects, query } = this.state;
-    if (pageIndex && projects && query) {
+
+    if (pageIndex && projects && Object.keys(query).length !== 0) {
       this.setState({ loading: true });
       fetchProjectsByOrg(query, this.props.isFavorite, this.props.organization, pageIndex + 1).then((response) => {
         if (this.mounted) {
@@ -132,9 +133,9 @@ export class AllProjects extends React.PureComponent<Props, State> {
     }
   };
 
-  getSort = () => this.state.query.sort || 'name';
+  getSort = () => this.state.query.sort ?? 'name';
 
-  getView = () => this.state.query.view || 'overall';
+  getView = () => this.state.query.view ?? 'overall';
 
   handleClearAll = () => {
     this.props.router.push({ pathname: this.props.location.pathname });
@@ -152,7 +153,7 @@ export class AllProjects extends React.PureComponent<Props, State> {
     });
   };
 
-  handlePerspectiveChange = ({ view }: { view: string }) => {
+  handlePerspectiveChange = ({ view }: { view?: string }) => {
     const query: {
       view: string | undefined;
       sort?: string | undefined;
@@ -163,6 +164,7 @@ export class AllProjects extends React.PureComponent<Props, State> {
     if (this.state.query.view === 'leak' || view === 'leak') {
       if (this.state.query.sort) {
         const sort = parseSorting(this.state.query.sort);
+
         if (SORTING_SWITCH[sort.sortValue]) {
           query.sort = (sort.sortDesc ? '-' : '') + SORTING_SWITCH[sort.sortValue];
         }
@@ -319,12 +321,15 @@ function getStorageOptions() {
     sort?: string;
     view?: string;
   } = {};
+
   if (get(LS_PROJECTS_SORT)) {
     options.sort = get(LS_PROJECTS_SORT) || undefined;
   }
+
   if (get(LS_PROJECTS_VIEW)) {
     options.view = get(LS_PROJECTS_VIEW) || undefined;
   }
+
   return options;
 }
 
