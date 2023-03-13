@@ -269,10 +269,10 @@ handleKeyChange = (index: any, value: any, paramKey: any) => {
               />
             </div>
             <div className="modal-field">
-              <label id="coding-rules-severity-select">{translate('severity')}</label>
+              <label id="coding-rules-severity-select-label">{translate('severity')}</label>
               <SeveritySelect
                 isDisabled={submitting}
-                ariaLabelledby="coding-rules-severity-select"
+                ariaLabelledby="coding-rules-severity-select-label"
                 onChange={this.handleSeverityChange}
                 severity={severity}
               />
