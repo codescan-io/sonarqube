@@ -34,6 +34,6 @@ function LogoWithAriaText() {
   );
 }
 
-export default function MainSonarQubeBar({ children }: React.PropsWithChildren<{}>) {
+export default function MainSonarQubeBar({ children }: React.PropsWithChildren<object>) {
   return <MainAppBar Logo={LogoWithAriaText}>{children}</MainAppBar>;
 }
