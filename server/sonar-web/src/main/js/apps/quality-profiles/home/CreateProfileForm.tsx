@@ -146,9 +146,9 @@ export default class CreateProfileForm extends React.PureComponent<Props, State>
 
         this.props.onCreate(profile);
       } else {
-
         const data = new FormData(event.currentTarget);
-        const { profile } = await createQualityProfile(data);
+        const { organization } = this.props;
+        const { profile } = await createQualityProfile({data, organization});
         this.props.onCreate(profile);
       }
     } finally {
