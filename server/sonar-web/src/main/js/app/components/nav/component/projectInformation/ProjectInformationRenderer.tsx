@@ -83,7 +83,7 @@ export function ProjectInformationRenderer(props: ProjectInformationRendererProp
                 {component.qualityProfiles && component.qualityProfiles.length > 0 && (
                   <MetaQualityProfiles
                     headerClassName={component.qualityGate ? 'big-spacer-top' : undefined}
-                    profiles={component.qualityProfiles}
+                    profiles={component.qualityProfiles} organization={component.organization}
                   />
                 )}
               </div>
