@@ -66,7 +66,7 @@ public class UserUpdater {
   private static final String PASSWORD_PARAM = "Password";
   private static final String NAME_PARAM = "Name";
   private static final String EMAIL_PARAM = "Email";
-  private static final Pattern START_WITH_SPECIFIC_AUTHORIZED_CHARACTERS = Pattern.compile("^[\\.\\-_@].*$");
+  private static final Pattern START_WITH_SPECIFIC_AUTHORIZED_CHARACTERS = Pattern.compile("\\w+");
   private static final Pattern CONTAINS_ONLY_AUTHORIZED_CHARACTERS = Pattern.compile("\\A\\w[\\w\\.\\-@]+\\z");
 
   public static final int LOGIN_MIN_LENGTH = 2;
@@ -78,7 +78,6 @@ public class UserUpdater {
   private final DbClient dbClient;
   private final UserIndexer userIndexer;
   private final DefaultGroupFinder defaultGroupFinder;
-  private final Configuration config;
   private final AuditPersister auditPersister;
   private final CredentialsLocalAuthentication localAuthentication;
 
@@ -89,7 +88,6 @@ public class UserUpdater {
     this.dbClient = dbClient;
     this.userIndexer = userIndexer;
     this.defaultGroupFinder = defaultGroupFinder;
-    this.config = config;
     this.auditPersister = auditPersister;
     this.localAuthentication = localAuthentication;
   }
@@ -321,8 +319,8 @@ public class UserUpdater {
       } else if (login.length() > LOGIN_MAX_LENGTH) {
         messages.add(format(Validation.IS_TOO_LONG_MESSAGE, LOGIN_PARAM, LOGIN_MAX_LENGTH));
         return false;
-      } else if (START_WITH_SPECIFIC_AUTHORIZED_CHARACTERS.matcher(login).matches()){
-        messages.add("Login should not start with .-_@");
+      } else if (!startWithUnderscoreOrAlphanumeric(login)) {
+        messages.add("Login should start with _ or alphanumeric.");
         return false;
       } else if (!CONTAINS_ONLY_AUTHORIZED_CHARACTERS.matcher(login).matches()) {
         messages.add("Login should contain only letters, numbers, and .-_@");
@@ -330,6 +328,14 @@ public class UserUpdater {
       }
     }
     return isValid;
+  }
+
+  private static boolean startWithUnderscoreOrAlphanumeric(String login) {
+    String firstCharacter = login.substring(0, 1);
+    if ("_".equals(firstCharacter)) {
+      return true;
+    }
+    return START_WITH_SPECIFIC_AUTHORIZED_CHARACTERS.matcher(firstCharacter).matches();
   }
 
   private static boolean validateNameFormat(@Nullable String name, List<String> messages) {
