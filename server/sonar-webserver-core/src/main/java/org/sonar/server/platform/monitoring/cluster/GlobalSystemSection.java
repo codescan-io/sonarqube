@@ -19,11 +19,8 @@
  */
 package org.sonar.server.platform.monitoring.cluster;
 
-import com.google.common.base.Joiner;
 import java.util.List;
 import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
-import org.sonar.api.CoreProperties;
 import org.sonar.api.SonarRuntime;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.platform.Server;
@@ -39,15 +36,12 @@ import org.sonar.server.platform.DockerSupport;
 import org.sonar.server.platform.StatisticsSupport;
 import org.sonar.server.user.SecurityRealmFactory;
 
-import static org.sonar.api.CoreProperties.CORE_FORCE_AUTHENTICATION_DEFAULT_VALUE;
 import static org.sonar.api.measures.CoreMetrics.NCLOC;
 import static org.sonar.process.systeminfo.SystemInfoUtils.setAttribute;
 
 @ServerSide
 public class GlobalSystemSection implements SystemInfoSection, Global {
-  private static final Joiner COMMA_JOINER = Joiner.on(", ");
 
-  private final Configuration config;
   private final Server server;
   private final SecurityRealmFactory securityRealmFactory;
   private final IdentityProviderRepository identityProviderRepository;
@@ -58,7 +52,6 @@ public class GlobalSystemSection implements SystemInfoSection, Global {
 
   public GlobalSystemSection(Configuration config, Server server, SecurityRealmFactory securityRealmFactory,
     IdentityProviderRepository identityProviderRepository, DockerSupport dockerSupport, StatisticsSupport statisticsSupport, SonarRuntime sonarRuntime) {
-    this.config = config;
     this.server = server;
     this.securityRealmFactory = securityRealmFactory;
     this.identityProviderRepository = identityProviderRepository;
@@ -78,9 +71,6 @@ public class GlobalSystemSection implements SystemInfoSection, Global {
     setAttribute(protobuf, "Docker", dockerSupport.isRunningInDocker());
     setAttribute(protobuf, "High Availability", true);
     setAttribute(protobuf, "External User Authentication", getExternalUserAuthentication());
-    addIfNotEmpty(protobuf, "Accepted external identity providers", getEnabledIdentityProviders());
-    addIfNotEmpty(protobuf, "External identity providers whose users are allowed to sign themselves up", getAllowsToSignUpEnabledIdentityProviders());
-    setAttribute(protobuf, "Force authentication", getForceAuthentication());
     return protobuf.build();
   }
 
@@ -99,16 +89,6 @@ public class GlobalSystemSection implements SystemInfoSection, Global {
       .filter(IdentityProvider::allowsUsersToSignUp)
       .map(IdentityProvider::getName)
       .collect(MoreCollectors.toList());
-  }
-
-  private boolean getForceAuthentication() {
-    return config.getBoolean(CoreProperties.CORE_FORCE_AUTHENTICATION_PROPERTY).orElse(CORE_FORCE_AUTHENTICATION_DEFAULT_VALUE);
-  }
-
-  private static void addIfNotEmpty(ProtobufSystemInfo.Section.Builder protobuf, String key, @Nullable List<String> values) {
-    if (values != null && !values.isEmpty()) {
-      setAttribute(protobuf, key, COMMA_JOINER.join(values));
-    }
   }
 
   @CheckForNull
