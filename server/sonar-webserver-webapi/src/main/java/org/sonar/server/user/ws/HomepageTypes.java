@@ -24,16 +24,7 @@ import java.util.List;
 public interface HomepageTypes {
 
   enum Type {
-    PROJECT, PROJECTS, ISSUES, PORTFOLIOS, PORTFOLIO, APPLICATION ,
-
-    /**
-     * These types are only available on SonarCloud
-     */
-    MY_PROJECTS, MY_ISSUES,
-    /**
-     * This type is only available when organizations are enabled
-     */
-    ORGANIZATION
+    PROJECT, PROJECTS, ISSUES, PORTFOLIOS, PORTFOLIO, APPLICATION, ORGANIZATION
   }
 
   List<Type> getTypes();
