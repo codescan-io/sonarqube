@@ -27,12 +27,13 @@ import { getGlobalNavigation } from '../api/navigation';
 import { getCurrentUser } from '../api/users';
 import { installExtensionsHandler, installWebAnalyticsHandler } from '../helpers/extensionsHandler';
 import { loadL10nBundle } from '../helpers/l10nBundle';
-import { getBaseUrl, getSystemStatus } from '../helpers/system';
+import { getBaseUrl, getSystemStatus, initAppVariables } from '../helpers/system';
 import './styles/sonar.ts';
 import { getUserOrganizations } from "../api/organizations";
 
 installWebAnalyticsHandler();
 installExtensionsHandler();
+initAppVariables();
 initApplication();
 
 async function initApplication() {
