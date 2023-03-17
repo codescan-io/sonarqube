@@ -97,6 +97,8 @@ public class IssueQuery {
   private final String organizationUuid;
   private final String branchUuid;
   private final boolean mainBranch;
+  private final Long searchAfter;
+
 
   private IssueQuery(Builder builder) {
     this.issueKeys = defaultCollection(builder.issueKeys);
@@ -135,6 +137,7 @@ public class IssueQuery {
     this.organizationUuid = builder.organizationUuid;
     this.branchUuid = builder.branchUuid;
     this.mainBranch = builder.mainBranch;
+    this.searchAfter = builder.searchAfter;
   }
 
   public Collection<String> issueKeys() {
@@ -287,6 +290,10 @@ public class IssueQuery {
     return mainBranch;
   }
 
+  public Long searchAfter() {
+    return searchAfter;
+  }
+
   public String facetMode() {
     return facetMode;
   }
@@ -301,6 +308,7 @@ public class IssueQuery {
   }
 
   public static class Builder {
+
     private Collection<String> issueKeys;
     private Collection<String> severities;
     private Collection<String> statuses;
@@ -337,6 +345,7 @@ public class IssueQuery {
     private String organizationUuid;
     private String branchUuid;
     private boolean mainBranch = true;
+    public Long searchAfter;
 
     private Builder() {
 
@@ -546,6 +555,11 @@ public class IssueQuery {
 
     public Builder mainBranch(boolean mainBranch) {
       this.mainBranch = mainBranch;
+      return this;
+    }
+
+    public Builder searchAfter(Long searchAfter) {
+      this.searchAfter = searchAfter;
       return this;
     }
   }

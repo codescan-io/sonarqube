@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -61,9 +62,12 @@ import org.elasticsearch.search.aggregations.metrics.max.InternalMax;
 import org.elasticsearch.search.aggregations.metrics.min.Min;
 import org.elasticsearch.search.aggregations.metrics.sum.SumAggregationBuilder;
 import org.elasticsearch.search.aggregations.metrics.valuecount.InternalValueCount;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.FieldSortBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.sonar.api.issue.Issue;
 import org.sonar.api.rule.Severity;
 import org.sonar.api.rules.RuleType;
@@ -109,6 +113,7 @@ import static org.sonar.core.util.stream.MoreCollectors.uniqueIndex;
 import static org.sonar.server.es.BaseDoc.epochMillisToEpochSeconds;
 import static org.sonar.server.es.EsUtils.escapeSpecialRegexChars;
 import static org.sonar.server.es.IndexType.FIELD_INDEX_TYPE;
+import static org.sonar.server.es.IndexType.FIELD_SEARCH_AFTER;
 import static org.sonar.server.es.searchrequest.TopAggregationDefinition.NON_STICKY;
 import static org.sonar.server.es.searchrequest.TopAggregationDefinition.STICKY;
 import static org.sonar.server.es.searchrequest.TopAggregationHelper.NO_EXTRA_FILTER;
@@ -352,6 +357,18 @@ public class IssueIndex {
   public SearchResponse search(IssueQuery query, SearchOptions options) {
     SearchRequestBuilder esRequest = client.prepareSearch(TYPE_ISSUE.getMainType());
 
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    //String[] searchAfterValues = {"1678802758000L"};
+
+    Instant instant = Instant.ofEpochMilli(1675189800000L);
+    String date = instant.toString();
+
+    searchSourceBuilder.query(QueryBuilders.matchAllQuery());
+    searchSourceBuilder.from(0);//
+
+    searchSourceBuilder.searchAfter(new Object[]{date});
+    esRequest.setSource(searchSourceBuilder);
+
     configureSorting(query, esRequest);
     configurePagination(options, esRequest);
     configureRouting(query, options, esRequest);
@@ -365,7 +382,12 @@ public class IssueIndex {
 
     esRequest.setFetchSource(false);
 
-    return esRequest.get();
+    try {
+      return esRequest.get();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return null;
   }
 
   private void configureTopAggregations(IssueQuery query, SearchOptions options, SearchRequestBuilder esRequest, AllFilters allFilters, RequestFiltersComputer filterComputer) {
@@ -407,6 +429,7 @@ public class IssueIndex {
     AllFilters filters = RequestFiltersComputer.newAllFilters();
     filters.addFilter("__indexType", new SimpleFieldFilterScope(FIELD_INDEX_TYPE), termQuery(FIELD_INDEX_TYPE, TYPE_ISSUE.getName()));
     filters.addFilter("__authorization", new SimpleFieldFilterScope("parent"), createAuthorizationFilter());
+    filters.addFilter("search_after", new SimpleFieldFilterScope(FIELD_SEARCH_AFTER), createAuthorizationFilter());
 
     // Issue is assigned Filter
     if (Boolean.TRUE.equals(query.assigned())) {

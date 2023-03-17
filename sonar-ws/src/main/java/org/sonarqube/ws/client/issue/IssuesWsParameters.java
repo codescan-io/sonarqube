@@ -96,6 +96,7 @@ public class IssuesWsParameters {
   public static final String PARAM_CREATED_BEFORE = "createdBefore";
   public static final String PARAM_CREATED_IN_LAST = "createdInLast";
   public static final String PARAM_SINCE_LEAK_PERIOD = "sinceLeakPeriod";
+  public static final String PARAM_SEARCH_AFTER = "searchAfter";
   public static final String PARAM_PAGE_SIZE = "pageSize";
   public static final String PARAM_PAGE_INDEX = "pageIndex";
   public static final String PARAM_ASC = "asc";
