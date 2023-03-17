@@ -33,6 +33,7 @@ interface StateProps {
 interface OwnProps {
   headerClassName?: string;
   profiles: T.ComponentQualityProfile[];
+  organization: string;
 }
 
 interface State {
@@ -88,7 +89,7 @@ export class MetaQualityProfiles extends React.PureComponent<StateProps & OwnPro
     return count || 0;
   }
 
-  renderProfile(profile: T.ComponentQualityProfile) {
+  renderProfile(profile: T.ComponentQualityProfile, organization: string) {
     const languageFromStore = this.props.languages[profile.language];
     const languageName = languageFromStore ? languageFromStore.name : profile.language;
 
@@ -98,7 +99,7 @@ export class MetaQualityProfiles extends React.PureComponent<StateProps & OwnPro
         {profile.deleted ? (
           profile.name
         ) : (
-          <Link to={getQualityProfileUrl(profile.name, profile.language)}>{profile.name}</Link>
+          <Link to={getQualityProfileUrl(profile.name, profile.language, organization)}>{profile.name}</Link>
         )}
       </div>
     );
@@ -127,14 +128,14 @@ export class MetaQualityProfiles extends React.PureComponent<StateProps & OwnPro
   }
 
   render() {
-    const { headerClassName, profiles } = this.props;
+    const { headerClassName, profiles, organization } = this.props;
 
     return (
       <>
         <h3 className={headerClassName}>{translate('overview.quality_profiles')}</h3>
 
         <ul className="project-info-list">
-          {profiles.map(profile => this.renderProfile(profile))}
+          {profiles.map(profile => this.renderProfile(profile, organization))}
         </ul>
       </>
     );
