@@ -17,9 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import classNames from 'classnames';
+import { TopBar } from 'design-system';
 import * as React from 'react';
-import ContextNavBar from '../../../../components/ui/ContextNavBar';
 import { translate } from '../../../../helpers/l10n';
 import {
   ProjectAlmBindingConfigurationErrors,
@@ -105,18 +104,11 @@ export default function ComponentNav(props: ComponentNavProps) {
   }
 
   return (
-    <ContextNavBar
-      height={contextNavHeight}
+    <TopBar
       id="context-navigation"
-      label={translate('qualifier', component.qualifier)}
-      notif={<>{prDecoNotifComponent}</>}
+      aria-label={translate('qualifier', component.qualifier)}
     >
-      <div
-        className={classNames('display-flex-center display-flex-space-between', {
-          'little-padded-bottom little-padded-top': warnings.length === 0,
-          'little-padded-bottom': warnings.length > 0,
-        })}
-      >
+      <div className="sw-flex sw-justify-between">
         <Header
           branchLikes={branchLikes}
           component={component}
@@ -150,7 +142,9 @@ export default function ComponentNav(props: ComponentNavProps) {
       />
       <InfoDrawer
         displayed={displayProjectInfo}
-        onClose={() => setDisplayProjectInfo(false)}
+        onClose={() => {
+          setDisplayProjectInfo(false);
+        }}
         top={globalNavHeightRaw + contextNavHeight}
       >
         <ProjectInformation
@@ -159,6 +153,7 @@ export default function ComponentNav(props: ComponentNavProps) {
           onComponentChange={props.onComponentChange}
         />
       </InfoDrawer>
-    </ContextNavBar>
+      {prDecoNotifComponent}
+    </TopBar>
   );
 }
