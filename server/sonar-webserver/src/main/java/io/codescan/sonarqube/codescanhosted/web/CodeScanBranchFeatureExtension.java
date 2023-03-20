@@ -35,7 +35,7 @@ public class CodeScanBranchFeatureExtension implements BranchFeatureExtension {
     }
 
     @Override
-    public boolean isEnabled() {
+    public boolean isAvailable() {
         return true;
     }
 }
