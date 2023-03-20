@@ -20,12 +20,14 @@
 package org.sonar.server.issue.ws;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.lucene.util.CollectionUtil;
 import org.sonar.api.resources.Language;
 import org.sonar.api.resources.Languages;
 import org.sonar.api.resources.Qualifiers;
@@ -56,6 +58,7 @@ import org.sonarqube.ws.Issues.Component;
 import org.sonarqube.ws.Issues.Issue;
 import org.sonarqube.ws.Issues.Operation;
 import org.sonarqube.ws.Issues.SearchWsResponse;
+import org.sonarqube.ws.Issues.Sort;
 import org.sonarqube.ws.Issues.Transitions;
 import org.sonarqube.ws.Issues.Users;
 
@@ -88,12 +91,12 @@ public class SearchResponseFormat {
     this.userFormatter = userFormatter;
   }
 
-  SearchWsResponse formatSearch(Set<SearchAdditionalField> fields, SearchResponseData data, Paging paging, Facets facets) {
+  SearchWsResponse formatSearch(Set<SearchAdditionalField> fields, SearchResponseData data, Paging paging, Facets facets, Map<String, Object[]> issueMap) {
     SearchWsResponse.Builder response = SearchWsResponse.newBuilder();
 
     formatPaging(paging, response);
     formatEffortTotal(data, response);
-    response.addAllIssues(formatIssues(fields, data));
+    response.addAllIssues(formatIssues(fields, data, issueMap));
     response.addAllComponents(formatComponents(data));
     formatFacets(data, facets, response);
     if (fields.contains(SearchAdditionalField.RULES)) {
@@ -114,7 +117,7 @@ public class SearchResponseFormat {
     if (data.getIssues().size() == 1) {
       Issue.Builder issueBuilder = Issue.newBuilder();
       IssueDto dto = data.getIssues().get(0);
-      formatIssue(issueBuilder, dto, data);
+      formatIssue(issueBuilder, dto, data, null);
       formatIssueActions(data, issueBuilder, dto);
       formatIssueTransitions(data, issueBuilder, dto);
       formatIssueComments(data, issueBuilder, dto);
@@ -148,12 +151,12 @@ public class SearchResponseFormat {
       .setTotal(paging.total());
   }
 
-  private List<Issues.Issue> formatIssues(Set<SearchAdditionalField> fields, SearchResponseData data) {
+  private List<Issues.Issue> formatIssues(Set<SearchAdditionalField> fields, SearchResponseData data, Map<String, Object[]> issueMap) {
     List<Issues.Issue> result = new ArrayList<>();
     Issue.Builder issueBuilder = Issue.newBuilder();
     data.getIssues().forEach(dto -> {
       issueBuilder.clear();
-      formatIssue(issueBuilder, dto, data);
+      formatIssue(issueBuilder, dto, data, issueMap);
       if (fields.contains(SearchAdditionalField.ACTIONS)) {
         formatIssueActions(data, issueBuilder, dto);
       }
@@ -168,7 +171,7 @@ public class SearchResponseFormat {
     return result;
   }
 
-  private void formatIssue(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data) {
+  private void formatIssue(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data, Map<String, Object[]> issueMap) {
     issueBuilder.setKey(dto.getKey());
     issueBuilder.setType(Common.RuleType.forNumber(dto.getType()));
 
@@ -215,6 +218,16 @@ public class SearchResponseFormat {
     ofNullable(dto.getIssueUpdateDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setUpdateDate);
     ofNullable(dto.getIssueCloseDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setCloseDate);
     issueBuilder.setScope(Qualifiers.UNIT_TEST_FILE.equals(component.qualifier()) ? IssueScope.TEST.name() : IssueScope.MAIN.name());
+    if (issueMap != null && !issueMap.isEmpty()) {
+      Sort.Builder wsSort = Sort.newBuilder();
+      Object[] sortValue = issueMap.get(issueBuilder.getKey());
+      if (sortValue != null) {
+        for (Object sort1 : sortValue) {
+          wsSort.addSort(sort1.toString());
+        }
+      }
+      issueBuilder.setSort(wsSort);
+    }
   }
 
   private static String engineNameFrom(RuleKey ruleKey) {

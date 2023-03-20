@@ -447,8 +447,11 @@ public class SearchAction implements IssuesWsAction {
                 "Facet(s) '%s' require to also filter by project or organization",
                 String.join(",", facetsRequiringProjectOrOrganizationParameter));
 
+        //1678802758000
+
         // execute request
         SearchResponse result = issueIndex.search(query, options);
+        Map<String, Object[]> issueMap = Arrays.stream(result.getHits().getHits()).collect(Collectors.toMap(issue -> issue.getId(), issue -> issue.getSortValues()));
         List<String> issueKeys = Arrays.stream(result.getHits().getHits())
                 .map(SearchHit::getId)
                 .collect(MoreCollectors.toList(result.getHits().getHits().length));
@@ -472,7 +475,7 @@ public class SearchAction implements IssuesWsAction {
         // FIXME allow long in Paging
         Paging paging = forPageIndex(options.getPage()).withPageSize(options.getLimit())
                 .andTotal((int) result.getHits().getTotalHits());
-        return searchResponseFormat.formatSearch(additionalFields, data, paging, facets);
+        return searchResponseFormat.formatSearch(additionalFields, data, paging, facets, issueMap);
     }
 
     private static SearchOptions createSearchOptionsFromRequest(SearchRequest request) {

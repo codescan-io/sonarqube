@@ -360,13 +360,16 @@ public class IssueIndex {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     //String[] searchAfterValues = {"1678802758000L"};
 
-    Instant instant = Instant.ofEpochMilli(1675189800000L);
-    String date = instant.toString();
+    if(query.searchAfter()!=null && !query.searchAfter().equals("")){
+      Instant instant = Instant.ofEpochMilli(query.searchAfter());
+      String date = instant.toString();
+      searchSourceBuilder.query(QueryBuilders.matchAllQuery());
+      searchSourceBuilder.searchAfter(new Object[]{date});
+    }
 
-    searchSourceBuilder.query(QueryBuilders.matchAllQuery());
-    searchSourceBuilder.from(0);//
+    //searchSourceBuilder.from(0);//
 
-    searchSourceBuilder.searchAfter(new Object[]{date});
+
     esRequest.setSource(searchSourceBuilder);
 
     configureSorting(query, esRequest);
