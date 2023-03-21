@@ -447,11 +447,13 @@ public class SearchAction implements IssuesWsAction {
                 "Facet(s) '%s' require to also filter by project or organization",
                 String.join(",", facetsRequiringProjectOrOrganizationParameter));
 
-        //1678802758000
-
         // execute request
         SearchResponse result = issueIndex.search(query, options);
-        Map<String, Object[]> issueMap = Arrays.stream(result.getHits().getHits()).collect(Collectors.toMap(issue -> issue.getId(), issue -> issue.getSortValues()));
+        if (result == null && result.getHits() ==  null && result.getHits().getHits() == null) {
+            throw new IllegalStateException("No issues found for this project");
+        }
+        Map<String, Object[]> issueMap = Arrays.stream(result.getHits().getHits())
+                .collect(Collectors.toMap(issue -> issue.getId(), issue -> issue.getSortValues()));
         List<String> issueKeys = Arrays.stream(result.getHits().getHits())
                 .map(SearchHit::getId)
                 .collect(MoreCollectors.toList(result.getHits().getHits().length));
