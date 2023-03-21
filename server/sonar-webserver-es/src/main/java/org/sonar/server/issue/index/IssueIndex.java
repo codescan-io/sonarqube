@@ -386,9 +386,8 @@ public class IssueIndex {
     try {
       return esRequest.get();
     } catch (Exception e) {
-      e.printStackTrace();
+      throw new IllegalStateException("Failed to get data from elastic search: {} ", e.getCause());
     }
-    return null;
   }
 
   private void configureTopAggregations(IssueQuery query, SearchOptions options, SearchRequestBuilder esRequest, AllFilters allFilters, RequestFiltersComputer filterComputer) {
