@@ -359,6 +359,10 @@ public class IssueIndex {
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
+    //Adding searchAfter parameter to elastic search query to get more than 10k results.
+    //Input for search after is 'sort' parameter response we received from last issue response.
+    //For example if we want to query from 10001 result, searchAfter element should be exactly sort value of 10000 issue.
+    //Page number should be 0 if we use searchAfter parameter.
     if(query.searchAfter()!=null && !query.searchAfter().equals("")) {
       String[] strArr = query.searchAfter().split(",");
       Object[] objectArray = Arrays.copyOf(strArr, strArr.length, Object[].class);
