@@ -68,7 +68,7 @@ public class SearchRequest {
   private List<String> sansTop25;
   private List<String> sonarsourceSecurity;
   private List<String> cwe;
-  private Long searchAfter;
+  private String searchAfter;
 
   public SearchRequest() {
     // nothing to do here
@@ -205,11 +205,11 @@ public class SearchRequest {
   }
 
   @CheckForNull
-  public Long getSearchAfter() {
+  public String getSearchAfter() {
     return searchAfter;
   }
 
-  public SearchRequest setsearchAfter(@Nullable Long searchAfter) {
+  public SearchRequest setsearchAfter(@Nullable String searchAfter) {
     this.searchAfter = searchAfter;
     return this;
   }

@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.lucene.util.CollectionUtil;
 import org.sonar.api.resources.Language;
 import org.sonar.api.resources.Languages;
@@ -221,9 +222,11 @@ public class SearchResponseFormat {
     if (issueMap != null && !issueMap.isEmpty()) {
       Sort.Builder wsSort = Sort.newBuilder();
       Object[] sortValue = issueMap.get(issueBuilder.getKey());
-      if (sortValue != null) {
-        for (Object sort1 : sortValue) {
-          wsSort.addSort(sort1.toString());
+      List<Object> strArray = Arrays.stream(sortValue).map(val -> val).collect(Collectors.toList());;
+      if (strArray != null) {
+        for (Object sort1 : strArray) {
+          String value = sort1.toString();
+          wsSort.addSort(value);
         }
       }
       issueBuilder.setSort(wsSort);

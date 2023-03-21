@@ -358,18 +358,12 @@ public class IssueIndex {
     SearchRequestBuilder esRequest = client.prepareSearch(TYPE_ISSUE.getMainType());
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    //String[] searchAfterValues = {"1678802758000L"};
 
-    if(query.searchAfter()!=null && !query.searchAfter().equals("")){
-      Instant instant = Instant.ofEpochMilli(query.searchAfter());
-      String date = instant.toString();
-      searchSourceBuilder.query(QueryBuilders.matchAllQuery());
-      searchSourceBuilder.searchAfter(new Object[]{date});
+    if(query.searchAfter()!=null && !query.searchAfter().equals("")) {
+      String[] strArr = query.searchAfter().split(",");
+      Object[] objectArray = Arrays.copyOf(strArr, strArr.length, Object[].class);
+      searchSourceBuilder.searchAfter(objectArray);
     }
-
-    //searchSourceBuilder.from(0);//
-
-
     esRequest.setSource(searchSourceBuilder);
 
     configureSorting(query, esRequest);
@@ -432,7 +426,6 @@ public class IssueIndex {
     AllFilters filters = RequestFiltersComputer.newAllFilters();
     filters.addFilter("__indexType", new SimpleFieldFilterScope(FIELD_INDEX_TYPE), termQuery(FIELD_INDEX_TYPE, TYPE_ISSUE.getName()));
     filters.addFilter("__authorization", new SimpleFieldFilterScope("parent"), createAuthorizationFilter());
-    filters.addFilter("search_after", new SimpleFieldFilterScope(FIELD_SEARCH_AFTER), createAuthorizationFilter());
 
     // Issue is assigned Filter
     if (Boolean.TRUE.equals(query.assigned())) {

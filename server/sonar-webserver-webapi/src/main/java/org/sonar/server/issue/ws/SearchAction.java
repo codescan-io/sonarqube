@@ -605,11 +605,11 @@ public class SearchAction implements IssuesWsAction {
                 .setSonarsourceSecurity(request.paramAsStrings(PARAM_SONARSOURCE_SECURITY));
     }
 
-    private Long getSearchAfter(Request request) {
+    private String getSearchAfter(Request request) {
         if (request.param(PARAM_SEARCH_AFTER) != null) {
-            return Long.valueOf(request.param(PARAM_SEARCH_AFTER));
+            return request.param(PARAM_SEARCH_AFTER);
         } else {
-            return Long.valueOf(0);
+            return null;
         }
     }
 

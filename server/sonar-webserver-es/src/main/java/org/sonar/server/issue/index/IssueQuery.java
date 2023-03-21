@@ -97,7 +97,7 @@ public class IssueQuery {
   private final String organizationUuid;
   private final String branchUuid;
   private final boolean mainBranch;
-  private final Long searchAfter;
+  private final String searchAfter;
 
 
   private IssueQuery(Builder builder) {
@@ -290,7 +290,7 @@ public class IssueQuery {
     return mainBranch;
   }
 
-  public Long searchAfter() {
+  public String searchAfter() {
     return searchAfter;
   }
 
@@ -345,7 +345,7 @@ public class IssueQuery {
     private String organizationUuid;
     private String branchUuid;
     private boolean mainBranch = true;
-    public Long searchAfter;
+    public String searchAfter;
 
     private Builder() {
 
@@ -558,7 +558,7 @@ public class IssueQuery {
       return this;
     }
 
-    public Builder searchAfter(Long searchAfter) {
+    public Builder searchAfter(String searchAfter) {
       this.searchAfter = searchAfter;
       return this;
     }

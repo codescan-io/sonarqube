@@ -159,7 +159,7 @@ message Issue {
 }
 
 message Sort {
-  repeated object sort = 36;
+  repeated string sort = 36;
 }
 
 message Transitions {
