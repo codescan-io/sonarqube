@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import classNames from 'classnames';
-import { MainMenu, MainMenuItem } from 'design-system';
+import {  MainMenu, MainMenuItem } from 'design-system';
 import * as React from 'react';
 import { NavLink } from 'react-router-dom';
 import { isMySet } from '../../../../apps/issues/utils';
@@ -26,7 +26,7 @@ import Link from '../../../../components/common/Link';
 import { translate } from '../../../../helpers/l10n';
 import { AppState } from '../../../../types/appstate';
 import { ComponentQualifier } from '../../../../types/component';
-import { CurrentUser } from '../../../../types/users';
+import { CurrentUser, LoggedInUser } from '../../../../types/users';
 import withAppStateContext from '../../app-state/withAppStateContext';
 import GlobalNavMore from './GlobalNavMore';
 
@@ -99,11 +99,11 @@ class GlobalNavMenu extends React.PureComponent<Props> {
 
       if ((appState.canAdmin && isSonarAdminGroupAvailable) || (!appState.canAdmin && appState.canCustomerAdmin)) {
         return (
-          <li>
+          <MainMenuItem>
             <Link to="/admin/settings">
               {translate('layout.settings')}
             </Link>
-          </li>
+          </MainMenuItem>
         );
       }
     }

@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
-import Link from "../../../components/common/Link";
+import { ItemNavLink } from "design-system";
 
 interface Props {
   children?: React.ReactNode;
@@ -34,8 +34,8 @@ export default function OrganizationLink(props: Props) {
   const { children, organization, ...other } = props;
 
   return (
-      <Link onClick={handleClick} to={`/organizations/${organization.kee}`} {...other}>
+      <ItemNavLink onClick={handleClick} to={`/organizations/${organization.kee}`} {...other}>
         {children}
-      </Link>
+      </ItemNavLink>
   );
 }

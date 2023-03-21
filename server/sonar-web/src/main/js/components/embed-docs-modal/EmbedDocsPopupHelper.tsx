@@ -53,8 +53,6 @@ export default function EmbedDocsPopupHelper() {
     );
   }
 
-  console.info('aboutCodescanOpen', aboutCodescanOpen)
-
   return (
     <div className="dropdown">
       <Dropdown

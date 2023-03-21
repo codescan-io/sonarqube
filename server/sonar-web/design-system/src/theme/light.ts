@@ -332,7 +332,7 @@ const lightTheme = {
 
     // main bar
     mainBar: COLORS.codescanDark,
-    mainBarHover: COLORS.blueGrey[600],
+    mainBarHover: COLORS.white,
     mainBarLogo: COLORS.white,
     mainBarDarkLogo: COLORS.blueGrey[800],
     mainBarNews: COLORS.indigo[50],

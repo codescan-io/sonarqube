@@ -44,19 +44,19 @@ export function Header(props: HeaderProps) {
   const { branchLikes, component, currentBranchLike, currentUser, projectBinding, organization } = props;
 
   return (
-    <div className="display-flex-center flex-shrink">
+    <div className="sw-flex sw-flex-shrink sw-items-center">
       {organization &&
-          <>
-            <OrganizationAvatar organization={organization} />
-            <OrganizationLink
-                className="navbar-context-header-breadcrumb-link link-base-color link-no-underline spacer-left"
-                organization={organization}>
-              {organization.name}
-            </OrganizationLink>
-            <span className="slash-separator" />
-          </>
+        <>
+          <OrganizationAvatar organization={organization}/>
+          <OrganizationLink
+            className="navbar-context-header-breadcrumb-link link-base-color link-no-underline spacer-left"
+            organization={organization}>
+            {organization.name}
+          </OrganizationLink>
+          <span className="slash-separator"/>
+        </>
       }
-      <Breadcrumb component={component} currentBranchLike={currentBranchLike} />
+      <Breadcrumb component={component} currentBranchLike={currentBranchLike}/>
       {isLoggedIn(currentUser) && (
         <Favorite
           className="spacer-left"
@@ -67,6 +67,7 @@ export function Header(props: HeaderProps) {
       )}
       {currentBranchLike && (
         <>
+          <span className="slash-separator sw-ml-2"/>
           <BranchLikeNavigation
             branchLikes={branchLikes}
             component={component}
@@ -74,7 +75,7 @@ export function Header(props: HeaderProps) {
             projectBinding={projectBinding}
             comparisonBranchesEnabled={props.comparisonBranchesEnabled}
           />
-          <CurrentBranchLikeMergeInformation currentBranchLike={currentBranchLike} />
+          <CurrentBranchLikeMergeInformation currentBranchLike={currentBranchLike}/>
         </>
       )}
     </div>

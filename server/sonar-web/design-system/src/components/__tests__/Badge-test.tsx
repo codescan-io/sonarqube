@@ -17,25 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
-import { Organization } from "../../../types/types";
-import OrganizationLink from "./OrganizationLink";
-import OrganizationAvatar from "./OrganizationAvatar";
-import { translate } from "../../../helpers/l10n";
+import { screen } from '@testing-library/react';
+import { render } from '../../helpers/testUtils';
+import Badge from '../Badge';
 
-interface Props {
-  organization: Organization;
-}
+it('renders badge correctly', () => {
+  render(<Badge>foo</Badge>);
+  expect(screen.getByRole('status')).toBeInTheDocument();
+});
 
-export default function OrganizationListItem({ organization }: Props) {
-  const { actions = {} } = organization;
-  return (
-      <OrganizationLink className="display-flex-center" organization={organization}>
-        <div>
-          <OrganizationAvatar organization={organization} small={true}/>
-          <span className="spacer-left">{organization.name}</span>
-        </div>
-        {actions.admin && <span className="badge spacer-left">{translate('admin')}</span>}
-      </OrganizationLink>
-  );
-}
+it('renders counter correctly', () => {
+  render(<Badge variant="counter">23</Badge>);
+  expect(screen.getByRole('status')).toHaveAttribute('aria-label', '23');
+});

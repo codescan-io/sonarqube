@@ -22,10 +22,10 @@
 
 import { screen } from '@testing-library/react';
 import { render } from '../../helpers/testUtils';
-import { SearchText, TextMuted } from '../Text';
+import { TextBold, TextMuted } from '../Text';
 
 it('should render SearchText', () => {
-  render(<SearchText match="hi" name="hiya" />);
+  render(<TextBold match="hi" name="hiya" />);
 
   expect(screen.getByText('hi')).toHaveStyle({
     'font-weight': '600',
