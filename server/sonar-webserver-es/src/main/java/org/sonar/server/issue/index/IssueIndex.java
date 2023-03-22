@@ -352,6 +352,12 @@ public class IssueIndex {
   public SearchResponse search(IssueQuery query, SearchOptions options) {
     SearchRequestBuilder esRequest = client.prepareSearch(TYPE_ISSUE.getMainType());
 
+    // Adding search_after parameter  to retrieve the next page of hits using a set of sort values from the previous page.
+    if (StringUtils.isNotEmpty(query.searchAfter())) {
+      Object[] searchAfterValues = Arrays.stream(query.searchAfter().split(",")).map(String::trim).toArray();
+      esRequest.searchAfter(searchAfterValues);
+    }
+
     configureSorting(query, esRequest);
     configurePagination(options, esRequest);
     configureRouting(query, options, esRequest);

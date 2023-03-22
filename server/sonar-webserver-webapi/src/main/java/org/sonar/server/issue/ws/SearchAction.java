@@ -123,6 +123,7 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_RESOLVED;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_RULES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SANS_TOP_25;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SCOPES;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SEARCH_AFTER;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SEVERITIES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SINCE_LEAK_PERIOD;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SONARSOURCE_SECURITY;
@@ -320,6 +321,12 @@ public class SearchAction implements IssuesWsAction {
         "If this parameter is set to a truthy value, createdAfter must not be set and one component uuid or key must be provided.")
       .setBooleanPossibleValues()
       .setDefaultValue("false");
+    action.createParam(PARAM_SEARCH_AFTER)
+      .setDescription("By default, you cannot get more than 10,000 items by using from/size parameters.<br>" +
+        "If you need to page through more than 10,000 items, use the searchAfter parameter instead.<br>" +
+        "You can use the searchAfter parameter to retrieve the next page of hits using a set of sort values from the previous page.<br>" +
+        "Using searchAfter requires multiple search requests with the same query and sort values. The first step is to run an initial request.<br>" +
+        "To retrieve the next page of results, repeat the request, take the sort values from the last response, and insert those into the searchAfter array.");
   }
 
   private static void addComponentRelatedParams(WebService.NewAction action) {
@@ -425,9 +432,12 @@ public class SearchAction implements IssuesWsAction {
     preloadedData.addRules(ImmutableList.copyOf(query.rules()));
     SearchResponseData data = searchResponseLoader.load(preloadedData, collector, additionalFields, facets);
 
+    Map<String, Object[]> issueMap = Arrays.stream(result.getHits().getHits())
+      .collect(Collectors.toMap(SearchHit::getId, SearchHit::getSortValues));
+
     // FIXME allow long in Paging
     Paging paging = forPageIndex(options.getPage()).withPageSize(options.getLimit()).andTotal((int) result.getHits().getTotalHits());
-    return searchResponseFormat.formatSearch(additionalFields, data, paging, facets);
+    return searchResponseFormat.formatSearch(additionalFields, data, paging, facets, issueMap);
   }
 
   private static SearchOptions createSearchOptionsFromRequest(SearchRequest request) {
@@ -549,6 +559,7 @@ public class SearchAction implements IssuesWsAction {
       .setOwaspTop10(request.paramAsStrings(PARAM_OWASP_TOP_10))
       .setSansTop25(request.paramAsStrings(PARAM_SANS_TOP_25))
       .setCwe(request.paramAsStrings(PARAM_CWE))
+      .setSearchAfter(request.param(PARAM_SEARCH_AFTER))
       .setSonarsourceSecurity(request.paramAsStrings(PARAM_SONARSOURCE_SECURITY));
   }
 
