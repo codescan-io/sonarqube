@@ -140,7 +140,7 @@ export class Search extends React.PureComponent<Props, State> {
   };
 
   renderQualifierOption = (option: LabelValueSelectOption) => (
-    <div>
+    <div className="display-flex-center">
       <QualifierIcon className="little-spacer-right" qualifier={option.value} />
       {option.label}
     </div>
@@ -163,6 +163,7 @@ export class Search extends React.PureComponent<Props, State> {
           SingleValue: this.singleValueRenderer,
         }}
         options={this.getQualifierOptions()}
+        aria-label={translate('projects_management.filter_by_component')}
         value={options.find((option) => option.value === this.props.qualifiers)}
       />
     );
