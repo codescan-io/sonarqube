@@ -203,7 +203,8 @@ public class IssueQueryFactory {
 
     boolean effectiveOnComponentOnly = false;
 
-    checkArgument(atMostOneNonNullElement(components, componentUuids), "At most one of the following parameters can be provided: %s and %s", PARAM_COMPONENT_KEYS, PARAM_COMPONENT_UUIDS);
+    checkArgument(atMostOneNonNullElement(components, componentUuids),
+      "At most one of the following parameters can be provided: %s and %s", PARAM_COMPONENT_KEYS, PARAM_COMPONENT_UUIDS);
 
     if (components != null) {
       allComponents.addAll(getComponentsFromKeys(session, components, branch, pullRequest));

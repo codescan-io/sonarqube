@@ -20,15 +20,12 @@
 package org.sonar.server.issue.ws;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
-import org.apache.lucene.util.CollectionUtil;
 import org.sonar.api.resources.Language;
 import org.sonar.api.resources.Languages;
 import org.sonar.api.resources.Qualifiers;
@@ -222,12 +219,8 @@ public class SearchResponseFormat {
     if (issueMap != null && !issueMap.isEmpty()) {
       Sort.Builder wsSort = Sort.newBuilder();
       Object[] sortValue = issueMap.get(issueBuilder.getKey());
-      List<Object> strArray = Arrays.stream(sortValue).map(val -> val).collect(Collectors.toList());;
-      if (strArray != null) {
-        for (Object sort1 : strArray) {
-          String value = sort1.toString();
-          wsSort.addSort(value);
-        }
+      for (Object sort : sortValue) {
+        wsSort.addSort(sort.toString());
       }
       issueBuilder.setSort(wsSort);
     }
