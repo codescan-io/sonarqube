@@ -99,7 +99,6 @@ public class IssueQuery {
   private final boolean mainBranch;
   private final String searchAfter;
 
-
   private IssueQuery(Builder builder) {
     this.issueKeys = defaultCollection(builder.issueKeys);
     this.severities = defaultCollection(builder.severities);
@@ -308,7 +307,6 @@ public class IssueQuery {
   }
 
   public static class Builder {
-
     private Collection<String> issueKeys;
     private Collection<String> severities;
     private Collection<String> statuses;

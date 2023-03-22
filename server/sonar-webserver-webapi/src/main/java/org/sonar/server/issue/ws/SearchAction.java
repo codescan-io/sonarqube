@@ -206,7 +206,7 @@ public class SearchAction implements IssuesWsAction {
         new Change("7.7", format("Value '%s' in parameter '%s' is deprecated, please use '%s' instead", DEPRECATED_PARAM_AUTHORS, FACETS, PARAM_AUTHOR)),
         new Change("7.6", format("The use of module keys in parameter '%s' is deprecated", PARAM_COMPONENT_KEYS)),
         new Change("7.4", "The facet 'projectUuids' is dropped in favour of the new facet 'projects'. " +
-            "Note that they are not strictly identical, the latter returns the project keys."),
+          "Note that they are not strictly identical, the latter returns the project keys."),
         new Change("7.4", format("Parameter '%s' does not accept anymore deprecated value 'debt'", FACET_MODE)),
         new Change("7.3", "response field 'fromHotspot' added to issues that are security hotspots"),
         new Change("7.3", "added facets 'sansTop25', 'owaspTop10' and 'cwe'"),
@@ -275,8 +275,7 @@ public class SearchAction implements IssuesWsAction {
       .setDescription("Comma-separated list of CWE identifiers. Use '" + UNKNOWN_STANDARD + "' to select issues not associated to any CWE.")
       .setExampleValue("12,125," + UNKNOWN_STANDARD);
     action.createParam(PARAM_SONARSOURCE_SECURITY)
-      .setDescription("Comma-separated list of SonarSource security categories. Use '" + SQCategory.OTHERS.getKey() + "' to select issues not associated" +
-          " with any category")
+      .setDescription("Comma-separated list of SonarSource security categories. Use '" + SQCategory.OTHERS.getKey() + "' to select issues not associated" + " with any category")
       .setSince("7.8")
       .setPossibleValues(Arrays.stream(SQCategory.values()).map(SQCategory::getKey).collect(Collectors.toList()));
     action.createParam(DEPRECATED_PARAM_AUTHORS)
@@ -322,9 +321,11 @@ public class SearchAction implements IssuesWsAction {
       .setBooleanPossibleValues()
       .setDefaultValue("false");
     action.createParam(PARAM_SEARCH_AFTER)
-      .setDescription("To retrieve issues beyond desired limit.<br>" +
-        "If this parameter is set to a value, value must be provided beyond the desired limit which is 10000 right now")
-      .setExampleValue("10000");
+      .setDescription("By default, you cannot get more than 10,000 items by using from/size parameters.<br>" +
+        "If you need to page through more than 10,000 items, use the searchAfter parameter instead.<br>" +
+        "You can use the searchAfter parameter to retrieve the next page of hits using a set of sort values from the previous page.<br>" +
+        "Using searchAfter requires multiple search requests with the same query and sort values. The first step is to run an initial request.<br>" +
+        "To retrieve the next page of results, repeat the request, take the sort values from the last response, and insert those into the searchAfter array.");
   }
 
   private static void addComponentRelatedParams(WebService.NewAction action) {
@@ -341,29 +342,29 @@ public class SearchAction implements IssuesWsAction {
 
     action.createParam(PARAM_PROJECTS)
       .setDescription("To retrieve issues associated to a specific list of projects (comma-separated list of project keys). " +
-          INTERNAL_PARAMETER_DISCLAIMER +
-          "If this parameter is set, projectUuids must not be set.")
+        INTERNAL_PARAMETER_DISCLAIMER +
+        "If this parameter is set, projectUuids must not be set.")
       .setInternal(true)
       .setExampleValue(KEY_PROJECT_EXAMPLE_001);
 
     action.createParam(PARAM_MODULE_UUIDS)
       .setDescription("To retrieve issues associated to a specific list of modules (comma-separated list of module IDs). " +
-          INTERNAL_PARAMETER_DISCLAIMER)
+        INTERNAL_PARAMETER_DISCLAIMER)
       .setInternal(true)
       .setDeprecatedSince("7.6")
       .setExampleValue("7d8749e8-3070-4903-9188-bdd82933bb92");
 
     action.createParam(PARAM_DIRECTORIES)
       .setDescription("To retrieve issues associated to a specific list of directories (comma-separated list of directory paths). " +
-          "This parameter is only meaningful when a module is selected. " +
-          INTERNAL_PARAMETER_DISCLAIMER)
+        "This parameter is only meaningful when a module is selected. " +
+        INTERNAL_PARAMETER_DISCLAIMER)
       .setInternal(true)
       .setSince("5.1")
       .setExampleValue("src/main/java/org/sonar/server/");
 
     action.createParam(PARAM_FILES)
       .setDescription("To retrieve issues associated to a specific list of files (comma-separated list of file paths). " +
-          INTERNAL_PARAMETER_DISCLAIMER)
+        INTERNAL_PARAMETER_DISCLAIMER)
       .setInternal(true)
       .setExampleValue("src/main/java/org/sonar/server/Test.java");
 
@@ -405,7 +406,7 @@ public class SearchAction implements IssuesWsAction {
       .filter(FACETS_REQUIRING_PROJECT_OR_ORGANIZATION::contains)
       .collect(toSet());
     checkArgument(facetsRequiringProjectOrOrganizationParameter.isEmpty() ||
-        (!query.projectUuids().isEmpty()) || query.organizationUuid() != null, "Facet(s) '%s' require to also filter by project or organization",
+      (!query.projectUuids().isEmpty()) || query.organizationUuid() != null, "Facet(s) '%s' require to also filter by project or organization",
       String.join(",", facetsRequiringProjectOrOrganizationParameter));
 
     // execute request
@@ -414,7 +415,7 @@ public class SearchAction implements IssuesWsAction {
       throw new IllegalStateException("No issues found for this project");
     }
     Map<String, Object[]> issueMap = Arrays.stream(result.getHits().getHits())
-      .collect(Collectors.toMap(issue -> issue.getId(), issue -> issue.getSortValues()));
+      .collect(Collectors.toMap(SearchHit::getId, SearchHit::getSortValues));
     List<String> issueKeys = Arrays.stream(result.getHits().getHits())
       .map(SearchHit::getId)
       .collect(MoreCollectors.toList(result.getHits().getHits().length));
@@ -559,12 +560,8 @@ public class SearchAction implements IssuesWsAction {
       .setOwaspTop10(request.paramAsStrings(PARAM_OWASP_TOP_10))
       .setSansTop25(request.paramAsStrings(PARAM_SANS_TOP_25))
       .setCwe(request.paramAsStrings(PARAM_CWE))
-      .setsearchAfter(getSearchAfter(request))
+      .setSearchAfter(request.param(PARAM_SEARCH_AFTER))
       .setSonarsourceSecurity(request.paramAsStrings(PARAM_SONARSOURCE_SECURITY));
-  }
-
-  private String getSearchAfter(Request request) {
-    return request.param(PARAM_SEARCH_AFTER);
   }
 
   private void checkIfNeedIssueSync(DbSession dbSession, SearchRequest searchRequest) {

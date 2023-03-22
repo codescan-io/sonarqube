@@ -209,7 +209,7 @@ public class SearchRequest {
     return searchAfter;
   }
 
-  public SearchRequest setsearchAfter(@Nullable String searchAfter) {
+  public SearchRequest setSearchAfter(@Nullable String searchAfter) {
     this.searchAfter = searchAfter;
     return this;
   }

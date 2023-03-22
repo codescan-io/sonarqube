@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -64,10 +63,8 @@ import org.elasticsearch.search.aggregations.metrics.sum.SumAggregationBuilder;
 import org.elasticsearch.search.aggregations.metrics.valuecount.InternalValueCount;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.FieldSortBuilder;
-import org.elasticsearch.search.sort.SortOrder;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Duration;
-import org.joda.time.Instant;
 import org.sonar.api.issue.Issue;
 import org.sonar.api.rule.Severity;
 import org.sonar.api.rules.RuleType;
@@ -359,14 +356,10 @@ public class IssueIndex {
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-    //Adding searchAfter parameter to elastic search query to get more than 10k results.
-    //Input for search after is 'sort' parameter response we received from last issue response.
-    //For example if we want to query from 10001 result, searchAfter element should be exactly sort value of 10000 issue.
-    //Page number should be 0 if we use searchAfter parameter.
-    if(query.searchAfter()!=null && !query.searchAfter().equals("")) {
-      String[] strArr = query.searchAfter().split(",");
-      Object[] objectArray = Arrays.copyOf(strArr, strArr.length, Object[].class);
-      searchSourceBuilder.searchAfter(objectArray);
+    // Adding search_after parameter  to retrieve the next page of hits using a set of sort values from the previous page.
+    if (StringUtils.isNotEmpty(query.searchAfter())) {
+      Object[] searchAfterValues = Arrays.stream(query.searchAfter().split(",")).map(String::trim).toArray();
+      searchSourceBuilder.searchAfter(searchAfterValues);
     }
     esRequest.setSource(searchSourceBuilder);
 
@@ -383,11 +376,7 @@ public class IssueIndex {
 
     esRequest.setFetchSource(false);
 
-    try {
-      return esRequest.get();
-    } catch (Exception e) {
-      throw new IllegalStateException("Failed to get data from elastic search: {} ", e.getCause());
-    }
+    return esRequest.get();
   }
 
   private void configureTopAggregations(IssueQuery query, SearchOptions options, SearchRequestBuilder esRequest, AllFilters allFilters, RequestFiltersComputer filterComputer) {
