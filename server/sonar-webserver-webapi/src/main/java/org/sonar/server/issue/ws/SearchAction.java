@@ -134,10 +134,8 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_TYPES;
 public class SearchAction implements IssuesWsAction {
 
   private static final String LOGIN_MYSELF = "__me__";
-  private static final Set<String> ISSUE_SCOPES = Arrays.stream(IssueScope.values()).map(Enum::name)
-    .collect(Collectors.toSet());
-  private static final EnumSet<RuleType> ALL_RULE_TYPES_EXCEPT_SECURITY_HOTSPOTS = EnumSet.complementOf(
-    EnumSet.of(RuleType.SECURITY_HOTSPOT));
+  private static final Set<String> ISSUE_SCOPES = Arrays.stream(IssueScope.values()).map(Enum::name).collect(Collectors.toSet());
+  private static final EnumSet<RuleType> ALL_RULE_TYPES_EXCEPT_SECURITY_HOTSPOTS = EnumSet.complementOf(EnumSet.of(RuleType.SECURITY_HOTSPOT));
 
   static final List<String> SUPPORTED_FACETS = ImmutableList.of(
     FACET_PROJECTS,
@@ -163,8 +161,7 @@ public class SearchAction implements IssuesWsAction {
     PARAM_SONARSOURCE_SECURITY);
 
   private static final String INTERNAL_PARAMETER_DISCLAIMER = "This parameter is mostly used by the Issues page, please prefer usage of the componentKeys parameter. ";
-  private static final Set<String> FACETS_REQUIRING_PROJECT_OR_ORGANIZATION = newHashSet(PARAM_MODULE_UUIDS,
-    PARAM_FILES, PARAM_DIRECTORIES);
+  private static final Set<String> FACETS_REQUIRING_PROJECT_OR_ORGANIZATION = newHashSet(PARAM_MODULE_UUIDS, PARAM_FILES, PARAM_DIRECTORIES);
 
   private final UserSession userSession;
   private final IssueIndex issueIndex;
@@ -175,10 +172,8 @@ public class SearchAction implements IssuesWsAction {
   private final System2 system2;
   private final DbClient dbClient;
 
-  public SearchAction(UserSession userSession, IssueIndex issueIndex, IssueQueryFactory issueQueryFactory,
-    IssueIndexSyncProgressChecker issueIndexSyncProgressChecker,
-    SearchResponseLoader searchResponseLoader, SearchResponseFormat searchResponseFormat, System2 system2,
-    DbClient dbClient) {
+  public SearchAction(UserSession userSession, IssueIndex issueIndex, IssueQueryFactory issueQueryFactory, IssueIndexSyncProgressChecker issueIndexSyncProgressChecker,
+    SearchResponseLoader searchResponseLoader, SearchResponseFormat searchResponseFormat, System2 system2, DbClient dbClient) {
     this.userSession = userSession;
     this.issueIndex = issueIndex;
     this.issueQueryFactory = issueQueryFactory;
@@ -199,40 +194,28 @@ public class SearchAction implements IssuesWsAction {
       .setSince("3.6")
       .setChangelog(
         new Change("8.5", "Facet 'fileUuids' is dropped in favour of the new facet 'files'" +
-          "Note that they are not strictly identical, the latter returns the file paths."),
+            "Note that they are not strictly identical, the latter returns the file paths."),
         new Change("8.5", "Internal parameter 'fileUuids' has been dropped"),
         new Change("8.4", "parameters 'componentUuids', 'projectKeys' has been dropped."),
         new Change("8.2", "'REVIEWED', 'TO_REVIEW' status param values are no longer supported"),
-        new Change("8.2",
-          "Security hotspots are no longer returned as type 'SECURITY_HOTSPOT' is not supported anymore, use dedicated api/hotspots"),
+        new Change("8.2", "Security hotspots are no longer returned as type 'SECURITY_HOTSPOT' is not supported anymore, use dedicated api/hotspots"),
         new Change("8.2", "response field 'fromHotspot' has been deprecated and is no more populated"),
         new Change("8.2", "Status 'IN_REVIEW' for Security Hotspots has been deprecated"),
-        new Change("7.8",
-          format("added new Security Hotspots statuses : %s, %s and %s", STATUS_TO_REVIEW,
-            STATUS_IN_REVIEW, STATUS_REVIEWED)),
+        new Change("7.8", format("added new Security Hotspots statuses : %s, %s and %s", STATUS_TO_REVIEW, STATUS_IN_REVIEW, STATUS_REVIEWED)),
         new Change("7.8", "Security hotspots are returned by default"),
-        new Change("7.7", format("Value '%s' in parameter '%s' is deprecated, please use '%s' instead",
-          DEPRECATED_PARAM_AUTHORS, FACETS, PARAM_AUTHOR)),
-        new Change("7.6",
-          format("The use of module keys in parameter '%s' is deprecated", PARAM_COMPONENT_KEYS)),
-        new Change("7.4",
-          "The facet 'projectUuids' is dropped in favour of the new facet 'projects'. " +
+        new Change("7.7", format("Value '%s' in parameter '%s' is deprecated, please use '%s' instead", DEPRECATED_PARAM_AUTHORS, FACETS, PARAM_AUTHOR)),
+        new Change("7.6", format("The use of module keys in parameter '%s' is deprecated", PARAM_COMPONENT_KEYS)),
+        new Change("7.4", "The facet 'projectUuids' is dropped in favour of the new facet 'projects'. " +
             "Note that they are not strictly identical, the latter returns the project keys."),
-        new Change("7.4",
-          format("Parameter '%s' does not accept anymore deprecated value 'debt'", FACET_MODE)),
+        new Change("7.4", format("Parameter '%s' does not accept anymore deprecated value 'debt'", FACET_MODE)),
         new Change("7.3", "response field 'fromHotspot' added to issues that are security hotspots"),
         new Change("7.3", "added facets 'sansTop25', 'owaspTop10' and 'cwe'"),
-        new Change("7.2",
-          "response field 'externalRuleEngine' added to issues that have been imported from an external rule engine"),
-        new Change("7.2", format("value '%s' in parameter '%s' is deprecated, it won't have any effect",
-          SORT_BY_ASSIGNEE, Param.SORT)),
-        new Change("6.5",
-          "parameters 'projects', 'projectUuids', 'moduleUuids', 'directories', 'fileUuids' are marked as internal"),
+        new Change("7.2", "response field 'externalRuleEngine' added to issues that have been imported from an external rule engine"),
+        new Change("7.2", format("value '%s' in parameter '%s' is deprecated, it won't have any effect", SORT_BY_ASSIGNEE, Param.SORT)),
+        new Change("6.5", "parameters 'projects', 'projectUuids', 'moduleUuids', 'directories', 'fileUuids' are marked as internal"),
         new Change("6.3", "response field 'email' is renamed 'avatar'"),
-        new Change("5.5",
-          "response fields 'reporter' and 'actionPlan' are removed (drop of action plan and manual issue features)"),
-        new Change("5.5",
-          "parameters 'reporters', 'actionPlans' and 'planned' are dropped and therefore ignored (drop of action plan and manual issue features)"),
+        new Change("5.5", "response fields 'reporter' and 'actionPlan' are removed (drop of action plan and manual issue features)"),
+        new Change("5.5", "parameters 'reporters', 'actionPlans' and 'planned' are dropped and therefore ignored (drop of action plan and manual issue features)"),
         new Change("5.5", "response field 'debt' is renamed 'effort'"))
       .setResponseExample(getClass().getResource("search-example.json"));
 
@@ -243,14 +226,12 @@ public class SearchAction implements IssuesWsAction {
     action.createParam(FACET_MODE)
       .setDefaultValue(FACET_MODE_COUNT)
       .setDeprecatedSince("7.9")
-      .setDescription(
-        "Choose the returned value for facet items, either count of issues or sum of remediation effort.")
+      .setDescription("Choose the returned value for facet items, either count of issues or sum of remediation effort.")
       .setPossibleValues(FACET_MODE_COUNT, FACET_MODE_EFFORT);
     action.addSortParams(IssueQuery.SORTS, null, true);
     action.createParam(PARAM_ADDITIONAL_FIELDS)
       .setSince("5.2")
-      .setDescription(
-        "Comma-separated list of the optional fields to be returned in response. Action plans are dropped in 5.5, it is not returned in the response.")
+      .setDescription("Comma-separated list of the optional fields to be returned in response. Action plans are dropped in 5.5, it is not returned in the response.")
       .setPossibleValues(SearchAdditionalField.possibleValues());
     addComponentRelatedParams(action);
     action.createParam(PARAM_ISSUES)
@@ -289,31 +270,24 @@ public class SearchAction implements IssuesWsAction {
     action.createParam(PARAM_SANS_TOP_25)
       .setDescription("Comma-separated list of SANS Top 25 categories.")
       .setSince("7.3")
-      .setPossibleValues(SANS_TOP_25_INSECURE_INTERACTION, SANS_TOP_25_RISKY_RESOURCE,
-        SANS_TOP_25_POROUS_DEFENSES);
+      .setPossibleValues(SANS_TOP_25_INSECURE_INTERACTION, SANS_TOP_25_RISKY_RESOURCE, SANS_TOP_25_POROUS_DEFENSES);
     action.createParam(PARAM_CWE)
-      .setDescription("Comma-separated list of CWE identifiers. Use '" + UNKNOWN_STANDARD
-        + "' to select issues not associated to any CWE.")
+      .setDescription("Comma-separated list of CWE identifiers. Use '" + UNKNOWN_STANDARD + "' to select issues not associated to any CWE.")
       .setExampleValue("12,125," + UNKNOWN_STANDARD);
     action.createParam(PARAM_SONARSOURCE_SECURITY)
-      .setDescription(
-        "Comma-separated list of SonarSource security categories. Use '" + SQCategory.OTHERS.getKey()
-          + "' to select issues not associated" +
+      .setDescription("Comma-separated list of SonarSource security categories. Use '" + SQCategory.OTHERS.getKey() + "' to select issues not associated" +
           " with any category")
       .setSince("7.8")
-      .setPossibleValues(
-        Arrays.stream(SQCategory.values()).map(SQCategory::getKey).collect(Collectors.toList()));
+      .setPossibleValues(Arrays.stream(SQCategory.values()).map(SQCategory::getKey).collect(Collectors.toList()));
     action.createParam(DEPRECATED_PARAM_AUTHORS)
       .setDeprecatedSince("7.7")
       .setDescription("This parameter is deprecated, please use '%s' instead", PARAM_AUTHOR)
       .setExampleValue("torvalds@linux-foundation.org");
     action.createParam(PARAM_AUTHOR)
-      .setDescription(
-        "SCM accounts. To set several values, the parameter must be called once for each value.")
+      .setDescription("SCM accounts. To set several values, the parameter must be called once for each value.")
       .setExampleValue("author=torvalds@linux-foundation.org&author=linux@fondation.org");
     action.createParam(PARAM_ASSIGNEES)
-      .setDescription(
-        "Comma-separated list of assignee logins. The value '__me__' can be used as a placeholder for user who performs the request")
+      .setDescription("Comma-separated list of assignee logins. The value '__me__' can be used as a placeholder for user who performs the request")
       .setExampleValue("admin,usera,__me__");
     action.createParam(PARAM_ASSIGNED)
       .setDescription("To retrieve assigned or unassigned issues")
@@ -355,42 +329,32 @@ public class SearchAction implements IssuesWsAction {
 
   private static void addComponentRelatedParams(WebService.NewAction action) {
     action.createParam(PARAM_ON_COMPONENT_ONLY)
-      .setDescription(
-        "Return only issues at a component's level, not on its descendants (modules, directories, files, etc). "
-          +
-          "This parameter is only considered when componentKeys is set.")
+      .setDescription("Return only issues at a component's level, not on its descendants (modules, directories, files, etc). " +
+        "This parameter is only considered when componentKeys is set.")
       .setBooleanPossibleValues()
       .setDefaultValue("false");
 
     action.createParam(PARAM_COMPONENT_KEYS)
-      .setDescription(
-        "Comma-separated list of component keys. Retrieve issues associated to a specific list of components (and all its descendants). "
-          +
-          "A component can be a portfolio, project, module, directory or file.")
+      .setDescription("Comma-separated list of component keys. Retrieve issues associated to a specific list of components (and all its descendants). " +
+        "A component can be a portfolio, project, module, directory or file.")
       .setExampleValue(KEY_PROJECT_EXAMPLE_001);
 
     action.createParam(PARAM_PROJECTS)
-      .setDescription(
-        "To retrieve issues associated to a specific list of projects (comma-separated list of project keys). "
-          +
+      .setDescription("To retrieve issues associated to a specific list of projects (comma-separated list of project keys). " +
           INTERNAL_PARAMETER_DISCLAIMER +
           "If this parameter is set, projectUuids must not be set.")
       .setInternal(true)
       .setExampleValue(KEY_PROJECT_EXAMPLE_001);
 
     action.createParam(PARAM_MODULE_UUIDS)
-      .setDescription(
-        "To retrieve issues associated to a specific list of modules (comma-separated list of module IDs). "
-          +
+      .setDescription("To retrieve issues associated to a specific list of modules (comma-separated list of module IDs). " +
           INTERNAL_PARAMETER_DISCLAIMER)
       .setInternal(true)
       .setDeprecatedSince("7.6")
       .setExampleValue("7d8749e8-3070-4903-9188-bdd82933bb92");
 
     action.createParam(PARAM_DIRECTORIES)
-      .setDescription(
-        "To retrieve issues associated to a specific list of directories (comma-separated list of directory paths). "
-          +
+      .setDescription("To retrieve issues associated to a specific list of directories (comma-separated list of directory paths). " +
           "This parameter is only meaningful when a module is selected. " +
           INTERNAL_PARAMETER_DISCLAIMER)
       .setInternal(true)
@@ -398,9 +362,7 @@ public class SearchAction implements IssuesWsAction {
       .setExampleValue("src/main/java/org/sonar/server/");
 
     action.createParam(PARAM_FILES)
-      .setDescription(
-        "To retrieve issues associated to a specific list of files (comma-separated list of file paths). "
-          +
+      .setDescription("To retrieve issues associated to a specific list of files (comma-separated list of file paths). " +
           INTERNAL_PARAMETER_DISCLAIMER)
       .setInternal(true)
       .setExampleValue("src/main/java/org/sonar/server/Test.java");
@@ -443,8 +405,7 @@ public class SearchAction implements IssuesWsAction {
       .filter(FACETS_REQUIRING_PROJECT_OR_ORGANIZATION::contains)
       .collect(toSet());
     checkArgument(facetsRequiringProjectOrOrganizationParameter.isEmpty() ||
-        (!query.projectUuids().isEmpty()) || query.organizationUuid() != null,
-      "Facet(s) '%s' require to also filter by project or organization",
+        (!query.projectUuids().isEmpty()) || query.organizationUuid() != null, "Facet(s) '%s' require to also filter by project or organization",
       String.join(",", facetsRequiringProjectOrOrganizationParameter));
 
     // execute request
@@ -475,8 +436,7 @@ public class SearchAction implements IssuesWsAction {
     SearchResponseData data = searchResponseLoader.load(preloadedData, collector, additionalFields, facets);
 
     // FIXME allow long in Paging
-    Paging paging = forPageIndex(options.getPage()).withPageSize(options.getLimit())
-      .andTotal((int) result.getHits().getTotalHits());
+    Paging paging = forPageIndex(options.getPage()).withPageSize(options.getLimit()).andTotal((int) result.getHits().getTotalHits());
     return searchResponseFormat.formatSearch(additionalFields, data, paging, facets, issueMap);
   }
 
@@ -510,8 +470,7 @@ public class SearchAction implements IssuesWsAction {
     }
     addMandatoryValuesToFacet(facets, PARAM_ASSIGNEES, assignees);
     addMandatoryValuesToFacet(facets, FACET_ASSIGNED_TO_ME, singletonList(userSession.getUuid()));
-    addMandatoryValuesToFacet(facets, PARAM_RULES,
-      query.rules().stream().map(RuleDefinitionDto::getUuid).collect(toList()));
+    addMandatoryValuesToFacet(facets, PARAM_RULES, query.rules().stream().map(RuleDefinitionDto::getUuid).collect(toList()));
     addMandatoryValuesToFacet(facets, PARAM_SCOPES, ISSUE_SCOPES);
     addMandatoryValuesToFacet(facets, PARAM_LANGUAGES, request.getLanguages());
     addMandatoryValuesToFacet(facets, PARAM_TAGS, request.getTags());
@@ -529,12 +488,10 @@ public class SearchAction implements IssuesWsAction {
     if (typeFacet != null) {
       typeFacet.remove(RuleType.SECURITY_HOTSPOT.name());
     }
-    addMandatoryValuesToFacet(facets, PARAM_TYPES,
-      ALL_RULE_TYPES_EXCEPT_SECURITY_HOTSPOTS.stream().map(Enum::name).collect(Collectors.toList()));
+    addMandatoryValuesToFacet(facets, PARAM_TYPES, ALL_RULE_TYPES_EXCEPT_SECURITY_HOTSPOTS.stream().map(Enum::name).collect(Collectors.toList()));
   }
 
-  private static void addMandatoryValuesToFacet(Facets facets, String facetName,
-    @Nullable Iterable<String> mandatoryValues) {
+  private static void addMandatoryValuesToFacet(Facets facets, String facetName, @Nullable Iterable<String> mandatoryValues) {
     Map<String, Long> buckets = facets.get(facetName);
     if (buckets != null && mandatoryValues != null) {
       for (String mandatoryValue : mandatoryValues) {
@@ -569,8 +526,7 @@ public class SearchAction implements IssuesWsAction {
       .setAsc(request.mandatoryParamAsBoolean(PARAM_ASC))
       .setAssigned(request.paramAsBoolean(PARAM_ASSIGNED))
       .setAssigneesUuid(getLogins(dbSession, request.paramAsStrings(PARAM_ASSIGNEES)))
-      .setAuthors(request.hasParam(PARAM_AUTHOR) ? request.multiParam(PARAM_AUTHOR)
-        : request.paramAsStrings(DEPRECATED_PARAM_AUTHORS))
+      .setAuthors(request.hasParam(PARAM_AUTHOR) ? request.multiParam(PARAM_AUTHOR) : request.paramAsStrings(DEPRECATED_PARAM_AUTHORS))
       .setComponents(request.paramAsStrings(PARAM_COMPONENT_KEYS))
       .setCreatedAfter(request.param(PARAM_CREATED_AFTER))
       .setCreatedAt(request.param(PARAM_CREATED_AT))
@@ -608,11 +564,7 @@ public class SearchAction implements IssuesWsAction {
   }
 
   private String getSearchAfter(Request request) {
-    if (request.param(PARAM_SEARCH_AFTER) != null) {
-      return request.param(PARAM_SEARCH_AFTER);
-    } else {
-      return null;
-    }
+    return request.param(PARAM_SEARCH_AFTER);
   }
 
   private void checkIfNeedIssueSync(DbSession dbSession, SearchRequest searchRequest) {
