@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nullable;
 import org.sonar.api.resources.Language;
 import org.sonar.api.resources.Languages;
 import org.sonar.api.resources.Qualifiers;
@@ -115,7 +116,7 @@ public class SearchResponseFormat {
     if (data.getIssues().size() == 1) {
       Issue.Builder issueBuilder = Issue.newBuilder();
       IssueDto dto = data.getIssues().get(0);
-      formatIssue(issueBuilder, dto, data, null);
+      formatIssue(issueBuilder, dto, data);
       formatIssueActions(data, issueBuilder, dto);
       formatIssueTransitions(data, issueBuilder, dto);
       formatIssueComments(data, issueBuilder, dto);
@@ -169,7 +170,11 @@ public class SearchResponseFormat {
     return result;
   }
 
-  private void formatIssue(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data, Map<String, Object[]> issueMap) {
+  private void formatIssue(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data) {
+    formatIssue(issueBuilder, dto, data, null);
+  }
+
+  private void formatIssue(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data, @Nullable Map<String, Object[]> issueMap) {
     issueBuilder.setKey(dto.getKey());
     issueBuilder.setType(Common.RuleType.forNumber(dto.getType()));
 

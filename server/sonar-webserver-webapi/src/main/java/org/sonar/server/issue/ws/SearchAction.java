@@ -412,11 +412,6 @@ public class SearchAction implements IssuesWsAction {
 
     // execute request
     SearchResponse result = issueIndex.search(query, options);
-    if (result == null && result.getHits() == null && result.getHits().getHits() == null) {
-      throw new IllegalStateException("No issues found for this project");
-    }
-    Map<String, Object[]> issueMap = Arrays.stream(result.getHits().getHits())
-      .collect(Collectors.toMap(SearchHit::getId, SearchHit::getSortValues));
     List<String> issueKeys = Arrays.stream(result.getHits().getHits())
       .map(SearchHit::getId)
       .collect(MoreCollectors.toList(result.getHits().getHits().length));
@@ -436,6 +431,9 @@ public class SearchAction implements IssuesWsAction {
     SearchResponseData preloadedData = new SearchResponseData(emptyList());
     preloadedData.addRules(ImmutableList.copyOf(query.rules()));
     SearchResponseData data = searchResponseLoader.load(preloadedData, collector, additionalFields, facets);
+
+    Map<String, Object[]> issueMap = Arrays.stream(result.getHits().getHits())
+      .collect(Collectors.toMap(SearchHit::getId, SearchHit::getSortValues));
 
     // FIXME allow long in Paging
     Paging paging = forPageIndex(options.getPage()).withPageSize(options.getLimit()).andTotal((int) result.getHits().getTotalHits());
