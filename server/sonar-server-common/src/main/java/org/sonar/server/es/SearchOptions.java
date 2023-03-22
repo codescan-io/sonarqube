@@ -39,7 +39,7 @@ public class SearchOptions {
   public static final int DEFAULT_OFFSET = 0;
   public static final int DEFAULT_LIMIT = 10;
   public static final int MAX_PAGE_SIZE = 500;
-  private static final int MAX_RETURNABLE_RESULTS = 50_000;
+  private static final int MAX_RETURNABLE_RESULTS = 10_000;
 
   private int offset = DEFAULT_OFFSET;
   private int limit = DEFAULT_LIMIT;

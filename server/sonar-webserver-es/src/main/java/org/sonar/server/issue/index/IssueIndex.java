@@ -61,7 +61,6 @@ import org.elasticsearch.search.aggregations.metrics.max.InternalMax;
 import org.elasticsearch.search.aggregations.metrics.min.Min;
 import org.elasticsearch.search.aggregations.metrics.sum.SumAggregationBuilder;
 import org.elasticsearch.search.aggregations.metrics.valuecount.InternalValueCount;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.FieldSortBuilder;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Duration;
@@ -110,7 +109,6 @@ import static org.sonar.core.util.stream.MoreCollectors.uniqueIndex;
 import static org.sonar.server.es.BaseDoc.epochMillisToEpochSeconds;
 import static org.sonar.server.es.EsUtils.escapeSpecialRegexChars;
 import static org.sonar.server.es.IndexType.FIELD_INDEX_TYPE;
-import static org.sonar.server.es.IndexType.FIELD_SEARCH_AFTER;
 import static org.sonar.server.es.searchrequest.TopAggregationDefinition.NON_STICKY;
 import static org.sonar.server.es.searchrequest.TopAggregationDefinition.STICKY;
 import static org.sonar.server.es.searchrequest.TopAggregationHelper.NO_EXTRA_FILTER;
@@ -354,14 +352,11 @@ public class IssueIndex {
   public SearchResponse search(IssueQuery query, SearchOptions options) {
     SearchRequestBuilder esRequest = client.prepareSearch(TYPE_ISSUE.getMainType());
 
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-
     // Adding search_after parameter  to retrieve the next page of hits using a set of sort values from the previous page.
     if (StringUtils.isNotEmpty(query.searchAfter())) {
       Object[] searchAfterValues = Arrays.stream(query.searchAfter().split(",")).map(String::trim).toArray();
-      searchSourceBuilder.searchAfter(searchAfterValues);
+      esRequest.searchAfter(searchAfterValues);
     }
-    esRequest.setSource(searchSourceBuilder);
 
     configureSorting(query, esRequest);
     configurePagination(options, esRequest);

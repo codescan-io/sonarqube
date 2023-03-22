@@ -343,7 +343,7 @@ public class IssueQuery {
     private String organizationUuid;
     private String branchUuid;
     private boolean mainBranch = true;
-    public String searchAfter;
+    private String searchAfter;
 
     private Builder() {
 
