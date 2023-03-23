@@ -22,7 +22,7 @@ import { ButtonIcon } from '../../../components/controls/buttons';
 import BulletListIcon from '../../../components/icons/BulletListIcon';
 import DateFromNow from '../../../components/intl/DateFromNow';
 import Avatar from '../../../components/ui/Avatar';
-import { translate } from '../../../helpers/l10n';
+import { translateWithParameters } from '../../../helpers/l10n';
 import { IdentityProvider } from '../../../types/types';
 import { User } from '../../../types/users';
 import TokensFormModal from './TokensFormModal';
@@ -68,7 +68,8 @@ export default class UserListItem extends React.PureComponent<Props, State> {
           <ButtonIcon
             className="js-user-tokens spacer-left button-small"
             onClick={this.handleOpenTokensForm}
-            tooltip={translate('users.update_tokens')}
+            tooltip={translateWithParameters('users.update_tokens')}
+            aria-label={translateWithParameters('users.update_tokens_for_x', user.name ?? user.login)}
           >
             <BulletListIcon />
           </ButtonIcon>
