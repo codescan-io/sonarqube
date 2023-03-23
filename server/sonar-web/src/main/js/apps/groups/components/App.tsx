@@ -201,8 +201,6 @@ class App extends React.PureComponent<Props, State> {
   render() {
     const { editedGroup, groupToBeDeleted, groups, loading, paging, query } = this.state;
 
-    const showAnyone = 'anyone'.includes(query.toLowerCase());
-
     return (
       <>
         <Suggestions suggestions="user_groups" />
@@ -225,7 +223,6 @@ class App extends React.PureComponent<Props, State> {
               onDelete={this.openDeleteForm}
               onEdit={this.openEditForm}
               onEditMembers={this.refresh}
-              showAnyone={showAnyone}
               organization={this.organization}
             />
           )}
@@ -233,11 +230,11 @@ class App extends React.PureComponent<Props, State> {
           {groups !== undefined && paging !== undefined && (
             <div id="groups-list-footer">
               <ListFooter
-                count={showAnyone ? groups.length + 1 : groups.length}
+                count={groups.length}
                 loading={loading}
                 loadMore={this.fetchMoreGroups}
                 ready={!loading}
-                total={showAnyone ? paging.total + 1 : paging.total}
+                total={paging.total}
               />
             </div>
           )}
