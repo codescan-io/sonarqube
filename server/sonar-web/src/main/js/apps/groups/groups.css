@@ -17,26 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { shallow } from 'enzyme';
-import * as React from 'react';
-import List from '../List';
 
-it('should render', () => {
-  expect(shallowRender()).toMatchSnapshot();
-});
-
-function shallowRender() {
-  const groups = [
-    { id: 1, name: 'sonar-users', description: '', membersCount: 55, default: true },
-    { id: 2, name: 'foo', description: 'foobar', membersCount: 0, default: false },
-    { id: 3, name: 'bar', description: 'barbar', membersCount: 1, default: false },
-  ];
-  return shallow(
-    <List
-      groups={groups}
-      onDelete={jest.fn()}
-      onEdit={jest.fn()}
-      onEditMembers={jest.fn()}
-    />
-  );
+#groups-page .group-members {
+  padding-right: 50%;
 }

@@ -3,8 +3,8 @@
 exports[`should edit members 1`] = `
 <Fragment>
   <ButtonIcon
-    aria-label="groups.users.edit"
-    className="button-small"
+    aria-label="groups.users.edit.Foo"
+    className="button-small little-spacer-left little-padded"
     onClick={[Function]}
     title="groups.users.edit"
   >
@@ -16,8 +16,8 @@ exports[`should edit members 1`] = `
 exports[`should edit members 2`] = `
 <Fragment>
   <ButtonIcon
-    aria-label="groups.users.edit"
-    className="button-small"
+    aria-label="groups.users.edit.Foo"
+    className="button-small little-spacer-left little-padded"
     onClick={[Function]}
     title="groups.users.edit"
   >
@@ -39,8 +39,8 @@ exports[`should edit members 2`] = `
 exports[`should edit members 3`] = `
 <Fragment>
   <ButtonIcon
-    aria-label="groups.users.edit"
-    className="button-small"
+    aria-label="groups.users.edit.Foo"
+    className="button-small little-spacer-left little-padded"
     onClick={[Function]}
     title="groups.users.edit"
   >
