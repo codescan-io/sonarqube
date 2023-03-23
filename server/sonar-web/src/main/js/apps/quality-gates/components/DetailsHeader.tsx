@@ -75,7 +75,7 @@ export default class DetailsHeader extends React.PureComponent<Props> {
               {qualityGate.isBuiltIn && <BuiltInQualityGateBadge className="spacer-left" />}
               {qualityGate.caycStatus === CaycStatus.NonCompliant && (
                 <Tooltip overlay={<CaycBadgeTooltip />} mouseLeaveDelay={TOOLTIP_MOUSE_LEAVE_DELAY}>
-                  <AlertWarnIcon className="spacer-left" />
+                  <AlertWarnIcon className="spacer-left" description={<CaycBadgeTooltip />} />
                 </Tooltip>
               )}
             </div>
@@ -117,7 +117,6 @@ export default class DetailsHeader extends React.PureComponent<Props> {
                           ? translate('quality_gates.cannot_copy_no_cayc')
                           : null
                       }
-                      accessible={false}
                     >
                       <Button
                         className="little-spacer-left"
@@ -138,7 +137,6 @@ export default class DetailsHeader extends React.PureComponent<Props> {
                       ? translate('quality_gates.cannot_set_default_no_cayc')
                       : null
                   }
-                  accessible={false}
                 >
                   <Button
                     className="little-spacer-left"
