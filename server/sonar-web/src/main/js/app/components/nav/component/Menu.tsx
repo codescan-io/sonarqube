@@ -17,15 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import classNames from 'classnames';
-import { DisabledTabLink, NavBarTabLink, NavBarTabs, Tooltip } from 'design-system';
+import {
+  DisabledTabLink,
+  Dropdown,
+  ItemNavLink,
+  Link,
+  NavBarTabLink,
+  NavBarTabs,
+  Tooltip,
+} from 'design-system';
 import * as React from 'react';
-import { NavLink } from 'react-router-dom';
-import { ButtonLink } from '../../../../components/controls/buttons';
-import Dropdown from '../../../../components/controls/Dropdown';
-import BulletListIcon from '../../../../components/icons/BulletListIcon';
-import DropdownIcon from '../../../../components/icons/DropdownIcon';
-import SQNavBarTabs from '../../../../components/ui/NavBarTabs';
 import { getBranchLikeQuery, isPullRequest } from '../../../../helpers/branch-like';
 import { hasMessage, translate, translateWithParameters } from '../../../../helpers/l10n';
 import { getPortfolioUrl, getProjectQueryUrl } from '../../../../helpers/urls';
@@ -281,7 +282,7 @@ export class Menu extends React.PureComponent<Props> {
       return null;
     }
 
-    const isSettingsActive = SETTINGS_URLS.some((url) => window.location.href.indexOf(url) !== -1);
+    const isSettingsActive = SETTINGS_URLS.some((url) => window.location.href.includes(url));
 
     const adminLinks = this.renderAdministrationLinks(query, isProject, isApplication, isPortfolio);
     if (!adminLinks.some((link) => link != null)) {
@@ -291,22 +292,23 @@ export class Menu extends React.PureComponent<Props> {
     return (
       <Dropdown
         data-test="administration"
-        overlay={<ul className="menu">{adminLinks}</ul>}
-        tagName="li"
+        id="component-navigation-admin"
+        size="auto"
+        overlay={adminLinks}
       >
-        {({ onToggleClick, open }) => (
-          <ButtonLink
-            aria-expanded={open}
-            aria-haspopup="menu"
-            className={classNames('dropdown-toggle', { active: isSettingsActive || open })}
-            id="component-navigation-admin"
+        {({ onToggleClick, open, a11yAttrs }) => (
+          <NavBarTabLink
+            active={isSettingsActive || open}
             onClick={onToggleClick}
-          >
-            {hasMessage('layout.settings', component.qualifier)
-              ? translate('layout.settings', component.qualifier)
-              : translate('layout.settings')}
-            <DropdownIcon className="little-spacer-left" />
-          </ButtonLink>
+            text={
+              hasMessage('layout.settings', component.qualifier)
+                ? translate('layout.settings', component.qualifier)
+                : translate('layout.settings')
+            }
+            withChevron={true}
+            to={{}}
+            {...a11yAttrs}
+          />
         )}
       </Dropdown>
     );
@@ -351,17 +353,15 @@ export class Menu extends React.PureComponent<Props> {
 
     return (
       (isProject || isApplication) && (
-        <li>
-          <ButtonLink
-            className="show-project-info-button"
+        <li className="sw-body-md sw-pb-4">
+          <Link
             onClick={this.props.onToggleProjectInfo}
-            innerRef={(node) => {
-              this.projectInfoLink = node;
-            }}
+            preventDefault={true}
+            ref={(node: HTMLAnchorElement | null) => (this.projectInfoLink = node)}
+            to={{}}
           >
-            <BulletListIcon className="little-spacer-right" />
             {label}
-          </ButtonLink>
+          </Link>
         </li>
       )
     );
@@ -372,13 +372,12 @@ export class Menu extends React.PureComponent<Props> {
       return null;
     }
     return (
-      <li key="settings">
-        <NavLink
-          to={{ pathname: '/project/settings', search: new URLSearchParams(query).toString() }}
-        >
-          {translate('project_settings.page')}
-        </NavLink>
-      </li>
+      <ItemNavLink
+        key="settings"
+        to={{ pathname: '/project/settings', search: new URLSearchParams(query).toString() }}
+      >
+        {translate('project_settings.page')}
+      </ItemNavLink>
     );
   };
 
@@ -392,17 +391,16 @@ export class Menu extends React.PureComponent<Props> {
     }
 
     return (
-      <li key="branches">
-        <NavLink
-          to={{ pathname: '/project/branches', search: new URLSearchParams(query).toString() }}
-        >
-          {
-            this.props.comparisonBranchesEnabled
-                ? translate('project_branches.page')
-                : translate('project_branch_pull_request.page')
-          }
-        </NavLink>
-      </li>
+      <ItemNavLink
+        key="branches"
+        to={{ pathname: '/project/branches', search: new URLSearchParams(query).toString() }}
+      >
+        {
+          this.props.comparisonBranchesEnabled
+              ? translate('project_branches.page')
+              : translate('project_branch_pull_request.page')
+        }
+      </ItemNavLink>
     );
   };
 
@@ -411,32 +409,16 @@ export class Menu extends React.PureComponent<Props> {
       return null;
     }
     return (
-      <li key="baseline">
-        <NavLink
-          to={{ pathname: '/project/baseline', search: new URLSearchParams(query).toString() }}
-        >
-          {translate('project_baseline.page')}
-        </NavLink>
-      </li>
+      <ItemNavLink
+        key="baseline"
+        to={{ pathname: '/project/baseline', search: new URLSearchParams(query).toString() }}
+      >
+        {translate('project_baseline.page')}
+      </ItemNavLink>
     );
   };
 
   renderImportExportLink = (query: Query, isProject: boolean) => {
-    // if (!isProject) {
-    //   return null;
-    // }
-    // return (
-    //   <li key="import-export">
-    //     <NavLink
-    //       to={{
-    //         pathname: '/project/import_export',
-    //         search: new URLSearchParams(query).toString(),
-    //       }}
-    //     >
-    //       {translate('project_dump.page')}
-    //     </NavLink>
-    //   </li>
-    // );
     return null;
   };
 
@@ -445,16 +427,15 @@ export class Menu extends React.PureComponent<Props> {
       return null;
     }
     return (
-      <li key="profiles">
-        <NavLink
-          to={{
-            pathname: '/project/quality_profiles',
-            search: new URLSearchParams(query).toString(),
-          }}
-        >
-          {translate('project_quality_profiles.page')}
-        </NavLink>
-      </li>
+      <ItemNavLink
+        key="profiles"
+        to={{
+          pathname: '/project/quality_profiles',
+          search: new URLSearchParams(query).toString(),
+        }}
+      >
+        {translate('project_quality_profiles.page')}
+      </ItemNavLink>
     );
   };
 
@@ -463,13 +444,12 @@ export class Menu extends React.PureComponent<Props> {
       return null;
     }
     return (
-      <li key="quality_gate">
-        <NavLink
-          to={{ pathname: '/project/quality_gate', search: new URLSearchParams(query).toString() }}
-        >
-          {translate('project_quality_gate.page')}
-        </NavLink>
-      </li>
+      <ItemNavLink
+        key="quality_gate"
+        to={{ pathname: '/project/quality_gate', search: new URLSearchParams(query).toString() }}
+      >
+        {translate('project_quality_gate.page')}
+      </ItemNavLink>
     );
   };
 
@@ -478,11 +458,12 @@ export class Menu extends React.PureComponent<Props> {
       return null;
     }
     return (
-      <li key="links">
-        <NavLink to={{ pathname: '/project/links', search: new URLSearchParams(query).toString() }}>
-          {translate('project_links.page')}
-        </NavLink>
-      </li>
+      <ItemNavLink
+        key="links"
+        to={{ pathname: '/project/links', search: new URLSearchParams(query).toString() }}
+      >
+        {translate('project_links.page')}
+      </ItemNavLink>
     );
   };
 
@@ -491,11 +472,12 @@ export class Menu extends React.PureComponent<Props> {
       return null;
     }
     return (
-      <li key="permissions">
-        <NavLink to={{ pathname: '/project_roles', search: new URLSearchParams(query).toString() }}>
-          {translate('permissions.page')}
-        </NavLink>
-      </li>
+      <ItemNavLink
+        key="permissions"
+        to={{ pathname: '/project_roles', search: new URLSearchParams(query).toString() }}
+      >
+        {translate('permissions.page')}
+      </ItemNavLink>
     );
   };
 
@@ -504,16 +486,15 @@ export class Menu extends React.PureComponent<Props> {
       return null;
     }
     return (
-      <li key="background_tasks">
-        <NavLink
-          to={{
-            pathname: '/project/background_tasks',
-            search: new URLSearchParams(query).toString(),
-          }}
-        >
-          {translate('background_tasks.page')}
-        </NavLink>
-      </li>
+      <ItemNavLink
+        key="background_tasks"
+        to={{
+          pathname: '/project/background_tasks',
+          search: new URLSearchParams(query).toString(),
+        }}
+      >
+        {translate('background_tasks.page')}
+      </ItemNavLink>
     );
   };
 
@@ -522,11 +503,12 @@ export class Menu extends React.PureComponent<Props> {
       return null;
     }
     return (
-      <li key="update_key">
-        <NavLink to={{ pathname: '/project/key', search: new URLSearchParams(query).toString() }}>
-          {translate('update_key.page')}
-        </NavLink>
-      </li>
+      <ItemNavLink
+        key="update_key"
+        to={{ pathname: '/project/key', search: new URLSearchParams(query).toString() }}
+      >
+        {translate('update_key.page')}
+      </ItemNavLink>
     );
   };
 
@@ -535,13 +517,12 @@ export class Menu extends React.PureComponent<Props> {
       return null;
     }
     return (
-      <li key="webhooks">
-        <NavLink
-          to={{ pathname: '/project/webhooks', search: new URLSearchParams(query).toString() }}
-        >
-          {translate('webhooks.page')}
-        </NavLink>
-      </li>
+      <ItemNavLink
+        key="webhooks"
+        to={{ pathname: '/project/webhooks', search: new URLSearchParams(query).toString() }}
+      >
+        {translate('webhooks.page')}
+      </ItemNavLink>
     );
   };
 
@@ -563,13 +544,12 @@ export class Menu extends React.PureComponent<Props> {
     }
 
     return (
-      <li key="project_delete">
-        <NavLink
-          to={{ pathname: '/project/deletion', search: new URLSearchParams(query).toString() }}
-        >
-          {translate('deletion.page')}
-        </NavLink>
-      </li>
+      <ItemNavLink
+        key="project_delete"
+        to={{ pathname: '/project/deletion', search: new URLSearchParams(query).toString() }}
+      >
+        {translate('deletion.page')}
+      </ItemNavLink>
     );
   };
 
@@ -577,9 +557,9 @@ export class Menu extends React.PureComponent<Props> {
     const pathname = isAdmin ? `/project/admin/extension/${key}` : `/project/extension/${key}`;
     const query = { ...baseQuery, qualifier: this.props.component.qualifier };
     return (
-      <li key={key}>
-        <NavLink to={{ pathname, search: new URLSearchParams(query).toString() }}>{name}</NavLink>
-      </li>
+      <ItemNavLink key={key} to={{ pathname, search: new URLSearchParams(query).toString() }}>
+        {name}
+      </ItemNavLink>
     );
   };
 
@@ -592,7 +572,7 @@ export class Menu extends React.PureComponent<Props> {
 
   renderExtensions = () => {
     const query = this.getQuery();
-    const extensions = this.props.component.extensions || [];
+    const extensions = this.props.component.extensions ?? [];
     let withoutSecurityExtension = extensions.filter(
       (extension) =>
         !extension.key.startsWith('securityreport/') && !extension.key.startsWith('governance/')
@@ -609,24 +589,20 @@ export class Menu extends React.PureComponent<Props> {
     return (
       <Dropdown
         data-test="extensions"
-        overlay={
-          <ul className="menu">
-            {withoutSecurityExtension.map((e) => this.renderExtension(e, false, query))}
-          </ul>
-        }
-        tagName="li"
+        id="component-navigation-more"
+        size="auto"
+        overlay={withoutSecurityExtension.map((e) => this.renderExtension(e, false, query))}
       >
-        {({ onToggleClick, open }) => (
-          <ButtonLink
-            aria-expanded={open}
-            aria-haspopup="menu"
-            className={classNames('dropdown-toggle', { active: open })}
-            id="component-navigation-more"
+        {({ onToggleClick, open, a11yAttrs }) => (
+          <NavBarTabLink
+            active={open}
             onClick={onToggleClick}
-          >
-            {translate('more')}
-            <DropdownIcon className="little-spacer-left" />
-          </ButtonLink>
+            preventDefault={true}
+            text={translate('more')}
+            withChevron={true}
+            to={{}}
+            {...a11yAttrs}
+          />
         )}
       </Dropdown>
     );
@@ -634,8 +610,8 @@ export class Menu extends React.PureComponent<Props> {
 
   render() {
     return (
-      <div className="display-flex-center display-flex-space-between">
-        <NavBarTabs className="it__navbar-tabs">
+      <div className="sw-flex sw-justify-between sw-pt-3 it__navbar-tabs">
+        <NavBarTabs>
           {this.renderDashboardLink()}
           {this.renderBreakdownLink()}
           {this.renderIssuesLink()}
@@ -646,10 +622,10 @@ export class Menu extends React.PureComponent<Props> {
           {this.renderActivityLink()}
           {this.renderExtensions()}
         </NavBarTabs>
-        <SQNavBarTabs>
+        <NavBarTabs>
           {this.renderAdministration()}
           {this.renderProjectInformationButton()}
-        </SQNavBarTabs>
+        </NavBarTabs>
       </div>
     );
   }

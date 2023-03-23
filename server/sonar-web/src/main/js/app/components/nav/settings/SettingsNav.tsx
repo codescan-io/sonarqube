@@ -103,7 +103,7 @@ export class SettingsNav extends React.PureComponent<Props> {
     return (
       <Dropdown
         overlay={
-          <ul className="menu">
+          <ul className="menu dropdown-menu">
             <li>
               <NavLink end={true} to={canAdmin ? "/admin/settings" : "/admin/settings?category=codescan"}>
                 {translate('settings.page')}
@@ -152,7 +152,7 @@ export class SettingsNav extends React.PureComponent<Props> {
     return (
       <Dropdown
         overlay={
-          <ul className="menu">
+          <ul className="menu dropdown-menu">
             <li>
               <NavLink end={true} to="/admin/background_tasks">
                 {translate('background_tasks.page')}
@@ -183,7 +183,7 @@ export class SettingsNav extends React.PureComponent<Props> {
     return (
       <Dropdown
         overlay={
-          <ul className="menu">
+          <ul className="menu dropdown-menu">
             <li>
               <NavLink end={true} to="/admin/users">
                 {translate('users.page')}

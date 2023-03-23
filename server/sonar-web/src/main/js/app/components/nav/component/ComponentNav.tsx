@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { TopBar } from 'design-system';
+import { LAYOUT_GLOBAL_NAV_HEIGHT, LAYOUT_PROJECT_NAV_HEIGHT, TopBar } from 'design-system';
 import * as React from 'react';
 import { translate } from '../../../../helpers/l10n';
 import {
@@ -28,7 +28,6 @@ import { BranchLike } from '../../../../types/branch-like';
 import { ComponentQualifier } from '../../../../types/component';
 import { Task, TaskWarning } from '../../../../types/tasks';
 import { Component, Organization } from '../../../../types/types';
-import { rawSizes } from '../../../theme';
 import RecentHistory from '../../RecentHistory';
 import ComponentNavProjectBindingErrorNotif from './ComponentNavProjectBindingErrorNotif';
 import Header from './Header';
@@ -54,9 +53,6 @@ export interface ComponentNavProps {
   comparisonBranchesEnabled: boolean;
 }
 
-const ALERT_HEIGHT = 30;
-const BRANCHLIKE_TOGGLE_ADDED_HEIGHT = 6;
-
 export default function ComponentNav(props: ComponentNavProps) {
   const {
     branchLikes,
@@ -72,7 +68,6 @@ export default function ComponentNav(props: ComponentNavProps) {
     organization,
     comparisonBranchesEnabled,
   } = props;
-  const { contextNavHeightRaw, globalNavHeightRaw } = rawSizes;
 
   const [displayProjectInfo, setDisplayProjectInfo] = React.useState(false);
 
@@ -91,69 +86,61 @@ export default function ComponentNav(props: ComponentNavProps) {
     }
   }, [component, component.key]);
 
-  let contextNavHeight = contextNavHeightRaw;
-
   let prDecoNotifComponent;
   if (projectBindingErrors !== undefined) {
     prDecoNotifComponent = <ComponentNavProjectBindingErrorNotif component={component} />;
-    contextNavHeight += ALERT_HEIGHT;
-  }
-
-  if (branchLikes.length) {
-    contextNavHeight += BRANCHLIKE_TOGGLE_ADDED_HEIGHT;
   }
 
   return (
-    <TopBar
-      id="context-navigation"
-      aria-label={translate('qualifier', component.qualifier)}
-    >
-      <div className="sw-flex sw-justify-between">
-        <Header
+    <>
+      <TopBar id="context-navigation" aria-label={translate('qualifier', component.qualifier)}>
+        <div className="sw-flex sw-justify-between">
+          <Header
+            branchLikes={branchLikes}
+            component={component}
+            currentBranchLike={currentBranchLike}
+            projectBinding={projectBinding}
+            organization={organization}
+            comparisonBranchesEnabled={comparisonBranchesEnabled}
+          />
+          <HeaderMeta
+            branchLike={currentBranchLike}
+            component={component}
+            currentTask={currentTask}
+            currentTaskOnSameBranch={currentTaskOnSameBranch}
+            isInProgress={isInProgress}
+            isPending={isPending}
+            onWarningDismiss={props.onWarningDismiss}
+            warnings={warnings}
+          />
+        </div>
+        <Menu
+          branchLike={currentBranchLike}
           branchLikes={branchLikes}
           component={component}
-          currentBranchLike={currentBranchLike}
-          projectBinding={projectBinding}
-          organization={organization}
-          comparisonBranchesEnabled={comparisonBranchesEnabled}
-        />
-        <HeaderMeta
-          branchLike={currentBranchLike}
-          component={component}
-          currentTask={currentTask}
-          currentTaskOnSameBranch={currentTaskOnSameBranch}
           isInProgress={isInProgress}
           isPending={isPending}
-          onWarningDismiss={props.onWarningDismiss}
-          warnings={warnings}
+          onToggleProjectInfo={() => {
+            setDisplayProjectInfo(!displayProjectInfo);
+          }}
+          projectInfoDisplayed={displayProjectInfo}
+          comparisonBranchesEnabled={comparisonBranchesEnabled}
         />
-      </div>
-      <Menu
-        branchLike={currentBranchLike}
-        branchLikes={branchLikes}
-        component={component}
-        isInProgress={isInProgress}
-        isPending={isPending}
-        onToggleProjectInfo={() => {
-          setDisplayProjectInfo(!displayProjectInfo);
-        }}
-        projectInfoDisplayed={displayProjectInfo}
-        comparisonBranchesEnabled={comparisonBranchesEnabled}
-      />
-      <InfoDrawer
-        displayed={displayProjectInfo}
-        onClose={() => {
-          setDisplayProjectInfo(false);
-        }}
-        top={globalNavHeightRaw + contextNavHeight}
-      >
-        <ProjectInformation
-          branchLike={currentBranchLike}
-          component={component}
-          onComponentChange={props.onComponentChange}
-        />
-      </InfoDrawer>
+        <InfoDrawer
+          displayed={displayProjectInfo}
+          onClose={() => {
+            setDisplayProjectInfo(false);
+          }}
+          top={LAYOUT_GLOBAL_NAV_HEIGHT + LAYOUT_PROJECT_NAV_HEIGHT}
+        >
+          <ProjectInformation
+            branchLike={currentBranchLike}
+            component={component}
+            onComponentChange={props.onComponentChange}
+          />
+        </InfoDrawer>
+      </TopBar>
       {prDecoNotifComponent}
-    </TopBar>
+    </>
   );
 }
