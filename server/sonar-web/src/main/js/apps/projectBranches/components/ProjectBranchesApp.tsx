@@ -18,6 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
+import { Helmet } from 'react-helmet-async';
 import withComponentContext from '../../../app/components/componentContext/withComponentContext';
 import { translate } from '../../../helpers/l10n';
 import { BranchLike } from '../../../types/branch-like';
@@ -35,16 +36,15 @@ export interface ProjectBranchesAppProps {
 export function ProjectBranchesApp(props: ProjectBranchesAppProps) {
   const { branchLikes, component } = props;
 
+  const title = props.comparisonBranchesEnabled
+    ? translate('project_branches.page')
+    : translate('project_branch_pull_request.page');
+
   return (
     <div className="page page-limited" id="project-branch-like">
       <header className="page-header">
-        <h1>
-          {
-            props.comparisonBranchesEnabled
-                ? translate('project_branches.page')
-                : translate('project_branch_pull_request.page')
-          }
-        </h1>
+        <Helmet defer={false} title={title} />
+        <h1>{title}</h1>
         <LifetimeInformation comparisonBranchesEnabled={props.comparisonBranchesEnabled}/>
       </header>
 

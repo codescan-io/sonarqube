@@ -19,6 +19,7 @@
  */
 import { differenceBy } from 'lodash';
 import * as React from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Outlet } from 'react-router-dom';
 import { getBranches, getPullRequests } from '../../api/branches';
 import { getAnalysisStatus, getTasksForComponent } from '../../api/ce';
@@ -31,6 +32,7 @@ import {
   isMainBranch,
   isPullRequest,
 } from '../../helpers/branch-like';
+import { translateWithParameters } from '../../helpers/l10n';
 import { HttpStatus } from '../../helpers/request';
 import { getPortfolioUrl } from '../../helpers/urls';
 import {
@@ -424,6 +426,13 @@ export class ComponentContainer extends React.PureComponent<Props, State> {
 
     return (
       <div>
+        <Helmet
+          defer={false}
+          titleTemplate={translateWithParameters(
+            'page_title.template.with_instance',
+            component?.name ?? ''
+          )}
+        />
         {component && organization &&
           !([ComponentQualifier.File, ComponentQualifier.TestFile] as string[]).includes(
             component.qualifier
