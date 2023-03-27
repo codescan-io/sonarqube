@@ -24,6 +24,7 @@ import javax.annotation.Nullable;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang.StringUtils;
+import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,11 +33,14 @@ public class UserQuery {
   private final String searchText;
   private final Boolean isActive;
   private final List<String> organizationUuids;
+  private final List<String> excludedOrganizationUuids;
 
-  public UserQuery(@Nullable String searchText, @Nullable Boolean isActive, @Nullable List<String> organizationUuids) {
+  public UserQuery(@Nullable String searchText, @Nullable Boolean isActive,
+      @Nullable List<String> organizationUuids, @Nullable List<String> excludedOrganizationUuids) {
     this.searchText = searchTextToSearchTextSql(searchText);
     this.isActive = isActive;
-    this.organizationUuids = organizationUuids != null ? ImmutableList.copyOf(organizationUuids) : null;
+    this.organizationUuids = !CollectionUtils.isEmpty(organizationUuids) ? ImmutableList.copyOf(organizationUuids) : null;
+    this.excludedOrganizationUuids = !CollectionUtils.isEmpty(excludedOrganizationUuids) ? ImmutableList.copyOf(excludedOrganizationUuids) : null;
   }
 
   private static String searchTextToSearchTextSql(@Nullable String text) {
@@ -60,8 +64,13 @@ public class UserQuery {
   }
 
   @CheckForNull
-  private List<String> organizationUuids() {
+  private List<String> getOrganizationUuids() {
     return organizationUuids;
+  }
+
+  @CheckForNull
+  private List<String> getExcludedOrganizationUuids() {
+    return excludedOrganizationUuids;
   }
 
   public static UserQueryBuilder builder() {
@@ -72,6 +81,7 @@ public class UserQuery {
     private String searchText;
     private Boolean isActive;
     private final List<String> organizationUuids = new ArrayList<>();
+    private final List<String> excludedOrganizationUuids = new ArrayList<>();
 
     private UserQueryBuilder() {
     }
@@ -94,8 +104,16 @@ public class UserQuery {
       return this;
     }
 
+    /**
+     * Exclude only users that are members of at least one of the OrganizationUuids
+     */
+    public UserQueryBuilder addExcludedOrganizationUuids(String organizationUuid) {
+      this.excludedOrganizationUuids.add(organizationUuid);
+      return this;
+    }
+
     public UserQuery build() {
-      return new UserQuery(searchText, isActive, organizationUuids);
+      return new UserQuery(searchText, isActive, organizationUuids, excludedOrganizationUuids);
     }
   }
 }

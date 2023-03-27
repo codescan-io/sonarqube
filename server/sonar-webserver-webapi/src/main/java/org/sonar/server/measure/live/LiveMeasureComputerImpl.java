@@ -99,8 +99,8 @@ public class LiveMeasureComputerImpl implements LiveMeasureComputer {
     }
 
     BranchDto branch = loadBranch(dbSession, branchComponent);
-    Configuration config = projectConfigurationLoader.loadProjectConfiguration(dbSession, branch);
     ProjectDto project = loadProject(dbSession, branch.getProjectUuid());
+    Configuration config = projectConfigurationLoader.loadBranchConfiguration(dbSession, branch);
     QualityGate qualityGate = qGateComputer.loadQualityGate(dbSession, organization, project, branch);
     MeasureMatrix matrix = loadMeasureMatrix(dbSession, components.getAllUuids(), qualityGate);
 

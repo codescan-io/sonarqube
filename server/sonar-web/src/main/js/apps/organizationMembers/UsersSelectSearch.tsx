@@ -19,7 +19,7 @@
  */
 import * as React from 'react';
 import { translate, translateWithParameters } from "../../helpers/l10n";
-import { BasicSelectOption, SearchSelect } from "../../components/controls/Select";
+import { BasicSelectOption, LabelValueSelectOption, SearchSelect } from "../../components/controls/Select";
 import Avatar from "../../components/ui/Avatar";
 import { components, OptionProps, SingleValueProps } from 'react-select';
 import { isUserActive, UserActive } from "../../types/users";
@@ -28,7 +28,7 @@ import { Organization } from "../../types/types";
 
 export const MIN_QUERY_LENGTH = 2;
 
-interface UserOption extends BasicSelectOption {
+interface UserOption extends LabelValueSelectOption {
   login: string;
   name: string;
   avatar?: string;

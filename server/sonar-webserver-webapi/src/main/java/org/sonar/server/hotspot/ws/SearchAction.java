@@ -38,7 +38,6 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.SearchHit;
 import org.jetbrains.annotations.NotNull;
 import org.sonar.api.resources.Qualifiers;
-import org.sonar.api.resources.Scopes;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rules.RuleType;
 import org.sonar.api.server.ws.Change;
@@ -60,6 +59,7 @@ import org.sonar.db.rule.RuleDto;
 import org.sonar.db.user.TokenType;
 import org.sonar.db.user.UserTokenDto;
 import org.sonar.server.component.ComponentFinder;
+import org.sonar.server.component.ComponentFinder.ProjectAndBranch;
 import org.sonar.server.es.SearchOptions;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.issue.TextRangeResponseFormatter;
@@ -75,7 +75,6 @@ import org.sonarqube.ws.Common;
 import org.sonarqube.ws.Hotspots;
 import org.sonarqube.ws.Hotspots.SearchWsResponse;
 
-import static com.google.common.base.MoreObjects.firstNonNull;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.lang.String.format;
@@ -184,7 +183,7 @@ public class SearchAction implements HotspotsWsAction {
     validateParameters(wsRequest);
     try (DbSession dbSession = dbClient.openSession(false)) {
       checkIfNeedIssueSync(dbSession, wsRequest);
-      Optional<ComponentDto> project = getAndValidateProjectOrApplication(dbSession, wsRequest);
+      Optional<ProjectAndBranch> project = getAndValidateProjectOrApplication(dbSession, wsRequest);
       SearchResponseData searchResponseData = searchHotspots(wsRequest, dbSession, project.orElse(null));
       loadComponents(dbSession, searchResponseData);
       loadRules(dbSession, searchResponseData);
@@ -345,25 +344,23 @@ public class SearchAction implements HotspotsWsAction {
     action.setResponseExample(getClass().getResource("search-example.json"));
   }
 
-  private Optional<ComponentDto> getAndValidateProjectOrApplication(DbSession dbSession, WsRequest wsRequest) {
+  private Optional<ProjectAndBranch> getAndValidateProjectOrApplication(DbSession dbSession, WsRequest wsRequest) {
     return wsRequest.getProjectKey().map(projectKey -> {
-      ComponentDto project = getProject(dbSession, projectKey, wsRequest.getBranch().orElse(null), wsRequest.getPullRequest().orElse(null));
-      if (!Scopes.PROJECT.equals(project.scope()) || !SUPPORTED_QUALIFIERS.contains(project.qualifier()) || !project.isEnabled()) {
+      ProjectAndBranch appOrProjectAndBranch = componentFinder.getAppOrProjectAndBranch(dbSession, projectKey, wsRequest.getBranch().orElse(null),
+        wsRequest.getPullRequest().orElse(null));
+
+      if (!SUPPORTED_QUALIFIERS.contains(appOrProjectAndBranch.getProject().getQualifier())) {
         throw new NotFoundException(format("Project '%s' not found", projectKey));
       }
       String userProjectRole = getUserRoleForProject();
-      userSession.checkComponentPermission(userProjectRole, project);
-      userSession.checkChildProjectsPermission(userProjectRole, project);
-      return project;
+      userSession.checkProjectPermission(userProjectRole, appOrProjectAndBranch.getProject());
+      userSession.checkChildProjectsPermission(userProjectRole, appOrProjectAndBranch.getProject());
+      return appOrProjectAndBranch;
     });
   }
 
-  private ComponentDto getProject(DbSession dbSession, String projectKey, @Nullable String branch, @Nullable String pullRequest) {
-    return componentFinder.getByKeyAndOptionalBranchOrPullRequest(dbSession, projectKey, branch, pullRequest);
-  }
-
-  private SearchResponseData searchHotspots(WsRequest wsRequest, DbSession dbSession, @Nullable ComponentDto project) {
-    SearchResponse result = doIndexSearch(wsRequest, dbSession, project);
+  private SearchResponseData searchHotspots(WsRequest wsRequest, DbSession dbSession, @Nullable ProjectAndBranch projectorApp) {
+    SearchResponse result = doIndexSearch(wsRequest, dbSession, projectorApp);
     List<String> issueKeys = Arrays.stream(result.getHits().getHits())
       .map(SearchHit::getId)
       .collect(toList(result.getHits().getHits().length));
@@ -390,28 +387,29 @@ public class SearchAction implements HotspotsWsAction {
       .toList();
   }
 
-  private SearchResponse doIndexSearch(WsRequest wsRequest, DbSession dbSession, @Nullable ComponentDto project) {
+  private SearchResponse doIndexSearch(WsRequest wsRequest, DbSession dbSession, @Nullable ProjectAndBranch projectOrAppAndBranch) {
     var builder = IssueQuery.builder()
       .types(singleton(RuleType.SECURITY_HOTSPOT.name()))
       .sort(IssueQuery.SORT_HOTSPOTS)
       .asc(true)
       .statuses(wsRequest.getStatus().map(Collections::singletonList).orElse(STATUSES));
 
-    if (project != null) {
-      String projectUuid = firstNonNull(project.getMainBranchProjectUuid(), project.uuid());
-      if (Qualifiers.APP.equals(project.qualifier())) {
-        builder.viewUuids(singletonList(projectUuid));
+    if (projectOrAppAndBranch != null) {
+      ProjectDto projectOrApp = projectOrAppAndBranch.getProject();
+
+      if (Qualifiers.APP.equals(projectOrApp.getQualifier())) {
+        builder.viewUuids(singletonList(projectOrApp.getUuid()));
         if (wsRequest.isInNewCodePeriod() && wsRequest.getPullRequest().isEmpty()) {
-          addInNewCodePeriodFilterByProjects(builder, dbSession, project);
+          addInNewCodePeriodFilterByProjects(builder, dbSession, projectOrAppAndBranch.getBranch());
         }
       } else {
-        builder.projectUuids(singletonList(projectUuid));
+        builder.projectUuids(singletonList(projectOrApp.getUuid()));
         if (wsRequest.isInNewCodePeriod() && wsRequest.getPullRequest().isEmpty()) {
-          addInNewCodePeriodFilter(dbSession, project, builder);
+          addInNewCodePeriodFilter(dbSession, projectOrApp, builder);
         }
       }
 
-      addMainBranchFilter(project, builder);
+      addMainBranchFilter(projectOrAppAndBranch.getBranch(), builder);
     }
 
     if (!wsRequest.getHotspotKeys().isEmpty()) {
@@ -477,17 +475,17 @@ public class SearchAction implements HotspotsWsAction {
     }
   }
 
-  private static void addMainBranchFilter(@NotNull ComponentDto project, IssueQuery.Builder builder) {
-    if (project.getMainBranchProjectUuid() == null) {
+  private static void addMainBranchFilter(@NotNull BranchDto branch, IssueQuery.Builder builder) {
+    if (branch.isMain()) {
       builder.mainBranch(true);
     } else {
-      builder.branchUuid(project.uuid());
+      builder.branchUuid(branch.getUuid());
       builder.mainBranch(false);
     }
   }
 
-  private void addInNewCodePeriodFilter(DbSession dbSession, @NotNull ComponentDto project, IssueQuery.Builder builder) {
-    Optional<SnapshotDto> snapshot = dbClient.snapshotDao().selectLastAnalysisByComponentUuid(dbSession, project.uuid());
+  private void addInNewCodePeriodFilter(DbSession dbSession, @NotNull ProjectDto project, IssueQuery.Builder builder) {
+    Optional<SnapshotDto> snapshot = dbClient.snapshotDao().selectLastAnalysisByComponentUuid(dbSession, project.getUuid());
 
     boolean isLastAnalysisUsingReferenceBranch = snapshot.map(SnapshotDto::getPeriodMode)
       .orElse("").equals(REFERENCE_BRANCH.name());
@@ -503,21 +501,23 @@ public class SearchAction implements HotspotsWsAction {
     }
   }
 
-  private void addInNewCodePeriodFilterByProjects(IssueQuery.Builder builder, DbSession dbSession, ComponentDto application) {
-    Set<String> projectUuids;
-    if (application.getMainBranchProjectUuid() == null) {
-      projectUuids = dbClient.applicationProjectsDao().selectProjects(dbSession, application.uuid()).stream()
+  private void addInNewCodePeriodFilterByProjects(IssueQuery.Builder builder, DbSession dbSession, BranchDto appBranch) {
+    Set<String> branchUuids;
+
+    if (appBranch.isMain()) {
+      // TODO assuming project uuid matches main branch uuid
+      branchUuids = dbClient.applicationProjectsDao().selectProjects(dbSession, appBranch.getProjectUuid()).stream()
         .map(ProjectDto::getUuid)
         .collect(Collectors.toSet());
     } else {
-      projectUuids = dbClient.applicationProjectsDao().selectProjectBranchesFromAppBranchUuid(dbSession, application.uuid()).stream()
+      branchUuids = dbClient.applicationProjectsDao().selectProjectBranchesFromAppBranchUuid(dbSession, appBranch.getUuid()).stream()
         .map(BranchDto::getUuid)
         .collect(Collectors.toSet());
     }
 
     long now = system2.now();
 
-    List<SnapshotDto> snapshots = dbClient.snapshotDao().selectLastAnalysesByRootComponentUuids(dbSession, projectUuids);
+    List<SnapshotDto> snapshots = dbClient.snapshotDao().selectLastAnalysesByRootComponentUuids(dbSession, branchUuids);
 
     Set<String> newCodeReferenceByProjects = snapshots
       .stream()

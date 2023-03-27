@@ -19,17 +19,6 @@
  */
 package org.sonar.server.organization.ws;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.Sets.difference;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toSet;
-import static org.sonar.api.CoreProperties.DEFAULT_ISSUE_ASSIGNEE;
-import static org.sonar.core.util.stream.MoreCollectors.toList;
-import static org.sonar.db.permission.OrganizationPermission.ADMINISTER;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
@@ -39,20 +28,29 @@ import org.sonar.db.user.UserDto;
 import org.sonar.db.user.UserGroupDto;
 import org.sonar.server.organization.BillingValidations;
 import org.sonar.server.organization.BillingValidationsProxy;
-import org.sonar.server.user.index.UserIndexer;
 import org.sonar.server.usergroups.DefaultGroupFinder;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.Sets.difference;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toSet;
+import static org.sonar.api.CoreProperties.DEFAULT_ISSUE_ASSIGNEE;
+import static org.sonar.core.util.stream.MoreCollectors.toList;
+import static org.sonar.db.permission.OrganizationPermission.ADMINISTER;
 
 public class MemberUpdater {
 
   private final DbClient dbClient;
   private final DefaultGroupFinder defaultGroupFinder;
-  private final UserIndexer userIndexer;
   private final BillingValidationsProxy billingValidations;
 
-  public MemberUpdater(DbClient dbClient, DefaultGroupFinder defaultGroupFinder, UserIndexer userIndexer, BillingValidationsProxy billingValidations) {
+  public MemberUpdater(DbClient dbClient, DefaultGroupFinder defaultGroupFinder, BillingValidationsProxy billingValidations) {
     this.dbClient = dbClient;
     this.defaultGroupFinder = defaultGroupFinder;
-    this.userIndexer = userIndexer;
     this.billingValidations = billingValidations;
   }
 
@@ -71,7 +69,6 @@ public class MemberUpdater {
       return;
     }
     usersToAdd.forEach(u -> addMemberInDb(dbSession, organization, u));
-    userIndexer.commitAndIndex(dbSession, usersToAdd);
   }
 
   private boolean canAddMember(OrganizationDto organization, UserDto user) {
@@ -114,7 +111,6 @@ public class MemberUpdater {
     checkArgument(!difference(adminUuids, userUuidsToRemove).isEmpty(), "The last administrator member cannot be removed");
 
     usersToRemove.forEach(u -> removeMemberInDb(dbSession, organization, u));
-    userIndexer.commitAndIndex(dbSession, usersToRemove);
   }
 
   private void removeMemberInDb(DbSession dbSession, OrganizationDto organization, UserDto user) {

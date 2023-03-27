@@ -104,7 +104,7 @@ public class CodeScanBranchSupportDelegate implements BranchSupportDelegate {
                 .setUuidPath(ComponentDto.UUID_PATH_OF_ROOT)
                 .setMainBranchProjectUuid(mainComponentDto.uuid())
                 .setCreatedAt(new Date(clock.millis()));
-        dbClient.componentDao().insert(dbSession, componentDto);
+        dbClient.componentDao().insert(dbSession, componentDto, false);
 
         BranchDto branchDto = new BranchDto()
                 .setProjectUuid(mainComponentDto.uuid())
@@ -114,7 +114,7 @@ public class CodeScanBranchSupportDelegate implements BranchSupportDelegate {
                 .setKey(pullRequestKey));
         componentKey.getBranchName().ifPresent(branchName -> branchDto.setBranchType(BranchType.BRANCH)
                 .setExcludeFromPurge(isBranchExcludedFromPurge(
-                        projectConfigurationLoader.loadProjectConfiguration(dbSession, mainComponentDto), branchName))
+                        projectConfigurationLoader.loadProjectConfiguration(dbSession, mainComponentDto.uuid()), branchName))
                 .setKey(branchName));
         dbClient.branchDao().insert(dbSession, branchDto);
 

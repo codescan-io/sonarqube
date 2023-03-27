@@ -34,7 +34,6 @@ import org.sonar.api.server.ws.WebService;
 import org.sonar.api.utils.Paging;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
-import org.sonar.db.organization.OrganizationMemberDao;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.user.UserDto;
 import org.sonar.db.user.UserQuery;
@@ -72,15 +71,13 @@ public class SearchAction implements UsersWsAction {
   private final DbClient dbClient;
   private final AvatarResolver avatarResolver;
   private final ManagedInstanceService managedInstanceService;
-  private final OrganizationMemberDao organizationMemberDao;
 
   public SearchAction(UserSession userSession, DbClient dbClient, AvatarResolver avatarResolver,
-    ManagedInstanceService managedInstanceService, OrganizationMemberDao organizationMemberDao) {
+    ManagedInstanceService managedInstanceService) {
     this.userSession = userSession;
     this.dbClient = dbClient;
     this.avatarResolver = avatarResolver;
     this.managedInstanceService = managedInstanceService;
-    this.organizationMemberDao = organizationMemberDao;
   }
 
   @Override
@@ -130,7 +127,7 @@ public class SearchAction implements UsersWsAction {
       boolean isSystemAdmin = userSession.checkLoggedIn().isSystemAdministrator();
       boolean showEmailAndLastConnectionInfo = false;
       if (!isSystemAdmin) {
-        Set<String> userOrganizations = organizationMemberDao.selectOrganizationUuidsByUser(dbSession, userSession.getUuid());
+        var userOrganizations = dbClient.organizationMemberDao().selectOrganizationUuidsByUser(dbSession, userSession.getUuid());
         var orgsWithUserAsAdmin = userOrganizations.stream()
             .filter(o -> userSession.hasPermission(OrganizationPermission.ADMINISTER, o))
             .toList();

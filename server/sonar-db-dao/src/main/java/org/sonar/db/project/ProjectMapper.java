@@ -61,6 +61,9 @@ public interface ProjectMapper {
 
   List<ProjectDto> selectApplicationsByKeys(@Param("kees") Collection<String> kees);
 
+  @CheckForNull
+  ProjectDto selectByBranchUuid(String branchUuid);
+
   List<String> selectAllProjectUuids();
 
   Set<String> selectProjectUuidsAssociatedToDefaultQualityProfileByLanguage(

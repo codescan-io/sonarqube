@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.resources.Qualifiers;
@@ -43,6 +42,7 @@ import org.sonar.api.web.UserRole;
 import org.sonar.api.web.page.Page;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
+import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.component.SnapshotDto;
 import org.sonar.db.measure.LiveMeasureDto;
@@ -150,9 +150,10 @@ public class ComponentAction implements NavigationWsAction {
       String pullRequest = request.param(PARAM_PULL_REQUEST);
       ComponentDto component = componentFinder.getByKeyAndOptionalBranchOrPullRequest(session, componentKey, branch, pullRequest);
       checkComponentNotAModuleAndNotADirectory(component);
-      ComponentDto rootProjectOrBranch = getRootProjectOrBranch(component, session);
-      ComponentDto rootProject = rootProjectOrBranch.getMainBranchProjectUuid() == null ? rootProjectOrBranch
-        : componentFinder.getByUuidFromMainBranch(session, rootProjectOrBranch.getMainBranchProjectUuid());
+      ComponentDto rootComponent = getRootProjectOrBranch(component, session);
+      // will be empty for portfolios
+      Optional<BranchDto> branchDto = dbClient.branchDao().selectByUuid(session, rootComponent.branchUuid());
+      String projectOrPortfolioUuid = branchDto.map(BranchDto::getProjectUuid).orElse(rootComponent.branchUuid());
       if (!userSession.hasComponentPermission(USER, component) &&
         !userSession.hasComponentPermission(ADMIN, component) &&
         !userSession.isSystemAdministrator()) {
@@ -163,11 +164,10 @@ public class ComponentAction implements NavigationWsAction {
 
       try (JsonWriter json = response.newJsonWriter()) {
         json.beginObject();
-        boolean isFavourite = isFavourite(session, rootProject, component);
-        String branchKey = getBranchKey(session, component);
-        writeComponent(json, component, org, analysis.orElse(null), isFavourite, branchKey);
+        boolean isFavourite = isFavourite(session, projectOrPortfolioUuid, component);
+        writeComponent(json, component, org, analysis.orElse(null), isFavourite, branchDto.map(BranchDto::getBranchKey).orElse(null));
         writeProfiles(json, session, component);
-        writeQualityGate(json, session, org, rootProject);
+        writeQualityGate(json, session, org, projectOrPortfolioUuid);
         if (userSession.hasComponentPermission(ADMIN, component) ||
           userSession.hasPermission(ADMINISTER_QUALITY_PROFILES, org) ||
           userSession.hasPermission(ADMINISTER_QUALITY_GATES, org)) {
@@ -177,14 +177,6 @@ public class ComponentAction implements NavigationWsAction {
         json.endObject().close();
       }
     }
-  }
-
-  @CheckForNull
-  private String getBranchKey(DbSession session, ComponentDto component) {
-    // TODO portfolios may have no branch, so we shouldn't faul?
-    return dbClient.branchDao().selectByUuid(session, component.branchUuid())
-      .map(b -> b.isMain() ? null : b.getBranchKey())
-      .orElse(null);
   }
 
   private static void checkComponentNotAModuleAndNotADirectory(ComponentDto component) {
@@ -242,11 +234,11 @@ public class ComponentAction implements NavigationWsAction {
     }
   }
 
-  private boolean isFavourite(DbSession session, ComponentDto rootComponent, ComponentDto component) {
+  private boolean isFavourite(DbSession session, String projectOrPortfolioUuid, ComponentDto component) {
     PropertyQuery propertyQuery = PropertyQuery.builder()
       .setUserUuid(userSession.getUuid())
       .setKey("favourite")
-      .setComponentUuid(isSubview(component) ? component.uuid() : rootComponent.uuid())
+      .setComponentUuid(isSubview(component) ? component.uuid() : projectOrPortfolioUuid)
       .build();
     List<PropertyDto> componentFavourites = dbClient.propertiesDao().selectByQuery(propertyQuery, session);
     return componentFavourites.size() == 1;
@@ -269,8 +261,8 @@ public class ComponentAction implements NavigationWsAction {
     json.endArray();
   }
 
-  private void writeQualityGate(JsonWriter json, DbSession session, OrganizationDto organization, ComponentDto component) {
-    var qualityGateData = qualityGateFinder.getEffectiveQualityGate(session, organization, component.uuid());
+  private void writeQualityGate(JsonWriter json, DbSession session, OrganizationDto organization, String projectOrPortfolioUuid) {
+    var qualityGateData = qualityGateFinder.getEffectiveQualityGate(session, organization, projectOrPortfolioUuid);
     json.name("qualityGate").beginObject()
       .prop("key", qualityGateData.getUuid())
       .prop("name", qualityGateData.getName())

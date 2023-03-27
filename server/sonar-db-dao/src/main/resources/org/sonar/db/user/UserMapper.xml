@@ -135,12 +135,6 @@
                     u.created_at,
                     u.updated_at
             FROM users u
-            <if test="query.organizationUuids != null">
-                INNER JOIN organization_members om ON u.uuid = om.user_uuid AND om.organization_uuid IN
-                <foreach collection="query.organizationUuids" open="(" close=")" item="orgUuid" separator=",">
-                    #{orgUuid,jdbcType=VARCHAR}
-                </foreach>
-            </if>
             <include refid="searchByQueryWhereClause"/>
             ORDER BY u.login
             offset #{pagination.offset} rows
@@ -196,19 +190,33 @@
     </sql>
 
     <sql id="searchByQueryWhereClause">
-             <where>
-            <if test="query.isActive != null">
-                u.active=#{query.isActive, jdbcType=BOOLEAN}
-            </if>
-            <if test="query.searchText != null">
-                AND (
-                    (lower(u.login) LIKE lower(#{query.searchText, jdbcType=VARCHAR}) ESCAPE '/')
-                    OR (lower(u.name) LIKE lower(#{query.searchText, jdbcType=VARCHAR}) ESCAPE '/')
-                    OR (lower(u.email) LIKE lower(#{query.searchText, jdbcType=VARCHAR}) ESCAPE '/')
-                )
-            </if>
-        </where>
-
+      <if test="query.organizationUuids != null">
+        INNER JOIN organization_members om ON u.uuid = om.user_uuid AND om.organization_uuid IN
+        <foreach collection="query.organizationUuids" open="(" close=")" item="orgUuid" separator=",">
+          #{orgUuid,jdbcType=VARCHAR}
+        </foreach>
+      </if>
+      <if test="query.excludedOrganizationUuids != null">
+        LEFT JOIN organization_members eom ON u.uuid = eom.user_uuid AND eom.organization_uuid IN
+        <foreach collection="query.excludedOrganizationUuids" open="(" close=")" item="orgUuid" separator=",">
+          #{orgUuid,jdbcType=VARCHAR}
+        </foreach>
+      </if>
+      <where>
+        <if test="query.isActive != null">
+          u.active=#{query.isActive, jdbcType=BOOLEAN}
+        </if>
+        <if test="query.searchText != null">
+          AND (
+              (lower(u.login) LIKE lower(#{query.searchText, jdbcType=VARCHAR}) ESCAPE '/')
+              OR (lower(u.name) LIKE lower(#{query.searchText, jdbcType=VARCHAR}) ESCAPE '/')
+              OR (lower(u.email) LIKE lower(#{query.searchText, jdbcType=VARCHAR}) ESCAPE '/')
+          )
+        </if>
+        <if test="query.excludedOrganizationUuids != null">
+          AND eom.user_uuid IS NULL
+        </if>
+      </where>
     </sql>
 
     <select id="selectUsersForTelemetry" parameterType="map" resultType="UserTelemetry">
