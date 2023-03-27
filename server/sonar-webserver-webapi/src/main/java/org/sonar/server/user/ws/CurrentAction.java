@@ -132,7 +132,7 @@ public class CurrentAction implements UsersWsAction {
       .setLocal(user.isLocal())
       .addAllGroups(groups)
       .addAllOrgGroups(toWsOrganizationGroups(orgGroups))
-      .addAllScmAccounts(user.getScmAccountsAsList())
+      .addAllScmAccounts(user.getSortedScmAccounts())
       .setPermissions(Permissions.newBuilder().addAllGlobal(getGlobalPermissions(dbSession)).build())
       .setHomepage(buildHomepage(dbSession, user))
       .setUsingSonarLintConnectedMode(user.getLastSonarlintConnectionDate() != null)

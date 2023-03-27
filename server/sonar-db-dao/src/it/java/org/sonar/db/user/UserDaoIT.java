@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -75,6 +76,17 @@ public class UserDaoIT {
     assertThat(underTest.selectByUuid(session, user1.getUuid())).isNotNull();
     assertThat(underTest.selectByUuid(session, user2.getUuid())).isNotNull();
     assertThat(underTest.selectByUuid(session, "unknown")).isNull();
+  }
+
+  @Test
+  public void selectByUuid_withScmAccount_retrievesScmAccounts() {
+    List<String> scmAccountsUser1 = List.of("account1_1", "account1_2");
+    UserDto user1 = db.users().insertUser(u -> u.setScmAccounts(scmAccountsUser1));
+    UserDto user2 = db.users().insertUser(u -> u.setScmAccounts(List.of("account2_1", "account2_2")));
+
+    UserDto userDto = underTest.selectByUuid(session, user1.getUuid());
+    assertThat(userDto).isNotNull();
+    assertThat(userDto.getSortedScmAccounts()).containsExactlyElementsOf(scmAccountsUser1);
   }
 
   @Test
@@ -281,8 +293,7 @@ public class UserDaoIT {
     assertThat(user.isResetPassword()).isFalse();
     assertThat(user.isLocal()).isTrue();
 
-    assertThat(user.getScmAccountsAsList()).isEmpty();
-    assertThat(user.getScmAccounts()).isNull();
+    assertThat(user.getSortedScmAccounts()).isEmpty();
     assertThat(user.getHashMethod()).isNull();
     assertThat(user.getLastConnectionDate()).isNull();
     assertThat(user.getHomepageType()).isNull();
@@ -297,7 +308,7 @@ public class UserDaoIT {
       .setLogin("john")
       .setName("John")
       .setEmail("jo@hn.com")
-      .setScmAccounts(",jo.hn,john2,")
+      .setScmAccounts(List.of("jo.hn", "john2", ""))
       .setActive(true)
       .setResetPassword(true)
       .setSalt("1234")
@@ -322,7 +333,7 @@ public class UserDaoIT {
     assertThat(user.getEmail()).isEqualTo("jo@hn.com");
     assertThat(user.isActive()).isTrue();
     assertThat(user.isResetPassword()).isTrue();
-    assertThat(user.getScmAccounts()).isEqualTo(",jo.hn,john2,");
+    assertThat(user.getSortedScmAccounts()).containsExactly("jo.hn", "john2");
     assertThat(user.getSalt()).isEqualTo("1234");
     assertThat(user.getCryptedPassword()).isEqualTo("abcd");
     assertThat(user.getHashMethod()).isEqualTo("SHA1");
@@ -360,7 +371,7 @@ public class UserDaoIT {
       .setLogin("johnDoo")
       .setName("John Doo")
       .setEmail("jodoo@hn.com")
-      .setScmAccounts(",jo.hn,john2,johndoo,")
+      .setScmAccounts(List.of("jo.hn", "john2", "johndoo", ""))
       .setActive(false)
       .setResetPassword(true)
       .setSalt("12345")
@@ -382,7 +393,7 @@ public class UserDaoIT {
     assertThat(reloaded.getEmail()).isEqualTo("jodoo@hn.com");
     assertThat(reloaded.isActive()).isFalse();
     assertThat(reloaded.isResetPassword()).isTrue();
-    assertThat(reloaded.getScmAccounts()).isEqualTo(",jo.hn,john2,johndoo,");
+    assertThat(reloaded.getSortedScmAccounts()).containsExactly("jo.hn", "john2", "johndoo");
     assertThat(reloaded.getSalt()).isEqualTo("12345");
     assertThat(reloaded.getCryptedPassword()).isEqualTo("abcde");
     assertThat(reloaded.getHashMethod()).isEqualTo("BCRYPT");
@@ -393,6 +404,23 @@ public class UserDaoIT {
     assertThat(reloaded.getHomepageType()).isEqualTo("project");
     assertThat(reloaded.getHomepageParameter()).isEqualTo("OB1");
     assertThat(reloaded.getLastConnectionDate()).isEqualTo(10_000_000_000L);
+  }
+
+  @Test
+  public void update_scmAccounts() {
+    UserDto user = db.users().insertUser(u -> u.setScmAccounts(emptyList()));
+
+    underTest.update(db.getSession(), user.setScmAccounts(List.of("jo.hn", "john2", "johndoo", "")));
+    UserDto reloaded = Objects.requireNonNull(underTest.selectByUuid(db.getSession(), user.getUuid()));
+    assertThat(reloaded.getSortedScmAccounts()).containsExactly("jo.hn", "john2", "johndoo");
+
+    underTest.update(db.getSession(), user.setScmAccounts(List.of("jo.hn", "john2")));
+    reloaded = Objects.requireNonNull(underTest.selectByUuid(db.getSession(), user.getUuid()));
+    assertThat(reloaded.getSortedScmAccounts()).containsExactly("jo.hn", "john2");
+
+    underTest.update(db.getSession(), user.setScmAccounts(List.of("jo.hn", "john3", "john2")));
+    reloaded = Objects.requireNonNull(underTest.selectByUuid(db.getSession(), user.getUuid()));
+    assertThat(reloaded.getSortedScmAccounts()).containsExactly("jo.hn", "john2", "john3");
   }
 
   @Test
@@ -413,7 +441,7 @@ public class UserDaoIT {
     assertThat(userReloaded.getExternalLogin()).isEqualTo(user.getExternalLogin());
     assertThat(userReloaded.getExternalIdentityProvider()).isEqualTo(user.getExternalIdentityProvider());
     assertThat(userReloaded.getEmail()).isNull();
-    assertThat(userReloaded.getScmAccounts()).isNull();
+    assertThat(userReloaded.getSortedScmAccounts()).isEmpty();
     assertThat(userReloaded.getSalt()).isNull();
     assertThat(userReloaded.getCryptedPassword()).isNull();
     assertThat(userReloaded.getUpdatedAt()).isEqualTo(NOW);
@@ -504,7 +532,7 @@ public class UserDaoIT {
       .setName("Marius")
       .setEmail("marius@lesbronzes.fr")
       .setActive(true)
-      .setScmAccounts("\nma\nmarius33\n")
+      .setScmAccounts(List.of("ma", "marius33"))
       .setSalt("79bd6a8e79fb8c76ac8b121cc7e8e11ad1af8365")
       .setCryptedPassword("650d2261c98361e2f67f90ce5c65a95e7d8ea2fg")
       .setHomepageType("project")
@@ -516,7 +544,7 @@ public class UserDaoIT {
     assertThat(dto.getName()).isEqualTo("Marius");
     assertThat(dto.getEmail()).isEqualTo("marius@lesbronzes.fr");
     assertThat(dto.isActive()).isTrue();
-    assertThat(dto.getScmAccountsAsList()).containsOnly("ma", "marius33");
+    assertThat(dto.getSortedScmAccounts()).containsExactly("ma", "marius33");
     assertThat(dto.getSalt()).isEqualTo("79bd6a8e79fb8c76ac8b121cc7e8e11ad1af8365");
     assertThat(dto.getCryptedPassword()).isEqualTo("650d2261c98361e2f67f90ce5c65a95e7d8ea2fg");
     assertThat(dto.getCreatedAt()).isEqualTo(user1.getCreatedAt());
@@ -529,9 +557,12 @@ public class UserDaoIT {
   @Test
   public void select_nullable_by_scm_account() {
     db.users().insertUser(user -> user.setLogin("marius").setName("Marius").setEmail("marius@lesbronzes.fr").setScmAccounts(asList("ma", "marius33")));
-    db.users().insertUser(user -> user.setLogin("sbrandhof").setName("Simon Brandhof").setEmail("sbrandhof@lesbronzes.fr").setScmAccounts((String) null));
+    db.users().insertUser(user -> user.setLogin("sbrandhof").setName("Simon Brandhof").setEmail("sbrandhof@lesbronzes.fr").setScmAccounts(emptyList()));
 
-    assertThat(underTest.selectByScmAccountOrLoginOrEmail(session, "ma")).extracting(UserDto::getLogin).containsExactly("marius");
+    List<UserDto> searchByMa = underTest.selectByScmAccountOrLoginOrEmail(session, "ma");
+    assertThat(searchByMa).extracting(UserDto::getLogin).containsExactly("marius");
+    assertThat(searchByMa.iterator().next().getSortedScmAccounts()).containsExactly("ma", "marius33");
+
     assertThat(underTest.selectByScmAccountOrLoginOrEmail(session, "marius")).extracting(UserDto::getLogin).containsExactly("marius");
     assertThat(underTest.selectByScmAccountOrLoginOrEmail(session, "marius@lesbronzes.fr")).extracting(UserDto::getLogin).containsExactly("marius");
     assertThat(underTest.selectByScmAccountOrLoginOrEmail(session, "m")).isEmpty();
@@ -541,7 +572,7 @@ public class UserDaoIT {
   @Test
   public void select_nullable_by_scm_account_return_many_results_when_same_email_is_used_by_many_users() {
     db.users().insertUser(user -> user.setLogin("marius").setName("Marius").setEmail("marius@lesbronzes.fr").setScmAccounts(asList("ma", "marius33")));
-    db.users().insertUser(user -> user.setLogin("sbrandhof").setName("Simon Brandhof").setEmail("marius@lesbronzes.fr").setScmAccounts((String) null));
+    db.users().insertUser(user -> user.setLogin("sbrandhof").setName("Simon Brandhof").setEmail("marius@lesbronzes.fr").setScmAccounts(emptyList()));
 
     List<UserDto> results = underTest.selectByScmAccountOrLoginOrEmail(session, "marius@lesbronzes.fr");
 
