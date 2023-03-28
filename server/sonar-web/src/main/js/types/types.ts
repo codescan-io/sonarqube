@@ -271,6 +271,7 @@ export interface Issue {
   ruleDescriptionContextKey?: string;
   ruleName: string;
   ruleStatus?: string;
+  scope: string;
   secondaryLocations: FlowLocation[];
   severity: string;
   status: string;
