@@ -27,6 +27,8 @@ import { translate, translateWithParameters } from '../../helpers/l10n';
 import { AppState } from '../../types/appstate';
 import withAppStateContext from './app-state/withAppStateContext';
 import GlobalFooterBranding from './GlobalFooterBranding';
+import { getYear } from 'date-fns';
+import { translate } from '../../helpers/l10n';
 
 export interface GlobalFooterProps {
   hideLoggedInInfo?: boolean;
@@ -89,7 +91,42 @@ export function GlobalFooter({ hideLoggedInInfo, appState }: GlobalFooterProps) 
             <Link to="/web_api">{translate('footer.web_api')}</Link>
           </li>
         )}
+          <li>
+            © 2017-{getYear(new Date())} <a
+            href="https://www.codescan.io"
+            rel="noopener noreferrer"
+            target="_blank"
+            title="CodeScan Enterprises LLC">
+            CodeScan Enterprises LLC
+            </a>
+            . All rights reserved.
+          </li>
+          <li className="page-footer-menu-item">
+            Version {translate('footer.codescan_version')}
+          </li>
+          <li className="page-footer-menu-item">
+              <a rel="noopener noreferrer" target="_blank" href="https://www.gnu.org/licenses/lgpl-3.0.txt">LGPL v3</a>
+          </li>
+          <li className="page-footer-menu-item">
+            <a rel="noopener noreferrer" target="_blank" href="https://www.codescan.io/tos/">{translate('footer.terms')}</a>
+          </li>
+          <li className="page-footer-menu-item">
+            <a rel="noopener noreferrer" target="_blank" href="https://www.linkedin.com/company/code-scan">Linkedin</a>
+          </li>
+          <li className="page-footer-menu-item">
+            <a rel="noopener noreferrer" target="_blank" href="https://www.facebook.com/CodeScanForSalesforce/">Facebook</a>
+          </li>
+          <li className="page-footer-menu-item">
+            <a rel="noopener noreferrer" target="_blank" href="https://twitter.com/CodeScanforSFDC">Twitter</a>
+          </li>
+          <li className="page-footer-menu-item">
+            <a rel="noopener noreferrer" target="_blank" href="https://www.codescan.io/contact/">{translate('footer.help')}</a>
+          </li>
+          <li className="page-footer-menu-item">
+            <a rel="noopener noreferrer" target="_blank" href="https://knowledgebase.autorabit.com/codescan/docs/codescan-getting-started">{'About'}</a>
+          </li>
       </ul>
+
     </div>
   );
 }

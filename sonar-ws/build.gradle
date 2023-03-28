@@ -15,6 +15,7 @@ dependencies {
   api 'com.google.protobuf:protobuf-java'
   api 'com.squareup.okhttp3:okhttp'
   api 'com.google.code.gson:gson'
+  api 'dnsjava:dnsjava'
   api 'org.sonarsource.api.plugin:sonar-plugin-api'
 
   compileOnlyApi 'com.google.code.findbugs:jsr305'

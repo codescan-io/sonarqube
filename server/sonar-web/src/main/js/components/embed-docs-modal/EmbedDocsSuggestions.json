@@ -3,14 +3,14 @@
   "api_documentation": [],
   "background_tasks": [
     {
-      "link": "/analyzing-source-code/background-tasks/",
+      "link": "/background-tasks/",
       "text": "About Background Tasks"
     }
   ],
   "code": [],
   "coding_rules": [
     {
-      "link": "/instance-administration/quality-profiles/",
+      "link": "/customising-quality-profiles/",
       "text": "Quality Profiles"
     }
   ],
@@ -20,24 +20,58 @@
       "text": "Clean as You Code"
     },
     {
-      "link": "/user-guide/metric-definitions/",
+      "link": "/how-are-metric-definitions-defined/",
       "text": "Metric Definitions"
     }
   ],
-  "global_permissions": [],
+  "extension_billing": [
+    {
+      "link": "https://www.codescan.io/pricing/calculator/",
+      "text": "Pricing",
+      "scope": "sonarcloud"
+    }
+  ],
+  "global_permissions": [
+    {
+      "link": "/add-users-to-a-codescan-cloud-organisation/",
+      "text": "Manage a Team",
+      "scope": "sonarcloud"
+    }
+  ],
   "issues": [],
   "marketplace": [],
+  "organization_members": [
+    {
+      "link": "/add-users-to-a-codescan-cloud-organisation",
+      "text": "Manage a Team",
+      "scope": "sonarcloud"
+    }
+  ],
+  "organization_projects": [
+    {
+      "link": "/add-users-to-a-codescan-cloud-organisation",
+      "text": "Manage a Team",
+      "scope": "sonarcloud"
+    }
+  ],
+  "organization_space": [
+    {
+      "link": "/codescan-cloud-organizations/",
+      "text": "Organizations",
+      "scope": "sonarcloud"
+    }
+    ],
   "overview": [
     {
-      "link": "/analyzing-source-code/pull-request-analysis",
-      "text": "Enable Pull Request Decoration"
+      "link": "/documentation/analysis/pull-request/",
+      "text": "Analyzing Pull Requests"
     },
     {
-      "link": "/analyzing-source-code/ci-integration/overview/",
+      "link": "/understanding-branches-in-codescan-cloud/",
       "text": "Set up CI analysis"
     },
     {
-      "link": "/user-guide/clean-as-you-code/",
+      "link": "/documentation/user-guide/clean-as-you-code/",
       "text": "Clean as You Code"
     },
     {
@@ -55,27 +89,39 @@
   "project_activity": [],
   "project_baseline": [
     {
-      "link": "/project-administration/defining-new-code/",
+      "link": "/documentation/project-administration/new-code-period/",
       "text": "Defining New Code"
     }
   ],
   "project_quality_gate": [
     {
-      "link": "/user-guide/clean-as-you-code/",
+      "link": "/documentation/user-guide/clean-as-you-code/",
       "text": "Clean as You Code"
     }
   ],
   "project_quality_profiles": [
     {
-      "link": "/instance-administration/quality-profiles/",
+      "link": "/customising-quality-profiles/",
       "text": "About Quality Profiles"
     }
   ],
-  "projects_management": [],
-  "projects": [],
+  "projects_management": [
+    {
+      "link": "/codescan-getting-started/",
+      "text": "Get Started with CodeScan Cloud",
+      "scope": "sonarcloud"
+    }
+  ],
+  "projects": [
+    {
+      "link": "/codescan-getting-started/",
+      "text": "Get Started with CodeScan Cloud",
+      "scope": "sonarcloud"
+    }
+  ],
   "pull_requests": [
     {
-      "link": "/user-guide/clean-as-you-code/",
+      "link": "/documentation/user-guide/clean-as-you-code/",
       "text": "Clean as You Code"
     },
     {
@@ -89,29 +135,39 @@
   ],
   "quality_gates": [
     {
-      "link": "/user-guide/clean-as-you-code/",
+      "link": "/documentation/user-guide/clean-as-you-code/",
       "text": "Clean as You Code"
+    },
+    {
+      "link": "/documentation/analysis/pull-request/",
+      "text": "Analyzing Pull Requests"
     }
   ],
   "quality_profiles": [
     {
-      "link": "/instance-administration/quality-profiles/",
+      "link": "/customising-quality-profiles/",
       "text": "Quality Profiles"
     }
   ],
   "security_reports": [
     {
-      "link": "/user-guide/security-reports/",
+      "link": "/security-reports/",
       "text": "About Security Reports"
     }
   ],
   "settings": [],
   "system_info": [],
-  "user_groups": [],
-  "users": [],
-  "webhooks": [
+  "user_groups": [
     {
-      "link": "/project-administration/webhooks/",
+      "link": "/add-users-to-a-codescan-cloud-organisation",
+      "text": "Manage a Team",
+      "scope": "sonarcloud"
+    }
+  ],
+  "users": [],
+  "webhookk": [
+    {
+      "link": "/webhooks/",
       "text": "About Webhooks"
     }
   ]
