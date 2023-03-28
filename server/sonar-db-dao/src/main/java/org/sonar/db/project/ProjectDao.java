@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import javax.annotation.Nullable;
 import org.sonar.api.utils.System2;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
@@ -129,5 +130,17 @@ public class ProjectDao implements Dao {
 
   public List<ProjectDto> selectProjectsByOrganizationUuids(DbSession session, List<String> orgUuids) {
     return mapper(session).selectProjectsByOrganizationUuids(orgUuids);
+  }
+
+  public void updateNcloc(DbSession dbSession, String projectUuid, long ncloc) {
+    mapper(dbSession).updateNcloc(projectUuid, ncloc);
+  }
+
+  public long getNclocSum(DbSession dbSession) {
+    return getNclocSum(dbSession, null);
+  }
+
+  public long getNclocSum(DbSession dbSession, @Nullable String projectUuidToExclude) {
+    return Optional.ofNullable(mapper(dbSession).getNclocSum(projectUuidToExclude)).orElse(0L);
   }
 }

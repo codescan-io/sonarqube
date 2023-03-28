@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.apache.ibatis.annotations.Param;
 
 public interface ProjectMapper {
@@ -66,4 +67,10 @@ public interface ProjectMapper {
           @Param("languageFilters") Set<String> languageFilters);
 
   List<ProjectDto> selectProjectsByOrganizationUuids(@Param("orgUuids") List<String> orgUuids);
+
+  void updateNcloc(@Param("projectUuid") String projectUuid, @Param("ncloc") long ncloc);
+
+  @CheckForNull
+  Long getNclocSum(@Nullable @Param("projectUuidToExclude") String projectUuidToExclude);
+
 }

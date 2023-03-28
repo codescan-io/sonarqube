@@ -53,6 +53,8 @@ public class DbVersion100 implements DbVersion {
       .add(10_0_009, "Make column 'user_local' not nullable in the 'users' table", MakeColumnUserLocalNotNullableInUsers.class)
       .add(10_0_010, "Create 'scim_groups' table", CreateScimGroupsTable.class)
       .add(10_0_011, "Create unique index on scim_groups.group_uuid", CreateUniqueIndexForScimGroupsUuid.class)
+      .add(10_0_015, "Add ncloc to 'Projects' table", AddNclocToProjects.class)
+      .add(10_0_016, "Populate ncloc in 'Projects' table", PopulateNclocForForProjects.class)
     ;
   }
 }
