@@ -67,7 +67,7 @@ export function Header(props: HeaderProps) {
       )}
       {currentBranchLike && (
         <>
-          <span className="slash-separator sw-ml-2"/>
+          <span className="slash-separator sw-mx-2" />
           <BranchLikeNavigation
             branchLikes={branchLikes}
             component={component}
