@@ -17,7 +17,6 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import classNames from 'classnames';
 import * as React from 'react';
 import ActionsDropdown, {
   ActionsDropdownDivider,
@@ -25,7 +24,6 @@ import ActionsDropdown, {
 } from '../../../components/controls/ActionsDropdown';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { Group } from '../../../types/types';
-import EditMembers from './EditMembers';
 
 export interface ListItemProps {
   group: Group;
@@ -55,14 +53,8 @@ export default function ListItem(props: ListItemProps) {
       </td>
 
       <td className="group-members display-flex-justify-end" headers="list-group-member">
-        <span
-          className={classNames({ 'big-padded-right spacer-right': group.default && !isManaged() })}
-        >
-          {membersCount}
-        </span>
-        {!group.default && !isManaged() && (
-          <EditMembers group={group} onEdit={props.onEditMembers} organization={props.organization} />
-        )}
+        <span>{membersCount}</span>
+        <Members group={group} onEdit={props.onEditMembers} isManaged={isManaged()} organization={props.organization} />
       </td>
 
       <td className="width-40" headers="list-group-description">

@@ -146,7 +146,11 @@ export default class EditMembersModal extends React.PureComponent<Props, State> 
   render() {
     const modalHeader = translate('users.group.update');
     return (
-      <Modal contentLabel={modalHeader} onRequestClose={this.props.onClose}>
+      <Modal
+        className="group-menbers-modal"
+        contentLabel={modalHeader}
+        onRequestClose={this.props.onClose}
+      >
         <header className="modal-head">
           <h2>
             <FormattedMessage
