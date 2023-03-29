@@ -126,7 +126,7 @@ export class AdminContainer extends React.PureComponent<AdminContainerProps, Sta
     const adminPagesContext: AdminPagesContext = { adminPages };
 
     return (
-      <div>
+      <>
         <Helmet
           defer={false}
           titleTemplate={translateWithParameters(
@@ -153,7 +153,7 @@ export class AdminContainer extends React.PureComponent<AdminContainerProps, Sta
         >
           <Outlet context={adminPagesContext} />
         </AdminContext.Provider>
-      </div>
+      </>
     );
   }
 }
