@@ -21,7 +21,6 @@ package org.sonar.server.user.ws;
 
 import java.util.Optional;
 import javax.annotation.Nullable;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.Rule;
 import org.junit.Test;
 import org.sonar.api.impl.utils.AlwaysIncreasingSystem2;
@@ -45,16 +44,13 @@ import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.SessionTokenDto;
 import org.sonar.db.user.UserDismissedMessageDto;
 import org.sonar.db.user.UserDto;
-import org.sonar.server.es.EsClient;
-import org.sonar.server.es.EsTester;
 import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.ForbiddenException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.exceptions.UnauthorizedException;
+import org.sonar.server.management.ManagedInstanceChecker;
 import org.sonar.server.tester.UserSessionRule;
 import org.sonar.server.user.ExternalIdentity;
-import org.sonar.server.user.index.UserIndexDefinition;
-import org.sonar.server.user.index.UserIndexer;
 import org.sonar.server.ws.TestRequest;
 import org.sonar.server.ws.TestResponse;
 import org.sonar.server.ws.WsActionTester;
@@ -62,11 +58,11 @@ import org.sonar.server.ws.WsActionTester;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
-import static org.elasticsearch.index.query.QueryBuilders.termQuery;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.sonar.db.property.PropertyTesting.newUserPropertyDto;
-import static org.sonar.server.user.index.UserIndexDefinition.FIELD_ACTIVE;
-import static org.sonar.server.user.index.UserIndexDefinition.FIELD_UUID;
 import static org.sonar.test.JsonAssert.assertJson;
 
 public class DeactivateActionIT {
@@ -76,16 +72,14 @@ public class DeactivateActionIT {
   @Rule
   public DbTester db = DbTester.create(system2);
   @Rule
-  public EsTester es = EsTester.create();
-  @Rule
   public UserSessionRule userSession = UserSessionRule.standalone();
 
   private final DbClient dbClient = db.getDbClient();
-  private final UserIndexer userIndexer = new UserIndexer(dbClient, es.client());
   private final DbSession dbSession = db.getSession();
   private final UserAnonymizer userAnonymizer = new UserAnonymizer(db.getDbClient(), () -> "anonymized");
-  private final UserDeactivator userDeactivator = new UserDeactivator(dbClient, userIndexer, userSession, userAnonymizer);
-  private final WsActionTester ws = new WsActionTester(new DeactivateAction(dbClient, userSession, new UserJsonWriter(userSession), userDeactivator));
+  private final UserDeactivator userDeactivator = new UserDeactivator(dbClient, userSession, userAnonymizer);
+  private final ManagedInstanceChecker managedInstanceChecker = mock(ManagedInstanceChecker.class);
+  private final WsActionTester ws = new WsActionTester(new DeactivateAction(dbClient, userSession, new UserJsonWriter(userSession), userDeactivator, managedInstanceChecker));
 
   @Test
   public void deactivate_user_and_delete_their_related_data() {
@@ -100,12 +94,6 @@ public class DeactivateActionIT {
     deactivate(user.getLogin());
 
     verifyThatUserIsDeactivated(user.getLogin());
-    assertThat(es.client().search(EsClient.prepareSearch(UserIndexDefinition.TYPE_USER)
-        .source(new SearchSourceBuilder()
-          .query(boolQuery()
-            .must(termQuery(FIELD_UUID, user.getUuid()))
-            .must(termQuery(FIELD_ACTIVE, "false")))))
-      .getHits().getHits()).hasSize(1);
   }
 
   @Test
@@ -122,12 +110,6 @@ public class DeactivateActionIT {
 
     verifyThatUserIsDeactivated("anonymized");
     verifyThatUserIsAnomymized("anonymized");
-    assertThat(es.client().search(EsClient.prepareSearch(UserIndexDefinition.TYPE_USER)
-        .source(new SearchSourceBuilder()
-          .query(boolQuery()
-            .must(termQuery(FIELD_UUID, user.getUuid()))
-            .must(termQuery(FIELD_ACTIVE, "false")))))
-      .getHits().getHits()).hasSize(1);
   }
 
   @Test
@@ -446,6 +428,30 @@ public class DeactivateActionIT {
     deactivate(user.getLogin(), true);
 
     assertThat(db.getDbClient().scimUserDao().findByUserUuid(dbSession, user.getUuid())).isEmpty();
+  }
+
+  @Test
+  public void handle_whenUserManagedAndInstanceManaged_shouldThrowBadRequestException() {
+    BadRequestException badRequestException = BadRequestException.create("message");
+    doThrow(badRequestException).when(managedInstanceChecker).throwIfInstanceIsManaged();
+
+    createAdminUser();
+    logInAsSystemAdministrator();
+    UserDto user = db.users().insertUser(u -> u.setLocal(false));
+
+    assertThatThrownBy(() -> deactivate(user.getLogin()))
+      .isEqualTo(badRequestException);
+  }
+
+  @Test
+  public void handle_whenInstanceManagedAndNotSystemAdministrator_shouldThrowUnauthorizedException() {
+    UserDto userDto = db.users().insertUser();
+    String login = userDto.getLogin();
+
+    assertThatThrownBy(() -> deactivate(login))
+      .isInstanceOf(UnauthorizedException.class)
+      .hasMessage("Authentication is required");
+    verify(managedInstanceChecker, never()).throwIfInstanceIsManaged();
   }
 
   private void logInAsSystemAdministrator() {

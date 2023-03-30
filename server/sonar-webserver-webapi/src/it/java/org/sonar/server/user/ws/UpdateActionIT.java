@@ -32,13 +32,14 @@ import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.authentication.CredentialsLocalAuthentication;
-import org.sonar.server.es.EsTester;
+import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.ForbiddenException;
 import org.sonar.server.exceptions.NotFoundException;
+import org.sonar.server.exceptions.UnauthorizedException;
+import org.sonar.server.management.ManagedInstanceChecker;
 import org.sonar.server.tester.UserSessionRule;
 import org.sonar.server.user.NewUserNotifier;
 import org.sonar.server.user.UserUpdater;
-import org.sonar.server.user.index.UserIndexer;
 import org.sonar.server.usergroups.DefaultGroupFinder;
 import org.sonar.server.ws.TestRequest;
 import org.sonar.server.ws.WsActionTester;
@@ -47,7 +48,10 @@ import static com.google.common.collect.Lists.newArrayList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.sonar.db.user.UserTesting.newUserDto;
 
 public class UpdateActionIT {
@@ -58,17 +62,15 @@ public class UpdateActionIT {
   @Rule
   public DbTester db = DbTester.create(system2);
   @Rule
-  public EsTester es = EsTester.create();
-  @Rule
   public UserSessionRule userSession = UserSessionRule.standalone().logIn().setSystemAdministrator();
 
   private final DbClient dbClient = db.getDbClient();
   private final DbSession dbSession = db.getSession();
-  private final UserIndexer userIndexer = new UserIndexer(dbClient, es.client());
   private final CredentialsLocalAuthentication localAuthentication = new CredentialsLocalAuthentication(db.getDbClient(), settings.asConfig());
+  private final ManagedInstanceChecker managedInstanceChecker = mock(ManagedInstanceChecker.class);
   private final WsActionTester ws = new WsActionTester(new UpdateAction(
-    new UserUpdater(mock(NewUserNotifier.class), dbClient, userIndexer, new DefaultGroupFinder(db.getDbClient()), settings.asConfig(), null, localAuthentication),
-    userSession, new UserJsonWriter(userSession), dbClient));
+    new UserUpdater(mock(NewUserNotifier.class), dbClient, new DefaultGroupFinder(db.getDbClient()), settings.asConfig(), null, localAuthentication),
+    userSession, new UserJsonWriter(userSession), dbClient, managedInstanceChecker));
 
   @Before
   public void setUp() {
@@ -286,6 +288,29 @@ public class UpdateActionIT {
   }
 
   @Test
+  public void handle_whenInstanceManaged_shouldThrowBadRequestException() {
+    BadRequestException badRequestException = BadRequestException.create("message");
+    doThrow(badRequestException).when(managedInstanceChecker).throwIfInstanceIsManaged();
+
+    TestRequest updateRequest = ws.newRequest();
+
+    assertThatThrownBy(updateRequest::execute)
+      .isEqualTo(badRequestException);
+  }
+
+  @Test
+  public void handle_whenInstanceManagedAndNotSystemAdministrator_shouldThrowUnauthorizedException() {
+    userSession.anonymous();
+
+    TestRequest updateRequest = ws.newRequest();
+
+    assertThatThrownBy(updateRequest::execute)
+      .isInstanceOf(UnauthorizedException.class)
+      .hasMessage("Authentication is required");
+    verify(managedInstanceChecker, never()).throwIfInstanceIsManaged();
+  }
+
+  @Test
   public void test_definition() {
     WebService.Action action = ws.getDef();
     assertThat(action).isNotNull();
@@ -308,6 +333,6 @@ public class UpdateActionIT {
       .setExternalLogin("jo")
       .setExternalIdentityProvider("sonarqube");
     dbClient.userDao().insert(dbSession, userDto);
-    userIndexer.commitAndIndex(dbSession, userDto);
+    dbSession.commit();
   }
 }

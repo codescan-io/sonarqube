@@ -147,8 +147,6 @@ import org.sonar.server.rule.index.RuleIndexer;
 import org.sonar.server.setting.DatabaseSettingLoader;
 import org.sonar.server.setting.DatabaseSettingsEnabler;
 import org.sonar.server.setting.ThreadLocalSettings;
-import org.sonar.server.user.index.UserIndex;
-import org.sonar.server.user.index.UserIndexer;
 import org.sonar.server.util.OkHttpClientProvider;
 import org.sonar.server.util.Paths2Impl;
 import org.sonar.server.view.index.ViewIndex;
@@ -383,9 +381,6 @@ public class ComputeEngineContainerImpl implements ComputeEngineContainer {
       // measure
       MetricFinder.class,
       UnanalyzedLanguageMetrics.class,
-
-      UserIndexer.class,
-      UserIndex.class,
 
       // components,
       FavoriteUpdater.class,

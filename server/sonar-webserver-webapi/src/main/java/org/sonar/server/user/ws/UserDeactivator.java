@@ -26,7 +26,6 @@ import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.property.PropertyQuery;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.user.UserSession;
-import org.sonar.server.user.index.UserIndexer;
 
 import static org.sonar.api.CoreProperties.DEFAULT_ISSUE_ASSIGNEE;
 import static org.sonar.db.permission.GlobalPermission.ADMINISTER;
@@ -35,13 +34,11 @@ import static org.sonar.server.exceptions.NotFoundException.checkFound;
 
 public class UserDeactivator {
   private final DbClient dbClient;
-  private final UserIndexer userIndexer;
   private final UserSession userSession;
   private final UserAnonymizer userAnonymizer;
 
-  public UserDeactivator(DbClient dbClient, UserIndexer userIndexer, UserSession userSession, UserAnonymizer userAnonymizer) {
+  public UserDeactivator(DbClient dbClient, UserSession userSession, UserAnonymizer userAnonymizer) {
     this.dbClient = dbClient;
-    this.userIndexer = userIndexer;
     this.userSession = userSession;
     this.userAnonymizer = userAnonymizer;
   }
@@ -110,6 +107,6 @@ public class UserDeactivator {
 
   private void deactivateUser(DbSession dbSession, UserDto user) {
     dbClient.userDao().deactivateUser(dbSession, user);
-    userIndexer.commitAndIndex(dbSession, user);
+    dbSession.commit();
   }
 }
