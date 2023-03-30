@@ -155,26 +155,7 @@
         FROM
             (SELECT rownum as rn, t.* from (
                 SELECT
-                    u.uuid,
-                    u.login,
-                    u.name,
-                    u.email,
-                    u.active,
-                    u.scm_accounts,
-                    u.salt,
-                    u.crypted_password,
-                    u.hash_method,
-                    u.external_id,
-                    u.external_login,
-                    u.external_identity_provider,
-                    u.user_local,
-                    u.reset_password,
-                    u.homepage_type,
-                    u.homepage_parameter,
-                    u.last_connection_date,
-                    u.last_sonarlint_connection,
-                    u.created_at,
-                    u.updated_at
+                <include refid="searchByQueryInnerQueryColumns"/>
                 FROM users u
                 <include refid="searchByQueryWhereClause"/>
                 ORDER BY u.login ASC
@@ -191,6 +172,28 @@
             FROM users u
         <include refid="searchByQueryWhereClause"/>
     </select>
+
+    <sql id="searchByQueryInnerQueryColumns">
+        u.uuid,
+        u.login,
+        u.name,
+        u.email,
+        u.active,
+        u.salt,
+        u.crypted_password,
+        u.hash_method,
+        u.external_id,
+        u.external_login,
+        u.external_identity_provider,
+        u.user_local,
+        u.reset_password,
+        u.homepage_type,
+        u.homepage_parameter,
+        u.last_connection_date,
+        u.last_sonarlint_connection,
+        u.created_at,
+        u.updated_at
+    </sql>
 
     <sql id="searchByQueryWhereClause">
              <where>
@@ -251,7 +254,6 @@
     <sql id="deactivateUserUpdatedFields">
         active = ${_false},
         email = null,
-        scm_accounts = null,
         salt = null,
         crypted_password = null,
         last_connection_date = null,
