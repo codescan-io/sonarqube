@@ -33,6 +33,7 @@ import org.sonar.db.component.ComponentDto;
 import org.sonar.db.newcodeperiod.NewCodePeriodDto;
 import org.sonar.db.newcodeperiod.NewCodePeriodType;
 import org.sonar.db.protobuf.DbProjectBranches;
+import org.sonar.server.project.Project;
 
 import static org.sonar.core.config.PurgeConstants.BRANCHES_TO_KEEP_WHEN_INACTIVE;
 
@@ -54,25 +55,14 @@ public class BranchPersisterImpl implements BranchPersister {
 
   public void persist(DbSession dbSession) {
     Branch branch = analysisMetadataHolder.getBranch();
+    Project project = analysisMetadataHolder.getProject();
     String branchUuid = treeRootHolder.getRoot().getUuid();
 
     ComponentDto branchComponentDto = dbClient.componentDao().selectByUuid(dbSession, branchUuid)
       .orElseThrow(() -> new IllegalStateException("Component has been deleted by end-user during analysis"));
 
     // insert or update in table project_branches
-    BranchDto branchDto = toBranchDto(dbSession, branchComponentDto, branch, checkIfExcludedFromPurge());
-    dbClient.branchDao().upsert(dbSession, branchDto);
-
-    // Insert NewCodePeriods settings if there is a target branch.
-    if (branch.getTargetBranchName() != null) {
-      // Create branch-level New Code Periods settings.
-      NewCodePeriodDto newCodePeriod = new NewCodePeriodDto()
-              .setProjectUuid(branchDto.getProjectUuid())
-              .setBranchUuid(branchComponentDto.uuid())
-              .setType(NewCodePeriodType.REFERENCE_BRANCH)
-              .setValue(branch.getTargetBranchName());
-      dbClient.newCodePeriodDao().upsert(dbSession, newCodePeriod);
-    }
+    dbClient.branchDao().upsert(dbSession, toBranchDto(dbSession, branchComponentDto, branch, project, checkIfExcludedFromPurge()));
   }
 
   private boolean checkIfExcludedFromPurge() {
@@ -90,14 +80,12 @@ public class BranchPersisterImpl implements BranchPersister {
       .anyMatch(excludePattern -> excludePattern.matcher(analysisMetadataHolder.getBranch().getName()).matches());
   }
 
-  protected BranchDto toBranchDto(DbSession dbSession, ComponentDto componentDto, Branch branch, boolean excludeFromPurge) {
+  protected BranchDto toBranchDto(DbSession dbSession, ComponentDto componentDto, Branch branch, Project project, boolean excludeFromPurge) {
     BranchDto dto = new BranchDto();
     dto.setUuid(componentDto.uuid());
 
-    // MainBranchProjectUuid will be null if it's a main branch
-    String projectUuid = firstNonNull(componentDto.getMainBranchProjectUuid(), componentDto.branchUuid());
-    dto.setIsMain(componentDto.uuid().equals(projectUuid));
-    dto.setProjectUuid(projectUuid);
+    dto.setIsMain(branch.isMain());
+    dto.setProjectUuid(project.getUuid());
     dto.setBranchType(branch.getType());
     dto.setExcludeFromPurge(excludeFromPurge);
 
@@ -110,7 +98,7 @@ public class BranchPersisterImpl implements BranchPersister {
       String pullRequestKey = analysisMetadataHolder.getPullRequestKey();
       dto.setKey(pullRequestKey);
 
-      DbProjectBranches.PullRequestData pullRequestData = getBuilder(dbSession, projectUuid, pullRequestKey)
+      DbProjectBranches.PullRequestData pullRequestData = getBuilder(dbSession, project.getUuid(), pullRequestKey)
         .setBranch(branch.getName())
         .setTitle(branch.getName())
         .setTarget(branch.getTargetBranchName())

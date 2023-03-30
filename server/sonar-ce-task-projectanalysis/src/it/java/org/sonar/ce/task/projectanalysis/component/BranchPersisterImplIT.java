@@ -75,6 +75,7 @@ public class BranchPersisterImplIT {
   @Test
   public void persist_fails_with_ISE_if_no_component_for_main_branches() {
     analysisMetadataHolder.setBranch(createBranch(BRANCH, true, "master"));
+    analysisMetadataHolder.setProject(PROJECT);
     treeRootHolder.setRoot(MAIN);
     DbSession dbSession = dbTester.getSession();
 
@@ -84,6 +85,8 @@ public class BranchPersisterImplIT {
   @Test
   public void persist_fails_with_ISE_if_no_component_for_branches() {
     analysisMetadataHolder.setBranch(createBranch(BRANCH, false, "foo"));
+    analysisMetadataHolder.setProject(PROJECT);
+
     treeRootHolder.setRoot(BRANCH1);
     DbSession dbSession = dbTester.getSession();
 
@@ -93,6 +96,8 @@ public class BranchPersisterImplIT {
   @Test
   public void persist_fails_with_ISE_if_no_component_for_pull_request() {
     analysisMetadataHolder.setBranch(createBranch(BranchType.PULL_REQUEST, false, "12"));
+    analysisMetadataHolder.setProject(PROJECT);
+
     treeRootHolder.setRoot(BRANCH1);
     DbSession dbSession = dbTester.getSession();
 
@@ -135,6 +140,7 @@ public class BranchPersisterImplIT {
   @Test
   public void main_branch_is_excluded_from_branch_purge_by_default() {
     analysisMetadataHolder.setBranch(createBranch(BRANCH, true, "master"));
+    analysisMetadataHolder.setProject(PROJECT);
     treeRootHolder.setRoot(MAIN);
     dbTester.components().insertPublicProject(p -> p.setKey(MAIN.getKey()).setUuid(MAIN.getUuid()));
     dbTester.commit();
@@ -239,6 +245,8 @@ public class BranchPersisterImplIT {
   public void pull_request_is_never_excluded_from_branch_purge_even_if_its_source_branch_name_matches_sonar_dbcleaner_keepFromPurge_property() {
     settings.setProperty(BRANCHES_TO_KEEP_WHEN_INACTIVE, "develop");
     analysisMetadataHolder.setBranch(createPullRequest(PR1.getKey(), MAIN.getUuid()));
+    analysisMetadataHolder.setProject(PROJECT);
+
     analysisMetadataHolder.setPullRequestKey(PR1.getKey());
     treeRootHolder.setRoot(PR1);
     ComponentDto mainComponent = dbTester.components().insertPublicProject(p -> p.setKey(MAIN.getKey()).setUuid(MAIN.getUuid()));
