@@ -61,6 +61,7 @@
   border: 1px solid transparent;
   border-top-color: var(--barBorderColor);
   transition: padding 0s, border 0s;
+  word-wrap: break-word;
 }
 
 .hotspot-item:hover {
