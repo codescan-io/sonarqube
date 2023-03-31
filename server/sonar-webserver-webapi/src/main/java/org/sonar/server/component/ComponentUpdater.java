@@ -164,7 +164,7 @@ public class ComponentUpdater {
       .setCreatedAt(new Date(now));
 
     componentModifier.accept(component);
-    dbClient.componentDao().insert(session, component);
+    dbClient.componentDao().insert(session, component, true);
 
     if (isRootProject(component)) {
       ProjectDto projectDto = toProjectDto(component, now);
