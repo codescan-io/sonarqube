@@ -221,12 +221,6 @@ public class DefaultInputFile extends DefaultInputComponent implements InputFile
     return indexedFile.toString();
   }
 
-  @Override
-  public String md5Hash() {
-    checkMetadata();
-    return metadata.hash();
-  }
-
   /**
    * {@link #setStatus(Status)}
    */
@@ -262,7 +256,8 @@ public class DefaultInputFile extends DefaultInputComponent implements InputFile
   /**
    * Digest hash of the file.
    */
-  public String hash() {
+  @Override
+  public String md5Hash() {
     checkMetadata();
     return metadata.hash();
   }
