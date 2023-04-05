@@ -19,13 +19,11 @@
  */
 import * as React from 'react';
 import { connect } from 'react-redux';
-import { fetchLanguages } from '../../../../js/store/rootActions';
-import { fetchMyOrganizations } from '../../../apps/account/organizations/actions';
 import { Link } from 'react-router';
 import { getAppState, getCurrentUser } from '../../../../js/store/rootReducer';
 import { Store } from '../../../../js/store/rootReducer';
 import "./home.css"
-import { setHomePage,skipOnboarding } from '../../../api/users';
+import { setHomePage,skipOnboarding } from '../../../store/users';
 
 interface StateProps {
     appState: T.AppState | undefined;
@@ -39,11 +37,11 @@ interface State {
   
 
 interface DispatchProps {
-    fetchLanguages: () => Promise<void>;
-    fetchMyOrganizations: () => Promise<void>;
+    skipOnboarding: () => void;
+    setHomePage: (homepage: T.HomePage) => void;
   }
 
-type Props = StateProps & DispatchProps;
+type Props = StateProps & DispatchProps & WithRouterProps;
 
 class Home extends React.PureComponent<Props, State> {
     mounted = false;
@@ -60,23 +58,21 @@ class Home extends React.PureComponent<Props, State> {
         this.mounted = false;
     }
 
-    handleProjectsClick = () => {
+    handleProjectsClick = async() => {
         const url = "projects";
-        const type: any = {type:"PROJECTS"}
-        Promise.all([setHomePage(type),
-                     skipOnboarding()]).then(()=>{
-            window.location.href = window.location.href.replace("home",url);
-        }); 
+        const DEFAULT_HOMEPAGE: T.HomePage = { type: 'PROJECTS' };
+        await this.props.skipOnboarding();
+        await this.props.setHomePage(DEFAULT_HOMEPAGE);
+        this.props.router.replace(url);
     }
 
-    handlePolicyClick = () => { 
+    handlePolicyClick = async() => {
         const defaultOrg = (this.props.currentUser as any).orgGroups[0].organizationKey;
-        const type: any = {type:"POLICY_RESULTS", organization: defaultOrg}
-        Promise.all([setHomePage(type),
-                     skipOnboarding()]).then(()=>{
-            const url = "organizations/"+defaultOrg+"/policy-results";
-            window.location.href = window.location.href.replace("home",url);
-        }); 
+        const POLICY_HOMEPAGE: T.HomePage = {type:"POLICY_RESULTS", organization: defaultOrg}
+        await this.props.skipOnboarding();
+        await this.props.setHomePage(POLICY_HOMEPAGE);
+        const url = "organizations/"+defaultOrg+"/policy-results";
+        this.props.router.replace(url);
     }
 
     render() {
@@ -120,10 +116,10 @@ const mapStateToProps = (state: Store): StateProps => {
 };
   
 
-const mapDispatchToProps = ({
-    fetchMyOrganizations,
-    fetchLanguages
-  } as any) as DispatchProps;
+const mapDispatchToProps = {
+    setHomePage,
+    skipOnboarding
+  };
   
 export default connect(mapStateToProps, mapDispatchToProps)(Home);
   

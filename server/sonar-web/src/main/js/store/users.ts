@@ -53,8 +53,10 @@ export function skipOnboardingAction() {
 export function skipOnboarding() {
   return (dispatch: Dispatch) =>
     api.skipOnboarding().then(
-      () => dispatch(skipOnboardingAction()),
-      () => dispatch(skipOnboardingAction())
+      () => {
+        dispatch(skipOnboardingAction())
+       },
+      () => {}
     );
 }
 
