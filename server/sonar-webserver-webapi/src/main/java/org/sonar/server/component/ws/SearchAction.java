@@ -20,7 +20,6 @@
 package org.sonar.server.component.ws;
 
 import com.google.common.collect.ImmutableSet;
-import org.sonar.api.resources.Qualifiers;
 import org.sonar.api.resources.ResourceTypes;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Response;
