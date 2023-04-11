@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nullable;
 import org.sonar.api.resources.Language;
 import org.sonar.api.resources.Languages;
 import org.sonar.api.resources.Qualifiers;
@@ -56,6 +57,7 @@ import org.sonarqube.ws.Issues.Component;
 import org.sonarqube.ws.Issues.Issue;
 import org.sonarqube.ws.Issues.Operation;
 import org.sonarqube.ws.Issues.SearchWsResponse;
+import org.sonarqube.ws.Issues.Sort;
 import org.sonarqube.ws.Issues.Transitions;
 import org.sonarqube.ws.Issues.Users;
 
@@ -88,12 +90,12 @@ public class SearchResponseFormat {
     this.userFormatter = userFormatter;
   }
 
-  SearchWsResponse formatSearch(Set<SearchAdditionalField> fields, SearchResponseData data, Paging paging, Facets facets) {
+  SearchWsResponse formatSearch(Set<SearchAdditionalField> fields, SearchResponseData data, Paging paging, Facets facets, Map<String, Object[]> issueMap) {
     SearchWsResponse.Builder response = SearchWsResponse.newBuilder();
 
     formatPaging(paging, response);
     formatEffortTotal(data, response);
-    response.addAllIssues(formatIssues(fields, data));
+    response.addAllIssues(formatIssues(fields, data, issueMap));
     response.addAllComponents(formatComponents(data));
     formatFacets(data, facets, response);
     if (fields.contains(SearchAdditionalField.RULES)) {
@@ -148,12 +150,12 @@ public class SearchResponseFormat {
       .setTotal(paging.total());
   }
 
-  private List<Issues.Issue> formatIssues(Set<SearchAdditionalField> fields, SearchResponseData data) {
+  private List<Issues.Issue> formatIssues(Set<SearchAdditionalField> fields, SearchResponseData data, Map<String, Object[]> issueMap) {
     List<Issues.Issue> result = new ArrayList<>();
     Issue.Builder issueBuilder = Issue.newBuilder();
     data.getIssues().forEach(dto -> {
       issueBuilder.clear();
-      formatIssue(issueBuilder, dto, data);
+      formatIssue(issueBuilder, dto, data, issueMap);
       if (fields.contains(SearchAdditionalField.ACTIONS)) {
         formatIssueActions(data, issueBuilder, dto);
       }
@@ -169,6 +171,10 @@ public class SearchResponseFormat {
   }
 
   private void formatIssue(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data) {
+    formatIssue(issueBuilder, dto, data, null);
+  }
+
+  private void formatIssue(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data, @Nullable Map<String, Object[]> issueMap) {
     issueBuilder.setKey(dto.getKey());
     issueBuilder.setType(Common.RuleType.forNumber(dto.getType()));
 
@@ -215,6 +221,14 @@ public class SearchResponseFormat {
     ofNullable(dto.getIssueUpdateDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setUpdateDate);
     ofNullable(dto.getIssueCloseDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setCloseDate);
     issueBuilder.setScope(Qualifiers.UNIT_TEST_FILE.equals(component.qualifier()) ? IssueScope.TEST.name() : IssueScope.MAIN.name());
+    if (issueMap != null && !issueMap.isEmpty()) {
+      Sort.Builder wsSort = Sort.newBuilder();
+      Object[] sortValue = issueMap.get(issueBuilder.getKey());
+      for (Object sort : sortValue) {
+        wsSort.addSort(sort.toString());
+      }
+      issueBuilder.setSort(wsSort);
+    }
   }
 
   private static String engineNameFrom(RuleKey ruleKey) {

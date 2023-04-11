@@ -68,6 +68,7 @@ public class SearchRequest {
   private List<String> sansTop25;
   private List<String> sonarsourceSecurity;
   private List<String> cwe;
+  private String searchAfter;
 
   public SearchRequest() {
     // nothing to do here
@@ -200,6 +201,16 @@ public class SearchRequest {
 
   public SearchRequest setFacetMode(@Nullable String facetMode) {
     this.facetMode = facetMode;
+    return this;
+  }
+
+  @CheckForNull
+  public String getSearchAfter() {
+    return searchAfter;
+  }
+
+  public SearchRequest setSearchAfter(@Nullable String searchAfter) {
+    this.searchAfter = searchAfter;
     return this;
   }
 
