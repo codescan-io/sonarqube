@@ -25,6 +25,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.server.ws.WebService.Param;
+import org.sonar.api.utils.DateUtils;
 import org.sonar.db.DbTester;
 import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
@@ -385,11 +386,15 @@ public class SearchActionIT {
       .setScmAccounts(emptyList())
       .setExternalLogin("fmallet")
       .setExternalIdentityProvider("sonarqube"));
+    long lastConnection = DateUtils.parseOffsetDateTime("2019-03-27T09:51:50+0100").toInstant().toEpochMilli();
+    fmallet = db.users().updateLastConnectionDate(fmallet, lastConnection);
+    fmallet = db.users().updateSonarLintLastConnectionDate(fmallet, lastConnection);
     UserDto simon = db.users().insertUser(u -> u.setLogin("sbrandhof").setName("Simon").setEmail("s.brandhof@company.tld")
       .setLocal(false)
       .setExternalLogin("sbrandhof@ldap.com")
       .setExternalIdentityProvider("sonarqube")
       .setScmAccounts(asList("simon.brandhof", "s.brandhof@company.tld")));
+
     mockUsersAsManaged(simon.getUuid());
 
     GroupDto sonarUsers = db.users().insertGroup("sonar-users");

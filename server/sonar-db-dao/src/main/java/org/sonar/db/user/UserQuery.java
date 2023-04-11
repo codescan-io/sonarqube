@@ -19,6 +19,8 @@
  */
 package org.sonar.db.user;
 
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 
@@ -34,13 +36,39 @@ public class UserQuery {
   private final Boolean isActive;
   private final List<String> organizationUuids;
   private final List<String> excludedOrganizationUuids;
+  private final Long lastConnectionDateFrom;
+  private final Long lastConnectionDateTo;
+  private final Long sonarLintLastConnectionDateFrom;
+  private final Long sonarLintLastConnectionDateTo;
 
   public UserQuery(@Nullable String searchText, @Nullable Boolean isActive,
-      @Nullable List<String> organizationUuids, @Nullable List<String> excludedOrganizationUuids) {
+                   @Nullable List<String> organizationUuids, @Nullable List<String> excludedOrganizationUuids,
+    @Nullable OffsetDateTime lastConnectionDateFrom, @Nullable OffsetDateTime lastConnectionDateTo,
+    @Nullable OffsetDateTime sonarLintLastConnectionDateFrom, @Nullable OffsetDateTime sonarLintLastConnectionDateTo) {
     this.searchText = searchTextToSearchTextSql(searchText);
     this.isActive = isActive;
     this.organizationUuids = !CollectionUtils.isEmpty(organizationUuids) ? ImmutableList.copyOf(organizationUuids) : null;
     this.excludedOrganizationUuids = !CollectionUtils.isEmpty(excludedOrganizationUuids) ? ImmutableList.copyOf(excludedOrganizationUuids) : null;
+    this.lastConnectionDateFrom = parseDateToLong(lastConnectionDateFrom);
+    this.lastConnectionDateTo = formatDateToInput(lastConnectionDateTo);
+    this.sonarLintLastConnectionDateFrom = parseDateToLong(sonarLintLastConnectionDateFrom);
+    this.sonarLintLastConnectionDateTo = formatDateToInput(sonarLintLastConnectionDateTo);
+  }
+
+  private static Long formatDateToInput(@Nullable OffsetDateTime dateTo) {
+    if(dateTo == null) {
+      return null;
+    } else {
+      // add 1 second to include all timestamp at the second precision.
+      return dateTo.toInstant().plus(1, ChronoUnit.SECONDS).toEpochMilli();
+    }
+  }
+  private static Long parseDateToLong(@Nullable OffsetDateTime date) {
+    if(date == null) {
+      return null;
+    } else {
+      return date.toInstant().toEpochMilli();
+    }
   }
 
   private static String searchTextToSearchTextSql(@Nullable String text) {
@@ -73,15 +101,38 @@ public class UserQuery {
     return excludedOrganizationUuids;
   }
 
+  @CheckForNull
+  public Long getLastConnectionDateFrom() {
+    return lastConnectionDateFrom;
+  }
+
+  @CheckForNull
+  public Long getLastConnectionDateTo() {
+    return lastConnectionDateTo;
+  }
+  @CheckForNull
+  public Long getSonarLintLastConnectionDateFrom() {
+    return sonarLintLastConnectionDateFrom;
+  }
+  @CheckForNull
+  public Long getSonarLintLastConnectionDateTo() {
+    return sonarLintLastConnectionDateTo;
+  }
+
   public static UserQueryBuilder builder() {
     return new UserQueryBuilder();
   }
 
   public static final class UserQueryBuilder {
-    private String searchText;
-    private Boolean isActive;
+    private String searchText = null;
+    private Boolean isActive = null;
     private final List<String> organizationUuids = new ArrayList<>();
     private final List<String> excludedOrganizationUuids = new ArrayList<>();
+    private OffsetDateTime lastConnectionDateFrom = null;
+    private OffsetDateTime lastConnectionDateTo = null;
+    private OffsetDateTime sonarLintLastConnectionDateFrom = null;
+    private OffsetDateTime sonarLintLastConnectionDateTo = null;
+
 
     private UserQueryBuilder() {
     }
@@ -112,8 +163,30 @@ public class UserQuery {
       return this;
     }
 
+    public UserQueryBuilder lastConnectionDateFrom(@Nullable OffsetDateTime lastConnectionDateFrom) {
+      this.lastConnectionDateFrom = lastConnectionDateFrom;
+      return this;
+    }
+
+    public UserQueryBuilder lastConnectionDateTo(@Nullable OffsetDateTime lastConnectionDateTo) {
+      this.lastConnectionDateTo = lastConnectionDateTo;
+      return this;
+    }
+
+    public UserQueryBuilder sonarLintLastConnectionDateFrom(@Nullable OffsetDateTime sonarLintLastConnectionDateFrom) {
+      this.sonarLintLastConnectionDateFrom = sonarLintLastConnectionDateFrom;
+      return this;
+    }
+
+    public UserQueryBuilder sonarLintLastConnectionDateTo(@Nullable OffsetDateTime sonarLintLastConnectionDateTo) {
+      this.sonarLintLastConnectionDateTo = sonarLintLastConnectionDateTo;
+      return this;
+    }
+
     public UserQuery build() {
-      return new UserQuery(searchText, isActive, organizationUuids, excludedOrganizationUuids);
+      return new UserQuery(
+        searchText, isActive, organizationUuids, excludedOrganizationUuids, lastConnectionDateFrom, lastConnectionDateTo,
+        sonarLintLastConnectionDateFrom, sonarLintLastConnectionDateTo);
     }
   }
 }
