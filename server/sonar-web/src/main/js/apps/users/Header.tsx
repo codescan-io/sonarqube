@@ -29,48 +29,29 @@ import UserForm from './components/UserForm';
 interface Props {
   loading: boolean;
   onUpdateUsers: () => void;
-  manageProvider?: string;
 }
 
 export default function Header(props: Props) {
   const [openUserForm, setOpenUserForm] = React.useState(false);
 
-  const { manageProvider, loading } = props;
+  const { loading } = props;
   return (
     <div className="page-header null-spacer-bottom">
       <h2 className="page-title">{translate('users.page')}</h2>
-      <DeferredSpinner loading={loading} />
+      <DeferredSpinner loading={loading}/>
 
       <div className="page-actions">
         <Button
           id="users-create"
-          disabled={manageProvider !== undefined}
           onClick={() => setOpenUserForm(true)}
         >
           {translate('users.create_user')}
         </Button>
       </div>
 
-      {manageProvider === undefined ? (
-        <p className="page-description">{translate('users.page.description')}</p>
-      ) : (
-        <Alert className="page-description max-width-100" variant="info">
-          <FormattedMessage
-            defaultMessage={translate('users.page.managed_description')}
-            id="users.page.managed_description"
-            values={{
-              provider: manageProvider,
-              link: (
-                <DocLink to="/instance-administration/authentication/overview/">
-                  {translate('documentation')}
-                </DocLink>
-              ),
-            }}
-          />
-        </Alert>
-      )}
+      <p className="page-description">{translate('users.page.description')}</p>
       {openUserForm && (
-        <UserForm onClose={() => setOpenUserForm(false)} onUpdateUsers={props.onUpdateUsers} />
+        <UserForm onClose={() => setOpenUserForm(false)} onUpdateUsers={props.onUpdateUsers}/>
       )}
     </div>
   );

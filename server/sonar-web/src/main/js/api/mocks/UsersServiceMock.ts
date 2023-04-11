@@ -18,6 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import { isAfter, isBefore } from 'date-fns';
 import { cloneDeep } from 'lodash';
 import { mockClusterSysInfo, mockIdentityProvider, mockUser } from '../../helpers/testMocks';
 import { IdentityProvider, Paging, SysInfoCluster } from '../../types/types';
@@ -30,18 +31,46 @@ const DEFAULT_USERS = [
     managed: true,
     login: 'bob.marley',
     name: 'Bob Marley',
+    lastConnectionDate: '2023-06-27T17:08:59+0200',
+    sonarLintLastConnectionDate: '2023-06-27T17:08:59+0200',
   }),
   mockUser({
     managed: false,
     login: 'alice.merveille',
     name: 'Alice Merveille',
+    lastConnectionDate: '2023-06-27T17:08:59+0200',
+    sonarLintLastConnectionDate: '2023-05-27T17:08:59+0200',
+  }),
+  mockUser({
+    managed: false,
+    login: 'charlie.cox',
+    name: 'Charlie Cox',
+    lastConnectionDate: '2023-06-25T17:08:59+0200',
+    sonarLintLastConnectionDate: '2023-06-20T12:10:59+0200',
+  }),
+  mockUser({
+    managed: true,
+    login: 'denis.villeneuve',
+    name: 'Denis Villeneuve',
+    lastConnectionDate: '2023-06-20T15:08:59+0200',
+    sonarLintLastConnectionDate: '2023-05-25T10:08:59+0200',
+  }),
+  mockUser({
+    managed: true,
+    login: 'eva.green',
+    name: 'Eva Green',
+    lastConnectionDate: '2023-05-27T17:08:59+0200',
+  }),
+  mockUser({
+    managed: false,
+    login: 'franck.grillo',
+    name: 'Franck Grillo',
   }),
 ];
 
 export default class UsersServiceMock {
   isManaged = true;
   users = cloneDeep(DEFAULT_USERS);
-
   constructor() {
     jest.mocked(getSystemInfo).mockImplementation(this.handleGetSystemInfo);
     jest.mocked(getIdentityProviders).mockImplementation(this.handleGetIdentityProviders);
@@ -53,21 +82,100 @@ export default class UsersServiceMock {
     this.isManaged = managed;
   }
 
+  getFilteredUsers = (filterParams: {
+    managed: boolean;
+    q: string;
+    lastConnectedAfter?: string;
+    lastConnectedBefore?: string;
+    slLastConnectedAfter?: string;
+    slLastConnectedBefore?: string;
+  }) => {
+    const {
+      managed,
+      q,
+      lastConnectedAfter,
+      lastConnectedBefore,
+      slLastConnectedAfter,
+      slLastConnectedBefore,
+    } = filterParams;
+
+    return this.users.filter((user) => {
+      if (this.isManaged && managed !== undefined && user.managed !== managed) {
+        return false;
+      }
+
+      if (q && (!user.login.includes(q) || (user.name && !user.name.includes(q)))) {
+        return false;
+      }
+
+      if (
+        lastConnectedAfter &&
+        (user.lastConnectionDate === undefined ||
+          isBefore(new Date(user.lastConnectionDate), new Date(lastConnectedAfter)))
+      ) {
+        return false;
+      }
+
+      if (
+        lastConnectedBefore &&
+        user.lastConnectionDate !== undefined &&
+        isAfter(new Date(user.lastConnectionDate), new Date(lastConnectedBefore))
+      ) {
+        return false;
+      }
+
+      if (
+        slLastConnectedAfter &&
+        (user.sonarLintLastConnectionDate === undefined ||
+          isBefore(new Date(user.sonarLintLastConnectionDate), new Date(slLastConnectedAfter)))
+      ) {
+        return false;
+      }
+
+      if (
+        slLastConnectedBefore &&
+        user.sonarLintLastConnectionDate !== undefined &&
+        isAfter(new Date(user.sonarLintLastConnectionDate), new Date(slLastConnectedBefore))
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  };
+
   handleSearchUsers = (data: any): Promise<{ paging: Paging; users: User[] }> => {
-    const paging = {
+    let paging = {
       pageIndex: 1,
-      pageSize: 100,
-      total: 0,
+      pageSize: 0,
+      total: 10,
     };
 
-    if (this.isManaged) {
-      if (data.managed === undefined) {
-        return this.reply({ paging, users: this.users });
-      }
-      const users = this.users.filter((user) => user.managed === data.managed);
+    if (data.p !== undefined && data.p !== paging.pageIndex) {
+      paging = { pageIndex: 2, pageSize: 2, total: 10 };
+      const users = [
+        mockUser({
+          name: `Local User ${this.users.length + 4}`,
+          login: `local-user-${this.users.length + 4}`,
+        }),
+        mockUser({
+          name: `Local User ${this.users.length + 5}`,
+          login: `local-user-${this.users.length + 5}`,
+        }),
+      ];
+
       return this.reply({ paging, users });
     }
-    return this.reply({ paging, users: this.users });
+
+    const users = this.getFilteredUsers(data);
+    return this.reply({
+      paging: {
+        pageIndex: 1,
+        pageSize: users.length,
+        total: 10,
+      },
+      users,
+    });
   };
 
   handleCreateUser = (data: {
