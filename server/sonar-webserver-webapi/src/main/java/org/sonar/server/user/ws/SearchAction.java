@@ -63,10 +63,10 @@ import static org.sonarqube.ws.Users.SearchWsResponse.*;
 public class SearchAction implements UsersWsAction {
   private static final String DEACTIVATED_PARAM = "deactivated";
   private static final int MAX_PAGE_SIZE = 500;
-  private static final String LAST_CONNECTION_DATE_FROM = "lastConnectedAfter";
-  private static final String LAST_CONNECTION_DATE_TO = "lastConnectedBefore";
-  private static final String SONAR_LINT_LAST_CONNECTION_DATE_FROM = "slLastConnectedAfter";
-  private static final String SONAR_LINT_LAST_CONNECTION_DATE_TO = "slLastConnectedBefore";
+  static final String LAST_CONNECTION_DATE_FROM = "lastConnectedAfter";
+  static final String LAST_CONNECTION_DATE_TO = "lastConnectedBefore";
+  static final String SONAR_LINT_LAST_CONNECTION_DATE_FROM = "slLastConnectedAfter";
+  static final String SONAR_LINT_LAST_CONNECTION_DATE_TO = "slLastConnectedBefore";
   private final UserSession userSession;
   private final DbClient dbClient;
   private final AvatarResolver avatarResolver;
@@ -89,9 +89,9 @@ public class SearchAction implements UsersWsAction {
       .setSince("3.6")
       .setChangelog(
         new Change("10.1", "New optional parameters " + SONAR_LINT_LAST_CONNECTION_DATE_FROM +
-          " and " + SONAR_LINT_LAST_CONNECTION_DATE_TO + " to filter users by SonarLint last connection date"),
+          " and " + SONAR_LINT_LAST_CONNECTION_DATE_TO + " to filter users by SonarLint last connection date. Only available with Administer System permission."),
         new Change("10.1", "New optional parameters " + LAST_CONNECTION_DATE_FROM +
-          " and " + LAST_CONNECTION_DATE_TO + " to filter users by SonarQube last connection date"),
+          " and " + LAST_CONNECTION_DATE_TO + " to filter users by SonarQube last connection date. Only available with Administer System permission."),
         new Change("10.1", "New field 'sonarLintLastConnectionDate' is added to response"),
         new Change("10.0", "'q' parameter values is now always performing a case insensitive match"),
         new Change("10.0", "Response includes 'managed' field."),
@@ -178,7 +178,7 @@ public class SearchAction implements UsersWsAction {
       }
 
       UserQuery userQuery = userQueryBuilder.build();
-      List<UserDto> users = fetchUsersAndSortByLogin(request, dbSession, userQuery);
+      List<UserDto> users = findUsersAndSortByLogin(request, dbSession, userQuery);
       int totalUsers = dbClient.userDao().countUsers(dbSession, userQuery);
 
       List<String> logins = users.stream().map(UserDto::getLogin).collect(toList());
@@ -194,8 +194,14 @@ public class SearchAction implements UsersWsAction {
     return users.stream().map(UserDto::getUuid).collect(Collectors.toSet());
   }
 
-  private static UserQuery.UserQueryBuilder buildUserQuery(SearchRequest request) {
+  private UserQuery.UserQueryBuilder buildUserQuery(SearchRequest request) {
     UserQuery.UserQueryBuilder builder = UserQuery.builder();
+    if(!userSession.isSystemAdministrator()) {
+      request.getLastConnectionDateFrom().ifPresent(v -> throwForbiddenFor(LAST_CONNECTION_DATE_FROM));
+      request.getLastConnectionDateTo().ifPresent(v -> throwForbiddenFor(LAST_CONNECTION_DATE_TO));
+      request.getSonarLintLastConnectionDateFrom().ifPresent(v -> throwForbiddenFor(SONAR_LINT_LAST_CONNECTION_DATE_FROM));
+      request.getSonarLintLastConnectionDateTo().ifPresent(v -> throwForbiddenFor(SONAR_LINT_LAST_CONNECTION_DATE_TO));
+    }
     request.getLastConnectionDateFrom().ifPresent(builder::lastConnectionDateFrom);
     request.getLastConnectionDateTo().ifPresent(builder::lastConnectionDateTo);
     request.getSonarLintLastConnectionDateFrom().ifPresent(builder::sonarLintLastConnectionDateFrom);
@@ -206,7 +212,11 @@ public class SearchAction implements UsersWsAction {
         .searchText(request.getQuery());
   }
 
-  private List<UserDto> fetchUsersAndSortByLogin(SearchRequest request, DbSession dbSession, UserQuery userQuery) {
+  private static void throwForbiddenFor(String parameterName) {
+    throw new ServerException(403, "parameter " + parameterName + " requires Administer System permission.");
+  }
+
+  private List<UserDto> findUsersAndSortByLogin(SearchRequest request, DbSession dbSession, UserQuery userQuery) {
     return dbClient.userDao().selectUsers(dbSession, userQuery, request.getPage(), request.getPageSize())
         .stream()
         .sorted(comparing(UserDto::getLogin))
