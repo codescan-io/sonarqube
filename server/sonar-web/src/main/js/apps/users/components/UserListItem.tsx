@@ -54,14 +54,17 @@ export default class UserListItem extends React.PureComponent<Props, State> {
     return (
       <tr>
         <td className="thin nowrap text-middle">
-          <Avatar hash={user.avatar} name={user.name} size={36} />
+          <Avatar hash={user.avatar} name={user.name} size={36}/>
         </td>
-        <UserListItemIdentity identityProvider={identityProvider} user={user} />
-        <td className="thin nowrap text-middle">
-          <UserScmAccounts scmAccounts={user.scmAccounts || []} />
+        <UserListItemIdentity identityProvider={identityProvider} user={user}/>
+        <td className="thin text-middle">
+          <UserScmAccounts scmAccounts={user.scmAccounts || []}/>
         </td>
         <td className="thin nowrap text-middle">
-          <DateFromNow date={user.lastConnectionDate} hourPrecision={true} />
+          <DateFromNow date={user.lastConnectionDate} hourPrecision={true}/>
+        </td>
+        <td className="thin nowrap text-middle">
+          <DateFromNow date={user.sonarLintLastConnectionDate} hourPrecision={true}/>
         </td>
         <td className="thin nowrap text-middle">
           {user.tokensCount}
@@ -71,7 +74,7 @@ export default class UserListItem extends React.PureComponent<Props, State> {
             tooltip={translateWithParameters('users.update_tokens')}
             aria-label={translateWithParameters('users.update_tokens_for_x', user.name ?? user.login)}
           >
-            <BulletListIcon />
+            <BulletListIcon/>
           </ButtonIcon>
         </td>
         <td className="thin nowrap text-right text-middle">
