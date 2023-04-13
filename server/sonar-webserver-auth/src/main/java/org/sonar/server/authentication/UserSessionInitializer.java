@@ -19,11 +19,16 @@
  */
 package org.sonar.server.authentication;
 
+import java.util.Optional;
+import java.util.Set;
+
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.MDC;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.server.ServerSide;
-import org.sonar.api.web.ServletFilter.UrlPattern;
+import org.sonar.api.server.http.HttpRequest;
+import org.sonar.api.server.http.HttpResponse;
+import org.sonar.api.web.UrlPattern;
 import org.sonar.db.user.UserTokenDto;
 import org.sonar.server.authentication.event.AuthenticationEvent;
 import org.sonar.server.authentication.event.AuthenticationEvent.Source;
@@ -32,11 +37,6 @@ import org.sonar.server.user.ThreadLocalUserSession;
 import org.sonar.server.user.TokenUserSession;
 import org.sonar.server.user.UserSession;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.util.Optional;
-import java.util.Set;
-
 import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
 import static java.net.URLEncoder.encode;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -44,7 +44,7 @@ import static org.apache.commons.lang.StringUtils.defaultString;
 import static org.sonar.api.CoreProperties.CORE_FORCE_AUTHENTICATION_DEFAULT_VALUE;
 import static org.sonar.api.CoreProperties.CORE_FORCE_AUTHENTICATION_PROPERTY;
 import static org.sonar.api.utils.DateUtils.formatDateTime;
-import static org.sonar.api.web.ServletFilter.UrlPattern.Builder.staticResourcePatterns;
+import static org.sonar.api.web.UrlPattern.Builder.staticResourcePatterns;
 import static org.sonar.server.authentication.AuthenticationError.handleAuthenticationError;
 import static org.sonar.server.authentication.AuthenticationRedirection.redirectTo;
 
@@ -103,7 +103,7 @@ public class UserSessionInitializer {
     this.requestAuthenticator = requestAuthenticator;
   }
 
-  public boolean initUserSession(HttpServletRequest request, HttpServletResponse response) {
+  public boolean initUserSession(HttpRequest request, HttpResponse response) {
     String path = request.getRequestURI().replaceFirst(request.getContextPath(), "");
     try {
       // Do not set user session when url is excluded
@@ -140,7 +140,7 @@ public class UserSessionInitializer {
     return provider != AuthenticationEvent.Provider.LOCAL && provider != AuthenticationEvent.Provider.JWT;
   }
 
-  private void loadUserSession(HttpServletRequest request, HttpServletResponse response, boolean urlSupportsSystemPasscode) {
+  private void loadUserSession(HttpRequest request, HttpResponse response, boolean urlSupportsSystemPasscode) {
     UserSession session = requestAuthenticator.authenticate(request, response);
     if (!session.isLoggedIn() && !urlSupportsSystemPasscode && config.getBoolean(CORE_FORCE_AUTHENTICATION_PROPERTY).orElse(CORE_FORCE_AUTHENTICATION_DEFAULT_VALUE)) {
       // authentication is required
@@ -155,7 +155,7 @@ public class UserSessionInitializer {
     request.setAttribute(ACCESS_LOG_LOGIN, defaultString(session.getLogin(), "-"));
   }
 
-  private static void checkTokenUserSession(HttpServletResponse response, UserSession session) {
+  private static void checkTokenUserSession(HttpResponse response, UserSession session) {
     if (session instanceof TokenUserSession tokenUserSession) {
       UserTokenDto userTokenDto = tokenUserSession.getUserToken();
       Optional.ofNullable(userTokenDto.getExpirationDate()).ifPresent(expirationDate -> response.addHeader(SQ_AUTHENTICATION_TOKEN_EXPIRATION, formatDateTime(expirationDate)));

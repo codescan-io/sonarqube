@@ -20,6 +20,8 @@
 package org.sonar.server.platform.web;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.sonar.api.server.http.HttpRequest;
+import org.sonar.api.server.http.HttpResponse;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
@@ -38,8 +40,6 @@ import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -70,8 +70,8 @@ public class CustomerAdminFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain) throws IOException, ServletException {
-        HttpServletRequest request = (HttpServletRequest) servletRequest;
-        HttpServletResponse response = (HttpServletResponse) servletResponse;
+        HttpRequest request = (HttpRequest) servletRequest;
+        HttpResponse response = (HttpResponse) servletResponse;
         String path = request.getRequestURI().replaceFirst(request.getContextPath(), "");
         if (includeUrls.contains(path)) {
             DbClient dbClient = platform.getContainer().getComponentByType(DbClient.class);
@@ -92,7 +92,7 @@ public class CustomerAdminFilter implements Filter {
 
             }
         }
-        chain.doFilter(request, response);
+        chain.doFilter(servletRequest, servletResponse);
     }
 
     private <T> T getComponent(Class<T> type) {
