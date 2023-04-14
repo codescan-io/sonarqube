@@ -26,6 +26,8 @@
     r.rule_type as "type",
     r.plugin_key as "pluginKey",
     r.scope,
+    r.education_principles as "educationPrinciplesField",
+    r.characteristic as "characteristic",
     r.created_at as "createdAt",
     r.updated_at as "updatedAt",
     rm.note_data as "noteData",
@@ -39,8 +41,7 @@
     rm.ad_hoc_name as "adHocName",
     rm.ad_hoc_description as "adHocDescription",
     rm.ad_hoc_severity as "adHocSeverity",
-    rm.ad_hoc_type as "adHocType",
-    r.education_principles as "educationPrinciplesField"
+    rm.ad_hoc_type as "adHocType"
   </sql>
 
   <sql id="leftOuterJoinRulesMetadata">
