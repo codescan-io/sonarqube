@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+import { LargeCenteredLayout } from 'design-system';
 import * as React from 'react';
 import A11ySkipTarget from '../../../components/a11y/A11ySkipTarget';
 import { parseDate } from '../../../helpers/dates';
@@ -109,7 +110,7 @@ export default function BranchOverviewRenderer(props: BranchOverviewRendererProp
                     grc={grc}
                   />
 
-                  { !grc ? (<>      
+                  { !grc ? (<>
                     <ActivityPanel
                       analyses={analyses}
                       branchLike={branch}
@@ -120,13 +121,13 @@ export default function BranchOverviewRenderer(props: BranchOverviewRendererProp
                       measuresHistory={measuresHistory}
                       metrics={metrics}
                       onGraphChange={onGraphChange}
-                    /></>) :(<></>)}            
+                    /></>) :(<></>)}
                 </div>
               </div>
             </div>
           )}
         </div>
-      </div>
+      </LargeCenteredLayout>
     </>
   );
 }
