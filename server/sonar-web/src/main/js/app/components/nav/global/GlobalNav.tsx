@@ -34,11 +34,13 @@ import { Organization } from "../../../../types/types";
 export interface GlobalNavProps {
   currentUser: CurrentUser;
   userOrganizations: Organization[];
+  pendoInitialized: boolean
+  updatePendoInitialized: (pendoInitialized: boolean) => void;
   location: { pathname: string };
 }
 
 export function GlobalNav(props: GlobalNavProps) {
-  const { currentUser, userOrganizations, location } = props;
+  const { currentUser, userOrganizations, pendoInitialized, updatePendoInitialized, location } = props;
   return (
     <NavBar className="navbar-global" height={rawSizes.globalNavHeightRaw} id="global-navigation">
       <GlobalNavBranding />
@@ -49,7 +51,7 @@ export function GlobalNav(props: GlobalNavProps) {
         <EmbedDocsPopupHelper />
         <Search />
         {isLoggedIn(currentUser) && <GlobalNavPlus />}
-        <GlobalNavUser currentUser={currentUser} userOrganizations={userOrganizations}/>
+        <GlobalNavUser currentUser={currentUser} userOrganizations={userOrganizations} pendoInitialized={pendoInitialized} updatePendoInitialized={updatePendoInitialized}/>
       </div>
     </NavBar>
   );
