@@ -25,13 +25,30 @@ import DocLink from '../common/DocLink';
 import Link from '../common/Link';
 import { DropdownOverlay } from '../controls/Dropdown';
 import { SuggestionsContext } from './SuggestionsContext';
+import { getApiKeyForZoho } from "../../api/codescan";
+import withCurrentUserContext from "../../app/components/current-user/withCurrentUserContext";
+import { CurrentUserContextInterface } from "../../app/components/current-user/CurrentUserContext";
+import { LoggedInUser } from "../../types/users";
 
 interface Props {
+  currentUser: LoggedInUser;
   onClose: () => void;
 }
 
-export default class EmbedDocsPopup extends React.PureComponent<Props> {
+type State = {
+  zohoUrl: string;
+}
+
+class EmbedDocsPopup extends React.PureComponent<Props & CurrentUserContextInterface, State> {
   firstItem: HTMLAnchorElement | null = null;
+
+  state: State = {
+    zohoUrl: ''
+  };
+
+  componentDidMount() {
+    this.getZohoDeskUrl();
+  }
 
   /*
    * Will be called by the first suggestion (if any), as well as the first link (documentation)
@@ -45,6 +62,23 @@ export default class EmbedDocsPopup extends React.PureComponent<Props> {
       this.firstItem.focus();
     }
   };
+
+  getZohoDeskUrl() {
+    const { currentUser } = this.props;
+    const payLoad = {
+      "operation": "signup",
+      "email": currentUser.email,
+      "loginName": "support.autorabit",
+      "fullName": currentUser.name,
+      "utype": "portal",
+    }
+
+    // get zohoApiKey
+    return getApiKeyForZoho(payLoad).then((response: any) => {
+      const zohoUrl = `https://support.autorabit.com/support/RemoteAuth?operation=${payLoad.operation}&email=${payLoad.email}&fullname=${payLoad.fullName}&loginname=${payLoad.loginName}&utype=${payLoad.utype}&ts=${response.ts}&apikey=${response.apiKey}`;
+      this.setState({ zohoUrl });
+    })
+  }
 
   renderTitle(text: string, labelId: string) {
     return (
@@ -114,7 +148,7 @@ export default class EmbedDocsPopup extends React.PureComponent<Props> {
           <li>
             <Link
               className="display-flex-center"
-              to="https://community.sonarsource.com/"
+              to={this.state.zohoUrl}
               target="_blank"
             >
               {translate('docs.get_help')}
@@ -149,3 +183,5 @@ export default class EmbedDocsPopup extends React.PureComponent<Props> {
     );
   }
 }
+
+export default withCurrentUserContext(EmbedDocsPopup)
