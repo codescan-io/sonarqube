@@ -55,7 +55,7 @@ export default class UserListItem extends React.PureComponent<Props, State> {
       <tr>
         <td className="thin text-middle">
           <div className="sw-flex sw-items-center">
-            <Avatar className="sw-shrink-0 sw-mr-4" hash={user.avatar} name={user.name} size={36} />
+            <Avatar className="sw-shrink-0 sw-mr-4" hash={user.avatar} name={user.name} size={36}/>
             <UserListItemIdentity
               identityProvider={identityProvider}
               user={user}
