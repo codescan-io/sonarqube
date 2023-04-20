@@ -39,6 +39,7 @@ interface Props extends RadioCardProps {
   title: React.ReactNode;
   titleInfo?: React.ReactNode;
   vertical?: boolean;
+  label?: string;
 }
 
 export default function RadioCard(props: Props) {
@@ -49,6 +50,7 @@ export default function RadioCard(props: Props) {
     recommended,
     selected,
     titleInfo,
+    label,
     vertical = false,
     noRadio = false,
   } = props;
@@ -68,7 +70,9 @@ export default function RadioCard(props: Props) {
       )}
       onClick={isActionable && !disabled ? onClick : undefined}
       role="radio"
-      tabIndex={0}
+      aria-label={label}
+      aria-disabled={disabled}
+      tabIndex={disabled ? -1 : 0}
     >
       <h2 className="radio-card-header big-spacer-bottom">
         <span className="display-flex-center link-radio">

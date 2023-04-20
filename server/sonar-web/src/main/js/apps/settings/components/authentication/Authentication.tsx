@@ -36,7 +36,6 @@ import { Feature } from '../../../../types/features';
 import { ExtendedSettingDefinition } from '../../../../types/settings';
 import { AUTHENTICATION_CATEGORY } from '../../constants';
 import CategoryDefinitionsList from '../CategoryDefinitionsList';
-import SamlAuthentication from './SamlAuthentication';
 
 interface Props {
   definitions: ExtendedSettingDefinition[];
@@ -173,11 +172,6 @@ export function Authentication(props: Props & WithAvailableFeaturesProps) {
                   }}
                 />
               </Alert>
-              {currentTab === SAML && (
-                <SamlAuthentication
-                  definitions={definitions.filter((def) => def.subCategory === SAML)}
-                />
-              )}
 
               {currentTab !== SAML && (
                 <CategoryDefinitionsList

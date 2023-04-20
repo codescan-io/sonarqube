@@ -207,6 +207,19 @@ describe('SAML tab', () => {
 
     expect(ui.customMessageInformation.get()).toBeInTheDocument();
   });
+
+  it('should not allow edtion below Enterprise to select SCIM provisioning', async () => {
+    const { saml } = ui;
+    const user = userEvent.setup();
+
+    renderAuthentication();
+
+    await saml.createConfiguration(user);
+    await user.click(await saml.enableConfigButton.find());
+
+    expect(await saml.jitProvisioningButton.find()).toBeChecked();
+    expect(saml.scimProvisioningButton.get()).toHaveAttribute('aria-disabled', 'true');
+  });
 });
 
 function renderAuthentication(definitions: ExtendedSettingDefinition[], features: Feature[] = []) {
