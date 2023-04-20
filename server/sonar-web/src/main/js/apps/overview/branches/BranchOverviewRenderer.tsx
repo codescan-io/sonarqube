@@ -29,6 +29,7 @@ import { Analysis, GraphType, MeasureHistory } from '../../../types/project-acti
 import { QualityGateStatus } from '../../../types/quality-gates';
 import { Component, MeasureEnhanced, Metric, Period } from '../../../types/types';
 import ActivityPanel from './ActivityPanel';
+import FirstAnalysisNextStepsNotif from './FirstAnalysisNextStepsNotif';
 import MeasuresPanel from './MeasuresPanel';
 import NoCodeWarning from './NoCodeWarning';
 import QualityGatePanel from './QualityGatePanel';
@@ -59,7 +60,9 @@ export default function BranchOverviewRenderer(props: BranchOverviewRendererProp
     analyses,
     appLeak,
     branch,
+    branchesEnabled,
     component,
+    detectedCIOnLastAnalysis,
     graph,
     loadingHistory,
     loadingStatus,
@@ -68,60 +71,71 @@ export default function BranchOverviewRenderer(props: BranchOverviewRendererProp
     metrics = [],
     onGraphChange,
     period,
+    projectBinding,
     projectIsEmpty,
     qgStatuses,
-    grc
+    grc,
   } = props;
 
   const leakPeriod = component.qualifier === ComponentQualifier.Application ? appLeak : period;
 
   return (
-    <LargeCenteredLayout>
-      <div className="overview">
-        <A11ySkipTarget anchor="overview_main" />
+    <>
+      <FirstAnalysisNextStepsNotif
+        component={component}
+        branchesEnabled={branchesEnabled}
+        detectedCIOnLastAnalysis={detectedCIOnLastAnalysis}
+        projectBinding={projectBinding}
+      />
+      <LargeCenteredLayout>
+        <div className="overview sw-mt-6">
+          <A11ySkipTarget anchor="overview_main" />
 
-        {projectIsEmpty ? (
-          <NoCodeWarning branchLike={branch} component={component} measures={measures} />
-        ) : (
-          <div className="sw-flex">
-            <div className="width-30 sw-mr-12">
-              <QualityGatePanel
-                component={component}
-                loading={loadingStatus}
-                qgStatuses={qgStatuses}
-                grc={grc}
-              />
-            </div>
-
-            <div className="sw-flex-1">
-              <div className="sw-flex sw-flex-col">
-                <MeasuresPanel
-                  appLeak={appLeak}
-                  branch={branch}
+          {projectIsEmpty ? (
+            <NoCodeWarning branchLike={branch} component={component} measures={measures} />
+          ) : (
+            <div className="sw-flex">
+              <div className="width-30 sw-mr-12 sw-pt-6">
+                <QualityGatePanel
                   component={component}
                   loading={loadingStatus}
-                  measures={measures}
-                  period={period}
+                  qgStatuses={qgStatuses}
                   grc={grc}
                 />
+              </div>
 
-                { !grc ? (<>
-                  <ActivityPanel
-                    analyses={analyses}
-                    branchLike={branch}
+              <div className="sw-flex-1">
+                <div className="sw-flex sw-flex-col sw-pt-6">
+                  <MeasuresPanel
+                    appLeak={appLeak}
+                    branch={branch}
                     component={component}
-                    graph={graph}
-                    leakPeriodDate={leakPeriod && parseDate(leakPeriod.date)}
-                    loading={loadingHistory}
-                    measuresHistory={measuresHistory}
-                    metrics={metrics}
-                    onGraphChange={onGraphChange}
-                  /></>) :(<></>)}
+                    loading={loadingStatus}
+                    measures={measures}
+                    period={period}
+                    qgStatuses={qgStatuses}
+                    grc={grc}
+                  />
+
+                  {!grc && (
+                    <ActivityPanel
+                      analyses={analyses}
+                      branchLike={branch}
+                      component={component}
+                      graph={graph}
+                      leakPeriodDate={leakPeriod && parseDate(leakPeriod.date)}
+                      loading={loadingHistory}
+                      measuresHistory={measuresHistory}
+                      metrics={metrics}
+                      onGraphChange={onGraphChange}
+                    />
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
-    </LargeCenteredLayout>
+          )}
+        </div>
+      </LargeCenteredLayout>
+    </>
   );
 }

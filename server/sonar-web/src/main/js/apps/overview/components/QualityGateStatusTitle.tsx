@@ -23,16 +23,18 @@ import React from 'react';
 import HelpTooltip from '../../../components/controls/HelpTooltip';
 import { translate } from '../../../helpers/l10n';
 
-export function QualityGateStatusTitle({ grc }) {
+export function QualityGateStatusTitle() {
   return (
     <div className="sw-flex sw-items-center sw-mb-4">
-      <PageTitle text={translate('overview.quality_gate.status')} />
-      <HelpTooltip
-        className="sw-ml-2"
-        overlay={<div className="sw-my-4">{grc ? "Analysis Gate is a set of measure-based Boolean conditions. It helps you know immediately whether your project is production-ready. If your current status is not Passed, you'll see which measures caused the problem and the values required to pass." : translate('overview.quality_gate.help')}</div>}
-      >
-        <HelperHintIcon aria-label="help-tooltip" />
-      </HelpTooltip>
+      <h2 className="sw-flex sw-items-center">
+        <PageTitle text={translate('overview.quality_gate.status')} />
+        <HelpTooltip
+          className="sw-ml-2"
+          overlay={<div className="sw-my-4">{translate('overview.quality_gate.help')}</div>}
+        >
+          <HelperHintIcon aria-label="help-tooltip" />
+        </HelpTooltip>
+      </h2>
     </div>
   );
 }

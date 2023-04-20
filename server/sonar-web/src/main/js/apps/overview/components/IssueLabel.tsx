@@ -17,9 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+import { DrilldownLink, HelperHintIcon, LightLabel } from 'design-system';
 import * as React from 'react';
-import { MetricKey } from '../../../../js/types/metrics';
-import Link from '../../../components/common/Link';
 import HelpTooltip from '../../../components/controls/HelpTooltip';
 import { getLeakValue } from '../../../components/measure/utils';
 import { getBranchLikeQuery } from '../../../helpers/branch-like';
@@ -28,8 +27,9 @@ import { findMeasure, formatMeasure, localizeMetric } from '../../../helpers/mea
 import { getComponentIssuesUrl, getComponentSecurityHotspotsUrl } from '../../../helpers/urls';
 import { BranchLike } from '../../../types/branch-like';
 import { IssueType } from '../../../types/issues';
+import { MetricType } from '../../../types/metrics';
 import { Component, MeasureEnhanced } from '../../../types/types';
-import { getIssueIconClass, getIssueMetricKey } from '../utils';
+import { getIssueMetricKey } from '../utils';
 
 export interface IssueLabelProps {
   branchLike?: BranchLike;
@@ -38,17 +38,12 @@ export interface IssueLabelProps {
   measures: MeasureEnhanced[];
   type: IssueType;
   useDiffMetric?: boolean;
-  grc: boolean;
-  renderLink: boolean;
 }
 
 export function IssueLabel(props: IssueLabelProps) {
-  const { branchLike, component, helpTooltip, measures, type, useDiffMetric = false, grc, renderLink } = props;
-  
+  const { branchLike, component, helpTooltip, measures, type, useDiffMetric = false } = props;
   const metricKey = getIssueMetricKey(type, useDiffMetric);
-  const grcMetric = metricKey===MetricKey.security_hotspots?"violations":"new_violations" 
   const measure = findMeasure(measures, metricKey);
-  const iconClass = getIssueIconClass(type);
 
   let value;
   if (measure) {
@@ -68,31 +63,29 @@ export function IssueLabel(props: IssueLabelProps) {
       : getComponentIssuesUrl(component.key, params);
 
   return (
-    <>
+    <div className="sw-body-md sw-flex sw-items-center">
       {value === undefined ? (
-        <span aria-label={translate('no_data')} className="overview-measures-empty-value" />
-      ) : (<>{
-        renderLink ? (<>
-        <Link
+        <LightLabel aria-label={translate('no_data')}> — </LightLabel>
+      ) : (
+        <DrilldownLink
           aria-label={translateWithParameters(
             'overview.see_list_of_x_y_issues',
             value,
             localizeMetric(metricKey)
           )}
-          className="overview-measures-value text-light"
+          className="it__overview-measures-value"
           to={url}
         >
-          {formatMeasure(value, 'SHORT_INT')}
-        </Link>
-        </>) : (<><span  className="overview-measures-value text-light">
-                  {formatMeasure(value, 'SHORT_INT')}
-                </span></>)
-      }</>)}
-
-      {React.createElement(iconClass, { className: 'big-spacer-left little-spacer-right' })}
-      {grc?localizeMetric(grcMetric):localizeMetric(metricKey)}
-      {helpTooltip && <HelpTooltip className="little-spacer-left" overlay={helpTooltip} />}
-    </>
+          {formatMeasure(value, MetricType.ShortInteger)}
+        </DrilldownLink>
+      )}
+      <LightLabel className="sw-mx-2">{localizeMetric(metricKey)}</LightLabel>
+      {helpTooltip && (
+        <HelpTooltip overlay={helpTooltip}>
+          <HelperHintIcon aria-label={helpTooltip} />
+        </HelpTooltip>
+      )}
+    </div>
   );
 }
 
