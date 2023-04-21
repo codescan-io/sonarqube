@@ -19,21 +19,31 @@
  */
 package org.sonar.auth.github;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import org.sonar.api.ce.ComputeEngineSide;
 import org.sonar.api.server.ServerSide;
 import org.sonar.db.DbSession;
+import org.sonar.db.user.UserDao;
+import org.sonar.db.user.UserDto;
+import org.sonar.db.user.UserQuery;
 import org.sonar.server.management.ManagedInstanceService;
+
+import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 @ServerSide
 @ComputeEngineSide
 public class GitHubManagedInstanceService implements ManagedInstanceService {
 
   private final GitHubSettings gitHubSettings;
+  private final UserDao userDao;
 
-  public GitHubManagedInstanceService(GitHubSettings gitHubSettings) {
+  public GitHubManagedInstanceService(GitHubSettings gitHubSettings, UserDao userDao) {
     this.gitHubSettings = gitHubSettings;
+    this.userDao = userDao;
   }
 
   @Override
@@ -43,21 +53,21 @@ public class GitHubManagedInstanceService implements ManagedInstanceService {
 
   @Override
   public Map<String, Boolean> getUserUuidToManaged(DbSession dbSession, Set<String> userUuids) {
-    throw new IllegalStateException("Not implemented.");
+    UserQuery managedUsersQuery = UserQuery.builder()
+      .userUuids(userUuids)
+      .build();
+
+    List<UserDto> userDtos = userDao.selectUsers(dbSession, managedUsersQuery);
+    Set<String> gitHubUserUuids = userDtos.stream()
+      .map(UserDto::getUuid)
+      .collect(toSet());
+
+    return userUuids.stream()
+      .collect(toMap(Function.identity(), gitHubUserUuids::contains));
   }
 
   @Override
   public Map<String, Boolean> getGroupUuidToManaged(DbSession dbSession, Set<String> groupUuids) {
-    throw new IllegalStateException("Not implemented.");
-  }
-
-  @Override
-  public String getManagedUsersSqlFilter(boolean filterByManaged) {
-    throw new IllegalStateException("Not implemented.");
-  }
-
-  @Override
-  public String getManagedGroupsSqlFilter(boolean filterByManaged) {
     throw new IllegalStateException("Not implemented.");
   }
 }
