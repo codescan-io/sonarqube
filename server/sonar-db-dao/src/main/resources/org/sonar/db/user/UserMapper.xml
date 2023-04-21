@@ -206,6 +206,12 @@
         <if test="query.isActive != null">
           u.active=#{query.isActive, jdbcType=BOOLEAN}
         </if>
+        <if test="query.userUuids != null">
+          AND u.uuid in
+          <foreach collection="query.userUuids" open="(" close=")" item="userUuid" separator=",">
+            #{userUuid, jdbcType=VARCHAR}
+          </foreach>
+        </if>
         <if test="query.searchText != null">
           AND (
               (lower(u.login) LIKE lower(#{query.searchText, jdbcType=VARCHAR}) ESCAPE '/')
