@@ -60,6 +60,7 @@ public class SearchRequest {
   private List<String> statuses;
   private List<String> tags;
   private Set<String> types;
+  private Set<String> characteristics;
   private List<String> pciDss32;
   private List<String> pciDss40;
   private List<String> owaspTop10;
@@ -524,4 +525,15 @@ public class SearchRequest {
   public String getOrganization() {
     return organization;
   }
+
+  @CheckForNull
+  public Collection<String> getCharacteristics() {
+    return characteristics;
+  }
+
+  public SearchRequest setCharacteristics(@Nullable Collection<String> characteristics) {
+    this.characteristics = characteristics == null ? null : Set.copyOf(characteristics);
+    return this;
+  }
+
 }

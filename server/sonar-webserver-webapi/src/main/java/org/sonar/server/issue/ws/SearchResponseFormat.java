@@ -162,6 +162,7 @@ public class SearchResponseFormat {
   private void addMandatoryFieldsToIssueBuilder(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data, Map<String, Object[]> issueMap) {
     issueBuilder.setKey(dto.getKey());
     issueBuilder.setType(Common.RuleType.forNumber(dto.getType()));
+    issueBuilder.setCharacteristic(Common.RuleCharacteristic.valueOf(dto.getEffectiveRuleCharacteristic().name()));
 
     ComponentDto component = data.getComponentByUuid(dto.getComponentUuid());
     issueBuilder.setOrganization(data.getOrganizationKey(component.getOrganizationUuid()));
@@ -178,6 +179,7 @@ public class SearchResponseFormat {
     if (dto.getType() != RuleType.SECURITY_HOTSPOT.getDbConstant()) {
       issueBuilder.setSeverity(Common.Severity.valueOf(dto.getSeverity()));
     }
+
     ofNullable(data.getUserByUuid(dto.getAssigneeUuid())).ifPresent(assignee -> issueBuilder.setAssignee(assignee.getLogin()));
     ofNullable(emptyToNull(dto.getResolution())).ifPresent(issueBuilder::setResolution);
     issueBuilder.setStatus(dto.getStatus());

@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.sonar.api.rule.RuleStatus;
 import org.sonar.api.rule.Severity;
+import org.sonar.api.rules.RuleCharacteristic;
 import org.sonar.api.rules.RuleType;
 import org.sonar.api.server.ServerSide;
 import org.sonar.api.server.ws.WebService;
@@ -53,6 +54,7 @@ import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOption
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_ACTIVATION;
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_ACTIVE_SEVERITIES;
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_AVAILABLE_SINCE;
+import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_CHARACTERISTICS;
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_COMPARE_TO_PROFILE;
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_CWE;
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_INCLUDE_EXTERNAL;
@@ -179,6 +181,13 @@ public class RuleWsSupport {
       .setDescription("Comma-separated list of types. Returned rules match any of the tags (OR operator)")
       .setPossibleValues(RuleType.values())
       .setExampleValue(RuleType.BUG);
+
+    action
+      .createParam(PARAM_CHARACTERISTICS)
+      .setSince("10.1")
+      .setDescription("Comma-separated list of characteristics. Returned rules match any of the characteristics (OR operator)")
+      .setPossibleValues(RuleCharacteristic.values())
+      .setExampleValue(RuleCharacteristic.CLEAR);
 
     action
       .createParam(PARAM_ACTIVATION)

@@ -25,6 +25,7 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonar.api.rule.RuleStatus;
 import org.sonar.api.rule.Severity;
+import org.sonar.api.rules.RuleCharacteristic;
 import org.sonar.api.rules.RuleType;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.qualityprofile.QProfileDto;
@@ -41,6 +42,7 @@ public class RuleQuery {
   private Collection<RuleStatus> statuses;
   private Collection<String> tags;
   private Collection<RuleType> types;
+  private Collection<RuleCharacteristic> characteristics;
   private Boolean activation;
   private QProfileDto profile;
   private QProfileDto compareToQProfile;
@@ -173,6 +175,16 @@ public class RuleQuery {
 
   public RuleQuery setTypes(@Nullable Collection<RuleType> types) {
     this.types = types;
+    return this;
+  }
+
+  @CheckForNull
+  public Collection<RuleCharacteristic> getCharacteristics() {
+    return characteristics;
+  }
+
+  public RuleQuery setCharacteristics(@Nullable Collection<RuleCharacteristic> characteristics) {
+    this.characteristics = characteristics;
     return this;
   }
 
