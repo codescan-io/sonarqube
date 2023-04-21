@@ -29,9 +29,9 @@ import java.util.Set;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.sonar.api.code.CodeCharacteristic;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rule.RuleStatus;
-import org.sonar.api.rules.RuleCharacteristic;
 import org.sonar.api.rules.RuleType;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -96,7 +96,7 @@ public class RuleDto {
   private String systemTagsField = null;
   private String securityStandardsField = null;
   private int type = 0;
-  private RuleCharacteristic characteristic = null;
+  private CodeCharacteristic characteristic = null;
   private Scope scope = null;
 
   private RuleKey key = null;
@@ -381,15 +381,15 @@ public class RuleDto {
   }
 
   @CheckForNull
-  public RuleCharacteristic getCharacteristic() {
+  public CodeCharacteristic getCharacteristic() {
     return this.characteristic;
   }
 
-  public RuleCharacteristic getEffectiveCharacteristic() {
+  public CodeCharacteristic getEffectiveCharacteristic() {
     return characteristic != null ? characteristic : RuleTypeToRuleCharacteristicConverter.convertToRuleCharacteristic(type);
   }
 
-  public RuleDto setCharacteristic(@Nullable RuleCharacteristic characteristic) {
+  public RuleDto setCharacteristic(@Nullable CodeCharacteristic characteristic) {
     this.characteristic = characteristic;
     return this;
   }
