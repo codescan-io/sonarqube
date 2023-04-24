@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { LargeCenteredLayout } from 'design-system';
+import { LargeCenteredLayout, PageContentFontWrapper } from 'design-system';
 import * as React from 'react';
 import A11ySkipTarget from '../../../components/a11y/A11ySkipTarget';
 import { parseDate } from '../../../helpers/dates';
@@ -88,53 +88,55 @@ export default function BranchOverviewRenderer(props: BranchOverviewRendererProp
         projectBinding={projectBinding}
       />
       <LargeCenteredLayout>
-        <div className="overview sw-mt-6">
-          <A11ySkipTarget anchor="overview_main" />
+        <PageContentFontWrapper>
+          <div className="overview sw-mt-6 sw-body-sm">
+            <A11ySkipTarget anchor="overview_main" />
 
-          {projectIsEmpty ? (
-            <NoCodeWarning branchLike={branch} component={component} measures={measures} />
-          ) : (
-            <div className="sw-flex">
-              <div className="width-30 sw-mr-12 sw-pt-6">
-                <QualityGatePanel
-                  component={component}
-                  loading={loadingStatus}
-                  qgStatuses={qgStatuses}
-                  grc={grc}
-                />
-              </div>
-
-              <div className="sw-flex-1">
-                <div className="sw-flex sw-flex-col sw-pt-6">
-                  <MeasuresPanel
-                    appLeak={appLeak}
-                    branch={branch}
+            {projectIsEmpty ? (
+              <NoCodeWarning branchLike={branch} component={component} measures={measures} />
+            ) : (
+              <div className="sw-flex">
+                <div className="width-30 sw-mr-12 sw-pt-6">
+                  <QualityGatePanel
                     component={component}
                     loading={loadingStatus}
-                    measures={measures}
-                    period={period}
                     qgStatuses={qgStatuses}
                     grc={grc}
                   />
+                </div>
 
-                  {!grc && (
-                    <ActivityPanel
-                      analyses={analyses}
-                      branchLike={branch}
+                <div className="sw-flex-1">
+                  <div className="sw-flex sw-flex-col sw-pt-6">
+                    <MeasuresPanel
+                      appLeak={appLeak}
+                      branch={branch}
                       component={component}
-                      graph={graph}
-                      leakPeriodDate={leakPeriod && parseDate(leakPeriod.date)}
-                      loading={loadingHistory}
-                      measuresHistory={measuresHistory}
-                      metrics={metrics}
-                      onGraphChange={onGraphChange}
+                      loading={loadingStatus}
+                      measures={measures}
+                      period={period}
+                      qgStatuses={qgStatuses}
+                      grc={grc}
                     />
-                  )}
+
+                    {!grc && (
+                      <ActivityPanel
+                        analyses={analyses}
+                        branchLike={branch}
+                        component={component}
+                        graph={graph}
+                        leakPeriodDate={leakPeriod && parseDate(leakPeriod.date)}
+                        loading={loadingHistory}
+                        measuresHistory={measuresHistory}
+                        metrics={metrics}
+                        onGraphChange={onGraphChange}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </PageContentFontWrapper>
       </LargeCenteredLayout>
     </>
   );

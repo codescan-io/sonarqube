@@ -28,6 +28,8 @@ import QualityGateStatusHeader from '../components/QualityGateStatusHeader';
 import QualityGateStatusPassedView from '../components/QualityGateStatusPassedView';
 import { QualityGateStatusTitle } from '../components/QualityGateStatusTitle';
 import ApplicationNonCaycProjectWarning from './ApplicationNonCaycProjectWarning';
+import CleanAsYouCodeWarning from './CleanAsYouCodeWarning';
+import CleanAsYouCodeWarningOverCompliant from './CleanAsYouCodeWarningOverCompliant';
 import QualityGatePanelSection from './QualityGatePanelSection';
 
 export interface QualityGatePanelProps {
@@ -120,6 +122,23 @@ export function QualityGatePanel(props: QualityGatePanelProps) {
           caycStatus={CaycStatus.OverCompliant}
         />
       )}
+
+      {qgStatuses.length === 1 &&
+        qgStatuses[0].caycStatus === CaycStatus.NonCompliant &&
+        !isApplication(component.qualifier) && (
+          <Card className="sw-mt-4 sw-body-sm">
+            <CleanAsYouCodeWarning component={component} />
+          </Card>
+        )}
+
+      {qgStatuses.length === 1 &&
+        qgStatuses[0].caycStatus === CaycStatus.OverCompliant &&
+        !isApplication(component.qualifier) && (
+          <Card className="sw-mt-4 sw-body-sm">
+            <CleanAsYouCodeWarningOverCompliant component={component} />
+          </Card>
+        )}
+
     </div>
   );
 }
