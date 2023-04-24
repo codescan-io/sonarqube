@@ -152,7 +152,7 @@ subprojects {
 
   ext {
     protobufVersion = '3.22.2'
-    springVersion = '5.3.26'
+    springVersion = '5.3.27'
   }
 
   sonar {
