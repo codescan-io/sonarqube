@@ -146,7 +146,7 @@ export class EmbedDocsPopup extends React.PureComponent<Props, State> {
           </a>
           {this.state.reseting && this.renderAboutCodescan(
             'https://knowledgebase.autorabit.com/codescan/docs/codescan-release-notes',
-            'embed-doc/codescan-version-23_0_6.png',
+            'embed-doc/codescan-version-23_1_0.png',
             translate('embed_docs.codescan_version')
           )}
         </li>
@@ -191,7 +191,7 @@ export class EmbedDocsPopup extends React.PureComponent<Props, State> {
           </a>
           {this.state.reseting && this.renderAboutCodescan(
             'https://knowledgebase.autorabit.com/codescan/docs/codescan-release-notes',
-            'embed-doc/codescan-version-23_0_6.png',
+            'embed-doc/codescan-version-23_1_0.png',
             translate('embed_docs.codescan_version')
           )}
         </li>

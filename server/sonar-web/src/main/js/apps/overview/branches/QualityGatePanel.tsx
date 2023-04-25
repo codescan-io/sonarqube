@@ -30,10 +30,11 @@ export interface QualityGatePanelProps {
   component: Pick<T.Component, 'key' | 'qualifier'>;
   loading?: boolean;
   qgStatuses?: QualityGateStatus[];
+  grc:boolean;
 }
 
 export function QualityGatePanel(props: QualityGatePanelProps) {
-  const { component, loading, qgStatuses = [] } = props;
+  const { grc, component, loading, qgStatuses = [] } = props;
 
   if (qgStatuses === undefined) {
     return null;
@@ -52,15 +53,24 @@ export function QualityGatePanel(props: QualityGatePanelProps) {
     qgStatuses !== undefined &&
     qgStatuses.some(p => Boolean(p.ignoredConditions));
 
+    let title = translate('overview.quality_gate');
+    let helpMsg = translate('overview.quality_gate.help');
+    if(grc){
+      // title = translate('grc.overview.quality_gate');
+      // helpMsg = translate('grc.overview.quality_gate.help');
+      title = "Analysis Gate Status";
+      helpMsg = "Analysis Gate is a set of measure-based Boolean conditions. It helps you know immediately whether your project is production-ready. If your current status is not Passed, you'll see which measures caused the problem and the values required to pass.";
+    }
+
   return (
     <div className="overview-panel" data-test="overview__quality-gate-panel">
       <h2 className="overview-panel-title display-inline-flex-center">
-        {translate('overview.quality_gate')}{' '}
+        {title}{' '}
         <HelpTooltip
           className="little-spacer-left"
           overlay={
             <div className="big-padded-top big-padded-bottom">
-              {translate('overview.quality_gate.help')}
+              {helpMsg}
             </div>
           }
         />
@@ -109,6 +119,7 @@ export function QualityGatePanel(props: QualityGatePanelProps) {
                     component={component}
                     key={qgStatus.key}
                     qgStatus={qgStatus}
+                    grc={grc}
                   />
                 ))}
               </div>

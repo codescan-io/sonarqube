@@ -300,6 +300,7 @@ declare namespace T {
     | { type: 'MY_ISSUES' }
     | { type: 'MY_PROJECTS' }
     | { type: 'ORGANIZATION'; organization: string }
+    | { type: 'POLICY_RESULTS'; organization: string }
     | { type: 'PORTFOLIO'; component: string }
     | { type: 'PORTFOLIOS' }
     | { type: 'PROJECT'; branch: string | undefined; component: string }
@@ -314,7 +315,8 @@ declare namespace T {
     | 'PORTFOLIO'
     | 'PORTFOLIOS'
     | 'PROJECT'
-    | 'PROJECTS';
+    | 'PROJECTS'
+    | 'POLICY_RESULTS';
 
   export interface IdentityProvider {
     backgroundColor: string;

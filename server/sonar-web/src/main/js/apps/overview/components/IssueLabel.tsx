@@ -28,6 +28,7 @@ import { findMeasure } from '../../../helpers/measures';
 import { getComponentIssuesUrl, getComponentSecurityHotspotsUrl } from '../../../helpers/urls';
 import { BranchLike } from '../../../types/branch-like';
 import { IssueType } from '../../../types/issues';
+import { MetricKey } from '../../../types/metrics';
 import { getIssueIconClass, getIssueMetricKey } from '../utils';
 
 export interface IssueLabelProps {
@@ -37,11 +38,14 @@ export interface IssueLabelProps {
   measures: T.MeasureEnhanced[];
   type: IssueType;
   useDiffMetric?: boolean;
+  grc:boolean;
+  renderLink:boolean;
 }
 
 export function IssueLabel(props: IssueLabelProps) {
-  const { branchLike, component, helpTooltip, measures, type, useDiffMetric = false } = props;
+  const { branchLike, component, helpTooltip, measures, type, useDiffMetric = false, grc, renderLink } = props;
   const metric = getIssueMetricKey(type, useDiffMetric);
+  const grcMetric = metric===MetricKey.security_hotspots?"violations":"new_violations" 
   const measure = findMeasure(measures, metric);
   const iconClass = getIssueIconClass(type);
 
@@ -61,19 +65,29 @@ export function IssueLabel(props: IssueLabelProps) {
     <>
       {value === undefined ? (
         <span aria-label={translate('no_data')} className="overview-measures-empty-value" />
-      ) : (
-        <Link
+      ) : (<>{
+        renderLink?(
+          <>
+          <Link
           className="overview-measures-value text-light"
           to={
             type === IssueType.SecurityHotspot
-              ? getComponentSecurityHotspotsUrl(component.key, params)
+              ? getComponentSecurityHotspotsUrl(component.key, params, grc)
               : getComponentIssuesUrl(component.key, params)
           }>
           {formatMeasure(value, 'SHORT_INT')}
         </Link>
-      )}
+
+        </>
+                ):(<span  className="overview-measures-value text-light">
+                  {formatMeasure(value, 'SHORT_INT')}
+                </span>
+        )
+      }
+        
+      </>)}
       {React.createElement(iconClass, { className: 'big-spacer-left little-spacer-right' })}
-      {localizeMetric(metric)}
+      {grc?localizeMetric(grcMetric):localizeMetric(metric)}
       {helpTooltip && <HelpTooltip className="little-spacer-left" overlay={helpTooltip} />}
     </>
   );

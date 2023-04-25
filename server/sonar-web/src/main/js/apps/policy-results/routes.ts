@@ -17,30 +17,13 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.server.user.ws;
 
-import java.util.List;
+import { lazyLoadComponent } from 'sonar-ui-common/components/lazyLoadComponent';
 
-public interface HomepageTypes {
-
-  enum Type {
-    PROJECT,
-    /**
-     * These types are only available on SonarQube
-     */
-    PROJECTS, ISSUES, PORTFOLIOS, PORTFOLIO, APPLICATION,
-    /**
-     * These types are only available on SonarCloud
-     */
-    MY_PROJECTS, MY_ISSUES,
-    /**
-     * This type is only available when organizations are enabled
-     */
-    ORGANIZATION,
-    POLICY_RESULTS
+const routes = [
+  {
+    indexRoute: { component: lazyLoadComponent(() => import('./components/App')) }
   }
+];
 
-  List<Type> getTypes();
-
-  Type getDefaultType();
-}
+export default routes;

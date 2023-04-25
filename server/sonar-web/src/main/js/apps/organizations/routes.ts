@@ -54,6 +54,13 @@ const routes = [
         ]
       },
       {
+        path: 'policy-results',
+        component: OrganizationContainer,
+        childRoutes: [
+          { indexRoute: { component: lazyLoadComponent(() => import('../policy-results/components/OrgApp')) } }
+        ]
+      },
+      {
         path: 'rules',
         component: OrganizationContainer,
         childRoutes: codingRulesRoutes

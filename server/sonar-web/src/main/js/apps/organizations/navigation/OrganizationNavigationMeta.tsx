@@ -35,6 +35,10 @@ export default function OrganizationNavigationMeta({
   userOrganizations
 }: Props) {
   const onSonarCloud = isSonarCloud();
+  let orgType = "ORGANIZATION";
+  if(window.location.href.indexOf("policy-results")>0){
+    orgType = "POLICY_RESULTS";
+  }
   return (
     <div className="navbar-context-meta">
       {organization.url != null && (
@@ -54,7 +58,7 @@ export default function OrganizationNavigationMeta({
       </div>
       {onSonarCloud && (
         <div className="navbar-context-meta-secondary">
-          <HomePageSelect currentPage={{ type: 'ORGANIZATION', organization: organization.key }} />
+          <HomePageSelect currentPage={{ type: orgType, organization: organization.key }} />
         </div>
       )}
     </div>
