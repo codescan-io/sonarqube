@@ -32,7 +32,7 @@ export interface Props {
 
 export default function UserListItemIdentity({ identityProvider, user }: Props) {
   return (
-    <td className="text-middle">
+    <div>
       <div>
         <strong className="js-user-name">{user.name}</strong>
         <span className="js-user-login note little-spacer-left">{user.login}</span>
@@ -41,7 +41,7 @@ export default function UserListItemIdentity({ identityProvider, user }: Props) 
       {!user.local && user.externalProvider !== 'sonarqube' && (
         <ExternalProvider identityProvider={identityProvider} user={user} />
       )}
-    </td>
+    </div>
   );
 }
 
