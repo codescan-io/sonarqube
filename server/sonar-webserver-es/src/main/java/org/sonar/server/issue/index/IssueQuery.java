@@ -74,7 +74,6 @@ public class IssueQuery {
   private final Collection<String> languages;
   private final Collection<String> tags;
   private final Collection<String> types;
-  private final Collection<String> characteristics;
   private final Collection<String> owaspTop10;
   private final Collection<String> pciDss32;
   private final Collection<String> pciDss40;
@@ -120,7 +119,6 @@ public class IssueQuery {
     this.languages = defaultCollection(builder.languages);
     this.tags = defaultCollection(builder.tags);
     this.types = defaultCollection(builder.types);
-    this.characteristics = defaultCollection(builder.characteristics);
     this.pciDss32 = defaultCollection(builder.pciDss32);
     this.pciDss40 = defaultCollection(builder.pciDss40);
     this.owaspAsvs40 = defaultCollection(builder.owaspAsvs40);
@@ -216,10 +214,6 @@ public class IssueQuery {
 
   public Collection<String> types() {
     return types;
-  }
-
-  public Collection<String> characteristics() {
-    return characteristics;
   }
 
   public Collection<String> pciDss32() {
@@ -365,7 +359,6 @@ public class IssueQuery {
     private Collection<String> scopes;
     private Collection<String> languages;
     private Collection<String> tags;
-    private Collection<String> characteristics;
     private Collection<String> types;
     private Collection<String> pciDss32;
     private Collection<String> pciDss40;
@@ -481,11 +474,6 @@ public class IssueQuery {
 
     public Builder types(@Nullable Collection<String> t) {
       this.types = t;
-      return this;
-    }
-
-    public Builder characteristics(@Nullable Collection<String> characteristics) {
-      this.characteristics = characteristics;
       return this;
     }
 

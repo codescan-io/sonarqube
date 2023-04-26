@@ -38,6 +38,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.emptySet;
 import static java.util.Optional.ofNullable;
 import static org.sonar.db.rule.RuleDescriptionSectionDto.DEFAULT_KEY;
+import static org.sonar.db.rule.RuleTypeToRuleCharacteristicConverter.convertToRuleCharacteristic;
 
 public class RuleDto {
 
@@ -385,8 +386,14 @@ public class RuleDto {
     return this.characteristic;
   }
 
+  @CheckForNull
   public RuleCharacteristic getEffectiveCharacteristic() {
-    return characteristic != null ? characteristic : RuleTypeToRuleCharacteristicConverter.convertToRuleCharacteristic(type);
+    return characteristic != null ? characteristic : convertTypeToCharacteristic(type);
+  }
+
+  private static RuleCharacteristic convertTypeToCharacteristic(int type) {
+    RuleType ruleType = RuleType.valueOf(type);
+    return convertToRuleCharacteristic(ruleType);
   }
 
   public RuleDto setCharacteristic(RuleCharacteristic characteristic) {
