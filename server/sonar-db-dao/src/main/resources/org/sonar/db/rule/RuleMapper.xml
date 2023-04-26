@@ -27,7 +27,6 @@
     r.plugin_key as "pluginKey",
     r.scope,
     r.education_principles as "educationPrinciplesField",
-    r.characteristic as "characteristic",
     r.created_at as "createdAt",
     r.updated_at as "updatedAt",
     rm.note_data as "noteData",
