@@ -440,7 +440,6 @@
       security_standards=#{securityStandardsField,jdbcType=VARCHAR},
       scope=#{scope,jdbcType=VARCHAR},
       rule_type=#{type,jdbcType=TINYINT},
-      characteristic=#{characteristic,jdbcType=VARCHAR},
       education_principles=#{educationPrinciplesField,jdbcType=VARCHAR},
       updated_at=#{updatedAt,jdbcType=BIGINT}
     where
