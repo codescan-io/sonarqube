@@ -26,7 +26,6 @@ import { translate } from '../../../helpers/l10n';
 import { highlightTerm } from '../../../helpers/search';
 import { ComponentQualifier } from '../../../types/component';
 import { Facet, ReferencedComponent } from '../../../types/issues';
-import { MetricKey } from '../../../types/metrics';
 import { Component, Dict, Organization, Paging } from '../../../types/types';
 import { Query } from '../utils';
 
@@ -42,7 +41,6 @@ interface Props {
   query: Query;
   referencedComponents: Dict<ReferencedComponent>;
   stats: Dict<number> | undefined;
-  forceShow: boolean;
 }
 
 interface SearchedProject {
@@ -99,7 +97,7 @@ export default class ProjectFacet extends React.PureComponent<Props> {
   };
 
   loadSearchResultCount = (projects: SearchedProject[]) => {
-    return this.props.loadSearchResultCount(MetricKey.projects, {
+    return this.props.loadSearchResultCount('projects', {
       projects: projects.map((project) => project.key),
     });
   };
@@ -121,16 +119,10 @@ export default class ProjectFacet extends React.PureComponent<Props> {
   );
 
   render() {
-    const { forceShow, projects, stats, open, fetching, query } = this.props;
-
-    if (projects.length < 1 && !forceShow) {
-      return null;
-    }
-
     return (
       <ListStyleFacet<SearchedProject>
         facetHeader={translate('issues.facet.projects')}
-        fetching={fetching}
+        fetching={this.props.fetching}
         getFacetItemText={this.getProjectName}
         getSearchResultKey={(project) => project.key}
         getSearchResultText={(project) => project.name}
@@ -138,14 +130,14 @@ export default class ProjectFacet extends React.PureComponent<Props> {
         onChange={this.props.onChange}
         onSearch={this.handleSearch}
         onToggle={this.props.onToggle}
-        open={open}
-        property={MetricKey.projects}
-        query={omit(query, MetricKey.projects)}
+        open={this.props.open}
+        property="projects"
+        query={omit(this.props.query, 'projects')}
         renderFacetItem={this.renderFacetItem}
         renderSearchResult={this.renderSearchResult}
         searchPlaceholder={translate('search.search_for_projects')}
-        stats={stats}
-        values={projects}
+        stats={this.props.stats}
+        values={this.props.projects}
       />
     );
   }

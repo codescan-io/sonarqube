@@ -37,7 +37,6 @@ interface Props {
   referencedRules: Dict<ReferencedRule>;
   stats: Dict<number> | undefined;
   organization: string;
-  forceShow: boolean;
 }
 
 export default class RuleFacet extends React.PureComponent<Props> {
@@ -81,11 +80,7 @@ export default class RuleFacet extends React.PureComponent<Props> {
   };
 
   render() {
-    const { forceShow, stats, query, open, fetching } = this.props;
-
-    if (query.rules.length < 1 && !forceShow) {
-      return null;
-    }
+    const { stats, query, open, fetching } = this.props;
 
     return (
       <ListStyleFacet<Rule>
