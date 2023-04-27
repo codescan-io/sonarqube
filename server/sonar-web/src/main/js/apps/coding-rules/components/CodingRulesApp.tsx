@@ -45,25 +45,25 @@ import { SecurityStandard } from '../../../types/security';
 import { Dict, Organization, Paging, RawQuery, Rule, RuleActivation } from '../../../types/types';
 import { CurrentUser, isLoggedIn } from '../../../types/users';
 import {
+  STANDARDS,
   shouldOpenSonarSourceSecurityFacet,
   shouldOpenStandardsChildFacet,
   shouldOpenStandardsFacet,
-  STANDARDS,
 } from '../../issues/utils';
 import {
   Activation,
   Actives,
-  areQueriesEqual,
   FacetKey,
   Facets,
+  OpenFacets,
+  Query,
+  areQueriesEqual,
   getAppFacet,
   getOpen,
   getSelected,
   getServerFacet,
   hasRuleKey,
-  OpenFacets,
   parseQuery,
-  Query,
   serializeQuery,
   shouldRequestFacet,
 } from '../query';
@@ -667,8 +667,7 @@ export class CodingRulesApp extends React.PureComponent<Props, State> {
                 />
               ) : (
                 <>
-                  <h2 className="a11y-hidden">{translate('list_of_rules')}</h2>
-                  <ul>
+                  <ul aria-label={translate('list_of_rules')}>
                     {rules.map((rule) => (
                       <RuleListItem
                         activation={this.getRuleActivation(rule.key)}
