@@ -33,13 +33,14 @@ import Select, {
   LabelValueSelectOption,
   SearchSelect,
 } from '../../../components/controls/Select';
+import IssueTypeIcon from '../../../components/icons/IssueTypeIcon';
 import SeverityHelper from '../../../components/shared/SeverityHelper';
 import { Alert } from '../../../components/ui/Alert';
 import DeferredSpinner from '../../../components/ui/DeferredSpinner';
 import { SEVERITIES } from '../../../helpers/constants';
 import { throwGlobalError } from '../../../helpers/error';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
-import { Component, Dict, Issue, Paging } from '../../../types/types';
+import { Component, Dict, Issue, IssueType, Paging } from '../../../types/types';
 import { CurrentUser } from '../../../types/users';
 import AssigneeSelect, { AssigneeOption } from './AssigneeSelect';
 import { withOrganizationContext } from "../../organizations/OrganizationContext";
@@ -70,6 +71,7 @@ interface FormFields {
   removeTags?: Array<{ label: string; value: string }>;
   severity?: string;
   transition?: string;
+  type?: string;
 }
 
 interface State extends FormFields {
@@ -87,9 +89,29 @@ enum InputField {
   assignee = 'assignee',
   removeTags = 'removeTags',
   severity = 'severity',
+  type = 'type',
 }
 
 export const MAX_PAGE_SIZE = 500;
+
+function typeFieldTypeRenderer(option: LabelValueSelectOption) {
+  return (
+    <div className="display-flex-center">
+      <IssueTypeIcon query={option.value} />
+      <span className="little-spacer-left">{option.label}</span>
+    </div>
+  );
+}
+
+function TypeFieldOptionComponent(props: OptionProps<LabelValueSelectOption, false>) {
+  return <components.Option {...props}>{typeFieldTypeRenderer(props.data)}</components.Option>;
+}
+
+function TypeFieldSingleValueComponent(props: SingleValueProps<LabelValueSelectOption, false>) {
+  return (
+    <components.SingleValue {...props}>{typeFieldTypeRenderer(props.data)}</components.SingleValue>
+  );
+}
 
 function SeverityFieldOptionComponent(props: OptionProps<LabelValueSelectOption, false>) {
   return (
@@ -202,6 +224,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
         remove_tags: this.state.removeTags && this.state.removeTags.map((t) => t.value).join(),
         sendNotifications: this.state.notifications,
         set_severity: this.state.severity,
+        set_type: this.state.type,
       },
       (x) => x !== undefined
     );
@@ -241,14 +264,15 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
   }
 
   canSubmit = () => {
-    const { addTags, assignee, removeTags, severity, transition } = this.state;
+    const { addTags, assignee, removeTags, severity, transition, type } = this.state;
 
     return Boolean(
       (addTags && addTags.length > 0) ||
         (removeTags && removeTags.length > 0) ||
         assignee ||
         severity ||
-        transition
+        transition ||
+        type
     );
   };
 
@@ -312,6 +336,38 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
     );
 
     return this.renderField(field, 'issue.assign.formlink', affected, input);
+  };
+
+  renderTypeField = () => {
+    const affected = this.state.issues.filter(hasAction('set_type')).length;
+    const field = InputField.type;
+
+    if (affected === 0) {
+      return null;
+    }
+
+    const types: IssueType[] = ['BUG', 'VULNERABILITY', 'CODE_SMELL'];
+    const options: LabelValueSelectOption[] = types.map((type) => ({
+      label: translate('issue.type', type),
+      value: type,
+    }));
+
+    const input = (
+      <Select
+        className="input-super-large"
+        inputId={`issues-bulk-change-${field}`}
+        isClearable={true}
+        isSearchable={false}
+        components={{
+          Option: TypeFieldOptionComponent,
+          SingleValue: TypeFieldSingleValueComponent,
+        }}
+        onChange={this.handleSelectFieldChange('type')}
+        options={options}
+      />
+    );
+
+    return this.renderField(field, 'issue.set_type', affected, input);
   };
 
   renderSeverityField = () => {
@@ -470,6 +526,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
           )}
 
           {this.renderAssigneeField()}
+          {this.renderTypeField()}
           {this.renderSeverityField()}
           {this.renderTagsField(InputField.addTags, 'issue.add_tags', true)}
           {this.renderTagsField(InputField.removeTags, 'issue.remove_tags', false)}
