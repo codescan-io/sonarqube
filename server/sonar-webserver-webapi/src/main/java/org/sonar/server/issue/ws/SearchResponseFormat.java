@@ -225,9 +225,9 @@ public class SearchResponseFormat {
     ofNullable(dto.getIssueCloseDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setCloseDate);
     issueBuilder.setScope(Qualifiers.UNIT_TEST_FILE.equals(component.qualifier()) ? IssueScope.TEST.name() : IssueScope.MAIN.name());
     if (issueMap != null && !issueMap.isEmpty()) {
-      Sort.Builder wsSort = Sort.newBuilder();
       Object[] sortValue = issueMap.get(issueBuilder.getKey());
       if (sortValue != null) {
+        Sort.Builder wsSort = Sort.newBuilder();
         for (Object sort : sortValue) {
           if (sort != null) {
             wsSort.addSort(sort.toString());
