@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.resources.Language;
 import org.sonar.api.resources.Languages;
 import org.sonar.api.resources.Qualifiers;
@@ -78,6 +80,7 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_RULES;
 
 public class SearchResponseFormat {
 
+  private static final Logger LOG = LoggerFactory.getLogger(SearchResponseFormat.class);
   private final Durations durations;
   private final Languages languages;
   private final TextRangeResponseFormatter textRangeFormatter;
@@ -222,12 +225,18 @@ public class SearchResponseFormat {
     ofNullable(dto.getIssueCloseDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setCloseDate);
     issueBuilder.setScope(Qualifiers.UNIT_TEST_FILE.equals(component.qualifier()) ? IssueScope.TEST.name() : IssueScope.MAIN.name());
     if (issueMap != null && !issueMap.isEmpty()) {
-      Sort.Builder wsSort = Sort.newBuilder();
       Object[] sortValue = issueMap.get(issueBuilder.getKey());
-      for (Object sort : sortValue) {
-        wsSort.addSort(sort.toString());
+      if (sortValue != null) {
+        Sort.Builder wsSort = Sort.newBuilder();
+        for (Object sort : sortValue) {
+          if (sort != null) {
+            wsSort.addSort(sort.toString());
+          } else {
+            LOG.info("Sort value is null for the issue key: {}", issueBuilder.getKey());
+          }
+        }
+        issueBuilder.setSort(wsSort);
       }
-      issueBuilder.setSort(wsSort);
     }
   }
 
