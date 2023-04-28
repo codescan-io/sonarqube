@@ -19,14 +19,17 @@
  */
 package org.sonar.server.usertoken.ws;
 
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.utils.System2;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
@@ -34,6 +37,7 @@ import org.sonar.db.project.ProjectDto;
 import org.sonar.db.user.TokenType;
 import org.sonar.db.user.UserDto;
 import org.sonar.db.user.UserTokenDto;
+import org.sonar.server.component.ComponentFinder;
 import org.sonar.server.exceptions.ServerException;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.usertoken.TokenGenerator;
@@ -41,9 +45,6 @@ import org.sonarqube.ws.UserTokens;
 import org.sonarqube.ws.UserTokens.GenerateWsResponse;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.Optional;
 
 import static java.net.HttpURLConnection.HTTP_INTERNAL_ERROR;
@@ -57,18 +58,21 @@ public class GenerateAction implements UserTokensWsAction {
 
   private static final int MAX_TOKEN_NAME_LENGTH = 100;
 
+  private static final Logger logger = LoggerFactory.getLogger(GenerateAction.class);
+
   private final DbClient dbClient;
   private final System2 system;
+  private final ComponentFinder componentFinder;
   private final TokenGenerator tokenGenerator;
   private final UserTokenSupport userTokenSupport;
   private final GenerateActionValidation validation;
-  private static final Logger logger = Loggers.get(GenerateAction.class);
   private final UserSession userSession;
 
-  public GenerateAction(DbClient dbClient, System2 system, TokenGenerator tokenGenerator, UserTokenSupport userTokenSupport, GenerateActionValidation validation,
-          UserSession userSession) {
+  public GenerateAction(DbClient dbClient, System2 system, ComponentFinder componentFinder, TokenGenerator tokenGenerator,
+    UserTokenSupport userTokenSupport, GenerateActionValidation validation, UserSession userSession) {
     this.dbClient = dbClient;
     this.system = system;
+    this.componentFinder = componentFinder;
     this.tokenGenerator = tokenGenerator;
     this.userTokenSupport = userTokenSupport;
     this.validation = validation;
@@ -124,7 +128,7 @@ public class GenerateAction implements UserTokensWsAction {
       String token = generateToken(request, dbSession);
       String tokenHash = hashToken(dbSession, token);
 
-      UserTokenDto userTokenDtoFromRequest = getUserTokenDtoFromRequest(request);
+      UserTokenDto userTokenDtoFromRequest = getUserTokenDtoFromRequest(dbSession, request);
       userTokenDtoFromRequest.setTokenHash(tokenHash);
 
       UserDto user = userTokenSupport.getUser(dbSession, request);
@@ -151,7 +155,7 @@ public class GenerateAction implements UserTokensWsAction {
     }
   }
 
-  private UserTokenDto getUserTokenDtoFromRequest(Request request) {
+  private UserTokenDto getUserTokenDtoFromRequest(DbSession dbSession, Request request) {
     LocalDateTime expirationDate = getExpirationDateFromRequest(request);
     validation.validateExpirationDate(expirationDate);
 
@@ -162,7 +166,7 @@ public class GenerateAction implements UserTokensWsAction {
     if (expirationDate != null) {
       userTokenDtoFromRequest.setExpirationDate(expirationDate.toInstant(ZoneOffset.UTC).toEpochMilli());
     }
-    getProjectKeyFromRequest(request).ifPresent(userTokenDtoFromRequest::setProjectKey);
+    setProjectFromRequest(dbSession, userTokenDtoFromRequest, request);
     return userTokenDtoFromRequest;
   }
 
@@ -188,12 +192,15 @@ public class GenerateAction implements UserTokensWsAction {
     return tokenGenerator.generate(tokenType);
   }
 
-  public static Optional<String> getProjectKeyFromRequest(Request request) {
-    String projectKey = null;
-    if (PROJECT_ANALYSIS_TOKEN.equals(getTokenTypeFromRequest(request))) {
-      projectKey = request.mandatoryParam(PARAM_PROJECT_KEY).trim();
+  public void setProjectFromRequest(DbSession session, UserTokenDto token, Request request) {
+    if (!PROJECT_ANALYSIS_TOKEN.equals(getTokenTypeFromRequest(request))) {
+      return;
     }
-    return Optional.ofNullable(projectKey);
+
+    String projectKey = request.mandatoryParam(PARAM_PROJECT_KEY).trim();
+    ProjectDto project = componentFinder.getProjectByKey(session, projectKey);
+    token.setProjectUuid(project.getUuid());
+    token.setProjectKey(project.getKey());
   }
 
   private static TokenType getTokenTypeFromRequest(Request request) {
