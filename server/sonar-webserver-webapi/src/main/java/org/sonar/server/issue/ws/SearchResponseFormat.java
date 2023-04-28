@@ -227,14 +227,16 @@ public class SearchResponseFormat {
     if (issueMap != null && !issueMap.isEmpty()) {
       Sort.Builder wsSort = Sort.newBuilder();
       Object[] sortValue = issueMap.get(issueBuilder.getKey());
-      for (Object sort : sortValue) {
-        if (sort != null) {
-          wsSort.addSort(sort.toString());
-        } else {
-          LOG.info("Sort value is null for the issue key: {}", issueBuilder.getKey());
+      if (sortValue != null) {
+        for (Object sort : sortValue) {
+          if (sort != null) {
+            wsSort.addSort(sort.toString());
+          } else {
+            LOG.info("Sort value is null for the issue key: {}", issueBuilder.getKey());
+          }
         }
+        issueBuilder.setSort(wsSort);
       }
-      issueBuilder.setSort(wsSort);
     }
   }
 
