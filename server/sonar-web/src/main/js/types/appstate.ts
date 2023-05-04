@@ -37,4 +37,5 @@ export interface AppState {
   version: string;
   webAnalyticsJsPath?: string;
   whiteLabel: string;
+  documentationUrl: string;
 }
