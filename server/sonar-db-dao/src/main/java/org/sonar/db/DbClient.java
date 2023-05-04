@@ -88,6 +88,7 @@ import org.sonar.db.schemamigration.SchemaMigrationDao;
 import org.sonar.db.scim.ScimGroupDao;
 import org.sonar.db.scim.ScimUserDao;
 import org.sonar.db.source.FileSourceDao;
+import org.sonar.db.user.ExternalGroupDao;
 import org.sonar.db.user.GroupDao;
 import org.sonar.db.user.GroupMembershipDao;
 import org.sonar.db.user.RoleDao;
@@ -157,6 +158,7 @@ public class DbClient {
   private final NotificationQueueDao notificationQueueDao;
   private final MetricDao metricDao;
   private final GroupDao groupDao;
+  private final ExternalGroupDao externalGroupDao;
   private final RuleDao ruleDao;
   private final RuleRepositoryDao ruleRepositoryDao;
   private final ActiveRuleDao activeRuleDao;
@@ -244,6 +246,7 @@ public class DbClient {
     notificationQueueDao = getDao(map, NotificationQueueDao.class);
     metricDao = getDao(map, MetricDao.class);
     groupDao = getDao(map, GroupDao.class);
+    externalGroupDao = getDao(map, ExternalGroupDao.class);
     ruleDao = getDao(map, RuleDao.class);
     ruleRepositoryDao = getDao(map, RuleRepositoryDao.class);
     activeRuleDao = getDao(map, ActiveRuleDao.class);
@@ -496,6 +499,10 @@ public class DbClient {
 
   public GroupDao groupDao() {
     return groupDao;
+  }
+
+  public ExternalGroupDao externalGroupDao() {
+    return externalGroupDao;
   }
 
   public RuleDao ruleDao() {
