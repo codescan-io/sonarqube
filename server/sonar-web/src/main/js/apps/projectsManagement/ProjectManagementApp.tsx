@@ -20,13 +20,13 @@
 import { debounce, uniq, without } from 'lodash';
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
-import { getComponents, Project } from '../../api/components';
+import { Project, getComponents } from '../../api/components';
 import { changeProjectDefaultVisibility } from '../../api/permissions';
 import { getValue } from '../../api/settings';
 import withCurrentUserContext from '../../app/components/current-user/withCurrentUserContext';
 import ListFooter from '../../components/controls/ListFooter';
 import Suggestions from '../../components/embed-docs-modal/Suggestions';
-import { toShortNotSoISOString } from '../../helpers/dates';
+import { toShortISO8601String } from '../../helpers/dates';
 import { throwGlobalError } from '../../helpers/error';
 import { translate } from '../../helpers/l10n';
 import { SettingsKey } from '../../types/settings';
@@ -110,7 +110,7 @@ export class ProjectManagementApp extends React.PureComponent<Props, State> {
   requestProjects = () => {
     const { analyzedBefore } = this.state;
     const parameters = {
-      analyzedBefore: analyzedBefore && toShortNotSoISOString(analyzedBefore),
+      analyzedBefore: analyzedBefore && toShortISO8601String(analyzedBefore),
       onProvisionedOnly: this.state.provisioned || undefined,
       organization: this.props.organization.kee,
       p: this.state.page !== 1 ? this.state.page : undefined,
