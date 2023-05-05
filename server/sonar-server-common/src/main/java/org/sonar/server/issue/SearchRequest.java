@@ -70,8 +70,8 @@ public class SearchRequest {
   private List<String> cwe;
   private String searchAfter;
   private String timeZone;
-
   private Integer owaspAsvsLevel;
+  private List<String> codeVariants;
 
   private String organization;
 
@@ -513,6 +513,16 @@ public class SearchRequest {
 
   public SearchRequest setOwaspAsvsLevel(@Nullable Integer owaspAsvsLevel) {
     this.owaspAsvsLevel = owaspAsvsLevel;
+    return this;
+  }
+
+  @CheckForNull
+  public List<String> getCodeVariants() {
+    return codeVariants;
+  }
+
+  public SearchRequest setCodeVariants(@Nullable List<String> codeVariants) {
+    this.codeVariants = codeVariants;
     return this;
   }
 

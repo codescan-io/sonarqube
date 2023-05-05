@@ -153,8 +153,9 @@ public class IssueQueryFactory {
         .createdAt(parseStartingDateOrDateTime(request.getCreatedAt(), timeZone))
         .createdBefore(parseEndingDateOrDateTime(request.getCreatedBefore(), timeZone))
         .facetMode(request.getFacetMode())
-        .searchAfter(request.getSearchAfter())
         .timeZone(timeZone)
+        .codeVariants(request.getCodeVariants())
+        .searchAfter(request.getSearchAfter())
         .organizationUuid(convertOrganizationKeyToUuid(dbSession, request.getOrganization()));
 
       List<ComponentDto> allComponents = new ArrayList<>();

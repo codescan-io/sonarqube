@@ -102,6 +102,7 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ASSIGNED;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ASSIGNEES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_AUTHOR;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_BRANCH;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_CODE_VARIANTS;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_COMPONENT_KEYS;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_CREATED_AFTER;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_CREATED_AT;
@@ -164,7 +165,8 @@ public class SearchAction implements IssuesWsAction {
     PARAM_SANS_TOP_25,
     PARAM_CWE,
     PARAM_CREATED_AT,
-    PARAM_SONARSOURCE_SECURITY
+    PARAM_SONARSOURCE_SECURITY,
+    PARAM_CODE_VARIANTS
   );
 
   private static final String INTERNAL_PARAMETER_DISCLAIMER = "This parameter is mostly used by the Issues page, please prefer usage of the componentKeys parameter. ";
@@ -201,6 +203,7 @@ public class SearchAction implements IssuesWsAction {
         + "<br/>When issue indexation is in progress returns 503 service unavailable HTTP code.")
       .setSince("3.6")
       .setChangelog(
+        new Change("10.1", "Add the 'codeVariants' parameter, facet and response field"),
         new Change("10.0", "Parameter 'sansTop25' is deprecated"),
         new Change("10.0", "The value 'sansTop25' for the parameter 'facets' has been deprecated"),
         new Change("10.0", format("Deprecated value 'ASSIGNEE' in parameter '%s' is dropped", Param.SORT)),
@@ -286,7 +289,7 @@ public class SearchAction implements IssuesWsAction {
     action.createParam(PARAM_OWASP_ASVS_LEVEL)
       .setDescription("Level of OWASP ASVS categories.")
       .setSince("9.7")
-      .setPossibleValues(1,2,3);
+      .setPossibleValues(1, 2, 3);
     action.createParam(PARAM_PCI_DSS_32)
       .setDescription("Comma-separated list of PCI DSS v3.2 categories.")
       .setSince("9.6")
@@ -364,6 +367,10 @@ public class SearchAction implements IssuesWsAction {
       .setRequired(false)
       .setExampleValue("'Europe/Paris', 'Z' or '+02:00'")
       .setSince("8.6");
+    action.createParam(PARAM_CODE_VARIANTS)
+      .setDescription("Comma-separated list of code variants.")
+      .setExampleValue("windows,linux")
+      .setSince("10.1");
     action.createParam(PARAM_SEARCH_AFTER)
       .setDescription("By default, you cannot get more than 10,000 items by using from/size parameters.<br>" +
         "If you need to page through more than 10,000 items, use the searchAfter parameter instead.<br>" +
@@ -556,6 +563,7 @@ public class SearchAction implements IssuesWsAction {
     addMandatoryValuesToFacet(facets, PARAM_SANS_TOP_25, request.getSansTop25());
     addMandatoryValuesToFacet(facets, PARAM_CWE, request.getCwe());
     addMandatoryValuesToFacet(facets, PARAM_SONARSOURCE_SECURITY, request.getSonarsourceSecurity());
+    addMandatoryValuesToFacet(facets, PARAM_CODE_VARIANTS, request.getCodeVariants());
   }
 
   private static void setTypesFacet(Facets facets) {
@@ -635,6 +643,7 @@ public class SearchAction implements IssuesWsAction {
       .setSearchAfter(request.param(PARAM_SEARCH_AFTER))
       .setSonarsourceSecurity(request.paramAsStrings(PARAM_SONARSOURCE_SECURITY))
       .setTimeZone(request.param(PARAM_TIMEZONE))
+      .setCodeVariants(request.paramAsStrings(PARAM_CODE_VARIANTS))
       .setOrganization(request.param(PARAM_ORGANIZATION));
   }
 

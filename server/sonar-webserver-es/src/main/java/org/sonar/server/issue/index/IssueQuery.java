@@ -99,7 +99,8 @@ public class IssueQuery {
   private final ZoneId timeZone;
   private final Boolean newCodeOnReference;
   private final Collection<String> newCodeOnReferenceByProjectUuids;
-  private String organizationUuid;
+  private final Collection<String> codeVariants;
+  private final String organizationUuid;
 
   private IssueQuery(Builder builder) {
     this.issueKeys = defaultCollection(builder.issueKeys);
@@ -144,6 +145,7 @@ public class IssueQuery {
     this.timeZone = builder.timeZone;
     this.newCodeOnReference = builder.newCodeOnReference;
     this.newCodeOnReferenceByProjectUuids = defaultCollection(builder.newCodeOnReferenceByProjectUuids);
+    this.codeVariants = defaultCollection(builder.codeVariants);
     this.organizationUuid = builder.organizationUuid;
   }
 
@@ -336,6 +338,10 @@ public class IssueQuery {
     return newCodeOnReferenceByProjectUuids;
   }
 
+  public Collection<String> codeVariants() {
+    return codeVariants;
+  }
+
   @CheckForNull
   public String organizationUuid() {
     return organizationUuid;
@@ -385,6 +391,7 @@ public class IssueQuery {
     private ZoneId timeZone;
     private Boolean newCodeOnReference = null;
     private Collection<String> newCodeOnReferenceByProjectUuids;
+    private Collection<String> codeVariants;
 
     private String organizationUuid;
 
@@ -626,6 +633,11 @@ public class IssueQuery {
 
     public Builder newCodeOnReferenceByProjectUuids(@Nullable Collection<String> newCodeOnReferenceByProjectUuids) {
       this.newCodeOnReferenceByProjectUuids = newCodeOnReferenceByProjectUuids;
+      return this;
+    }
+
+    public Builder codeVariants(@Nullable Collection<String> codeVariants) {
+      this.codeVariants = codeVariants;
       return this;
     }
 
