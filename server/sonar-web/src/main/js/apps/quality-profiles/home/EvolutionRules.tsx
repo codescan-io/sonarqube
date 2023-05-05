@@ -80,7 +80,7 @@ export default class EvolutionRules extends React.PureComponent<{}, State> {
       organization: this.props.organization,
     };
     searchRules(data).then(
-      ({ actives, rules, total }) => {
+      ({ actives, rules, paging: { total } }) => {
         if (this.mounted) {
           this.setState({
             latestRules: sortBy(parseRules(rules, actives), 'langName'),
