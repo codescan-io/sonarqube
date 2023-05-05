@@ -22,16 +22,16 @@ package org.sonar.ce.task.projectanalysis.issue;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentCaptor;
 import org.sonar.api.config.internal.MapSettings;
-import org.sonar.api.issue.Issue;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rule.Severity;
-import org.sonar.api.utils.DateUtils;
 import org.sonar.api.utils.System2;
 import org.sonar.ce.task.projectanalysis.analysis.AnalysisMetadataHolder;
 import org.sonar.ce.task.projectanalysis.analysis.Branch;
@@ -170,19 +170,16 @@ public class IntegrateIssuesVisitorIT {
 
   @Test
   public void process_new_issue() {
-    ruleRepositoryRule.add(RuleKey.of("xoo", "S001"));
+    ruleRepositoryRule.add(RuleTesting.XOO_X1);
     when(analysisMetadataHolder.isBranch()).thenReturn(true);
-    ScannerReport.Issue reportIssue = ScannerReport.Issue.newBuilder()
-      .setMsg("the message")
-      .setRuleRepository("xoo")
-      .setRuleKey("S001")
-      .setSeverity(Constants.Severity.BLOCKER)
-      .build();
+    ScannerReport.Issue reportIssue = getReportIssue(RuleTesting.XOO_X1);
     reportReader.putIssues(FILE_REF, singletonList(reportIssue));
 
     underTest.visitAny(FILE);
 
-    assertThat(newArrayList(protoIssueCache.traverse())).hasSize(1);
+    List<DefaultIssue> issues = newArrayList(protoIssueCache.traverse());
+    assertThat(issues).hasSize(1);
+    assertThat(issues.get(0).codeVariants()).containsExactlyInAnyOrder("foo", "bar");
   }
 
   @Test
@@ -192,12 +189,7 @@ public class IntegrateIssuesVisitorIT {
     addBaseIssue(ruleKey);
 
     // Issue from report has severity blocker
-    ScannerReport.Issue reportIssue = ScannerReport.Issue.newBuilder()
-      .setMsg("new message")
-      .setRuleRepository(ruleKey.repository())
-      .setRuleKey(ruleKey.rule())
-      .setSeverity(Constants.Severity.BLOCKER)
-      .build();
+    ScannerReport.Issue reportIssue = getReportIssue(ruleKey);
     reportReader.putIssues(FILE_REF, singletonList(reportIssue));
 
     underTest.visitAny(FILE);
@@ -214,12 +206,7 @@ public class IntegrateIssuesVisitorIT {
     addBaseIssue(ruleKey);
 
     // Issue from report has severity blocker
-    ScannerReport.Issue reportIssue = ScannerReport.Issue.newBuilder()
-      .setMsg("the message")
-      .setRuleRepository(ruleKey.repository())
-      .setRuleKey(ruleKey.rule())
-      .setSeverity(Constants.Severity.BLOCKER)
-      .build();
+    ScannerReport.Issue reportIssue = getReportIssue(ruleKey);
     reportReader.putIssues(FILE_REF, singletonList(reportIssue));
 
     underTest.visitAny(FILE);
@@ -231,13 +218,8 @@ public class IntegrateIssuesVisitorIT {
 
   @Test
   public void execute_issue_visitors() {
-    ruleRepositoryRule.add(RuleKey.of("xoo", "S001"));
-    ScannerReport.Issue reportIssue = ScannerReport.Issue.newBuilder()
-      .setMsg("the message")
-      .setRuleRepository("xoo")
-      .setRuleKey("S001")
-      .setSeverity(Constants.Severity.BLOCKER)
-      .build();
+    ruleRepositoryRule.add(RuleTesting.XOO_X1);
+    ScannerReport.Issue reportIssue = getReportIssue(RuleTesting.XOO_X1);
     reportReader.putIssues(FILE_REF, singletonList(reportIssue));
 
     underTest.visitAny(FILE);
@@ -245,7 +227,7 @@ public class IntegrateIssuesVisitorIT {
     verify(issueVisitor).beforeComponent(FILE);
     verify(issueVisitor).afterComponent(FILE);
     verify(issueVisitor).onIssue(eq(FILE), defaultIssueCaptor.capture());
-    assertThat(defaultIssueCaptor.getValue().ruleKey().rule()).isEqualTo("S001");
+    assertThat(defaultIssueCaptor.getValue().ruleKey().rule()).isEqualTo("x1");
   }
 
   @Test
@@ -276,12 +258,7 @@ public class IntegrateIssuesVisitorIT {
     addBaseIssue(ruleKey);
 
     // Issue from report has severity blocker
-    ScannerReport.Issue reportIssue = ScannerReport.Issue.newBuilder()
-      .setMsg("new message")
-      .setRuleRepository(ruleKey.repository())
-      .setRuleKey(ruleKey.rule())
-      .setSeverity(Constants.Severity.BLOCKER)
-      .build();
+    ScannerReport.Issue reportIssue = getReportIssue(ruleKey);
     reportReader.putIssues(FILE_REF, singletonList(reportIssue));
     when(fileStatuses.isDataUnchanged(FILE)).thenReturn(true);
 
@@ -313,12 +290,7 @@ public class IntegrateIssuesVisitorIT {
     addBaseIssueOnBranch(ruleKey);
 
     // Issue from report has severity blocker
-    ScannerReport.Issue reportIssue = ScannerReport.Issue.newBuilder()
-      .setMsg("the message")
-      .setRuleRepository(ruleKey.repository())
-      .setRuleKey(ruleKey.rule())
-      .setSeverity(Constants.Severity.BLOCKER)
-      .build();
+    ScannerReport.Issue reportIssue = getReportIssue(ruleKey);
     reportReader.putIssues(FILE_REF, singletonList(reportIssue));
 
     underTest.visitAny(FILE);
@@ -363,5 +335,16 @@ public class IntegrateIssuesVisitorIT {
       .setChecksum(null);
     dbTester.getDbClient().issueDao().insert(dbTester.getSession(), issue);
     dbTester.getSession().commit();
+  }
+
+  @NotNull
+  private static ScannerReport.Issue getReportIssue(RuleKey ruleKey) {
+    return ScannerReport.Issue.newBuilder()
+      .setMsg("the message")
+      .setRuleRepository(ruleKey.repository())
+      .setRuleKey(ruleKey.rule())
+      .addAllCodeVariants(Set.of("foo", "bar"))
+      .setSeverity(Constants.Severity.BLOCKER)
+      .build();
   }
 }
