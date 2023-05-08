@@ -95,7 +95,7 @@ public class UserPermissionDaoWithPersisterIT {
   @Test
   public void userProjectPermissionInsertAndDeleteArePersisted() {
     UserDto user = insertUser(u -> u.setLogin("login1").setName("Marius").setEmail("email1@email.com"));
-    ComponentDto project = db.components().insertPrivateProject();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
     UserPermissionDto dto = new UserPermissionDto(Uuids.create(), null, ADMINISTER.getKey(), user.getUuid(), project.uuid());
     underTest.insert(dbSession, dto, project, user, null);
 
@@ -117,7 +117,7 @@ public class UserPermissionDaoWithPersisterIT {
   @Test
   public void userProjectPermissionDeleteWithoutAffectedRowsIsNotPersisted() {
     UserDto user = insertUser(u -> u.setLogin("login1").setName("Marius").setEmail("email1@email.com"));
-    ComponentDto project = db.components().insertPrivateProject();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
 
     underTest.deleteProjectPermission(dbSession, user, ADMINISTER.getKey(), project);
 
@@ -143,21 +143,21 @@ public class UserPermissionDaoWithPersisterIT {
   @Test
   public void userApplicationPermissionIsPersisted() {
     UserDto user = insertUser(u -> u.setLogin("login1").setName("Marius").setEmail("email1@email.com"));
-    ComponentDto application = db.components().insertPublicApplication();
-    UserPermissionDto dto = new UserPermissionDto(Uuids.create(), null, ADMINISTER.getKey(), user.getUuid(), application.uuid());
-    underTest.insert(dbSession, dto, application, user, null);
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    UserPermissionDto dto = new UserPermissionDto(Uuids.create(), null, ADMINISTER.getKey(), user.getUuid(), project.uuid());
+    underTest.insert(dbSession, dto, project, user, null);
 
     verify(auditPersister).addUserPermission(eq(dbSession), newValueCaptor.capture());
     UserPermissionNewValue newValue = newValueCaptor.getValue();
-    assertNewValue(newValue, dto.getUuid(), user.getUuid(), user.getLogin(), application.uuid(), dto.getPermission(),
-      application.getKey(), application.name(), "APP");
+    assertNewValue(newValue, dto.getUuid(), user.getUuid(), user.getLogin(), project.uuid(), dto.getPermission(),
+        project.getKey(), project.name(), "APP");
     assertThat(newValue.toString()).contains("componentUuid");
   }
 
   @Test
   public void deleteUserPermissionOfAnyUserIsPersisted() {
     UserDto user = insertUser(u -> u.setLogin("login1").setName("Marius").setEmail("email1@email.com"));
-    ComponentDto project = db.components().insertPrivateProject();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
     UserPermissionDto dto = new UserPermissionDto(Uuids.create(), null, SCAN.getKey(), user.getUuid(), project.uuid());
     underTest.insert(dbSession, dto, project, user, null);
     underTest.deleteProjectPermissionOfAnyUser(dbSession, SCAN.getKey(), project);
@@ -171,7 +171,7 @@ public class UserPermissionDaoWithPersisterIT {
 
   @Test
   public void deleteUserPermissionOfAnyUserWithoutAffectedRowsIsNotPersisted() {
-    ComponentDto project = db.components().insertPrivateProject();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
 
     underTest.deleteProjectPermissionOfAnyUser(dbSession, SCAN.getKey(), project);
 
@@ -182,7 +182,7 @@ public class UserPermissionDaoWithPersisterIT {
   @Test
   public void deleteUserPermissionByUserUuidIsPersisted() {
     UserDto user = insertUser(u -> u.setLogin("login1").setName("Marius").setEmail("email1@email.com"));
-    ComponentDto project = db.components().insertPrivateProject();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
     UserPermissionDto dto = new UserPermissionDto(Uuids.create(), null, ADMINISTER.getKey(), user.getUuid(), project.uuid());
     underTest.insert(dbSession, dto, project, user, null);
     underTest.deleteByUserUuid(dbSession, user);
