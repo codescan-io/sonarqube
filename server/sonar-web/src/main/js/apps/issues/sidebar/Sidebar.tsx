@@ -26,6 +26,7 @@ import {
   ComponentQualifier,
   isApplication,
   isPortfolioLike,
+  isProject,
   isView,
 } from '../../../types/component';
 import {
@@ -54,6 +55,7 @@ import StandardFacet from './StandardFacet';
 import StatusFacet from './StatusFacet';
 import TagFacet from './TagFacet';
 import TypeFacet from './TypeFacet';
+import VariantFacet from './VariantFacet';
 
 export interface Props {
   appState: AppState;
@@ -68,6 +70,7 @@ export interface Props {
   onFacetToggle: (property: string) => void;
   onFilterChange: (changes: Partial<Query>) => void;
   openFacets: Dict<boolean>;
+  showVariantsFilter: boolean;
   query: Query;
   referencedComponentsById: Dict<ReferencedComponent>;
   referencedComponentsByKey: Dict<ReferencedComponent>;
@@ -78,7 +81,8 @@ export interface Props {
 
 export class Sidebar extends React.PureComponent<Props> {
   renderComponentFacets() {
-    const { component, facets, loadingFacets, openFacets, query, branchLike } = this.props;
+    const { component, facets, loadingFacets, openFacets, query, branchLike, showVariantsFilter } =
+      this.props;
     const hasFileOrDirectory =
       !isApplication(component?.qualifier) && !isPortfolioLike(component?.qualifier);
     if (!component || !hasFileOrDirectory) {
@@ -100,6 +104,15 @@ export class Sidebar extends React.PureComponent<Props> {
             fetching={loadingFacets.directories === true}
             open={!!openFacets.directories}
             stats={facets.directories}
+            {...commonProps}
+          />
+        )}
+        {showVariantsFilter && isProject(component?.qualifier) && (
+          <VariantFacet
+            fetching={loadingFacets.codeVariants === true}
+            open={!!openFacets.codeVariants}
+            stats={facets.codeVariants}
+            values={query.codeVariants}
             {...commonProps}
           />
         )}
