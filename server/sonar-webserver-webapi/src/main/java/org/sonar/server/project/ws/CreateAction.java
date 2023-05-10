@@ -131,15 +131,15 @@ public class CreateAction implements ProjectsWsAction {
       }
 
       ComponentDto componentDto = componentUpdater.create(dbSession, newComponentBuilder()
-        .setOrganizationUuid(organization.getUuid())
-        .setKey(request.getProjectKey())
-        .setName(request.getName())
-        .setPrivate(true)
-        .setQualifier(PROJECT)
-        .build(),
+          .setOrganizationUuid(organization.getUuid())
+          .setKey(request.getProjectKey())
+          .setName(request.getName())
+          .setPrivate(true)
+          .setQualifier(PROJECT)
+          .build(),
         userSession.isLoggedIn() ? userSession.getUuid() : null,
         userSession.isLoggedIn() ? userSession.getLogin() : null,
-        request.getMainBranchKey());
+        request.getMainBranchKey()).mainBranchComponent();
       return toCreateResponse(componentDto);
     }
   }

@@ -184,7 +184,7 @@ public class ReportSubmitter {
       .setPrivate(newProjectPrivate)
       .build();
     return componentUpdater.createWithoutCommit(dbSession, newProject, userUuid, userName, c -> {
-    });
+    }).mainBranchComponent();
   }
 
   private CeTask submitReport(DbSession dbSession, InputStream reportInput, ComponentDto branch, BranchDto mainBranch, Map<String, String> characteristics) {

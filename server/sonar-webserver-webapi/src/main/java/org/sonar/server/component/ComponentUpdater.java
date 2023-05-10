@@ -19,17 +19,19 @@
  */
 package org.sonar.server.component;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.resources.Qualifiers;
 import org.sonar.api.resources.Scopes;
 import org.sonar.api.utils.System2;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
 import org.sonar.core.i18n.I18n;
 import org.sonar.core.util.UuidFactory;
 import org.sonar.db.DbClient;
@@ -45,6 +47,7 @@ import org.sonar.server.es.ProjectIndexers;
 import org.sonar.server.favorite.FavoriteUpdater;
 import org.sonar.server.permission.PermissionTemplateService;
 import org.sonar.server.project.DefaultBranchNameResolver;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import static java.util.Collections.singletonList;
 import static org.sonar.api.resources.Qualifiers.PROJECT;
@@ -58,7 +61,7 @@ public class ComponentUpdater {
   private static final Set<String> MAIN_BRANCH_QUALIFIERS = Set.of(Qualifiers.PROJECT, Qualifiers.APP);
   private static final String KEY_ALREADY_EXISTS_ERROR = "Could not create %s with key: \"%s\". A similar key already exists: \"%s\"";
   private static final String MALFORMED_KEY_ERROR = "Malformed key for %s: '%s'. %s.";
-
+  private static final Logger logger = LoggerFactory.getLogger(ComponentUpdater.class);
   private final DbClient dbClient;
   private final I18n i18n;
   private final System2 system2;
@@ -67,11 +70,20 @@ public class ComponentUpdater {
   private final ProjectIndexers projectIndexers;
   private final UuidFactory uuidFactory;
   private final DefaultBranchNameResolver defaultBranchNameResolver;
-  private static final Logger logger = Loggers.get(ComponentUpdater.class);
+  private final boolean useDifferentUuids;
 
+  @Autowired
   public ComponentUpdater(DbClient dbClient, I18n i18n, System2 system2,
     PermissionTemplateService permissionTemplateService, FavoriteUpdater favoriteUpdater,
     ProjectIndexers projectIndexers, UuidFactory uuidFactory, DefaultBranchNameResolver defaultBranchNameResolver) {
+    this(dbClient, i18n, system2, permissionTemplateService, favoriteUpdater, projectIndexers, uuidFactory, defaultBranchNameResolver, false);
+  }
+
+  @VisibleForTesting
+  public ComponentUpdater(DbClient dbClient, I18n i18n, System2 system2,
+    PermissionTemplateService permissionTemplateService, FavoriteUpdater favoriteUpdater,
+    ProjectIndexers projectIndexers, UuidFactory uuidFactory, DefaultBranchNameResolver defaultBranchNameResolver,
+    boolean useDifferentUuids) {
     this.dbClient = dbClient;
     this.i18n = i18n;
     this.system2 = system2;
@@ -80,6 +92,7 @@ public class ComponentUpdater {
     this.projectIndexers = projectIndexers;
     this.uuidFactory = uuidFactory;
     this.defaultBranchNameResolver = defaultBranchNameResolver;
+    this.useDifferentUuids = useDifferentUuids;
   }
 
   /**
@@ -88,17 +101,17 @@ public class ComponentUpdater {
    * - Add component to favorite if the component has the 'Project Creators' permission
    * - Index component in es indexes
    */
-  public ComponentDto create(DbSession dbSession, NewComponent newComponent, @Nullable String userUuid, @Nullable String userLogin) {
+  public ComponentCreationData create(DbSession dbSession, NewComponent newComponent, @Nullable String userUuid, @Nullable String userLogin) {
     return create(dbSession, newComponent, userUuid, userLogin, null);
   }
 
-  public ComponentDto create(DbSession dbSession, NewComponent newComponent, @Nullable String userUuid, @Nullable String userLogin,
+  public ComponentCreationData create(DbSession dbSession, NewComponent newComponent, @Nullable String userUuid, @Nullable String userLogin,
     @Nullable String mainBranchName) {
     logger.debug("Update Component:: newComponent :{}, userUuid: {} ", newComponent.key(), userUuid);
-    ComponentDto componentDto = createWithoutCommit(dbSession, newComponent, userUuid, userLogin, mainBranchName, c -> {
+    ComponentCreationData componentCreationData = createWithoutCommit(dbSession, newComponent, userUuid, userLogin, mainBranchName, c -> {
     });
-    commitAndIndex(dbSession, componentDto);
-    return componentDto;
+    commitAndIndex(dbSession, componentCreationData.mainBranchComponent());
+    return componentCreationData;
   }
 
   public void commitAndIndex(DbSession dbSession, ComponentDto componentDto) {
@@ -109,7 +122,7 @@ public class ComponentUpdater {
    * Create component without committing.
    * Don't forget to call commitAndIndex(...) when ready to commit.
    */
-  public ComponentDto createWithoutCommit(DbSession dbSession, NewComponent newComponent,
+  public ComponentCreationData createWithoutCommit(DbSession dbSession, NewComponent newComponent,
     @Nullable String userUuid, @Nullable String userLogin, Consumer<ComponentDto> componentModifier) {
     return createWithoutCommit(dbSession, newComponent, userUuid, userLogin, null, componentModifier);
   }
@@ -118,18 +131,32 @@ public class ComponentUpdater {
    * Create component without committing.
    * Don't forget to call commitAndIndex(...) when ready to commit.
    */
-  public ComponentDto createWithoutCommit(DbSession dbSession, NewComponent newComponent,
+  public ComponentCreationData createWithoutCommit(DbSession dbSession, NewComponent newComponent,
     @Nullable String userUuid, @Nullable String userLogin, @Nullable String mainBranchName,
     Consumer<ComponentDto> componentModifier) {
     checkKeyFormat(newComponent.qualifier(), newComponent.key());
     checkKeyAlreadyExists(dbSession, newComponent);
 
-    ComponentDto componentDto = createRootComponent(dbSession, newComponent, componentModifier);
+    long now = system2.now();
+
+    ComponentDto componentDto = createRootComponent(dbSession, newComponent, componentModifier, now);
+
+    BranchDto mainBranch = null;
+    ProjectDto projectDto = null;
+    PortfolioDto portfolioDto = null;
     if (isRootProject(componentDto)) {
-      createMainBranch(dbSession, componentDto.uuid(), mainBranchName);
+      projectDto = toProjectDto(componentDto, now);
+      dbClient.projectDao().insert(dbSession, projectDto);
+      mainBranch = createMainBranch(dbSession, componentDto.uuid(), projectDto.getUuid(), mainBranchName);
     }
+
+    if (isRootView(componentDto)) {
+      portfolioDto = toPortfolioDto(componentDto, now);
+      dbClient.portfolioDao().insert(dbSession, portfolioDto);
+    }
+
     handlePermissionTemplate(dbSession, componentDto, userUuid, userLogin);
-    return componentDto;
+    return new ComponentCreationData(componentDto, mainBranch, projectDto);
   }
 
   private void checkKeyFormat(String qualifier, String key) {
@@ -145,8 +172,7 @@ public class ComponentUpdater {
       .ifPresent(existingKey -> throwBadRequestException(KEY_ALREADY_EXISTS_ERROR, getQualifierToDisplay(newComponent.qualifier()), newComponent.key(), existingKey));
   }
 
-  private ComponentDto createRootComponent(DbSession session, NewComponent newComponent, Consumer<ComponentDto> componentModifier) {
-    long now = system2.now();
+  private ComponentDto createRootComponent(DbSession session, NewComponent newComponent, Consumer<ComponentDto> componentModifier, long now) {
     String uuid = uuidFactory.create();
 
     ComponentDto component = new ComponentDto()
@@ -165,23 +191,12 @@ public class ComponentUpdater {
 
     componentModifier.accept(component);
     dbClient.componentDao().insert(session, component, true);
-
-    if (isRootProject(component)) {
-      ProjectDto projectDto = toProjectDto(component, now);
-      dbClient.projectDao().insert(session, projectDto);
-    }
-
-    if (isRootView(component)) {
-      PortfolioDto portfolioDto = toPortfolioDto(component, now);
-      dbClient.portfolioDao().insert(session, portfolioDto);
-    }
-
     return component;
   }
 
-  private static ProjectDto toProjectDto(ComponentDto component, long now) {
+  private ProjectDto toProjectDto(ComponentDto component, long now) {
     return new ProjectDto()
-      .setUuid(component.uuid())
+      .setUuid(useDifferentUuids ? uuidFactory.create() : component.uuid())
       .setKey(component.getKey())
       .setQualifier(component.qualifier())
       .setName(component.name())
@@ -207,15 +222,15 @@ public class ComponentUpdater {
 
   private static boolean isRootProject(ComponentDto componentDto) {
     return Scopes.PROJECT.equals(componentDto.scope())
-      && MAIN_BRANCH_QUALIFIERS.contains(componentDto.qualifier());
+           && MAIN_BRANCH_QUALIFIERS.contains(componentDto.qualifier());
   }
 
   private static boolean isRootView(ComponentDto componentDto) {
     return Scopes.PROJECT.equals(componentDto.scope())
-      && Qualifiers.VIEW.contains(componentDto.qualifier());
+           && Qualifiers.VIEW.contains(componentDto.qualifier());
   }
 
-  private void createMainBranch(DbSession session, String componentUuid, @Nullable String mainBranch) {
+  private BranchDto createMainBranch(DbSession session, String componentUuid, String projectUuid, @Nullable String mainBranch) {
     BranchDto branch = new BranchDto()
       .setBranchType(BranchType.BRANCH)
       .setUuid(componentUuid)
@@ -223,14 +238,15 @@ public class ComponentUpdater {
       .setKey(Optional.ofNullable(mainBranch).orElse(defaultBranchNameResolver.getEffectiveMainBranchName()))
       .setMergeBranchUuid(null)
       .setExcludeFromPurge(true)
-      .setProjectUuid(componentUuid);
+      .setProjectUuid(projectUuid);
     dbClient.branchDao().upsert(session, branch);
+    return branch;
   }
 
   private void handlePermissionTemplate(DbSession dbSession, ComponentDto componentDto, @Nullable String userUuid, @Nullable String userLogin) {
     permissionTemplateService.applyDefaultToNewComponent(dbSession, componentDto, userUuid);
     if (componentDto.qualifier().equals(PROJECT)
-      && permissionTemplateService.hasDefaultTemplateWithPermissionOnProjectCreator(dbSession, componentDto)) {
+        && permissionTemplateService.hasDefaultTemplateWithPermissionOnProjectCreator(dbSession, componentDto)) {
       favoriteUpdater.add(dbSession, componentDto, userUuid, userLogin, false);
     }
   }
