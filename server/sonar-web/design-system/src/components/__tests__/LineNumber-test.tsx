@@ -17,6 +17,25 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+<<<<<<<< HEAD:server/sonar-web/src/main/js/apps/users/__tests__/Header-test.tsx
+import { shallow } from 'enzyme';
+import * as React from 'react';
+import { click } from '../../../helpers/testUtils';
+import Header from '../Header';
+
+it('should render correctly', () => {
+  expect(getWrapper()).toMatchSnapshot();
+});
+
+it('should open the user creation form', () => {
+  const wrapper = getWrapper();
+  click(wrapper.find('#users-create'));
+  expect(wrapper.find('UserForm').exists()).toBe(true);
+});
+
+function getWrapper(props = {}) {
+  return shallow(<Header loading={true} onUpdateUsers={jest.fn()} {...props} />);
+========
 import { screen } from '@testing-library/react';
 import { render } from '../../helpers/testUtils';
 import { FCProps } from '../../types/misc';
@@ -42,4 +61,5 @@ function setupWithProps(props: Partial<FCProps<typeof LineNumber>> = {}) {
       {...props}
     />
   );
+>>>>>>>> a2597f5b3d3 (SONAR-19174 Migrating code viewer to MIUI):server/sonar-web/design-system/src/components/__tests__/LineNumber-test.tsx
 }

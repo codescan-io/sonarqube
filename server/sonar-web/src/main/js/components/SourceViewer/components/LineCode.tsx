@@ -31,7 +31,7 @@ import {
   UncoveredUnderlineLabel,
   UnderlineLabels,
 } from 'design-system';
-import React, { Fragment, PureComponent, ReactNode, RefObject, createRef } from 'react';
+import React, { PureComponent, ReactNode } from 'react';
 import { IssueSourceViewerScrollContext } from '../../../apps/issues/components/IssueSourceViewerScrollContext';
 import { translate } from '../../../helpers/l10n';
 import { LinearIssueLocation, SourceLine } from '../../../types/types';
@@ -54,12 +54,6 @@ interface Props {
 
 export class LineCode extends PureComponent<React.PropsWithChildren<Props>> {
   symbols?: NodeListOf<HTMLElement>;
-  findingNode?: RefObject<HTMLDivElement>;
-
-  constructor(props: Props) {
-    super(props);
-    this.findingNode = createRef<HTMLDivElement>();
-  }
 
   nodeNodeRef = (el: HTMLElement | null) => {
     if (el) {
@@ -104,30 +98,28 @@ export class LineCode extends PureComponent<React.PropsWithChildren<Props>> {
     const message = loc?.text;
     const isLeading = leadingMarker && markerIndex === 0;
     return (
-      <Fragment key={`${marker}-${index}`}>
-        <IssueSourceViewerScrollContext.Consumer>
-          {(ctx) => (
-            <LineMarker
-              hideLocationIndex={hideLocationIndex}
-              index={marker}
-              leading={isLeading}
-              message={message}
-              onLocationSelect={this.props.onLocationSelect}
-              ref={selected ? ctx?.registerSelectedSecondaryLocationRef : undefined}
-              selected={selected}
-            />
-          )}
-        </IssueSourceViewerScrollContext.Consumer>
-      </Fragment>
+      <IssueSourceViewerScrollContext.Consumer>
+        {(ctx) => (
+          <LineMarker
+            hideLocationIndex={hideLocationIndex}
+            index={marker}
+            key={`${marker}-${index}`}
+            leading={isLeading}
+            message={message}
+            onLocationSelect={this.props.onLocationSelect}
+            ref={selected ? ctx?.registerSelectedSecondaryLocationRef : undefined}
+            selected={selected}
+          />
+        )}
+      </IssueSourceViewerScrollContext.Consumer>
     );
   };
 
-  addLineToken = (token: Token, shouldPlacePointer: boolean, index: number) => {
+  addLineToken = (token: Token, index: number) => {
     return (
       <LineToken
         className={token.className}
         hasMarker={token.markers.length > 0}
-        issueFindingRef={shouldPlacePointer ? this.findingNode : undefined}
         key={`${token.text}-${index}`}
         {...token.modifiers}
       >
@@ -143,9 +135,6 @@ export class LineCode extends PureComponent<React.PropsWithChildren<Props>> {
     // set `false` for the first token in a row
     let leadingMarker = false;
 
-    // track if a pointer is placed on the token
-    let numberOfPlacedPointers = 0;
-
     tokens.forEach((token, index) => {
       if (this.props.displayLocationMarkers && token.markers.length > 0) {
         token.markers.forEach((marker, markerIndex) => {
@@ -153,14 +142,7 @@ export class LineCode extends PureComponent<React.PropsWithChildren<Props>> {
         });
       }
 
-      if (token.modifiers.isUnderlined && token.text.trim().length > 1) {
-        numberOfPlacedPointers++;
-      }
-      renderedTokens.push(this.addLineToken(token, numberOfPlacedPointers === 1, index));
-
-      if (numberOfPlacedPointers === 1) {
-        numberOfPlacedPointers++;
-      }
+      renderedTokens.push(this.addLineToken(token, index));
 
       // keep leadingMarker truthy if previous token has only whitespaces
       leadingMarker = (index === 0 ? true : leadingMarker) && !token.text.trim().length;
@@ -233,7 +215,7 @@ export class LineCode extends PureComponent<React.PropsWithChildren<Props>> {
               })
             )}
           </LineCodePreFormatted>
-          <div ref={this.findingNode}>{children}</div>
+          {children}
         </LineCodeLayer>
       </LineCodeLayers>
     );

@@ -19,10 +19,9 @@
  */
 import styled from '@emotion/styled';
 import classNames from 'classnames';
-import { ReactNode, RefObject } from 'react';
+import { ReactNode } from 'react';
 import tw from 'twin.macro';
 import { themeColor } from '../../helpers/theme';
-import { LineIssuePointer } from './LineIssuePointer';
 
 export interface TokenModifiers {
   isHighlighted?: boolean;
@@ -35,11 +34,10 @@ interface Props extends TokenModifiers {
   children: ReactNode;
   className?: string;
   hasMarker?: boolean;
-  issueFindingRef?: RefObject<HTMLDivElement>;
 }
 
 export function LineToken(props: Props) {
-  const { children, className, hasMarker, issueFindingRef, ...modifiers } = props;
+  const { children, className, hasMarker, ...modifiers } = props;
 
   return (
     <TokenStyled
@@ -52,7 +50,6 @@ export function LineToken(props: Props) {
       })}
     >
       <>{children}</>
-      {modifiers.isUnderlined && <LineIssuePointer issueFindingRef={issueFindingRef} />}
     </TokenStyled>
   );
 }

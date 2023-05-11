@@ -67,7 +67,6 @@ export interface SnippetViewerProps {
   snippet: SourceLine[];
   className?: string;
   snippetSourcesMap?: LineMap;
-  hideLocationIndex?: boolean;
 }
 
 type Props = SnippetViewerProps & ThemeProp;
@@ -77,20 +76,9 @@ function SnippetViewer(props: Props) {
     props.expandBlock(props.index, direction);
   };
 
-  const {
-    component,
-    displaySCM,
-    locationsByLine,
-    snippet,
-    theme,
-    className,
-    hideLocationIndex,
-    displayLineNumberOptions,
-    duplications,
-    duplicationsByLine,
-    snippetSourcesMap,
-  } = props;
+  const { component, displaySCM, locationsByLine, snippet, theme, className } = props;
 
+  const { displayLineNumberOptions, duplications, duplicationsByLine, snippetSourcesMap } = props;
   const duplicationsCount = duplications ? duplications.length : 0;
 
   const firstLineNumber = snippet?.length ? snippet[0].line : 0;
@@ -195,7 +183,6 @@ function SnippetViewer(props: Props) {
                   secondaryIssueLocations={secondaryIssueLocations}
                   onLineMouseEnter={onLineMouseEnter}
                   onLineMouseLeave={onLineMouseLeave}
-                  hideLocationIndex={hideLocationIndex}
                 >
                   {props.renderAdditionalChildInLine?.(line)}
                 </Line>
