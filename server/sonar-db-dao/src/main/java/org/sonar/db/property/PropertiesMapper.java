@@ -27,8 +27,6 @@ import org.sonar.db.EmailSubscriberDto;
 
 public interface PropertiesMapper {
 
-  Set<Subscriber> findUsersForNotification(@Param("notifKey") String notificationKey, @Nullable @Param("projectKey") String projectKey);
-
   Set<EmailSubscriberDto> findEmailRecipientsForNotification(@Param("notifKey") String notificationKey, @Nullable @Param("projectKey") String projectKey,
     @Nullable @Param("logins") List<String> logins);
 
@@ -53,10 +51,6 @@ public interface PropertiesMapper {
   List<String> selectIdsByOrganizationAndMatchingLogin(@Param("organizationUuid") String organizationUuid, @Param("login") String login,
           @Param("propertyKeys") List<String> propertyKeys);
 
-  List<String> selectUuidsByUser(@Param("userUuid") String userUuid);
-
-  List<String> selectIdsByMatchingLogin(@Param("login") String login, @Param("propertyKeys") List<String> propertyKeys);
-
   void insertAsEmpty(@Param("uuid") String uuid, @Param("key") String key, @Nullable @Param("userUuid") String userUuid, @Nullable @Param("componentUuid") String componentUuid,
     @Param("now") long now);
 
@@ -69,8 +63,6 @@ public interface PropertiesMapper {
   int delete(@Param("key") String key, @Nullable @Param("userUuid") String userUuid, @Nullable @Param("componentUuid") String componentUuid);
 
   int deleteProjectProperty(@Param("key") String key, @Param("componentUuid") String componentUuid);
-
-  int deleteProjectProperties(@Param("key") String key, @Param("value") String value);
 
   int deleteGlobalProperty(@Param("key") String key);
 

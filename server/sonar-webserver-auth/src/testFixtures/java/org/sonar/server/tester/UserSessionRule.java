@@ -30,6 +30,7 @@ import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
+import org.sonar.db.entity.EntityDto;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.GlobalPermission;
 import org.sonar.db.permission.OrganizationPermission;
@@ -206,7 +207,7 @@ public class UserSessionRule implements TestRule, UserSession {
     return this;
   }
 
-  public UserSession registerBranches(BranchDto ...branchDtos){
+  public UserSession registerBranches(BranchDto... branchDtos) {
     ensureAbstractMockUserSession().registerBranches(branchDtos);
     return this;
   }
@@ -265,6 +266,11 @@ public class UserSessionRule implements TestRule, UserSession {
   }
 
   @Override
+  public boolean hasEntityPermission(String permission, EntityDto entity) {
+    return currentUserSession.hasProjectPermission(permission, entity.getUuid());
+  }
+
+  @Override
   public boolean hasProjectPermission(String permission, String projectUuid) {
     return currentUserSession.hasProjectPermission(permission, projectUuid);
   }
@@ -292,6 +298,11 @@ public class UserSessionRule implements TestRule, UserSession {
   @Override
   public List<ComponentDto> keepAuthorizedComponents(String permission, Collection<ComponentDto> components) {
     return currentUserSession.keepAuthorizedComponents(permission, components);
+  }
+
+  @Override
+  public <T extends EntityDto> List<T> keepAuthorizedEntities(String permission, Collection<T> entities) {
+    return currentUserSession.keepAuthorizedEntities(permission, entities);
   }
 
   @Override
@@ -379,6 +390,12 @@ public class UserSessionRule implements TestRule, UserSession {
   @Override
   public UserSession checkComponentPermission(String projectPermission, ComponentDto component) {
     currentUserSession.checkComponentPermission(projectPermission, component);
+    return this;
+  }
+
+  @Override
+  public UserSession checkEntityPermission(String projectPermission, EntityDto entity) {
+    currentUserSession.checkEntityPermission(projectPermission, entity);
     return this;
   }
 

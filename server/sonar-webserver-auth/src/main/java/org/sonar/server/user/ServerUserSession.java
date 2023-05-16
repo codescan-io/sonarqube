@@ -42,6 +42,7 @@ import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.component.ComponentTreeQuery;
 import org.sonar.db.component.ComponentTreeQuery.Strategy;
+import org.sonar.db.entity.EntityDto;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.organization.OrganizationMemberDto;
 import org.sonar.db.permission.OrganizationPermission;
@@ -187,6 +188,17 @@ public class ServerUserSession extends AbstractUserSession {
       return new ArrayList<>(projects);
     }
     Set<String> projectsUuids = projects.stream().map(ProjectDto::getUuid).collect(Collectors.toSet());
+    Set<String> authorizedProjectsUuids = keepProjectsUuidsByPermission(permission, projectsUuids);
+
+    return projects.stream()
+      .filter(project -> authorizedProjectsUuids.contains(project.getUuid()))
+      .toList();
+  }
+
+  @Override
+  public <T extends EntityDto> List<T> keepAuthorizedEntities(String permission, Collection<T> projects) {
+    Set<String> projectsUuids = projects.stream().map(EntityDto::getUuid).collect(Collectors.toSet());
+    // TODO
     Set<String> authorizedProjectsUuids = keepProjectsUuidsByPermission(permission, projectsUuids);
 
     return projects.stream()

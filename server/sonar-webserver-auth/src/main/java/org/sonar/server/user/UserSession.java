@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import javax.annotation.CheckForNull;
 import org.sonar.db.component.ComponentDto;
+import org.sonar.db.entity.EntityDto;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.project.ProjectDto;
@@ -154,6 +155,8 @@ public interface UserSession {
 
   boolean hasProjectPermission(String permission, ProjectDto project);
 
+  boolean hasEntityPermission(String permission, EntityDto entity);
+
   boolean hasProjectPermission(String permission, String projectUuid);
 
   boolean hasChildProjectsPermission(String permission, ComponentDto component);
@@ -181,6 +184,8 @@ public interface UserSession {
    */
   List<ComponentDto> keepAuthorizedComponents(String permission, Collection<ComponentDto> components);
 
+  <T extends EntityDto>  List<T> keepAuthorizedEntities(String permission, Collection<T> components);
+
   List<ProjectDto> keepAuthorizedProjects(String permission, Collection<ProjectDto> projects);
 
   /**
@@ -194,6 +199,8 @@ public interface UserSession {
    * otherwise throws a {@link org.sonar.server.exceptions.ForbiddenException}.
    */
   UserSession checkProjectPermission(String projectPermission, ProjectDto project);
+
+  UserSession checkEntityPermission(String projectPermission, EntityDto entity);
 
   /**
    * Ensures that {@link #hasChildProjectsPermission(String, ComponentDto)} is {@code true}
