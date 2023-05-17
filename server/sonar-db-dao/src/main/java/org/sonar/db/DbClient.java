@@ -82,6 +82,8 @@ import org.sonar.db.qualityprofile.QProfileEditUsersDao;
 import org.sonar.db.qualityprofile.QualityProfileDao;
 import org.sonar.db.qualityprofile.QualityProfileExportDao;
 import org.sonar.db.report.RegulatoryReportDao;
+import org.sonar.db.report.ReportScheduleDao;
+import org.sonar.db.report.ReportSubscriptionDao;
 import org.sonar.db.rule.RuleDao;
 import org.sonar.db.rule.RuleRepositoryDao;
 import org.sonar.db.scannercache.ScannerAnalysisCacheDao;
@@ -189,6 +191,9 @@ public class DbClient {
   private final ScimGroupDao scimGroupDao;
   private final EntityDao entityDao;
 
+  private final ReportScheduleDao reportScheduleDao;
+  private final ReportSubscriptionDao reportSubscriptionDao;
+
   public DbClient(Database database, MyBatis myBatis, DBSessions dbSessions, Dao... daos) {
     this.database = database;
     this.myBatis = myBatis;
@@ -278,6 +283,8 @@ public class DbClient {
     scimUserDao = getDao(map, ScimUserDao.class);
     scimGroupDao = getDao(map, ScimGroupDao.class);
     entityDao = getDao(map, EntityDao.class);
+    reportScheduleDao = getDao(map, ReportScheduleDao.class);
+    reportSubscriptionDao = getDao(map, ReportSubscriptionDao.class);
   }
 
   public DbSession openSession(boolean batch) {
@@ -616,6 +623,14 @@ public class DbClient {
 
   public EntityDao entityDao() {
     return entityDao;
+  }
+
+  public ReportScheduleDao reportScheduleDao(){
+    return reportScheduleDao;
+  }
+
+  public ReportSubscriptionDao reportSubscriptionDao() {
+    return reportSubscriptionDao;
   }
 }
 
