@@ -41,10 +41,11 @@ import { CurrentUser, isLoggedIn } from '../../../types/users';
 import { hasFilterParams, parseUrlQuery, Query } from '../query';
 import '../styles.css';
 import { Facets, Project } from '../types';
-import { fetchProjects, parseSorting, SORTING_SWITCH } from '../utils';
+import { fetchProjectsByOrg, parseSorting, SORTING_SWITCH } from '../utils';
 import PageHeader from './PageHeader';
 import PageSidebar from './PageSidebar';
 import ProjectsList from './ProjectsList';
+
 
 interface Props {
   currentUser: CurrentUser;
@@ -52,6 +53,7 @@ interface Props {
   location: Location;
   appState: AppState;
   router: Router;
+  organization: string;
 }
 
 interface State {
@@ -76,18 +78,25 @@ export class AllProjects extends React.PureComponent<Props, State> {
 
   componentDidMount() {
     this.mounted = true;
-
     if (this.props.isFavorite && !isLoggedIn(this.props.currentUser)) {
       handleRequiredAuthentication();
       return;
     }
-    this.handleQueryChange();
+    this.handleQueryChange(true, this.props.organization);
     addSideBarClass();
   }
 
   componentDidUpdate(prevProps: Props) {
     if (prevProps.location.query !== this.props.location.query) {
-      this.handleQueryChange();
+      this.handleQueryChange(false, this.props.organization);
+    }
+
+    if (
+      prevProps.organization &&
+      this.props.organization &&
+      prevProps.organization !== this.props.organization
+    ) {
+      this.setState({ loading: true });
     }
   }
 
@@ -96,9 +105,9 @@ export class AllProjects extends React.PureComponent<Props, State> {
     removeSideBarClass();
   }
 
-  fetchProjects = (query: Query) => {
+  fetchProjects = (query: Query, organization: string) => {
     this.setState({ loading: true, query });
-    fetchProjects(query, this.props.isFavorite).then((response) => {
+    fetchProjectsByOrg(query, this.props.isFavorite, organization).then((response) => {
       if (this.mounted) {
         this.setState({
           facets: response.facets,
@@ -115,7 +124,7 @@ export class AllProjects extends React.PureComponent<Props, State> {
     const { pageIndex, projects, query } = this.state;
     if (pageIndex && projects && query) {
       this.setState({ loading: true });
-      fetchProjects(query, this.props.isFavorite, pageIndex + 1).then((response) => {
+      fetchProjectsByOrg(query, this.props.isFavorite, this.props.organization, pageIndex + 1).then((response) => {
         if (this.mounted) {
           this.setState({
             loading: false,
@@ -171,10 +180,19 @@ export class AllProjects extends React.PureComponent<Props, State> {
     save(LS_PROJECTS_VIEW, query.view);
   };
 
-  handleQueryChange() {
-    const query = parseUrlQuery(this.props.location.query);
 
-    this.fetchProjects(query);
+  handleQueryChange(initialMount: boolean, organization: string) {
+    const query = parseUrlQuery(this.props.location.query);
+    const savedOptions = getStorageOptions();
+    const savedOptionsSet = savedOptions.sort || savedOptions.view;
+
+    // if there is no visualization parameters (sort, view, visualization), but there are saved preferences in the localStorage
+    if (initialMount && savedOptionsSet) {
+      this.props.router.replace({ pathname: this.props.location.pathname, query: savedOptions });
+      //this.setState({ loading: false });
+    }
+    this.fetchProjects(query, organization);
+
   }
 
   handleSortChange = (sort: string, desc: boolean) => {
@@ -193,6 +211,7 @@ export class AllProjects extends React.PureComponent<Props, State> {
     const query = omitBy({ ...this.props.location.query, ...newQuery }, (x) => !x);
     this.props.router.push({ pathname: this.props.location.pathname, query });
   };
+
 
   renderSide = () => (
     <ScreenPositionHelper className="layout-page-side-outer">
@@ -301,7 +320,8 @@ export class AllProjects extends React.PureComponent<Props, State> {
   }
 }
 
-function getStorageOptions() {
+
+export function getStorageOptions() {
   const options: {
     sort?: string;
     view?: string;

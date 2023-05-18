@@ -21,13 +21,21 @@ import * as React from 'react';
 import Suggestions from "../../../components/embed-docs-modal/Suggestions";
 import AllProjects from "../../projects/components/AllProjects";
 
-export default function OrganizationProjects() {
+import { whenLoggedIn } from '../../../components/hoc/whenLoggedIn';
+import { withOrganizationContext } from "../OrganizationContext";
+import { useParams } from 'react-router-dom';
+
+export function OrganizationProjects() {
+  const { organizationKey } = useParams();
   return (
-      <>
-        <AllProjects
-            isFavorite={false}
-        />
-        <Suggestions suggestions="organization_projects"/>
-      </>
+    <>
+      <AllProjects
+        isFavorite={false}
+        organization={organizationKey}
+      />
+      <Suggestions suggestions="organization_projects" />
+    </>
   );
 }
+
+export default whenLoggedIn(withOrganizationContext(OrganizationProjects));

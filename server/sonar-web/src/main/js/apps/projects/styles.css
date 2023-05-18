@@ -23,7 +23,7 @@
   line-height: normal;
 }
 
-.projects-topbar-item + .projects-topbar-item {
+.projects-topbar-item+.projects-topbar-item {
   padding-left: 24px;
 }
 
@@ -121,9 +121,9 @@
   show the left and right borders.
 */
 .search-navigator-facet-worse-than-highlight:hover,
-.search-navigator-facet-worse-than-highlight:hover ~ .search-navigator-facet-worse-than-highlight,
+.search-navigator-facet-worse-than-highlight:hover~.search-navigator-facet-worse-than-highlight,
 .search-navigator-facet-worse-than-highlight.active,
-.search-navigator-facet-worse-than-highlight.active ~ .search-navigator-facet-worse-than-highlight {
+.search-navigator-facet-worse-than-highlight.active~.search-navigator-facet-worse-than-highlight {
   border-left-color: var(--blue);
   border-right-color: var(--blue);
 }
@@ -151,11 +151,9 @@
   show the bottom border, and remove the bottom padding.
 */
 .search-navigator-facet-worse-than-highlight.last:hover,
-.search-navigator-facet-worse-than-highlight:hover
-  ~ .search-navigator-facet-worse-than-highlight.last,
+.search-navigator-facet-worse-than-highlight:hover~.search-navigator-facet-worse-than-highlight.last,
 .search-navigator-facet-worse-than-highlight.active.last,
-.search-navigator-facet-worse-than-highlight.active
-  ~ .search-navigator-facet-worse-than-highlight.last {
+.search-navigator-facet-worse-than-highlight.active~.search-navigator-facet-worse-than-highlight.last {
   border-bottom: 1px solid var(--blue) !important;
   border-bottom-left-radius: 2px;
   border-bottom-right-radius: 2px;
@@ -169,7 +167,7 @@
   show a light blue background color.
 */
 .search-navigator-facet-worse-than-highlight.active,
-.search-navigator-facet-worse-than-highlight.active ~ .search-navigator-facet-worse-than-highlight {
+.search-navigator-facet-worse-than-highlight.active~.search-navigator-facet-worse-than-highlight {
   background-color: var(--veryLightBlue);
 }
 
@@ -179,10 +177,7 @@
   - Or, being a sibling of something hovered AND a sibling of something active
   show a darker blue background color.
 */
-.search-navigator-facet-worse-than-highlight.active
-  ~ .search-navigator-facet-worse-than-highlight:hover,
-.search-navigator-facet-worse-than-highlight.active
-  ~ .search-navigator-facet-worse-than-highlight:hover
-  ~ .search-navigator-facet-worse-than-highlight {
+.search-navigator-facet-worse-than-highlight.active~.search-navigator-facet-worse-than-highlight:hover,
+.search-navigator-facet-worse-than-highlight.active~.search-navigator-facet-worse-than-highlight:hover~.search-navigator-facet-worse-than-highlight {
   background-color: #a1cde8;
 }

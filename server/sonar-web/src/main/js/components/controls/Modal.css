@@ -115,7 +115,7 @@
   padding-right: calc(4 * var(--gridSize));
 }
 
-.modal-container > :last-child {
+.modal-container> :last-child {
   margin-bottom: var(--pagePadding);
 }
 
@@ -153,7 +153,7 @@
   margin-bottom: 4px;
 }
 
-.modal-field > .icon-checkbox {
+.modal-field>.icon-checkbox {
   padding-top: 6px;
   padding-right: 8px;
 }
@@ -182,6 +182,7 @@
   max-height: 50vh;
   min-height: var(--controlHeight);
 }
+
 .modal-validation-field input:not(.is-invalid),
 .modal-validation-field .Select:not(.is-invalid) {
   margin-bottom: calc(var(--tinyControlHeight) + 2px);

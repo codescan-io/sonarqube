@@ -42,33 +42,33 @@ import OrganizationPageExtension from "../../app/components/extensions/Organizat
 import OrganizationMembers from "../organizationMembers/OrganizationMembers";
 
 const routes = () => (
-    <Route path="organizations">
-      <Route path=":organizationKey" element={<OrganizationApp/>}>
-        <Route index={true} element={<Navigate to={{ pathname: "projects" }} replace={true}/>}/>
-        <Route path="projects" element={<OrganizationProjects />}/>
-        <Route path="edit" element={<OrganizationEdit />}/>
-        <Route path="delete" element={<OrganizationDelete />}/>
-        <Route path="permission_templates" element={<PermissionTemplatesApp />}/>
-        <Route path="permissions" element={<GlobalPermissionsApp />}/>
-        <Route path="groups" element={<GroupsApp />}/>
-        <Route path="projects_management" element={<ProjectManagementApp />}/>
-        <Route path="webhooks" element={<WebhookApp />}/>
-        <Route path="issues" element={<IssuesApp />}/>
-        {qualityGatesRoutes()}
-        <Route path="quality_profiles" element={<QualityProfilesApp />}>
-           <Route index={true} element={<HomeContainer />} />
-           <Route element={<ProfileContainer />}>
-             <Route path="show" element={<ProfileDetails />} />
-             <Route path="changelog" element={<ChangelogContainer />} />
-             <Route path="compare" element={<ComparisonContainer />} />
-           </Route>
+  <Route path="organizations">
+    <Route path=":organizationKey" element={<OrganizationApp />}>
+      <Route index={true} element={<Navigate to={{ pathname: "projects" }} replace={true} />} />
+      <Route path="projects" element={<OrganizationProjects path=":organizationKey" />} />
+      <Route path="edit" element={<OrganizationEdit />} />
+      <Route path="delete" element={<OrganizationDelete />} />
+      <Route path="permission_templates" element={<PermissionTemplatesApp />} />
+      <Route path="permissions" element={<GlobalPermissionsApp />} />
+      <Route path="groups" element={<GroupsApp />} />
+      <Route path="projects_management" element={<ProjectManagementApp />} />
+      <Route path="webhooks" element={<WebhookApp />} />
+      <Route path="issues" element={<IssuesApp />} />
+      {qualityGatesRoutes()}
+      <Route path="quality_profiles" element={<QualityProfilesApp />}>
+        <Route index={true} element={<HomeContainer />} />
+        <Route element={<ProfileContainer />}>
+          <Route path="show" element={<ProfileDetails />} />
+          <Route path="changelog" element={<ChangelogContainer />} />
+          <Route path="compare" element={<ComparisonContainer />} />
         </Route>
-        <Route path="rules" element={<RulesApp />}/>
-        <Route path="members" element={<OrganizationMembers />}/>
-        <Route path="extension/:pluginKey/:extensionKey" element={<OrganizationPageExtension />} />
       </Route>
-      <Route path="create" element={<CreateOrganizationPage/>}/>
+      <Route path="rules" element={<RulesApp />} />
+      <Route path="members" element={<OrganizationMembers />} />
+      <Route path="extension/:pluginKey/:extensionKey" element={<OrganizationPageExtension />} />
     </Route>
+    <Route path="create" element={<CreateOrganizationPage />} />
+  </Route>
 );
 
 export default routes;
