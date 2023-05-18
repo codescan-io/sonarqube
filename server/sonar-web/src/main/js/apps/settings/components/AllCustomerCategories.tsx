@@ -1,6 +1,6 @@
 /*
  * SonarQube
- * Copyright (C) 2009-2020 SonarSource SA
+ * Copyright (C) 2009-2023 SonarSource SA
  * mailto:info AT sonarsource DOT com
  *
  * This program is free software; you can redistribute it and/or
@@ -19,12 +19,10 @@
  */
 import { CUSTOMER_CATEGORY, LANGUAGES_CATEGORY, NEW_CODE_PERIOD_CATEGORY } from '../constants';
 
-const ALL_CUSTOMER_CATEGORIES: T.Dict<String> = {
+export const ALL_CUSTOMER_CATEGORIES: T.Dict<String> = {
   'codescan': CUSTOMER_CATEGORY,
   'housekeeping': CUSTOMER_CATEGORY,
   'exclusions': CUSTOMER_CATEGORY,
   'languages': LANGUAGES_CATEGORY,
   'new_code_period': NEW_CODE_PERIOD_CATEGORY
 };
-
-export default ALL_CUSTOMER_CATEGORIES;

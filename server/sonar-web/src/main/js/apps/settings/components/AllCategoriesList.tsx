@@ -42,6 +42,7 @@ export interface CategoriesListProps extends WithAvailableFeaturesProps {
 
 export function CategoriesList(props: CategoriesListProps) {
   const { categories, component, defaultCategory, selectedCategory } = props;
+  const { branchesEnabled, appState } = this.props;
   let categoriesWithName;
    if (appState?.canAdmin) {
     const categoriesWithName = categories
@@ -77,8 +78,6 @@ export function CategoriesList(props: CategoriesListProps) {
   const sortedCategories = sortBy(categoriesWithName, (category) => category.name.toLowerCase());
 
   return (
-    const { branchesEnabled, appState } = this.props;
-    let categoriesWithName;
     <ul className="side-tabs-menu">
       {sortedCategories.map((c) => {
         const category = c.key !== defaultCategory ? c.key.toLowerCase() : undefined;

@@ -137,8 +137,7 @@ function renderRedirects(canAdmin?: boolean, canCustomerAdmin?: boolean) {
 
       <Route path="/issues/search" element={<NavigateWithSearchAndHash pathname="/issues" />} />
 
-      {canAdmin && (<Redirect from="/admin" to="/admin/settings" />)}
-      {!canAdmin && canCustomerAdmin && (<Redirect from="/admin" to="/admin/background_tasks" />)}
+      {renderRedirect({ from: '/admin', to: '/admin/settings' })}
       {renderRedirect({ from: '/background_tasks', to: '/admin/background_tasks' })}
       {renderRedirect({ from: '/groups', to: '/admin/groups' })}
       {renderRedirect({ from: '/extension/governance/portfolios', to: '/portfolios' })}
