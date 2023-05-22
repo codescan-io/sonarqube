@@ -39,6 +39,7 @@ import org.sonar.db.dialect.H2;
 import org.sonar.db.dialect.PostgreSql;
 import org.sonar.server.authentication.DefaultAdminCredentialsVerifier;
 import org.sonar.server.issue.index.IssueIndexSyncProgressChecker;
+import org.sonar.server.organization.DefaultOrganizationProvider;
 import org.sonar.server.platform.NodeInformation;
 import org.sonar.server.tester.UserSessionRule;
 import org.sonar.server.ui.PageRepository;
@@ -70,6 +71,7 @@ public class GlobalActionTest {
   private final DefaultAdminCredentialsVerifier defaultAdminCredentialsVerifier = mock(DefaultAdminCredentialsVerifier.class);
 
   private WsActionTester ws;
+  private DefaultOrganizationProvider defaultOrganizationProvider = TestDefaultOrganizationProvider.fromUuid("foo");
 
   @Test
   public void empty_call() {
@@ -344,7 +346,7 @@ public class GlobalActionTest {
     pageRepository.start();
     GlobalAction wsAction = new GlobalAction(pageRepository, settings.asConfig(), new ResourceTypes(resourceTypeTrees), server,
       nodeInformation, dbClient, userSession, editionProvider, webAnalyticsLoader,
-      indexSyncProgressChecker, defaultAdminCredentialsVerifier);
+      indexSyncProgressChecker, defaultAdminCredentialsVerifier, defaultOrganizationProvider);
     ws = new WsActionTester(wsAction);
     wsAction.start();
   }

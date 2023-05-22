@@ -116,6 +116,7 @@ import org.sonar.server.metric.UnanalyzedLanguageMetrics;
 import org.sonar.server.notification.DefaultNotificationManager;
 import org.sonar.server.notification.NotificationService;
 import org.sonar.server.notification.email.EmailNotificationChannel;
+import org.sonar.server.organization.DefaultOrganizationProviderImpl;
 import org.sonar.server.platform.DefaultNodeInformation;
 import org.sonar.server.platform.OfficialDistribution;
 import org.sonar.server.platform.ServerFileSystemImpl;
@@ -351,7 +352,8 @@ public class ComputeEngineContainerImpl implements ComputeEngineContainer {
       ServerIdChecksum.class,
       UriReader.class,
       ServerImpl.class,
-      SynchronousAsyncExecution.class);
+      SynchronousAsyncExecution.class,
+      DefaultOrganizationProviderImpl.class);
   }
 
   private static void populateLevel4(Container container, Props props) {

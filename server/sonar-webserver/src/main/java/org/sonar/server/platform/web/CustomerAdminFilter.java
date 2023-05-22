@@ -23,7 +23,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.authentication.JwtHttpHandler;
-import org.sonar.server.organization.DefaultOrganization;
+import org.sonar.server.organization.DefaultOrganizationProvider;
 import org.sonar.server.platform.Platform;
 import org.sonar.server.platform.PlatformImpl;
 import org.sonar.server.user.ThreadLocalUserSession;
@@ -72,11 +72,11 @@ public class CustomerAdminFilter implements Filter {
         HttpServletResponse response = (HttpServletResponse) servletResponse;
         String path = request.getRequestURI().replaceFirst(request.getContextPath(), "");
         if (includeUrls.contains(path)) {
-            DefaultOrganization defaultOrganizationProvider = getComponent(DefaultOrganization.class);
+            DefaultOrganizationProvider defaultOrganizationProvider = getComponent(DefaultOrganizationProvider.class);
             ThreadLocalUserSession threadLocalUserSession = getComponent(ThreadLocalUserSession.class);
             UserSession userSession = threadLocalUserSession.get();
             if (userSession.hasPermission(OrganizationPermission.ADMINISTER_CUSTOMER,
-                    defaultOrganizationProvider.getUuid())) {
+                    defaultOrganizationProvider.get().getUuid())) {
                 Optional<JwtHttpHandler.Token> tokenOpt = getComponent(JwtHttpHandler.class)
                         .getToken(request, response);
                 if (tokenOpt.isPresent()) {
