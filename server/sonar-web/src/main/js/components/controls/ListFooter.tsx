@@ -17,10 +17,14 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+import { withTheme } from '@emotion/react';
+import styled from '@emotion/styled';
 import classNames from 'classnames';
+import { ButtonSecondary, themeColor } from 'design-system';
 import * as React from 'react';
 import { translate, translateWithParameters } from '../../helpers/l10n';
 import { formatMeasure } from '../../helpers/measures';
+import { MetricType } from '../../types/metrics';
 import DeferredSpinner from '../ui/DeferredSpinner';
 import { Button } from './buttons';
 
@@ -35,6 +39,7 @@ export interface ListFooterProps {
   reload?: () => void;
   ready?: boolean;
   total?: number;
+  useMIUIButtons?: boolean;
 }
 
 export default function ListFooter(props: ListFooterProps) {
@@ -48,6 +53,7 @@ export default function ListFooter(props: ListFooterProps) {
     total,
     pageSize,
     ready = true,
+    useMIUIButtons = false,
   } = props;
 
   const rootNode = React.useRef<HTMLDivElement>(null);
@@ -71,32 +77,38 @@ export default function ListFooter(props: ListFooterProps) {
 
   let button;
   if (needReload && props.reload) {
-    button = (
-      <Button className="spacer-left" data-test="reload" disabled={loading} onClick={props.reload}>
-        {translate('reload')}
-      </Button>
+    button = React.createElement(
+      useMIUIButtons ? ButtonSecondary : Button,
+      {
+        'data-test': 'reload',
+        className: classNames('sw-ml-2', { 'sw-body-sm': useMIUIButtons }),
+        disabled: loading,
+        onClick: props.reload,
+      } as Button['props'],
+      translate('reload')
     );
   } else if (hasMore && props.loadMore) {
-    button = (
-      <Button
-        aria-label={loadMoreAriaLabel}
-        className="spacer-left"
-        disabled={loading}
-        data-test="show-more"
-        onClick={onLoadMore}
-      >
-        {translate('show_more')}
-      </Button>
+    button = React.createElement(
+      useMIUIButtons ? ButtonSecondary : Button,
+      {
+        'aria-label': loadMoreAriaLabel,
+        'data-test': 'show-more',
+        className: classNames('sw-ml-2', { 'sw-body-sm': useMIUIButtons }),
+        disabled: loading,
+        onClick: onLoadMore,
+      } as Button['props'],
+      translate('show_more')
     );
   }
 
   return (
-    <div
+    <StyledDiv
       tabIndex={-1}
       ref={rootNode}
       className={classNames(
-        'list-footer spacer-top note text-center',
-        { 'new-loading': !ready },
+        'list-footer', // .list-footer is only used by Selenium tests; we should find a way to remove it.
+        'sw-body-sm sw-mt-4 sw-flex sw-items-center sw-justify-center',
+        { 'sw-opacity-50 sw-duration-500 sw-ease-in-out': !ready },
         className
       )}
     >
@@ -104,13 +116,17 @@ export default function ListFooter(props: ListFooterProps) {
         {total !== undefined
           ? translateWithParameters(
               'x_of_y_shown',
-              formatMeasure(count, 'INT', null),
-              formatMeasure(total, 'INT', null)
+              formatMeasure(count, MetricType.Integer, null),
+              formatMeasure(total, MetricType.Integer, null)
             )
-          : translateWithParameters('x_show', formatMeasure(count, 'INT', null))}
+          : translateWithParameters('x_show', formatMeasure(count, MetricType.Integer, null))}
       </span>
       {button}
-      {<DeferredSpinner loading={loading} className="text-bottom spacer-left position-absolute" />}
-    </div>
+      {<DeferredSpinner loading={loading} className="sw-ml-2" />}
+    </StyledDiv>
   );
 }
+
+const StyledDiv = withTheme(styled.div`
+  color: ${themeColor('pageContentLight')};
+`);
