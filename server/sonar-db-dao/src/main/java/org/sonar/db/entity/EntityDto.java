@@ -19,6 +19,8 @@
  */
 package org.sonar.db.entity;
 
+import org.sonar.db.project.ProjectDto;
+
 import java.util.Objects;
 
 /**
@@ -31,6 +33,7 @@ public class EntityDto {
   protected String name;
   protected String qualifier;
   protected boolean isPrivate;
+  protected String organizationUuid;
 
   public String getKey() {
     return kee;
@@ -57,6 +60,10 @@ public class EntityDto {
 
   public boolean isPrivate() {
     return isPrivate;
+  }
+
+  public String getOrganizationUuid() {
+    return organizationUuid;
   }
 
   @Override

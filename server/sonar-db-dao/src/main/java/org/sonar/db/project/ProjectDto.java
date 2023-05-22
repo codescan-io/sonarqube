@@ -34,7 +34,6 @@ public class ProjectDto extends EntityDto {
   private String tags;
   private long createdAt;
   private long updatedAt;
-  private String organizationUuid;
 
   public long getCreatedAt() {
     return createdAt;
@@ -97,15 +96,6 @@ public class ProjectDto extends EntityDto {
 
   public ProjectDto setTagsString(@Nullable String tags) {
     this.tags = trimToNull(tags);
-    return this;
-  }
-
-  public String getOrganizationUuid() {
-    return organizationUuid;
-  }
-
-  public ProjectDto setOrganizationUuid(String organizationUuid) {
-    this.organizationUuid = organizationUuid;
     return this;
   }
 

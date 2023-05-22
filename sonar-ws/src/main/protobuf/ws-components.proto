@@ -51,7 +51,7 @@ message SuggestionsWsResponse {
   repeated Category results = 1;
   optional string warning = 2;
   repeated sonarqube.ws.commons.Organization organizations = 3;
-  repeated Project projects = 4;
+  reserved 4; //drop projects
 
   message Category {
     optional string q = 1;
