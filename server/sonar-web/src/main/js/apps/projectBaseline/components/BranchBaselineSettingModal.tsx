@@ -21,6 +21,7 @@ import * as React from 'react';
 import { setNewCodePeriod } from '../../../api/newCodePeriod';
 import Modal from '../../../components/controls/Modal';
 import { ResetButtonLink, SubmitButton } from '../../../components/controls/buttons';
+import NewCodeDefinitionWarning from '../../../components/new-code-definition/NewCodeDefinitionWarning';
 import DeferredSpinner from '../../../components/ui/DeferredSpinner';
 import { toISO8601WithOffsetString } from '../../../helpers/dates';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
@@ -162,6 +163,12 @@ export default class BranchBaselineSettingModal extends React.PureComponent<Prop
         <form onSubmit={this.handleSubmit}>
           <div className="modal-body modal-container branch-baseline-setting-modal">
             <p className="sw-mb-3">{translate('baseline.new_code_period_for_branch_x.question')}</p>
+            <NewCodeDefinitionWarning
+              newCodeDefinitionType={currentSetting}
+              newCodeDefinitionValue={currentSettingValue}
+              isBranchSupportEnabled={true}
+              level="branch"
+            />
             <div className="display-flex-row huge-spacer-bottom" role="radiogroup">
               <BaselineSettingPreviousVersion
                 isDefault={false}
@@ -176,10 +183,6 @@ export default class BranchBaselineSettingModal extends React.PureComponent<Prop
                 onSelect={this.handleSelectSetting}
                 selected={selected === NewCodePeriodSettingType.NUMBER_OF_DAYS}
               />
-              <BaselineSettingAnalysis
-                onSelect={this.handleSelectSetting}
-                selected={selected === NewCodePeriodSettingType.SPECIFIC_ANALYSIS}
-              />
               <BaselineSettingReferenceBranch
                 branchList={branchList.map(this.branchToOption)}
                 onChangeReferenceBranch={this.handleSelectReferenceBranch}
@@ -188,6 +191,12 @@ export default class BranchBaselineSettingModal extends React.PureComponent<Prop
                 selected={selected === NewCodePeriodSettingType.REFERENCE_BRANCH}
                 settingLevel="branch"
               />
+              {currentSetting === NewCodePeriodSettingType.SPECIFIC_ANALYSIS && (
+                <BaselineSettingAnalysis
+                  onSelect={() => {}}
+                  selected={selected === NewCodePeriodSettingType.SPECIFIC_ANALYSIS}
+                />
+              )}
             </div>
             {selected === NewCodePeriodSettingType.SPECIFIC_ANALYSIS && (
               <BranchAnalysisList

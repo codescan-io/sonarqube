@@ -23,6 +23,7 @@ import { getNewCodePeriod, setNewCodePeriod } from '../../../api/newCodePeriod';
 import DocLink from '../../../components/common/DocLink';
 import { ResetButtonLink, SubmitButton } from '../../../components/controls/buttons';
 import AlertSuccessIcon from '../../../components/icons/AlertSuccessIcon';
+import NewCodeDefinitionWarning from '../../../components/new-code-definition/NewCodeDefinitionWarning';
 import DeferredSpinner from '../../../components/ui/DeferredSpinner';
 import { translate } from '../../../helpers/l10n';
 import { NewCodePeriodSettingType } from '../../../types/types';
@@ -34,7 +35,7 @@ interface State {
   currentSetting?: NewCodePeriodSettingType;
   days: string;
   loading: boolean;
-  currentSettingValue?: string | number;
+  currentSettingValue?: string;
   saving: boolean;
   selected?: NewCodePeriodSettingType;
   success: boolean;
@@ -189,13 +190,19 @@ export default class NewCodePeriod extends React.PureComponent<{}, State> {
                           selected={selected === NewCodePeriodSettingType.PREVIOUS_VERSION}
                         />
                         <BaselineSettingDays
-                          className="spacer-top"
+                          className="spacer-top sw-mb-4"
                           days={days}
                           isChanged={isChanged}
                           isValid={isValid}
                           onChangeDays={this.onSelectDays}
                           onSelect={this.onSelectSetting}
                           selected={selected === NewCodePeriodSettingType.NUMBER_OF_DAYS}
+                        />
+                        <NewCodeDefinitionWarning
+                          newCodeDefinitionType={currentSetting}
+                          newCodeDefinitionValue={currentSettingValue}
+                          isBranchSupportEnabled={undefined}
+                          level="global"
                         />
                         {isChanged && (
                           <div className="big-spacer-top">

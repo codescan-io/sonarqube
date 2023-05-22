@@ -19,9 +19,12 @@
  */
 import * as React from 'react';
 import RadioCard from '../../../components/controls/RadioCard';
-import ValidationInput from '../../../components/controls/ValidationInput';
+import ValidationInput, {
+  ValidationInputErrorPlacement,
+} from '../../../components/controls/ValidationInput';
 import MandatoryFieldsExplanation from '../../../components/ui/MandatoryFieldsExplanation';
-import { translate } from '../../../helpers/l10n';
+import { translate, translateWithParameters } from '../../../helpers/l10n';
+import { MAX_NUMBER_OF_DAYS, MIN_NUMBER_OF_DAYS } from '../../../helpers/periods';
 import { NewCodePeriodSettingType } from '../../../types/types';
 
 export interface Props {
@@ -37,6 +40,7 @@ export interface Props {
 
 export default function BaselineSettingDays(props: Props) {
   const { className, days, disabled, isChanged, isValid, onChangeDays, onSelect, selected } = props;
+
   return (
     <RadioCard
       className={className}
@@ -55,14 +59,20 @@ export default function BaselineSettingDays(props: Props) {
             <MandatoryFieldsExplanation />
 
             <ValidationInput
-              error={undefined}
               labelHtmlFor="baseline_number_of_days"
-              isInvalid={isChanged && !isValid}
+              isInvalid={!isValid}
               isValid={isChanged && isValid}
+              errorPlacement={ValidationInputErrorPlacement.Bottom}
+              error={translateWithParameters(
+                'baseline.number_days.invalid',
+                MIN_NUMBER_OF_DAYS,
+                MAX_NUMBER_OF_DAYS
+              )}
               label={translate('baseline.specify_days')}
               required={true}
             >
               <input
+                id="baseline_number_of_days"
                 onChange={(e) => onChangeDays(e.currentTarget.value)}
                 type="text"
                 value={days}
