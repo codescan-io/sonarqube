@@ -20,7 +20,6 @@
 package org.sonar.db.project;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -36,10 +35,6 @@ public class ProjectDto extends EntityDto {
   private long createdAt;
   private long updatedAt;
   private String organizationUuid;
-
-  public ProjectDto() {
-    // nothing to do here
-  }
 
   public long getCreatedAt() {
     return createdAt;
