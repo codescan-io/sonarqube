@@ -225,5 +225,10 @@ public class RuleRepositoryImpl implements RuleRepository {
     public String getSeverity() {
       return addHocRule.getSeverity();
     }
+
+    @Override
+    public Set<String> getSecurityStandards() {
+      return Collections.emptySet();
+    }
   }
 }
