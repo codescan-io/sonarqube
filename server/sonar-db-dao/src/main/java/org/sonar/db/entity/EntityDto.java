@@ -35,6 +35,16 @@ public class EntityDto {
   protected boolean isPrivate;
   protected String organizationUuid;
 
+  // This field should be null for anything that is not subportfolio
+  protected String authUuid;
+
+  public String getAuthUuid() {
+    if (qualifier.equals("SVW")) {
+      return authUuid;
+    }
+    return uuid;
+  }
+
   public String getKey() {
     return kee;
   }

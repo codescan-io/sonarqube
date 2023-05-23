@@ -20,7 +20,9 @@
 package org.sonar.server.component.index;
 
 import java.util.HashMap;
+import java.util.Map;
 import org.sonar.server.es.BaseDoc;
+import org.sonar.server.permission.index.AuthorizationDoc;
 
 import static org.sonar.server.component.index.ComponentIndexDefinition.FIELD_KEY;
 import static org.sonar.server.component.index.ComponentIndexDefinition.FIELD_NAME;
@@ -35,6 +37,13 @@ public class ComponentDoc extends BaseDoc {
     super(TYPE_COMPONENT, new HashMap<>(6));
   }
 
+  /**
+   * Needed for reflection. Do not remove.
+   */
+  public ComponentDoc(Map<String, Object> fields) {
+    super(TYPE_COMPONENT, fields);
+  }
+
   @Override
   public String getId() {
     return getField(FIELD_UUID);
@@ -42,6 +51,7 @@ public class ComponentDoc extends BaseDoc {
 
   public ComponentDoc setId(String s) {
     setField(FIELD_UUID, s);
+    setParent(AuthorizationDoc.idOf(s));
     return this;
   }
 
@@ -78,6 +88,11 @@ public class ComponentDoc extends BaseDoc {
 
   public ComponentDoc setOrganization(String s) {
     setField(FIELD_ORGANIZATION_UUID, s);
+    return this;
+  }
+
+  public ComponentDoc setAuthUuid(String s) {
+    setParent(AuthorizationDoc.idOf(s));
     return this;
   }
 }

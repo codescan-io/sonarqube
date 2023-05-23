@@ -57,7 +57,7 @@ public class ComponentIndexDefinition implements IndexDefinition {
 
   private ComponentIndexDefinition(Configuration config, boolean enableSource) {
     this.config = config;
-    this.enableSource = enableSource;
+    this.enableSource = true;
   }
 
   @Inject
