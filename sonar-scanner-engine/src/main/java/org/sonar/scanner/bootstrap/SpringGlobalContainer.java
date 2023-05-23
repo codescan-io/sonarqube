@@ -50,6 +50,7 @@ import org.sonar.core.util.UuidFactoryImpl;
 import org.sonar.scanner.extension.ScannerCoreExtensionsInstaller;
 import org.sonar.scanner.notifications.DefaultAnalysisWarnings;
 import org.sonar.scanner.platform.DefaultServer;
+import org.sonar.scanner.repository.DefaultMeasuresComponentLoader;
 import org.sonar.scanner.repository.DefaultMetricsRepositoryLoader;
 import org.sonar.scanner.repository.DefaultNewCodePeriodLoader;
 import org.sonar.scanner.repository.MetricsRepositoryProvider;
@@ -114,7 +115,8 @@ public class SpringGlobalContainer extends SpringComponentContainer {
       ScannerCoreExtensionsInstaller.class,
       DefaultGlobalSettingsLoader.class,
       DefaultNewCodePeriodLoader.class,
-      DefaultMetricsRepositoryLoader.class);
+      DefaultMetricsRepositoryLoader.class,
+      DefaultMeasuresComponentLoader.class);
   }
 
   @Override

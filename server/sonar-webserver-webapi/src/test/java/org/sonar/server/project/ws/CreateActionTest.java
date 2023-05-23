@@ -86,12 +86,14 @@ public class CreateActionTest {
   private final ProjectDefaultVisibility projectDefaultVisibility = mock(ProjectDefaultVisibility.class);
   private final TestProjectIndexers projectIndexers = new TestProjectIndexers();
   private final PermissionTemplateService permissionTemplateService = mock(PermissionTemplateService.class);
+
+  private final ProjectsWsSupport support = mock(ProjectsWsSupport.class);
   private final WsActionTester ws = new WsActionTester(
     new CreateAction(
       db.getDbClient(), userSession,
       new ComponentUpdater(db.getDbClient(), i18n, system2, permissionTemplateService, new FavoriteUpdater(db.getDbClient()),
         projectIndexers, new SequenceUuidFactory(), defaultBranchNameResolver),
-      projectDefaultVisibility));
+      projectDefaultVisibility, support));
 
   @Before
   public void before() {

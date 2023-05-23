@@ -35,6 +35,8 @@ import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.BranchType;
 import org.sonar.db.component.ComponentDto;
+import org.sonar.db.newcodeperiod.NewCodePeriodDto;
+import org.sonar.db.newcodeperiod.NewCodePeriodType;
 import org.sonar.db.portfolio.PortfolioDto;
 import org.sonar.db.portfolio.PortfolioDto.SelectionMode;
 import org.sonar.db.project.ProjectDto;
@@ -123,6 +125,7 @@ public class ComponentUpdater {
     ComponentDto componentDto = createRootComponent(dbSession, newComponent, componentModifier);
     if (isRootProject(componentDto)) {
       createMainBranch(dbSession, componentDto.uuid(), mainBranchName);
+      createNewCodePeriodsSettings(dbSession, componentDto.uuid());
     }
     handlePermissionTemplate(dbSession, componentDto, userUuid, userLogin);
     return componentDto;
@@ -223,6 +226,21 @@ public class ComponentUpdater {
       .setExcludeFromPurge(true)
       .setProjectUuid(componentUuid);
     dbClient.branchDao().upsert(session, branch);
+  }
+
+  private void createNewCodePeriodsSettings(DbSession session, String componentUuid) {
+    // Create project-level and main-branch settings.
+    NewCodePeriodDto newCodePeriodForProject = new NewCodePeriodDto()
+            .setProjectUuid(componentUuid)
+            .setType(NewCodePeriodType.REFERENCE_BRANCH)
+            .setValue(BranchDto.DEFAULT_MAIN_BRANCH_NAME);
+    dbClient.newCodePeriodDao().upsert(session, newCodePeriodForProject);
+
+    NewCodePeriodDto newCodePeriodForMainBranch = new NewCodePeriodDto()
+            .setProjectUuid(componentUuid)
+            .setBranchUuid(componentUuid)
+            .setType(NewCodePeriodType.PREVIOUS_VERSION);
+    dbClient.newCodePeriodDao().upsert(session, newCodePeriodForMainBranch);
   }
 
   private void handlePermissionTemplate(DbSession dbSession, ComponentDto componentDto, @Nullable String userUuid, @Nullable String userLogin) {

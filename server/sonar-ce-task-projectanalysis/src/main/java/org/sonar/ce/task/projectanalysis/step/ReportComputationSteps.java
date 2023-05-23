@@ -55,6 +55,9 @@ public class ReportComputationSteps extends AbstractComputationSteps {
     // load project related stuffs
     LoadFileHashesAndStatusStep.class,
     LoadQualityGateStep.class,
+    // We must persist components prior loading New Code Period, because we may create a new Referenced Branch settings
+    // for current analysis in case there is a target branch defined.
+    PersistComponentsStep.class,
     LoadPeriodsStep.class,
     FileMoveDetectionStep.class,
     PullRequestFileMoveDetectionStep.class,

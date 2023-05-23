@@ -26,9 +26,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.sonar.api.batch.fs.internal.DefaultInputProject;
 import org.sonar.api.config.Configuration;
+import org.sonar.api.notifications.AnalysisWarnings;
+import org.sonar.scanner.scan.ScanProperties;
 import org.sonar.scanner.scan.branch.BranchConfiguration;
 import org.sonar.scanner.scan.branch.BranchType;
 import org.sonar.scanner.scan.branch.ProjectBranches;
+import org.sonar.scanner.scm.ScmConfiguration;
 import org.sonarqube.ws.NewCodePeriods;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,7 +53,11 @@ public class ReferenceBranchSupplierTest {
   private final Configuration configuration = mock(Configuration.class);
   private final DefaultInputProject project = mock(DefaultInputProject.class);
   private final ProjectBranches projectBranches = mock(ProjectBranches.class);
-  private final ReferenceBranchSupplier referenceBranchSupplier = new ReferenceBranchSupplier(configuration, newCodePeriodLoader, branchConfiguration, project, projectBranches);
+  private final  MeasuresComponentLoader measuresComponentLoader = mock(MeasuresComponentLoader.class);
+  private final ScmConfiguration scmConfiguration = mock(ScmConfiguration.class);
+  private final AnalysisWarnings analysisWarnings = mock(AnalysisWarnings.class);
+  private final ScanProperties properties = mock(ScanProperties.class);
+  private final ReferenceBranchSupplier referenceBranchSupplier = new ReferenceBranchSupplier(configuration, newCodePeriodLoader, measuresComponentLoader, branchConfiguration, project, scmConfiguration, projectBranches, analysisWarnings, properties);
 
   @Before
   public void setUp() {
