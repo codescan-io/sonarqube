@@ -22,6 +22,7 @@ package org.sonar.db.entity;
 import org.sonar.db.project.ProjectDto;
 
 import java.util.Objects;
+import javax.annotation.CheckForNull;
 
 /**
  * Represents a project, an application, a portfolio or a sub-portfolio.
