@@ -40,7 +40,6 @@ import org.sonar.db.dialect.H2;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.server.authentication.DefaultAdminCredentialsVerifier;
 import org.sonar.server.issue.index.IssueIndexSyncProgressChecker;
-import org.sonar.server.organization.DefaultOrganizationProvider;
 import org.sonar.server.platform.NodeInformation;
 import org.sonar.server.ui.PageRepository;
 import org.sonar.server.ui.VersionFormatter;
@@ -78,12 +77,11 @@ public class GlobalAction implements NavigationWsAction, Startable {
   private final WebAnalyticsLoader webAnalyticsLoader;
   private final IssueIndexSyncProgressChecker issueIndexSyncChecker;
   private final DefaultAdminCredentialsVerifier defaultAdminCredentialsVerifier;
-  private DefaultOrganizationProvider defaultOrganizationProvider;
 
   public GlobalAction(PageRepository pageRepository, Configuration config, ResourceTypes resourceTypes, Server server,
     NodeInformation nodeInformation, DbClient dbClient, UserSession userSession, PlatformEditionProvider editionProvider,
     WebAnalyticsLoader webAnalyticsLoader, IssueIndexSyncProgressChecker issueIndexSyncChecker,
-    DefaultAdminCredentialsVerifier defaultAdminCredentialsVerifier, DefaultOrganizationProvider defaultOrganizationProvider) {
+    DefaultAdminCredentialsVerifier defaultAdminCredentialsVerifier) {
     this.pageRepository = pageRepository;
     this.config = config;
     this.resourceTypes = resourceTypes;
@@ -96,7 +94,6 @@ public class GlobalAction implements NavigationWsAction, Startable {
     this.systemSettingValuesByKey = new HashMap<>();
     this.issueIndexSyncChecker = issueIndexSyncChecker;
     this.defaultAdminCredentialsVerifier = defaultAdminCredentialsVerifier;
-    this.defaultOrganizationProvider = defaultOrganizationProvider;
   }
 
   @Override
@@ -140,8 +137,10 @@ public class GlobalAction implements NavigationWsAction, Startable {
   }
 
   private void writeActions(JsonWriter json) {
+    DbSession dbSession = dbClient.openSession(false);
     json.prop("canAdmin", userSession.isSystemAdministrator());
-    json.prop("canCustomerAdmin", userSession.hasPermission(OrganizationPermission.ADMINISTER_CUSTOMER, defaultOrganizationProvider.get().getUuid()));
+    json.prop("canCustomerAdmin", userSession.hasPermission(OrganizationPermission.ADMINISTER_CUSTOMER, dbClient.organizationDao()
+            .getDefaultOrganization(dbSession)));
   }
 
   private void writePages(JsonWriter json) {
