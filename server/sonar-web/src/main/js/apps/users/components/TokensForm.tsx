@@ -25,13 +25,13 @@ import { AppState } from '../../../../js/types/appstate';
 import { getScannableProjects } from '../../../api/components';
 import { generateToken, getTokens } from '../../../api/user-tokens';
 import withCurrentUserContext from '../../../app/components/current-user/withCurrentUserContext';
-import { SubmitButton } from '../../../components/controls/buttons';
 import Select, { LabelValueSelectOption } from '../../../components/controls/Select';
+import { SubmitButton } from '../../../components/controls/buttons';
 import DeferredSpinner from '../../../components/ui/DeferredSpinner';
 import { translate } from '../../../helpers/l10n';
 import {
-  computeTokenExpirationDate,
   EXPIRATION_OPTIONS,
+  computeTokenExpirationDate,
   getAvailableExpirationOptions,
 } from '../../../helpers/tokens';
 import { hasGlobalPermission } from '../../../helpers/users';
@@ -416,7 +416,7 @@ export class TokensForm extends React.PureComponent<Props, State> {
               <th>{translate('my_account.tokens_last_usage')}</th>
               <th className="text-right">{translate('created')}</th>
               <th className="text-right">{translate('my_account.tokens.expiration')}</th>
-              <th aria-label={translate('actions')} />
+              <th className="text-right">{translate('actions')}</th>
             </tr>
           </thead>
           <tbody>

@@ -18,7 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
-import { CurrentUser, HomePage, NoticeType } from '../../../types/users';
+import { useContext } from 'react';
+import handleRequiredAuthentication from '../../../helpers/handleRequiredAuthentication';
+import { CurrentUser, HomePage, LoggedInUser, NoticeType } from '../../../types/users';
 import { Organization } from "../../../types/types";
 
 export interface CurrentUserContextInterface {
@@ -32,3 +34,11 @@ export interface CurrentUserContextInterface {
 export const CurrentUserContext = React.createContext<CurrentUserContextInterface | undefined>(
   undefined
 );
+
+export function useCurrentLoginUser() {
+  const { currentUser } = useContext(CurrentUserContext);
+  if (!currentUser.isLoggedIn) {
+    handleRequiredAuthentication();
+  }
+  return currentUser as LoggedInUser;
+}
