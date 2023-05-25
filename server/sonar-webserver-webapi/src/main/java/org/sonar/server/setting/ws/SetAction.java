@@ -147,7 +147,7 @@ public class SetAction implements SettingsWsAction {
   }
 
   private void doHandle(DbSession dbSession, SetRequest request) {
-    Optional<EntityDto> component = searchComponent(dbSession, request);
+    Optional<EntityDto> component = searchEntity(dbSession, request);
     String projectKey = component.map(EntityDto::getKey).orElse(null);
     String projectName = component.map(EntityDto::getName).orElse(null);
     String qualifier = component.map(EntityDto::getQualifier).orElse(null);
@@ -208,10 +208,10 @@ public class SetAction implements SettingsWsAction {
     }
   }
 
-  private void commonChecks(SetRequest request, Optional<EntityDto> component) {
+  private void commonChecks(SetRequest request, Optional<EntityDto> entity) {
     checkValueIsSet(request);
     String settingKey = request.getKey();
-    SettingData settingData = new SettingData(settingKey, valuesFromRequest(request), component.orElse(null));
+    SettingData settingData = new SettingData(settingKey, valuesFromRequest(request), entity.orElse(null));
     List.of(validations.scope(), validations.qualifier(), validations.valueType())
       .forEach(validation -> validation.accept(settingData));
   }
@@ -287,20 +287,20 @@ public class SetAction implements SettingsWsAction {
       : request.getValue();
   }
 
-  private void checkPermissions(Optional<EntityDto> component) {
-    if (component.isPresent()) {
+  private void checkPermissions(Optional<EntityDto> entity) {
+    if (entity.isPresent()) {
       if (userSession instanceof ThreadLocalUserSession) {
         UserSession tokenUserSession = ((ThreadLocalUserSession) userSession).get();
         if (tokenUserSession instanceof TokenUserSession) {
           UserTokenDto userToken = ((TokenUserSession) tokenUserSession).getUserToken();
           if (TokenType.PROJECT_ANALYSIS_TOKEN.name().equals(userToken.getType())) {
-            if (userToken.getProjectKey().equals(component.get().getKey())) {
+            if (userToken.getProjectKey().equals(entity.get().getKey())) {
               return;
             }
           }
         }
       }
-      userSession.checkEntityPermission(UserRole.ADMIN, component.get());
+      userSession.checkEntityPermission(UserRole.ADMIN, entity.get());
     } else {
       userSession.checkIsSystemAdministrator();
     }
@@ -312,7 +312,7 @@ public class SetAction implements SettingsWsAction {
       .setValue(request.param(PARAM_VALUE))
       .setValues(request.multiParam(PARAM_VALUES))
       .setFieldValues(request.multiParam(PARAM_FIELD_VALUES))
-      .setComponent(request.param(PARAM_COMPONENT));
+      .setEntity(request.param(PARAM_COMPONENT));
     checkArgument(set.getValues() != null, "Setting values must not be null");
     checkArgument(set.getFieldValues() != null, "Setting fields values must not be null");
     return set;
@@ -329,13 +329,13 @@ public class SetAction implements SettingsWsAction {
     }
   }
 
-  private Optional<EntityDto> searchComponent(DbSession dbSession, SetRequest request) {
-    String componentKey = request.getComponent();
-    if (componentKey == null) {
+  private Optional<EntityDto> searchEntity(DbSession dbSession, SetRequest request) {
+    String entityKey = request.getEntity();
+    if (entityKey == null) {
       return Optional.empty();
     }
-    return Optional.of(dbClient.entityDao().selectByKey(dbSession, componentKey)
-      .orElseThrow(() -> new NotFoundException(format("Component key '%s' not found", componentKey))));
+    return Optional.of(dbClient.entityDao().selectByKey(dbSession, entityKey)
+      .orElseThrow(() -> new NotFoundException(format("Component key '%s' not found", entityKey))));
   }
 
   private PropertyDto toProperty(SetRequest request, Optional<EntityDto> entity) {
@@ -369,21 +369,20 @@ public class SetAction implements SettingsWsAction {
 
   private static class SetRequest {
 
-    private String pullRequest;
-    private String component;
+    private String entity;
     private List<String> fieldValues;
     private String key;
     private String value;
     private List<String> values;
 
-    public SetRequest setComponent(@Nullable String component) {
-      this.component = component;
+    public SetRequest setEntity(@Nullable String entity) {
+      this.entity = entity;
       return this;
     }
 
     @CheckForNull
-    public String getComponent() {
-      return component;
+    public String getEntity() {
+      return entity;
     }
 
     public SetRequest setFieldValues(List<String> fieldValues) {
