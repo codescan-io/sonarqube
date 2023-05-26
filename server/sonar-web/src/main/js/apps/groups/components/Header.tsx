@@ -59,7 +59,7 @@ export default class Header extends React.PureComponent<Props, State> {
   render() {
     return (
       <>
-        <header className="page-header" id="groups-header">
+        <header className="page-header null-spacer-bottom" id="groups-header">
           <h1 className="page-title">{translate('user_groups.page')}</h1>
 
           <div className="page-actions">

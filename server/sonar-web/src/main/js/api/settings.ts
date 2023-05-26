@@ -116,17 +116,3 @@ export function encryptValue(value: string): Promise<{ encryptedValue: string }>
 export function getLoginMessage(): Promise<{ message: string }> {
   return getJSON('/api/settings/login_message').catch(throwGlobalError);
 }
-
-export function fetchIsGithubProvisioningEnabled(): Promise<boolean> {
-  return getJSON('/api/github_provisioning/status')
-    .then((r) => r.enabled)
-    .catch(throwGlobalError);
-}
-
-export function activateGithubProvisioning(): Promise<void> {
-  return post('/api/github_provisioning/enable').catch(throwGlobalError);
-}
-
-export function deactivateGithubProvisioning(): Promise<void> {
-  return post('/api/github_provisioning/disable').catch(throwGlobalError);
-}

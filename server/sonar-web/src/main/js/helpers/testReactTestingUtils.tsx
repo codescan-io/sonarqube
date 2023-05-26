@@ -17,19 +17,20 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { fireEvent, Matcher, render, RenderResult, screen, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Matcher, RenderResult, fireEvent, render, screen, within } from '@testing-library/react';
 import { UserEvent } from '@testing-library/user-event/dist/types/setup/setup';
 import { omit } from 'lodash';
 import * as React from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { IntlProvider } from 'react-intl';
-import { MemoryRouter, Outlet, parsePath, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Outlet, Route, Routes, parsePath } from 'react-router-dom';
 import AdminContext from '../app/components/AdminContext';
+import GlobalMessagesContainer from '../app/components/GlobalMessagesContainer';
 import AppStateContextProvider from '../app/components/app-state/AppStateContextProvider';
 import { AvailableFeaturesContext } from '../app/components/available-features/AvailableFeaturesContext';
 import { ComponentContext } from '../app/components/componentContext/ComponentContext';
 import CurrentUserContextProvider from '../app/components/current-user/CurrentUserContextProvider';
-import GlobalMessagesContainer from '../app/components/GlobalMessagesContainer';
 import IndexationContextProvider from '../app/components/indexation/IndexationContextProvider';
 import { LanguagesContext } from '../app/components/languages/LanguagesContext';
 import { MetricsContext } from '../app/components/metrics/MetricsContext';
@@ -96,17 +97,21 @@ export function renderComponent(
   { appState = mockAppState() }: RenderContext = {}
 ) {
   function Wrapper({ children }: { children: React.ReactElement }) {
+    const queryClient = new QueryClient();
+
     return (
       <IntlProvider defaultLocale="en" locale="en">
-        <HelmetProvider>
-          <AppStateContextProvider appState={appState}>
-            <MemoryRouter initialEntries={[pathname]}>
-              <Routes>
-                <Route path="*" element={children} />
-              </Routes>
-            </MemoryRouter>
-          </AppStateContextProvider>
-        </HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <HelmetProvider>
+            <AppStateContextProvider appState={appState}>
+              <MemoryRouter initialEntries={[pathname]}>
+                <Routes>
+                  <Route path="*" element={children} />
+                </Routes>
+              </MemoryRouter>
+            </AppStateContextProvider>
+          </HelmetProvider>
+        </QueryClientProvider>
       </IntlProvider>
     );
   }
@@ -184,6 +189,7 @@ function renderRoutedApp(
 ): RenderResult {
   const path = parsePath(navigateTo);
   path.pathname = `/${path.pathname}`;
+  const queryClient = new QueryClient();
 
   return render(
     <HelmetProvider context={{}}>
@@ -194,13 +200,15 @@ function renderRoutedApp(
               <CurrentUserContextProvider currentUser={currentUser}>
                 <AppStateContextProvider appState={appState}>
                   <IndexationContextProvider>
-                    <GlobalMessagesContainer />
-                    <MemoryRouter initialEntries={[path]}>
-                      <Routes>
-                        {children}
-                        <Route path="*" element={<CatchAll />} />
-                      </Routes>
-                    </MemoryRouter>
+                    <QueryClientProvider client={queryClient}>
+                      <GlobalMessagesContainer />
+                      <MemoryRouter initialEntries={[path]}>
+                        <Routes>
+                          {children}
+                          <Route path="*" element={<CatchAll />} />
+                        </Routes>
+                      </MemoryRouter>
+                    </QueryClientProvider>
                   </IndexationContextProvider>
                 </AppStateContextProvider>
               </CurrentUserContextProvider>
