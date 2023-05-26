@@ -36,11 +36,11 @@ public interface PropertiesMapper {
 
   List<PropertyDto> selectByKeys(@Param("keys") List<String> keys);
 
-  List<PropertyDto> selectByKeysAndComponentUuids(@Param("keys") List<String> keys, @Param("componentUuids") List<String> componentUuids);
+  List<PropertyDto> selectByKeysAndEntityUuids(@Param("keys") List<String> keys, @Param("entityUuids") List<String> entityUuids);
 
   List<PropertyDto> selectEntityPropertyByKeyAndUserUuid(@Param("key") String key, @Param("userUuid") String userUuid);
 
-  List<PropertyDto> selectByComponentUuids(@Param("componentUuids") List<String> componentUuids);
+  List<PropertyDto> selectByEntityUuids(@Param("entityUuids") List<String> entityUuids);
 
   List<PropertyDto> selectByQuery(@Param("query") PropertyQuery query);
 
@@ -51,18 +51,18 @@ public interface PropertiesMapper {
   List<String> selectIdsByOrganizationAndMatchingLogin(@Param("organizationUuid") String organizationUuid, @Param("login") String login,
           @Param("propertyKeys") List<String> propertyKeys);
 
-  void insertAsEmpty(@Param("uuid") String uuid, @Param("key") String key, @Nullable @Param("userUuid") String userUuid, @Nullable @Param("componentUuid") String componentUuid,
+  void insertAsEmpty(@Param("uuid") String uuid, @Param("key") String key, @Nullable @Param("userUuid") String userUuid, @Nullable @Param("entityUuid") String entityUuid,
     @Param("now") long now);
 
-  void insertAsText(@Param("uuid") String uuid, @Param("key") String key, @Nullable @Param("userUuid") String userUuid, @Nullable @Param("componentUuid") String componentUuid,
+  void insertAsText(@Param("uuid") String uuid, @Param("key") String key, @Nullable @Param("userUuid") String userUuid, @Nullable @Param("entityUuid") String entityUuid,
     @Param("value") String value, @Param("now") long now);
 
-  void insertAsClob(@Param("uuid") String uuid, @Param("key") String key, @Nullable @Param("userUuid") String userUuid, @Nullable @Param("componentUuid") String componentUuid,
+  void insertAsClob(@Param("uuid") String uuid, @Param("key") String key, @Nullable @Param("userUuid") String userUuid, @Nullable @Param("entityUuid") String entityUuid,
     @Param("value") String value, @Param("now") long now);
 
-  int delete(@Param("key") String key, @Nullable @Param("userUuid") String userUuid, @Nullable @Param("componentUuid") String componentUuid);
+  int delete(@Param("key") String key, @Nullable @Param("userUuid") String userUuid, @Nullable @Param("entityUuid") String entityUuid);
 
-  int deleteProjectProperty(@Param("key") String key, @Param("componentUuid") String componentUuid);
+  int deleteProjectProperty(@Param("key") String key, @Param("entityUuid") String entityUuid);
 
   int deleteGlobalProperty(@Param("key") String key);
 
