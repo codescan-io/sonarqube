@@ -39,7 +39,7 @@ public class EntityDto {
   protected String authUuid;
 
   public String getAuthUuid() {
-    if (qualifier.equals("SVW")) {
+    if ("SVW".equals(qualifier)) {
       return authUuid;
     }
     return uuid;
