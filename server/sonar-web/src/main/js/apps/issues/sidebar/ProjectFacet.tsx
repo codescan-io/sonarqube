@@ -17,17 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import { ProjectIcon } from 'design-system';
 import { omit } from 'lodash';
 import * as React from 'react';
 import { getTree, searchProjects } from '../../../api/components';
-import ListStyleFacet from '../../../components/facet/ListStyleFacet';
-import QualifierIcon from '../../../components/icons/QualifierIcon';
 import { translate } from '../../../helpers/l10n';
 import { highlightTerm } from '../../../helpers/search';
 import { ComponentQualifier } from '../../../types/component';
 import { Facet, ReferencedComponent } from '../../../types/issues';
+import { MetricKey } from '../../../types/metrics';
 import { Component, Dict, Organization, Paging } from '../../../types/types';
 import { Query } from '../utils';
+import { ListStyleFacet } from './ListStyleFacet';
 
 interface Props {
   component: Component | undefined;
@@ -48,12 +50,13 @@ interface SearchedProject {
   name: string;
 }
 
-export default class ProjectFacet extends React.PureComponent<Props> {
+export class ProjectFacet extends React.PureComponent<Props> {
   handleSearch = (
     query: string,
     page = 1
   ): Promise<{ results: SearchedProject[]; paging: Paging }> => {
     const { component, organization } = this.props;
+
     if (
       component &&
       [
@@ -93,11 +96,12 @@ export default class ProjectFacet extends React.PureComponent<Props> {
 
   getProjectName = (project: string) => {
     const { referencedComponents } = this.props;
+
     return referencedComponents[project] ? referencedComponents[project].name : project;
   };
 
   loadSearchResultCount = (projects: SearchedProject[]) => {
-    return this.props.loadSearchResultCount('projects', {
+    return this.props.loadSearchResultCount(MetricKey.projects, {
       projects: projects.map((project) => project.key),
     });
   };
@@ -105,7 +109,8 @@ export default class ProjectFacet extends React.PureComponent<Props> {
   renderFacetItem = (projectKey: string) => {
     return (
       <span>
-        <QualifierIcon className="little-spacer-right" qualifier={ComponentQualifier.Project} />
+        <ProjectIcon className="sw-mr-1" />
+
         {this.getProjectName(projectKey)}
       </span>
     );
@@ -113,7 +118,8 @@ export default class ProjectFacet extends React.PureComponent<Props> {
 
   renderSearchResult = (project: Pick<SearchedProject, 'name'>, term: string) => (
     <>
-      <QualifierIcon className="little-spacer-right" qualifier={ComponentQualifier.Project} />
+      <ProjectIcon className="sw-mr-1" />
+
       {highlightTerm(project.name, term)}
     </>
   );
@@ -131,8 +137,8 @@ export default class ProjectFacet extends React.PureComponent<Props> {
         onSearch={this.handleSearch}
         onToggle={this.props.onToggle}
         open={this.props.open}
-        property="projects"
-        query={omit(this.props.query, 'projects')}
+        property={MetricKey.projects}
+        query={omit(this.props.query, MetricKey.projects)}
         renderFacetItem={this.renderFacetItem}
         renderSearchResult={this.renderSearchResult}
         searchPlaceholder={translate('search.search_for_projects')}

@@ -17,6 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import { BasicSeparator } from 'design-system';
 import * as React from 'react';
 import withAppStateContext from '../../../app/components/app-state/withAppStateContext';
 import { isBranch, isPullRequest } from '../../../helpers/branch-like';
@@ -39,23 +41,23 @@ import { GlobalSettingKeys } from '../../../types/settings';
 import { Component, Dict, Organization } from '../../../types/types';
 import { UserBase } from '../../../types/users';
 import { Query } from '../utils';
-import AssigneeFacet from './AssigneeFacet';
-import AuthorFacet from './AuthorFacet';
-import CreationDateFacet from './CreationDateFacet';
-import DirectoryFacet from './DirectoryFacet';
-import FileFacet from './FileFacet';
-import LanguageFacet from './LanguageFacet';
-import PeriodFilter from './PeriodFilter';
-import ProjectFacet from './ProjectFacet';
-import ResolutionFacet from './ResolutionFacet';
-import RuleFacet from './RuleFacet';
-import ScopeFacet from './ScopeFacet';
-import SeverityFacet from './SeverityFacet';
-import StandardFacet from './StandardFacet';
-import StatusFacet from './StatusFacet';
-import TagFacet from './TagFacet';
-import TypeFacet from './TypeFacet';
-import VariantFacet from './VariantFacet';
+import { AssigneeFacet } from './AssigneeFacet';
+import { AuthorFacet } from './AuthorFacet';
+import { CreationDateFacet } from './CreationDateFacet';
+import { DirectoryFacet } from './DirectoryFacet';
+import { FileFacet } from './FileFacet';
+import { LanguageFacet } from './LanguageFacet';
+import { PeriodFilter } from './PeriodFilter';
+import { ProjectFacet } from './ProjectFacet';
+import { ResolutionFacet } from './ResolutionFacet';
+import { RuleFacet } from './RuleFacet';
+import { ScopeFacet } from './ScopeFacet';
+import { SeverityFacet } from './SeverityFacet';
+import { StandardFacet } from './StandardFacet';
+import { StatusFacet } from './StatusFacet';
+import { TagFacet } from './TagFacet';
+import { TypeFacet } from './TypeFacet';
+import { VariantFacet } from './VariantFacet';
 
 export interface Props {
   appState: AppState;
@@ -79,15 +81,18 @@ export interface Props {
   referencedUsers: Dict<UserBase>;
 }
 
-export class Sidebar extends React.PureComponent<Props> {
+export class SidebarClass extends React.PureComponent<Props> {
   renderComponentFacets() {
     const { component, facets, loadingFacets, openFacets, query, branchLike, showVariantsFilter } =
       this.props;
+
     const hasFileOrDirectory =
       !isApplication(component?.qualifier) && !isPortfolioLike(component?.qualifier);
+
     if (!component || !hasFileOrDirectory) {
       return null;
     }
+
     const commonProps = {
       componentKey: component.key,
       loadSearchResultCount: this.props.loadSearchResultCount,
@@ -95,27 +100,40 @@ export class Sidebar extends React.PureComponent<Props> {
       onToggle: this.props.onFacetToggle,
       query,
     };
+
     return (
       <>
-        {component.qualifier !== ComponentQualifier.Directory && (
-          <DirectoryFacet
-            branchLike={branchLike}
-            directories={query.directories}
-            fetching={loadingFacets.directories === true}
-            open={!!openFacets.directories}
-            stats={facets.directories}
-            {...commonProps}
-          />
-        )}
         {showVariantsFilter && isProject(component?.qualifier) && (
-          <VariantFacet
-            fetching={loadingFacets.codeVariants === true}
-            open={!!openFacets.codeVariants}
-            stats={facets.codeVariants}
-            values={query.codeVariants}
-            {...commonProps}
-          />
+          <>
+            <BasicSeparator className="sw-my-4" />
+
+            <VariantFacet
+              fetching={loadingFacets.codeVariants === true}
+              open={!!openFacets.codeVariants}
+              stats={facets.codeVariants}
+              values={query.codeVariants}
+              {...commonProps}
+            />
+          </>
         )}
+
+        {component.qualifier !== ComponentQualifier.Directory && (
+          <>
+            <BasicSeparator className="sw-my-4" />
+
+            <DirectoryFacet
+              branchLike={branchLike}
+              directories={query.directories}
+              fetching={loadingFacets.directories === true}
+              open={!!openFacets.directories}
+              stats={facets.directories}
+              {...commonProps}
+            />
+          </>
+        )}
+
+        <BasicSeparator className="sw-my-4" />
+
         <FileFacet
           branchLike={branchLike}
           fetching={loadingFacets.files === true}
@@ -149,7 +167,7 @@ export class Sidebar extends React.PureComponent<Props> {
 
     const displayPeriodFilter = component !== undefined && !isPortfolioLike(component.qualifier);
     const displayProjectsFacet = !component || isView(component.qualifier);
-    const displayAuthorFacet = !component || component.qualifier !== 'DEV';
+    const displayAuthorFacet = !component || component.qualifier !== ComponentQualifier.Developper;
 
     const organizationKey =
         (component && component.organization) ||
@@ -159,12 +177,11 @@ export class Sidebar extends React.PureComponent<Props> {
       <>
         {displayPeriodFilter && (
           <PeriodFilter
-            fetching={this.props.loadingFacets.period === true}
             onChange={this.props.onFilterChange}
-            stats={facets.period}
             newCodeSelected={query.inNewCodePeriod}
           />
         )}
+
         <TypeFacet
           fetching={this.props.loadingFacets.types === true}
           onChange={this.props.onFilterChange}
@@ -173,6 +190,9 @@ export class Sidebar extends React.PureComponent<Props> {
           stats={facets.types}
           types={query.types}
         />
+
+        <BasicSeparator className="sw-my-4" />
+
         <SeverityFacet
           fetching={this.props.loadingFacets.severities === true}
           onChange={this.props.onFilterChange}
@@ -181,6 +201,9 @@ export class Sidebar extends React.PureComponent<Props> {
           severities={query.severities}
           stats={facets.severities}
         />
+
+        <BasicSeparator className="sw-my-4" />
+
         <ScopeFacet
           fetching={this.props.loadingFacets.scopes === true}
           onChange={this.props.onFilterChange}
@@ -189,6 +212,9 @@ export class Sidebar extends React.PureComponent<Props> {
           stats={facets.scopes}
           scopes={query.scopes}
         />
+
+        <BasicSeparator className="sw-my-4" />
+
         <ResolutionFacet
           fetching={this.props.loadingFacets.resolutions === true}
           onChange={this.props.onFilterChange}
@@ -198,6 +224,9 @@ export class Sidebar extends React.PureComponent<Props> {
           resolved={query.resolved}
           stats={facets.resolutions}
         />
+
+        <BasicSeparator className="sw-my-4" />
+
         <StatusFacet
           fetching={this.props.loadingFacets.statuses === true}
           onChange={this.props.onFilterChange}
@@ -206,6 +235,9 @@ export class Sidebar extends React.PureComponent<Props> {
           stats={facets.statuses}
           statuses={query.statuses}
         />
+
+        <BasicSeparator className="sw-my-4" />
+
         <StandardFacet
           cwe={query.cwe}
           cweOpen={!!openFacets.cwe}
@@ -229,6 +261,9 @@ export class Sidebar extends React.PureComponent<Props> {
           sonarsourceSecurityOpen={!!openFacets.sonarsourceSecurity}
           sonarsourceSecurityStats={facets.sonarsourceSecurity}
         />
+
+        <BasicSeparator className="sw-my-4" />
+
         <CreationDateFacet
           component={component}
           createdAfter={query.createdAfter}
@@ -243,6 +278,9 @@ export class Sidebar extends React.PureComponent<Props> {
           inNewCodePeriod={query.inNewCodePeriod}
           stats={facets.createdAt}
         />
+
+        <BasicSeparator className="sw-my-4" />
+
         <LanguageFacet
           fetching={this.props.loadingFacets.languages === true}
           loadSearchResultCount={this.props.loadSearchResultCount}
@@ -254,6 +292,9 @@ export class Sidebar extends React.PureComponent<Props> {
           selectedLanguages={query.languages}
           stats={facets.languages}
         />
+
+        <BasicSeparator className="sw-my-4" />
+
         <RuleFacet
           fetching={this.props.loadingFacets.rules === true}
           loadSearchResultCount={this.props.loadSearchResultCount}
@@ -265,6 +306,9 @@ export class Sidebar extends React.PureComponent<Props> {
           referencedRules={this.props.referencedRules}
           stats={facets.rules}
         />
+
+        <BasicSeparator className="sw-my-4" />
+
         <TagFacet
           component={component}
           branch={branch}
@@ -278,52 +322,68 @@ export class Sidebar extends React.PureComponent<Props> {
           stats={facets.tags}
           tags={query.tags}
         />
+
         {displayProjectsFacet && (
-          <ProjectFacet
-            component={component}
-            fetching={this.props.loadingFacets.projects === true}
-            loadSearchResultCount={this.props.loadSearchResultCount}
-            onChange={this.props.onFilterChange}
-            onToggle={this.props.onFacetToggle}
-            open={!!openFacets.projects}
-            organization={this.props.organization}
-            projects={query.projects}
-            query={query}
-            referencedComponents={this.props.referencedComponentsByKey}
-            stats={facets.projects}
-          />
+          <>
+            <BasicSeparator className="sw-my-4" />
+
+            <ProjectFacet
+              component={component}
+              fetching={this.props.loadingFacets.projects === true}
+              loadSearchResultCount={this.props.loadSearchResultCount}
+              onChange={this.props.onFilterChange}
+              onToggle={this.props.onFacetToggle}
+              open={!!openFacets.projects}
+              organization={this.props.organization}
+              projects={query.projects}
+              query={query}
+              referencedComponents={this.props.referencedComponentsByKey}
+              stats={facets.projects}
+            />
+          </>
         )}
+
         {this.renderComponentFacets()}
+
         {!this.props.myIssues && !disableDeveloperAggregatedInfo && (
-          <AssigneeFacet
-            assigned={query.assigned}
-            assignees={query.assignees}
-            fetching={this.props.loadingFacets.assignees === true}
-            loadSearchResultCount={this.props.loadSearchResultCount}
-            onChange={this.props.onFilterChange}
-            onToggle={this.props.onFacetToggle}
-            open={!!openFacets.assignees}
-            query={query}
-            referencedUsers={this.props.referencedUsers}
-            stats={facets.assignees}
-          />
+          <>
+            <BasicSeparator className="sw-my-4" />
+
+            <AssigneeFacet
+              assigned={query.assigned}
+              assignees={query.assignees}
+              fetching={this.props.loadingFacets.assignees === true}
+              loadSearchResultCount={this.props.loadSearchResultCount}
+              onChange={this.props.onFilterChange}
+              onToggle={this.props.onFacetToggle}
+              open={!!openFacets.assignees}
+              query={query}
+              referencedUsers={this.props.referencedUsers}
+              stats={facets.assignees}
+            />
+          </>
         )}
+
         {displayAuthorFacet && !disableDeveloperAggregatedInfo && (
-          <AuthorFacet
-            author={query.author}
-            component={component}
-            fetching={this.props.loadingFacets.author === true}
-            loadSearchResultCount={this.props.loadSearchResultCount}
-            onChange={this.props.onFilterChange}
-            onToggle={this.props.onFacetToggle}
-            open={!!openFacets.author}
-            query={query}
-            stats={facets.author}
-          />
+          <>
+            <BasicSeparator className="sw-my-4" />
+
+            <AuthorFacet
+              author={query.author}
+              component={component}
+              fetching={this.props.loadingFacets.author === true}
+              loadSearchResultCount={this.props.loadSearchResultCount}
+              onChange={this.props.onFilterChange}
+              onToggle={this.props.onFacetToggle}
+              open={!!openFacets.author}
+              query={query}
+              stats={facets.author}
+            />
+          </>
         )}
       </>
     );
   }
 }
 
-export default withAppStateContext(Sidebar);
+export const Sidebar = withAppStateContext(SidebarClass);
