@@ -905,7 +905,7 @@ export class App extends React.PureComponent<Props, State> {
   };
 
   renderBulkChange() {
-    const { component, currentUser } = this.props;
+    const { currentUser } = this.props;
     const { checkAll, bulkChangeModal, checked, issues, paging } = this.state;
 
     const isAllChecked = checked.length > 0 && issues.length === checked.length;
@@ -939,8 +939,6 @@ export class App extends React.PureComponent<Props, State> {
 
         {bulkChangeModal && (
           <BulkChangeModal
-            component={component}
-            currentUser={currentUser}
             fetchIssues={checkAll ? this.fetchIssues : this.getCheckedIssues}
             onClose={this.handleCloseBulkChange}
             onDone={this.handleBulkChangeDone}
