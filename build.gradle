@@ -240,7 +240,7 @@ subprojects {
       dependency 'commons-dbutils:commons-dbutils:1.7'
       dependency 'commons-io:commons-io:2.11.0'
       dependency 'commons-lang:commons-lang:2.6'
-      imports { mavenBom 'com.fasterxml.jackson:jackson-bom:2.14.2' }
+      imports { mavenBom 'com.fasterxml.jackson:jackson-bom:2.15.1' }
       dependency 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
       dependencySet(group: 'com.github.scribejava', version: '8.3.3') {
         entry 'scribejava-apis'
@@ -321,8 +321,8 @@ subprojects {
           exclude 'org.eclipse.jdt.core.compiler:ecj'
         }
       }
-      dependency 'org.assertj:assertj-core:3.23.1'
-      dependency 'org.assertj:assertj-guava:3.5.0'
+      dependency 'org.assertj:assertj-core:3.24.2'
+      dependency 'org.assertj:assertj-guava:3.24.2'
       dependency('org.codehaus.sonar:sonar-channel:4.2') {
         exclude 'org.slf4j:slf4j-api'
       }
