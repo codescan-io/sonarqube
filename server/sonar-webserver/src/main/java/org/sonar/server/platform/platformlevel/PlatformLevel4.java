@@ -32,6 +32,7 @@ import org.sonar.alm.client.bitbucketserver.BitbucketServerSettingsValidator;
 import org.sonar.alm.client.github.GithubApplicationClientImpl;
 import org.sonar.alm.client.github.GithubApplicationHttpClientImpl;
 import org.sonar.alm.client.github.GithubGlobalSettingsValidator;
+import org.sonar.alm.client.github.config.GithubProvisioningConfigValidator;
 import org.sonar.alm.client.github.security.GithubAppSecurityImpl;
 import org.sonar.alm.client.gitlab.GitlabGlobalSettingsValidator;
 import org.sonar.alm.client.gitlab.GitlabHttpClient;
@@ -547,6 +548,8 @@ public class PlatformLevel4 extends PlatformLevel {
       GithubAppSecurityImpl.class,
       GithubApplicationClientImpl.class,
       GithubApplicationHttpClientImpl.class,
+      GithubProvisioningConfigValidator.class,
+      GithubProvisioningWs.class,
       BitbucketCloudRestClientConfiguration.class,
       BitbucketServerRestClient.class,
       GitlabHttpClient.class,
