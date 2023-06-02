@@ -19,45 +19,36 @@
  */
 package org.sonar.server.platform.monitoring.cluster;
 
-import java.util.List;
-import javax.annotation.CheckForNull;
 import org.sonar.api.SonarRuntime;
-import org.sonar.api.config.Configuration;
 import org.sonar.api.platform.Server;
-import org.sonar.api.security.SecurityRealm;
 import org.sonar.api.server.ServerSide;
-import org.sonar.api.server.authentication.IdentityProvider;
-import org.sonar.core.util.stream.MoreCollectors;
 import org.sonar.process.systeminfo.Global;
 import org.sonar.process.systeminfo.SystemInfoSection;
 import org.sonar.process.systeminfo.protobuf.ProtobufSystemInfo;
-import org.sonar.server.authentication.IdentityProviderRepository;
-import org.sonar.server.platform.DockerSupport;
+import org.sonar.server.platform.ContainerSupport;
 import org.sonar.server.platform.StatisticsSupport;
-import org.sonar.server.user.SecurityRealmFactory;
+import org.sonar.server.platform.monitoring.CommonSystemInformation;
 
 import static org.sonar.api.measures.CoreMetrics.NCLOC;
+import static org.sonar.process.systeminfo.SystemInfoUtils.addIfNotEmpty;
 import static org.sonar.process.systeminfo.SystemInfoUtils.setAttribute;
 
 @ServerSide
 public class GlobalSystemSection implements SystemInfoSection, Global {
 
   private final Server server;
-  private final SecurityRealmFactory securityRealmFactory;
-  private final IdentityProviderRepository identityProviderRepository;
-  private final DockerSupport dockerSupport;
+  private final ContainerSupport containerSupport;
   private final StatisticsSupport statisticsSupport;
-
   private final SonarRuntime sonarRuntime;
+  private final CommonSystemInformation commonSystemInformation;
 
-  public GlobalSystemSection(Configuration config, Server server, SecurityRealmFactory securityRealmFactory,
-    IdentityProviderRepository identityProviderRepository, DockerSupport dockerSupport, StatisticsSupport statisticsSupport, SonarRuntime sonarRuntime) {
+  public GlobalSystemSection(Server server, ContainerSupport containerSupport, StatisticsSupport statisticsSupport, SonarRuntime sonarRuntime,
+    CommonSystemInformation commonSystemInformation) {
     this.server = server;
-    this.securityRealmFactory = securityRealmFactory;
-    this.identityProviderRepository = identityProviderRepository;
-    this.dockerSupport = dockerSupport;
+    this.containerSupport = containerSupport;
     this.statisticsSupport = statisticsSupport;
     this.sonarRuntime = sonarRuntime;
+    this.commonSystemInformation = commonSystemInformation;
   }
 
   @Override
@@ -68,33 +59,17 @@ public class GlobalSystemSection implements SystemInfoSection, Global {
     setAttribute(protobuf, "Server ID", server.getId());
     setAttribute(protobuf, "Edition", sonarRuntime.getEdition().getLabel());
     setAttribute(protobuf, NCLOC.getName() ,statisticsSupport.getLinesOfCode());
-    setAttribute(protobuf, "Docker", dockerSupport.isRunningInDocker());
+    setAttribute(protobuf, "Container", containerSupport.isRunningInContainer());
     setAttribute(protobuf, "High Availability", true);
-    setAttribute(protobuf, "External User Authentication", getExternalUserAuthentication());
+    setAttribute(protobuf, "External Users and Groups Provisioning",
+      commonSystemInformation.getManagedInstanceProviderName());
+    setAttribute(protobuf, "External User Authentication",
+      commonSystemInformation.getExternalUserAuthentication());
+    addIfNotEmpty(protobuf, "Accepted external identity providers",
+      commonSystemInformation.getEnabledIdentityProviders());
+    addIfNotEmpty(protobuf, "External identity providers whose users are allowed to sign themselves up",
+      commonSystemInformation.getAllowsToSignUpEnabledIdentityProviders());
+    setAttribute(protobuf, "Force authentication", commonSystemInformation.getForceAuthentication());
     return protobuf.build();
   }
-
-  private List<String> getEnabledIdentityProviders() {
-    return identityProviderRepository.getAllEnabledAndSorted()
-      .stream()
-      .filter(IdentityProvider::isEnabled)
-      .map(IdentityProvider::getName)
-      .collect(MoreCollectors.toList());
-  }
-
-  private List<String> getAllowsToSignUpEnabledIdentityProviders() {
-    return identityProviderRepository.getAllEnabledAndSorted()
-      .stream()
-      .filter(IdentityProvider::isEnabled)
-      .filter(IdentityProvider::allowsUsersToSignUp)
-      .map(IdentityProvider::getName)
-      .collect(MoreCollectors.toList());
-  }
-
-  @CheckForNull
-  private String getExternalUserAuthentication() {
-    SecurityRealm realm = securityRealmFactory.getRealm();
-    return realm == null ? null : realm.getName();
-  }
-
 }
