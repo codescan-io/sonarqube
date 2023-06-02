@@ -20,18 +20,22 @@
 package org.sonar.server.permission.ws;
 
 import java.util.Optional;
+import java.util.Set;
 import javax.annotation.Nullable;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.server.ws.Request;
+import org.sonar.api.web.UserRole;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.template.PermissionTemplateDto;
+import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
 import org.sonar.db.user.UserId;
 import org.sonar.db.user.UserIdDto;
 import org.sonar.server.component.ComponentFinder;
+import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.permission.GroupUuidOrAnyone;
 import org.sonar.server.permission.ws.template.WsTemplateRef;
@@ -42,6 +46,7 @@ import org.sonarqube.ws.client.permission.PermissionsWsParameters;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Optional.ofNullable;
+import static org.sonar.db.permission.GlobalPermission.ADMINISTER;
 import static org.sonar.server.exceptions.NotFoundException.checkFound;
 import static org.sonar.server.permission.PermissionPrivilegeChecker.checkProjectAdmin;
 import static org.sonarqube.ws.client.permission.PermissionsWsParameters.PARAM_GROUP_NAME;
@@ -49,12 +54,15 @@ import static org.sonarqube.ws.client.permission.PermissionsWsParameters.PARAM_O
 
 public class PermissionWsSupport {
 
+  private static final String ERROR_REMOVING_OWN_BROWSE_PERMISSION = "Permission 'Browse' cannot be removed from a private project for a project administrator.";
+
   private final DbClient dbClient;
   private final ComponentFinder componentFinder;
   private final GroupWsSupport groupWsSupport;
   private final Configuration configuration;
 
   public PermissionWsSupport(DbClient dbClient, Configuration configuration, ComponentFinder componentFinder, GroupWsSupport groupWsSupport) {
+
     this.dbClient = dbClient;
     this.configuration = configuration;
     this.componentFinder = componentFinder;
@@ -114,4 +122,41 @@ public class PermissionWsSupport {
     checkArgument(dbClient.organizationMemberDao().select(dbSession, organization.getUuid(), user.getUuid()).isPresent(),
             "User '%s' is not member of organization '%s'", user.getLogin(), organization.getKey());
   }
+  public void checkRemovingOwnAdminRight(UserSession userSession, UserId user, String permission) {
+    if (ADMINISTER.getKey().equals(permission) && isRemovingOwnPermission(userSession, user)) {
+      throw BadRequestException.create("As an admin, you can't remove your own admin right");
+    }
+  }
+
+  private static boolean isRemovingOwnPermission(UserSession userSession, UserId user) {
+    return user.getLogin().equals(userSession.getLogin());
+  }
+
+  public void checkRemovingOwnBrowsePermissionOnPrivateProject(DbSession dbSession, UserSession userSession, @Nullable ComponentDto project, String permission,
+    GroupUuidOrAnyone group) {
+
+    if (userSession.isSystemAdministrator() || group.isAnyone() || !isUpdatingBrowsePermissionOnPrivateProject(permission, project)) {
+      return;
+    }
+
+    Set<String> groupUuidsWithPermission = dbClient.groupPermissionDao().selectGroupUuidsWithPermissionOnProject(dbSession, project.uuid(), UserRole.USER);
+    boolean isUserInAnotherGroupWithPermissionForThisProject = userSession.getGroups().stream()
+      .map(GroupDto::getUuid)
+      .anyMatch(groupDtoUuid -> groupUuidsWithPermission.contains(groupDtoUuid) && !groupDtoUuid.equals(group.getUuid()));
+
+    if (!isUserInAnotherGroupWithPermissionForThisProject) {
+      throw BadRequestException.create(ERROR_REMOVING_OWN_BROWSE_PERMISSION);
+    }
+  }
+
+  public void checkRemovingOwnBrowsePermissionOnPrivateProject(UserSession userSession, @Nullable ComponentDto project, String permission, UserId user) {
+    if (isUpdatingBrowsePermissionOnPrivateProject(permission, project) && user.getLogin().equals(userSession.getLogin())) {
+      throw BadRequestException.create(ERROR_REMOVING_OWN_BROWSE_PERMISSION);
+    }
+  }
+
+  public static boolean isUpdatingBrowsePermissionOnPrivateProject(String permission, @Nullable ComponentDto project) {
+    return project != null && project.isPrivate() && permission.equals(UserRole.USER) ;
+  }
+
 }

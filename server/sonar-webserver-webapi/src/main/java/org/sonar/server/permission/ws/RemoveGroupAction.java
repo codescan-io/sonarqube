@@ -19,7 +19,6 @@
  */
 package org.sonar.server.permission.ws;
 
-import java.util.Optional;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
@@ -37,6 +36,8 @@ import org.sonar.server.permission.PermissionChange;
 import org.sonar.server.permission.PermissionService;
 import org.sonar.server.permission.PermissionUpdater;
 import org.sonar.server.user.UserSession;
+
+import java.util.Optional;
 
 import static java.util.Collections.singletonList;
 import static org.sonar.server.permission.ws.WsParameters.createGroupNameParameter;
@@ -93,9 +94,12 @@ public class RemoveGroupAction implements PermissionsWsAction {
   public void handle(Request request, Response response) throws Exception {
     try (DbSession dbSession = dbClient.openSession(false)) {
       GroupUuidOrAnyone group = wsSupport.findGroup(dbSession, request);
-      Optional<ComponentDto> project = wsSupport.findProject(dbSession, request);
+      ComponentDto project = wsSupport.findProject(dbSession, request).orElse(null);
 
-      wsSupport.checkPermissionManagementAccess(userSession, group.getOrganizationUuid(), project.orElse(null));
+      wsSupport.checkPermissionManagementAccess(userSession, group.getOrganizationUuid(), project);
+
+      String permission = request.mandatoryParam(PARAM_PERMISSION);
+      wsSupport.checkRemovingOwnBrowsePermissionOnPrivateProject(dbSession, userSession, project, permission, group);
 
       Optional<OrganizationDto> organization = dbClient.organizationDao().selectByUuid(dbSession, group.getOrganizationUuid());
       GroupDto groupDetails=  dbClient.groupDao().selectByUuid(dbSession, group.getUuid());
@@ -104,11 +108,13 @@ public class RemoveGroupAction implements PermissionsWsAction {
               organization.get().getUuid(), groupDetails.getUuid(), userSession.getLogin());
       PermissionChange change = new GroupPermissionChange(
         PermissionChange.Operation.REMOVE,
-        request.mandatoryParam(PARAM_PERMISSION),
-        project.orElse(null),
-        group, permissionService);
+        permission,
+        project,
+        group,
+        permissionService);
       permissionUpdater.apply(dbSession, singletonList(change));
     }
     response.noContent();
   }
+
 }

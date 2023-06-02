@@ -19,7 +19,6 @@
  */
 package org.sonar.server.permission.ws;
 
-import java.util.Optional;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService;
@@ -91,15 +90,17 @@ public class RemoveUserAction implements PermissionsWsAction {
       OrganizationDto org = wsSupport.findOrganization(dbSession, request.mandatoryParam(PARAM_ORGANIZATION));
       UserId user = wsSupport.findUser(dbSession, request.mandatoryParam(PARAM_USER_LOGIN));
       String permission = request.mandatoryParam(PARAM_PERMISSION);
-      Optional<ComponentDto> project = wsSupport.findProject(dbSession, request);
 
-      wsSupport.checkPermissionManagementAccess(userSession, org.getUuid(), project.orElse(null));
+      wsSupport.checkRemovingOwnAdminRight(userSession, user, permission);
+      ComponentDto project = wsSupport.findProject(dbSession, request).orElse(null);
+      wsSupport.checkRemovingOwnBrowsePermissionOnPrivateProject(userSession, project, permission, user);
+      wsSupport.checkPermissionManagementAccess(userSession, org.getUuid(), project);
 
       PermissionChange change = new UserPermissionChange(
         PermissionChange.Operation.REMOVE,
         org.getUuid(),
         permission,
-        project.orElse(null),
+        project,
         user, permissionService);
       logger.info("Removing permissions for user: {} and permission type: {}, organization: {}, orgId: {}", user,
               change.getPermission(), org.getKey(), org.getUuid());
