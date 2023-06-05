@@ -97,7 +97,7 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
         {this.props.canWrite ? (
           <Dropdown
             closeOnClick={false}
-            closeOnClickOutside={true}
+            closeOnClickOutside
             overlay={
               <RuleDetailsTagsPopup
                 setTags={this.props.onTagsChange}

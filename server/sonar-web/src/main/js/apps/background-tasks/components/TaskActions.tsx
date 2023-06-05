@@ -120,7 +120,7 @@ export default class TaskActions extends React.PureComponent<Props, State> {
           {canCancel && (
             <ActionsDropdownItem
               className="js-task-cancel"
-              destructive={true}
+              destructive
               onClick={this.handleCancelClick}
             >
               {translate('background_tasks.cancel_task')}
@@ -157,7 +157,7 @@ export default class TaskActions extends React.PureComponent<Props, State> {
             cancelButtonText={translate('close')}
             confirmButtonText={translate('background_tasks.cancel_task')}
             header={translate('background_tasks.cancel_task')}
-            isDestructive={true}
+            isDestructive
             onClose={this.closeCancelTask}
             onConfirm={this.handleCancelTask}
           >

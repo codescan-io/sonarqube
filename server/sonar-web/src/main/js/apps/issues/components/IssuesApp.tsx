@@ -1162,7 +1162,7 @@ export class App extends React.PureComponent<Props, State> {
                     selectedLocationIndex={this.state.selectedLocationIndex}
                   />
                 }
-                scrollInTab={true}
+                scrollInTab
               />
             </>
           ) : (

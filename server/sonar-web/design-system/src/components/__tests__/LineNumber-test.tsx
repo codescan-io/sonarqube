@@ -54,7 +54,7 @@ function setupWithProps(props: Partial<FCProps<typeof LineNumber>> = {}) {
   return render(
     <LineNumber
       ariaLabel="aria-label"
-      displayOptions={true}
+      displayOptions
       firstLineNumber={1}
       lineNumber={16}
       popup={<div>Popup</div>}

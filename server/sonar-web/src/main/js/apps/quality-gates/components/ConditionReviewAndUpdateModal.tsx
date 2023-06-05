@@ -135,7 +135,7 @@ export default class CaycReviewUpdateConditionsModal extends React.PureComponent
                 {...this.props}
                 conditions={sortedMissingConditions}
                 showEdit={false}
-                isCaycModal={true}
+                isCaycModal
               />
             </>
           )}
@@ -152,7 +152,7 @@ export default class CaycReviewUpdateConditionsModal extends React.PureComponent
                 {...this.props}
                 conditions={sortedWeakConditions}
                 showEdit={false}
-                isCaycModal={true}
+                isCaycModal
               />
             </>
           )}

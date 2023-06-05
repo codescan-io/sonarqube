@@ -78,7 +78,7 @@ export default function ListItem(props: ListItemProps) {
             {(!isManaged() || isGroupLocal()) && (
               <ActionsDropdownItem
                 className="js-group-delete"
-                destructive={true}
+                destructive
                 onClick={() => props.onDelete(group)}
               >
                 {translate('delete')}

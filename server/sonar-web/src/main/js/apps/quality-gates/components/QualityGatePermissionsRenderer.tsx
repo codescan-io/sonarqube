@@ -93,7 +93,7 @@ export default function QualityGatePermissionsRenderer(props: QualityGatePermiss
               : translate('quality_gates.permissions.remove.group')
           }
           confirmButtonText={translate('remove')}
-          isDestructive={true}
+          isDestructive
           confirmData={permissionToDelete}
           onClose={props.onCloseDeletePermission}
           onConfirm={props.onConfirmDeletePermission}

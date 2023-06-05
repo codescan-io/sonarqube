@@ -174,7 +174,7 @@ export function SonarLintConnection({ appState, currentUser }: Props) {
             <>
               <img
                 alt=""
-                aria-hidden={true}
+                aria-hidden
                 className="big-spacer-top big-spacer-bottom padded-top"
                 src="/images/cross.svg"
               />
@@ -204,7 +204,7 @@ export function SonarLintConnection({ appState, currentUser }: Props) {
             <>
               <img
                 alt=""
-                aria-hidden={true}
+                aria-hidden
                 className="big-spacer-top big-spacer-bottom padded-top"
                 src="/images/check.svg"
               />

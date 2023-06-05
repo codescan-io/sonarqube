@@ -59,8 +59,8 @@ export function GlobalNavUserMenu({ currentUser, userOrganizations }: UserAccoun
           </div>
         )}
       </ItemHeader>
-      <ItemDivider/>
-      <ItemNavLink end={true} to="/account" innerRef={firstItemRef}>
+      <ItemDivider />
+      <ItemNavLink end to="/account" innerRef={firstItemRef}>
         {translate('my_account.page')}
       </ItemNavLink>
       <ItemDivider/>

@@ -45,7 +45,7 @@ function IconLink({
     <ItemLink to={link}>
       <img
         alt={text}
-        aria-hidden={true}
+        aria-hidden
         className="spacer-right"
         height="18"
         src={`${getBaseUrl()}/images/${icon}`}

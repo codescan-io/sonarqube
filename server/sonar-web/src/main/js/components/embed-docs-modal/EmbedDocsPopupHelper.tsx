@@ -59,7 +59,7 @@ export default function EmbedDocsPopupHelper() {
         id="help-menu-dropdown"
         placement={PopupPlacement.BottomRight}
         overlay={<EmbedDocsPopup setAboutCodescanOpen={setAboutCodescanOpen} />}
-        allowResizing={true}
+        allowResizing
         zLevel={PopupZLevel.Global}
       >
         {({ onToggleClick, open }) => (
@@ -68,9 +68,9 @@ export default function EmbedDocsPopupHelper() {
               Icon={MenuHelpIcon}
               aria-expanded={open}
               aria-controls="help-menu-dropdown"
-              aria-haspopup={true}
+              aria-haspopup
               aria-label={translate('help')}
-              currentColor={true}
+              currentColor
               onClick={onToggleClick}
               size="medium"
               stopPropagation={false}

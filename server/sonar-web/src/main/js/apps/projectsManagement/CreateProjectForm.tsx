@@ -182,12 +182,12 @@ class CreateProjectForm extends React.PureComponent<Props, State> {
                   <MandatoryFieldMarker />
                 </label>
                 <input
-                  autoFocus={true}
+                  autoFocus
                   id="create-project-name"
                   maxLength={2000}
                   name="name"
                   onChange={this.handleInputChange}
-                  required={true}
+                  required
                   type="text"
                   value={this.state.name}
                 />
@@ -202,7 +202,7 @@ class CreateProjectForm extends React.PureComponent<Props, State> {
                   maxLength={400}
                   name="key"
                   onChange={this.handleInputChange}
-                  required={true}
+                  required
                   type="text"
                   value={this.state.key}
                 />
@@ -217,7 +217,7 @@ class CreateProjectForm extends React.PureComponent<Props, State> {
                   maxLength={400}
                   name="mainBranchName"
                   onChange={this.handleInputChange}
-                  required={true}
+                  required
                   type="text"
                   value={this.state.mainBranchName}
                 />

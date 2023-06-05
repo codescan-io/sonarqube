@@ -32,7 +32,7 @@ export default function ProfileNotFound(props: ProfileNotFoundProps) {
   return (
     <div className="quality-profile-not-found">
       <div className="note spacer-bottom">
-        <NavLink end={true} to={getOrgProfilePath(props.organization)}>
+        <NavLink end to={getOrgProfilePath(props.organization)}>
           {translate('quality_profiles.page')}
         </NavLink>
       </div>

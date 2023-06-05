@@ -67,7 +67,7 @@ export default function ProfileHeader(props: Props) {
       <nav className="note spacer-bottom" aria-label={translate('breadcrumbs')}>
         <ul className="list-breadcrumbs">
           <li>
-            <NavLink end={true} to={`/organizations/${organization}/quality_profiles`}>
+            <NavLink end to={`/organizations/${organization}/quality_profiles`}>
               {translate('quality_profiles.page')}
             </NavLink>
           </li>

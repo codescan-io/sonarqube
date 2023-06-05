@@ -78,7 +78,7 @@ export default class IssueAssign extends React.PureComponent<Props> {
       return (
         <div className="dropdown">
           <Toggler
-            closeOnEscape={true}
+            closeOnEscape
             onRequestClose={this.handleClose}
             open={isOpen}
             overlay={<SetAssigneePopup issue={this.props.issue} onSelect={this.props.onAssign} />}
