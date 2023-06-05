@@ -131,7 +131,7 @@ public class QualityGatesWsSupport {
 
   void checkCanAdminProject(OrganizationDto organization, ProjectDto project) {
     if (userSession.hasPermission(ADMINISTER_QUALITY_GATES, organization.getUuid())
-      || userSession.hasProjectPermission(ADMIN, project)) {
+      || userSession.hasEntityPermission(ADMIN, project)) {
       return;
     }
     throw insufficientPrivilegesException();

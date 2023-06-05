@@ -94,8 +94,8 @@ public class GetByProjectAction implements QualityGatesWsAction {
       // As ComponentFinder doesn't handle organization yet, we only check here that the project belongs to the organization
       wsSupport.checkProjectBelongsToOrganization(organization, project);
 
-      if (!userSession.hasProjectPermission(USER, project) &&
-        !userSession.hasProjectPermission(ADMIN, project)) {
+      if (!userSession.hasEntityPermission(USER, project) &&
+          !userSession.hasEntityPermission(ADMIN, project)) {
         throw insufficientPrivilegesException();
       }
 

@@ -353,7 +353,7 @@ public class SearchAction implements HotspotsWsAction {
         throw new NotFoundException(format("Project '%s' not found", projectKey));
       }
       String userProjectRole = getUserRoleForProject();
-      userSession.checkProjectPermission(userProjectRole, appOrProjectAndBranch.getProject());
+      userSession.checkEntityPermission(userProjectRole, appOrProjectAndBranch.getProject());
       userSession.checkChildProjectsPermission(userProjectRole, appOrProjectAndBranch.getProject());
       return appOrProjectAndBranch;
     });

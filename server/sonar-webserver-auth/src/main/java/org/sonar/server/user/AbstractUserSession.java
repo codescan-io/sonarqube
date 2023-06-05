@@ -99,31 +99,26 @@ public abstract class AbstractUserSession implements UserSession {
 
   @Override
   public boolean hasComponentPermission(String permission, ComponentDto component) {
-    Optional<String> projectUuid1 = componentUuidToProjectUuid(component.uuid());
+    Optional<String> projectUuid1 = componentUuidToEntityUuid(component.uuid());
 
     return isRoot() || projectUuid1
-      .map(projectUuid -> hasProjectUuidPermission(permission, projectUuid))
+      .map(projectUuid -> hasEntityUuidPermission(permission, projectUuid))
       .orElse(false);
   }
 
   @Override
-  public final boolean hasProjectPermission(String permission, ProjectDto project) {
-    return isRoot() || hasProjectUuidPermission(permission, project.getUuid());
-  }
-
-  @Override
   public final boolean hasEntityPermission(String permission, EntityDto entity) {
-    return hasProjectUuidPermission(permission, entity.getAuthUuid());
+    return isRoot() || hasEntityUuidPermission(permission, entity.getAuthUuid());
   }
 
   @Override
-  public final boolean hasProjectPermission(String permission, String projectUuid) {
-    return isRoot() || hasProjectUuidPermission(permission, projectUuid);
+  public final boolean hasEntityPermission(String permission, String entityUuid) {
+    return isRoot() || hasEntityUuidPermission(permission, entityUuid);
   }
 
   @Override
   public final boolean hasChildProjectsPermission(String permission, ComponentDto component) {
-    return isRoot() || componentUuidToProjectUuid(component.uuid())
+    return isRoot() || componentUuidToEntityUuid(component.uuid())
       .map(applicationUuid -> hasChildProjectsPermission(permission, applicationUuid)).orElse(false);
   }
 
@@ -139,15 +134,15 @@ public abstract class AbstractUserSession implements UserSession {
 
   @Override
   public boolean hasComponentUuidPermission(String permission, String componentUuid) {
-    Optional<String> projectUuid = componentUuidToProjectUuid(componentUuid);
-    return isRoot() || projectUuid
-      .map(s -> hasProjectUuidPermission(permission, s))
+    Optional<String> entityUuid = componentUuidToEntityUuid(componentUuid);
+    return isRoot() || entityUuid
+      .map(s -> hasEntityUuidPermission(permission, s))
       .orElse(false);
   }
 
-  protected abstract Optional<String> componentUuidToProjectUuid(String componentUuid);
+  protected abstract Optional<String> componentUuidToEntityUuid(String componentUuid);
 
-  protected abstract boolean hasProjectUuidPermission(String permission, String projectUuid);
+  protected abstract boolean hasEntityUuidPermission(String permission, String entityUuid);
 
   protected abstract boolean hasChildProjectsPermission(String permission, String applicationUuid);
 
@@ -162,15 +157,10 @@ public abstract class AbstractUserSession implements UserSession {
   }
 
   @Override
-  public List<ProjectDto> keepAuthorizedProjects(String permission, Collection<ProjectDto> projects) {
+  public  <T extends EntityDto>  List<T> keepAuthorizedEntities(String permission, Collection<T> projects) {
     if (isRoot()) {
       return new ArrayList<>(projects);
     }
-    return doKeepAuthorizedProjects(permission, projects);
-  }
-
-  @Override
-  public  <T extends EntityDto>  List<T> keepAuthorizedEntities(String permission, Collection<T> projects) {
     return doKeepAuthorizedEntities(permission, projects);
   }
 
@@ -180,18 +170,8 @@ public abstract class AbstractUserSession implements UserSession {
   protected  <T extends EntityDto> List<T> doKeepAuthorizedEntities(String permission, Collection<T> entities) {
     boolean allowPublicComponent = PUBLIC_PERMISSIONS.contains(permission);
     return entities.stream()
-      .filter(c -> (allowPublicComponent && !c.isPrivate()) || hasProjectPermission(permission, c.getUuid()))
+      .filter(c -> (allowPublicComponent && !c.isPrivate()) || hasEntityPermission(permission, c.getUuid()))
       .toList();
-  }
-
-  /**
-   * Naive implementation, to be overridden if needed
-   */
-  protected List<ProjectDto> doKeepAuthorizedProjects(String permission, Collection<ProjectDto> projects) {
-    boolean allowPublicComponent = PUBLIC_PERMISSIONS.contains(permission);
-    return projects.stream()
-      .filter(c -> (allowPublicComponent && !c.isPrivate()) || hasProjectPermission(permission, c))
-      .collect(MoreCollectors.toList());
   }
 
   /**
@@ -231,15 +211,6 @@ public abstract class AbstractUserSession implements UserSession {
       throw new ForbiddenException(INSUFFICIENT_PRIVILEGES_MESSAGE);
     }
     return this;
-  }
-
-  @Override
-  public UserSession checkProjectPermission(String projectPermission, ProjectDto project) {
-    if (isRoot() || hasProjectUuidPermission(projectPermission, project.getUuid())) {
-      return this;
-    }
-
-    throw new ForbiddenException(INSUFFICIENT_PRIVILEGES_MESSAGE);
   }
 
   @Override

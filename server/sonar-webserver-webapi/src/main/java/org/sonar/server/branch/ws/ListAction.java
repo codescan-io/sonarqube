@@ -136,8 +136,8 @@ public class ListAction implements BranchWsAction {
   }
 
   private void checkPermission(ProjectDto project) {
-    if (!userSession.hasProjectPermission(USER, project) &&
-      !userSession.hasProjectPermission(UserRole.SCAN, project) &&
+    if (!userSession.hasEntityPermission(USER, project) &&
+      !userSession.hasEntityPermission(UserRole.SCAN, project) &&
       !userSession.hasPermission(OrganizationPermission.SCAN, project.getOrganizationUuid())) {
       throw insufficientPrivilegesException();
     }

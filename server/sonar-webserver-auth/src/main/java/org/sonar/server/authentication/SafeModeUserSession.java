@@ -31,12 +31,12 @@ import org.sonar.server.user.AbstractUserSession;
 public class SafeModeUserSession extends AbstractUserSession {
 
   @Override
-  protected Optional<String> componentUuidToProjectUuid(String componentUuid) {
+  protected Optional<String> componentUuidToEntityUuid(String componentUuid) {
     return Optional.empty();
   }
 
   @Override
-  protected boolean hasProjectUuidPermission(String permission, String projectUuid) {
+  protected boolean hasEntityUuidPermission(String permission, String entityUuid) {
     return false;
   }
 

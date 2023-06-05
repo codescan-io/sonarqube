@@ -127,7 +127,7 @@ public class RemoveProjectAction implements QProfileWsAction {
       throw new IllegalArgumentException("Quality profile must have the same organization");
     }
 
-    if (wsSupport.canAdministrate(profile) || userSession.hasProjectPermission(UserRole.ADMIN, project)) {
+    if (wsSupport.canAdministrate(profile) || userSession.hasEntityPermission(UserRole.ADMIN, project)) {
       return;
     }
 
