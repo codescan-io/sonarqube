@@ -1134,7 +1134,7 @@ export class App extends React.PureComponent<Props, State> {
             }}
             loading={loadingMore}
             total={paging.total}
-            useMIUIButtons={true}
+            useMIUIButtons
           />
         )}
 

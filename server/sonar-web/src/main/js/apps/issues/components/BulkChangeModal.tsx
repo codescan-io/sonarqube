@@ -489,7 +489,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
             ? translate('bulk_change')
             : translateWithParameters('issue_bulk_change.form.title', issues.length)
         }
-        isScrollable={true}
+        isScrollable
         loading={submitting}
         body={this.renderForm()}
         primaryButton={
