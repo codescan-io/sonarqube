@@ -146,15 +146,15 @@ public class ValuesAction implements SettingsWsAction {
       return Optional.empty();
     }
 
-    EntityDto component = dbClient.entityDao().selectByKey(dbSession, componentKey)
-        .orElseThrow(() -> new NotFoundException(format("Component key '%s' not found", componentKey)));
+    EntityDto entity = dbClient.entityDao().selectByKey(dbSession, componentKey)
+      .orElseThrow(() -> new NotFoundException(format("Component key '%s' not found", componentKey)));
 
-    if (!userSession.hasEntityPermission(USER, component) &&
-      !userSession.hasEntityPermission(UserRole.SCAN, component) &&
-      !userSession.hasPermission(OrganizationPermission.SCAN, component.getOrganizationUuid())) {
+    if (!userSession.hasEntityPermission(USER, entity) &&
+      !userSession.hasEntityPermission(UserRole.SCAN, entity) &&
+      !userSession.hasPermission(OrganizationPermission.SCAN, entity.getOrganizationUuid())) {
       throw insufficientPrivilegesException();
     }
-    return Optional.of(component);
+    return Optional.of(entity);
   }
 
   private List<Setting> loadSettings(DbSession dbSession, Optional<EntityDto> component, Set<String> keys) {

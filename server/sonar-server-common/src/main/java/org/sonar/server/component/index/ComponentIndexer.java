@@ -201,13 +201,13 @@ public class ComponentIndexer implements ProjectIndexer, NeedAuthorizationIndexe
     bulk.stop();
   }
 
-  public static ComponentDoc toDocument(EntityDto component) {
+  public static ComponentDoc toDocument(EntityDto entity) {
     return new ComponentDoc()
-      .setId(component.getUuid())
-      .setAuthUuid(component.getAuthUuid())
-      .setName(component.getName())
-      .setKey(component.getKey())
-      .setOrganization(component.getOrganizationUuid())
-      .setQualifier(component.getQualifier());
+      .setId(entity.getUuid())
+      .setAuthUuid(entity.getAuthUuid())
+      .setName(entity.getName())
+      .setKey(entity.getKey())
+      .setOrganization(entity.getOrganizationUuid())
+      .setQualifier(entity.getQualifier());
   }
 }

@@ -182,6 +182,11 @@ public class UserSessionRule implements TestRule, UserSession {
     return this;
   }
 
+  public UserSessionRule registerPortfolios(PortfolioDto... portfolioDtos) {
+    ensureAbstractMockUserSession().registerPortfolios(portfolioDtos);
+    return this;
+  }
+
   public UserSessionRule registerProjects(ProjectDto... projectDtos) {
     ensureAbstractMockUserSession().registerProjects(projectDtos);
     return this;
@@ -276,8 +281,8 @@ public class UserSessionRule implements TestRule, UserSession {
   }
 
   @Override
-  public boolean hasChildProjectsPermission(String permission, ProjectDto component) {
-    return currentUserSession.hasChildProjectsPermission(permission, component);
+  public boolean hasChildProjectsPermission(String permission, EntityDto application) {
+    return currentUserSession.hasChildProjectsPermission(permission, application);
   }
 
   @Override
@@ -396,7 +401,7 @@ public class UserSessionRule implements TestRule, UserSession {
   }
 
   @Override
-  public UserSession checkChildProjectsPermission(String projectPermission, ProjectDto application) {
+  public UserSession checkChildProjectsPermission(String projectPermission, EntityDto application) {
     currentUserSession.checkChildProjectsPermission(projectPermission, application);
     return this;
   }

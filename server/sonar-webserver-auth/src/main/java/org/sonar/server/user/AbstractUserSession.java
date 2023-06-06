@@ -123,13 +123,13 @@ public abstract class AbstractUserSession implements UserSession {
   }
 
   @Override
-  public final boolean hasChildProjectsPermission(String permission, ProjectDto project) {
-    return isRoot() || hasChildProjectsPermission(permission, project.getUuid());
+  public final boolean hasChildProjectsPermission(String permission, EntityDto application) {
+    return isRoot() || hasChildProjectsPermission(permission, application.getUuid());
   }
 
   @Override
   public final boolean hasPortfolioChildProjectsPermission(String permission, ComponentDto portfolio) {
-    return hasPortfolioChildProjectsPermission(permission, portfolio.uuid());
+    return isRoot() || hasPortfolioChildProjectsPermission(permission, portfolio.uuid());
   }
 
   @Override
@@ -232,7 +232,7 @@ public abstract class AbstractUserSession implements UserSession {
   }
 
   @Override
-  public UserSession checkChildProjectsPermission(String projectPermission, ProjectDto application) {
+  public UserSession checkChildProjectsPermission(String projectPermission, EntityDto application) {
     if (!APP.equals(application.getQualifier()) || hasChildProjectsPermission(projectPermission, application)) {
       return this;
     }
