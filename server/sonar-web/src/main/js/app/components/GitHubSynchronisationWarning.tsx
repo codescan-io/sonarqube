@@ -19,22 +19,19 @@
  */
 import { formatDistance } from 'date-fns';
 import * as React from 'react';
-import { useContext } from 'react';
 import { FormattedMessage } from 'react-intl';
 import Link from '../../components/common/Link';
 import CheckIcon from '../../components/icons/CheckIcon';
 import { Alert } from '../../components/ui/Alert';
 import { translate, translateWithParameters } from '../../helpers/l10n';
 import { useSyncStatusQuery } from '../../queries/github-sync';
-import { Feature } from '../../types/features';
 import { GithubStatusEnabled } from '../../types/provisioning';
 import { TaskStatuses } from '../../types/tasks';
 import './SystemAnnouncement.css';
-import { AvailableFeaturesContext } from './available-features/AvailableFeaturesContext';
 
 interface LastSyncProps {
   short?: boolean;
-  info: Required<GithubStatusEnabled>['lastSync'];
+  info: GithubStatusEnabled['lastSync'];
 }
 
 interface GitHubSynchronisationWarningProps {
@@ -42,6 +39,9 @@ interface GitHubSynchronisationWarningProps {
 }
 
 function LastSyncAlert({ info, short }: LastSyncProps) {
+  if (info === undefined) {
+    return null;
+  }
   const { finishedAt, errorMessage, status, summary } = info;
 
   const formattedDate = finishedAt ? formatDistance(new Date(finishedAt), new Date()) : '';
@@ -76,34 +76,39 @@ function LastSyncAlert({ info, short }: LastSyncProps) {
     );
   }
 
-  return status === TaskStatuses.Success ? (
-    <Alert variant="success">
-      {translateWithParameters(
-        'settings.authentication.github.synchronization_successful',
-        formattedDate
+  return (
+    <Alert
+      variant={status === TaskStatuses.Success ? 'success' : 'error'}
+      role="alert"
+      aria-live="assertive"
+    >
+      {status === TaskStatuses.Success ? (
+        <>
+          {translateWithParameters(
+            'settings.authentication.github.synchronization_successful',
+            formattedDate
+          )}
+          <br />
+          {summary ?? ''}
+        </>
+      ) : (
+        <React.Fragment key={`synch-alert-${finishedAt}`}>
+          <div>
+            {translateWithParameters(
+              'settings.authentication.github.synchronization_failed',
+              formattedDate
+            )}
+          </div>
+          <br />
+          {errorMessage ?? ''}
+        </React.Fragment>
       )}
-      <br />
-      {summary ?? ''}
-    </Alert>
-  ) : (
-    <Alert variant="error">
-      <div>
-        {translateWithParameters(
-          'settings.authentication.github.synchronization_failed',
-          formattedDate
-        )}
-      </div>
-      <br />
-      {errorMessage ?? ''}
     </Alert>
   );
 }
 
 function GitHubSynchronisationWarning({ short }: GitHubSynchronisationWarningProps) {
-  const hasGithubProvisioning = useContext(AvailableFeaturesContext).includes(
-    Feature.GithubProvisioning
-  );
-  const { data } = useSyncStatusQuery({ enabled: hasGithubProvisioning });
+  const { data } = useSyncStatusQuery();
 
   if (!data) {
     return null;
@@ -111,19 +116,28 @@ function GitHubSynchronisationWarning({ short }: GitHubSynchronisationWarningPro
 
   return (
     <>
-      {!short && data?.nextSync && (
-        <>
-          <Alert variant="loading">
-            {translate(
-              data.nextSync.status === TaskStatuses.Pending
-                ? 'settings.authentication.github.synchronization_pending'
-                : 'settings.authentication.github.synchronization_in_progress'
-            )}
-          </Alert>
-          <br />
-        </>
-      )}
-      {data?.lastSync && <LastSyncAlert short={short} info={data.lastSync} />}
+      <Alert
+        variant="loading"
+        className="spacer-bottom"
+        aria-atomic={true}
+        role="alert"
+        aria-live="assertive"
+        aria-label={
+          data.nextSync === undefined
+            ? translate('settings.authentication.github.synchronization_finish')
+            : ''
+        }
+      >
+        {!short &&
+          data?.nextSync &&
+          translate(
+            data.nextSync.status === TaskStatuses.Pending
+              ? 'settings.authentication.github.synchronization_pending'
+              : 'settings.authentication.github.synchronization_in_progress'
+          )}
+      </Alert>
+
+      <LastSyncAlert short={short} info={data.lastSync} />
     </>
   );
 }
