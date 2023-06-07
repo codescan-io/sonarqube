@@ -34,7 +34,6 @@ import org.sonar.db.audit.model.GroupPermissionNewValue;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.entity.EntityDto;
 import org.sonar.db.permission.template.PermissionTemplateDto;
-import org.sonar.db.project.ProjectDto;
 
 import static org.sonar.db.DatabaseUtils.executeLargeInputs;
 import static org.sonar.db.DatabaseUtils.executeLargeInputsWithoutOutput;
@@ -236,7 +235,7 @@ public class GroupPermissionDao implements Dao {
   public void delete(DbSession dbSession, String permission, @Nullable String groupUuid,
     @Nullable String groupName, @Nullable String rootComponentUuid, @Nullable EntityDto entityDto) {
 
-    int deletedRecords = mapper(dbSession).delete(permission, groupUuid, rootComponentUuid);
+    int deletedRecords = mapper(dbSession).delete(permission, entityDto.getOrganizationUuid(), groupUuid, rootComponentUuid);
 
     if (deletedRecords > 0) {
       String qualifier = (entityDto != null) ? entityDto.getQualifier() : null;
