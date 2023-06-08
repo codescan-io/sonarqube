@@ -156,11 +156,16 @@ message Issue {
   optional string externalRuleEngine = 33;
   reserved 34; //drop fromHotspot
   optional string scope = 35;
+  optional Sort sort = 37;
 
   optional bool quickFixAvailable = 36;
   optional string ruleDescriptionContextKey = 37;
 
   repeated sonarqube.ws.commons.MessageFormatting messageFormattings = 38;
+}
+
+message Sort {
+  repeated string sort = 36;
 }
 
 message Transitions {
