@@ -35,6 +35,7 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
+import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.GlobalPermission;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.project.ProjectDto;
@@ -43,6 +44,7 @@ import org.sonar.db.user.UserDto;
 import org.sonar.db.user.UserOrganizationGroup;
 import org.sonar.server.issue.AvatarResolver;
 import org.sonar.server.permission.PermissionService;
+import org.sonar.server.ui.ws.OrganizationAction;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.Users.CurrentWsResponse;
 
@@ -71,14 +73,17 @@ public class CurrentAction implements UsersWsAction {
   private final AvatarResolver avatarResolver;
   private final HomepageTypes homepageTypes;
   private final PlatformEditionProvider editionProvider;
+  private final PermissionService permissionService;
 
   public CurrentAction(UserSession userSession, DbClient dbClient, AvatarResolver avatarResolver, HomepageTypes homepageTypes,
-    PlatformEditionProvider editionProvider) {
+    PlatformEditionProvider editionProvider, PermissionService permissionService) {
     this.userSession = userSession;
     this.dbClient = dbClient;
     this.avatarResolver = avatarResolver;
     this.homepageTypes = homepageTypes;
     this.editionProvider = editionProvider;
+    this.permissionService = permissionService;
+
   }
 
   @Override
@@ -114,6 +119,7 @@ public class CurrentAction implements UsersWsAction {
   }
 
   private CurrentWsResponse toWsResponse(DbSession dbSession, String userLogin) {
+    OrganizationDto organizationDto = dbClient.organizationDao().getDefaultOrganization(dbSession);
     UserDto user = dbClient.userDao().selectActiveUserByLogin(dbSession, userLogin);
     checkState(user != null, "User login '%s' cannot be found", userLogin);
     Collection<String> groups = dbClient.groupMembershipDao().selectGroupsByLogins(dbSession, singletonList(userLogin)).get(userLogin);
@@ -127,7 +133,7 @@ public class CurrentAction implements UsersWsAction {
       .addAllGroups(groups)
       .addAllOrgGroups(toWsOrganizationGroups(orgGroups))
       .addAllScmAccounts(user.getScmAccountsAsList())
-      .setPermissions(Permissions.newBuilder().addAllGlobal(List.of()).build())
+      .setPermissions(Permissions.newBuilder().addAllGlobal(getAllOrganizationPermissions(organizationDto)).build())
       .setHomepage(buildHomepage(dbSession, user))
       .setUsingSonarLintConnectedMode(user.getLastSonarlintConnectionDate() != null)
       .putDismissedNotices(EDUCATION_PRINCIPLES, isNoticeDismissed(user, EDUCATION_PRINCIPLES))
@@ -138,7 +144,12 @@ public class CurrentAction implements UsersWsAction {
     ofNullable(user.getExternalIdentityProvider()).ifPresent(builder::setExternalProvider);
     return builder.build();
   }
-
+  private List<String> getAllOrganizationPermissions(OrganizationDto organizationDto) {
+    return permissionService.getOrganizationPermissions().stream()
+            .filter(permission -> userSession.hasPermission(permission, organizationDto))
+            .map(OrganizationPermission::getKey)
+            .toList();
+  }
   private boolean isNoticeDismissed(UserDto user, String noticeName) {
     String paramKey = DismissNoticeAction.USER_DISMISS_CONSTANT + noticeName;
     PropertyQuery query = new PropertyQuery.Builder()

@@ -25,6 +25,7 @@ import org.sonar.api.resources.Qualifiers;
 import org.sonar.api.resources.ResourceTypes;
 import org.sonar.api.web.UserRole;
 import org.sonar.db.permission.GlobalPermission;
+import org.sonar.db.permission.OrganizationPermission;
 
 @Immutable
 public class PermissionServiceImpl implements PermissionService {
@@ -38,11 +39,17 @@ public class PermissionServiceImpl implements PermissionService {
   );
 
   private static final List<GlobalPermission> ALL_GLOBAL_PERMISSIONS = List.of(GlobalPermission.values());
+  private static final List<OrganizationPermission> ALL_ORG_PERMISSIONS = List.of(OrganizationPermission.values());
 
   private final List<GlobalPermission> globalPermissions;
+  private final List<OrganizationPermission> organizationPermissions;
   private final List<String> projectPermissions;
 
   public PermissionServiceImpl(ResourceTypes resourceTypes) {
+    organizationPermissions = List.copyOf(ALL_ORG_PERMISSIONS.stream()
+      .filter(s -> !s.equals(OrganizationPermission.APPLICATION_CREATOR) || resourceTypes.isQualifierPresent(Qualifiers.APP))
+      .filter(s -> !s.equals(OrganizationPermission.PORTFOLIO_CREATOR) || resourceTypes.isQualifierPresent(Qualifiers.VIEW))
+      .toList());
     globalPermissions = List.copyOf(ALL_GLOBAL_PERMISSIONS.stream()
       .filter(s -> !s.equals(GlobalPermission.APPLICATION_CREATOR) || resourceTypes.isQualifierPresent(Qualifiers.APP))
       .filter(s -> !s.equals(GlobalPermission.PORTFOLIO_CREATOR) || resourceTypes.isQualifierPresent(Qualifiers.VIEW))
@@ -60,6 +67,8 @@ public class PermissionServiceImpl implements PermissionService {
   public List<GlobalPermission> getGlobalPermissions() {
     return globalPermissions;
   }
+
+  public List<OrganizationPermission> getOrganizationPermissions() {return organizationPermissions;}
 
   /**
    * Return an immutable Set of all project permissions
