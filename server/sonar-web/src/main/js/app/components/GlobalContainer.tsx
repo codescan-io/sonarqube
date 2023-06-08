@@ -41,6 +41,7 @@ const TEMP_PAGELIST_WITH_NEW_BACKGROUND = [
   '/dashboard',
   '/security_hotspots',
   '/component_measures',
+  '/project/issues',
 ];
 
 export default function GlobalContainer() {
