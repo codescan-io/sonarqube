@@ -29,19 +29,14 @@ import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService;
-import org.sonar.core.platform.EditionProvider;
-import org.sonar.core.platform.PlatformEditionProvider;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.ComponentDto;
-import org.sonar.db.newcodeperiod.NewCodePeriodDto;
-import org.sonar.db.newcodeperiod.NewCodePeriodType;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.server.component.ComponentUpdater;
-import org.sonar.server.newcodeperiod.CaycUtils;
+import org.sonar.server.newcodeperiod.NewCodeDefinitionResolver;
 import org.sonar.server.project.DefaultBranchNameResolver;
-import org.sonar.server.project.ProjectDefaultVisibility;
 import org.sonar.server.project.Visibility;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.Projects.CreateWsResponse;
@@ -52,10 +47,9 @@ import static org.sonar.api.resources.Qualifiers.PROJECT;
 import static org.sonar.core.component.ComponentKeys.MAX_COMPONENT_KEY_LENGTH;
 import static org.sonar.db.component.ComponentValidator.MAX_COMPONENT_NAME_LENGTH;
 import static org.sonar.server.component.NewComponent.newComponentBuilder;
-import static org.sonar.server.newcodeperiod.NewCodePeriodUtils.NEW_CODE_PERIOD_TYPE_DESCRIPTION_PROJECT_CREATION;
-import static org.sonar.server.newcodeperiod.NewCodePeriodUtils.NEW_CODE_PERIOD_VALUE_DESCRIPTION_PROJECT_CREATION;
-import static org.sonar.server.newcodeperiod.NewCodePeriodUtils.getNewCodeDefinitionValueProjectCreation;
-import static org.sonar.server.newcodeperiod.NewCodePeriodUtils.validateType;
+import static org.sonar.server.newcodeperiod.NewCodeDefinitionResolver.NEW_CODE_PERIOD_TYPE_DESCRIPTION_PROJECT_CREATION;
+import static org.sonar.server.newcodeperiod.NewCodeDefinitionResolver.NEW_CODE_PERIOD_VALUE_DESCRIPTION_PROJECT_CREATION;
+import static org.sonar.server.newcodeperiod.NewCodeDefinitionResolver.checkNewCodeDefinitionParam;
 import static org.sonar.server.project.ws.ProjectsWsSupport.PARAM_ORGANIZATION;
 import static org.sonar.server.ws.KeyExamples.KEY_PROJECT_EXAMPLE_001;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
@@ -74,16 +68,17 @@ public class CreateAction implements ProjectsWsAction {
   private final DbClient dbClient;
   private final UserSession userSession;
   private final ComponentUpdater componentUpdater;
-  private final PlatformEditionProvider editionProvider;
   private final DefaultBranchNameResolver defaultBranchNameResolver;
 
+  private final NewCodeDefinitionResolver newCodeDefinitionResolver;
+
   public CreateAction(DbClient dbClient, UserSession userSession, ComponentUpdater componentUpdater,
-    PlatformEditionProvider editionProvider, DefaultBranchNameResolver defaultBranchNameResolver) {
+                      DefaultBranchNameResolver defaultBranchNameResolver, NewCodeDefinitionResolver newCodeDefinitionResolver) {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.componentUpdater = componentUpdater;
-    this.editionProvider = editionProvider;
     this.defaultBranchNameResolver = defaultBranchNameResolver;
+    this.newCodeDefinitionResolver = newCodeDefinitionResolver;
   }
 
   @Override
@@ -143,8 +138,6 @@ public class CreateAction implements ProjectsWsAction {
   }
 
   private CreateWsResponse doHandle(CreateRequest request) {
-    long startTime = System.currentTimeMillis();
-
     try (DbSession dbSession = dbClient.openSession(false)) {
       OrganizationDto organization = dbClient.organizationDao().selectByKey(dbSession, request.getOrganization())
           .orElseThrow(() -> new IllegalArgumentException("Organization not found: " + request.getOrganization()));
@@ -153,21 +146,18 @@ public class CreateAction implements ProjectsWsAction {
 
       userSession.checkPermission(OrganizationPermission.PROVISION_PROJECTS, organization);
 
-      checkNewCodeDefinitionParam(request);
+      checkNewCodeDefinitionParam(request.getNewCodeDefinitionType(), request.getNewCodeDefinitionValue());
       ComponentDto componentDto = createProject(request, dbSession, organization);
-      if(request.getNewCodeDefinitionType() != null) {
-        createNewCodeDefinition(dbSession, request, componentDto.uuid());
+      if (request.getNewCodeDefinitionType() != null) {
+        String defaultBranchName = Optional.ofNullable(request.getMainBranchKey()).orElse(defaultBranchNameResolver.getEffectiveMainBranchName());
+        newCodeDefinitionResolver.createNewCodeDefinition(dbSession, componentDto.uuid(), defaultBranchName, request.getNewCodeDefinitionType(),
+            request.getNewCodeDefinitionValue());
       }
       componentUpdater.commitAndIndex(dbSession, componentDto);
       return toCreateResponse(componentDto);
     }
   }
 
-  private static void checkNewCodeDefinitionParam(CreateRequest request) {
-    if (request.getNewCodeDefinitionType() == null && request.getNewCodeDefinitionValue() != null) {
-      throw new IllegalArgumentException("New code definition type is required when new code definition value is provided");
-    }
-  }
   private ComponentDto createProject(CreateRequest request, DbSession dbSession, OrganizationDto organization) {
     return componentUpdater.createWithoutCommit(dbSession, newComponentBuilder()
         .setOrganizationUuid(organization.getUuid())
@@ -178,32 +168,9 @@ public class CreateAction implements ProjectsWsAction {
         .build(),
       userSession.isLoggedIn() ? userSession.getUuid() : null,
       userSession.isLoggedIn() ? userSession.getLogin() : null,
-      request.getMainBranchKey(), s -> {}).mainBranchComponent();
+      request.getMainBranchKey(), s -> {
+      }).mainBranchComponent();
 
-  }
-  private void createNewCodeDefinition(DbSession dbSession, CreateRequest request, String projectUuid) {
-
-    boolean isCommunityEdition = editionProvider.get().filter(EditionProvider.Edition.COMMUNITY::equals).isPresent();
-    NewCodePeriodType newCodePeriodType = validateType(request.getNewCodeDefinitionType(), false, isCommunityEdition);
-    String newCodePeriodValue = request.getNewCodeDefinitionValue();
-    String defaultBranchName = Optional.ofNullable(request.getMainBranchKey()).orElse(defaultBranchNameResolver.getEffectiveMainBranchName());
-
-    NewCodePeriodDto dto = new NewCodePeriodDto();
-    dto.setType(newCodePeriodType);
-    dto.setProjectUuid(projectUuid);
-
-    if (isCommunityEdition) {
-      dto.setBranchUuid(projectUuid);
-    }
-
-    getNewCodeDefinitionValueProjectCreation(newCodePeriodType, newCodePeriodValue, defaultBranchName).ifPresent(dto::setValue);
-
-    if (!CaycUtils.isNewCodePeriodCompliant(dto.getType(), dto.getValue())) {
-      throw new IllegalArgumentException("Failed to set the New Code Definition. The given value is not compatible with the Clean as You Code methodology. "
-        + "Please refer to the documentation for compliant options.");
-    }
-
-    dbClient.newCodePeriodDao().insert(dbSession, dto);
   }
 
   private static CreateRequest toCreateRequest(Request request) {
