@@ -23,12 +23,12 @@ import { getNewCodePeriod, setNewCodePeriod } from '../../../api/newCodePeriod';
 import DocLink from '../../../components/common/DocLink';
 import { ResetButtonLink, SubmitButton } from '../../../components/controls/buttons';
 import AlertSuccessIcon from '../../../components/icons/AlertSuccessIcon';
+import NewCodeDefinitionDaysOption from '../../../components/new-code-definition/NewCodeDefinitionDaysOption';
+import NewCodeDefinitionPreviousVersionOption from '../../../components/new-code-definition/NewCodeDefinitionPreviousVersionOption';
 import NewCodeDefinitionWarning from '../../../components/new-code-definition/NewCodeDefinitionWarning';
 import DeferredSpinner from '../../../components/ui/DeferredSpinner';
 import { translate } from '../../../helpers/l10n';
 import { NewCodePeriodSettingType } from '../../../types/types';
-import BaselineSettingDays from '../../projectBaseline/components/BaselineSettingDays';
-import BaselineSettingPreviousVersion from '../../projectBaseline/components/BaselineSettingPreviousVersion';
 import { validateDays } from '../../projectBaseline/utils';
 
 interface State {
@@ -184,12 +184,12 @@ export default class NewCodePeriod extends React.PureComponent<{}, State> {
                       <DeferredSpinner />
                     ) : (
                       <form onSubmit={this.onSubmit}>
-                        <BaselineSettingPreviousVersion
+                        <NewCodeDefinitionPreviousVersionOption
                           isDefault
                           onSelect={this.onSelectSetting}
                           selected={selected === NewCodePeriodSettingType.PREVIOUS_VERSION}
                         />
-                        <BaselineSettingDays
+                        <NewCodeDefinitionDaysOption
                           className="spacer-top sw-mb-4"
                           days={days}
                           isChanged={isChanged}

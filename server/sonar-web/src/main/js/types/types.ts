@@ -407,6 +407,12 @@ export interface NewCodePeriod {
   inherited?: boolean;
 }
 
+export interface NewCodePeriodWithCompliance {
+  type?: NewCodePeriodSettingType;
+  value?: string;
+  isCompliant: boolean;
+}
+
 export interface NewCodePeriodBranch extends NewCodePeriod {
   projectKey: string;
   branchKey: string;
@@ -417,6 +423,7 @@ export enum NewCodePeriodSettingType {
   NUMBER_OF_DAYS = 'NUMBER_OF_DAYS',
   SPECIFIC_ANALYSIS = 'SPECIFIC_ANALYSIS',
   REFERENCE_BRANCH = 'REFERENCE_BRANCH',
+  INHERITED = 'INHERITED',
 }
 
 export interface Paging {
@@ -623,6 +630,7 @@ export interface Snippet {
 export interface SnippetGroup extends SnippetsByComponent {
   locations: FlowLocation[];
 }
+
 export interface SnippetsByComponent {
   component: SourceViewerFile;
   sources: { [line: number]: SourceLine };
