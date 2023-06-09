@@ -40,10 +40,10 @@ import { NewCodePeriodWithCompliance } from '../../../types/types';
 import AzureProjectCreate from './Azure/AzureProjectCreate';
 import BitbucketCloudProjectCreate from './BitbucketCloud/BitbucketCloudProjectCreate';
 import BitbucketProjectCreate from './BitbucketServer/BitbucketProjectCreate';
-import CreateProjectPageHeader from './components/CreateProjectPageHeader';
 import CreateProjectModeSelection from './CreateProjectModeSelection';
 import GitHubProjectCreate from './Github/GitHubProjectCreate';
 import GitlabProjectCreate from './Gitlab/GitlabProjectCreate';
+import CreateProjectPageHeader from './components/CreateProjectPageHeader';
 import ManualProjectCreate from './manual/ManualProjectCreate';
 import './style.css';
 import { CreateProjectApiCallback, CreateProjectModes } from './types';
@@ -204,9 +204,9 @@ export class CreateProjectPage extends React.PureComponent<CreateProjectPageProp
             canAdmin={!!canAdmin}
             loadingBindings={loading}
             location={location}
-            onProjectCreate={this.handleProjectCreate}
             router={router}
             almInstances={azureSettings}
+            onProjectSetupDone={this.handleProjectSetupDone}
           />
         );
       }
