@@ -34,7 +34,7 @@ interface State {
   loading: boolean;
 }
 
-export class LifetimeInformation extends React.PureComponent<Props, State> {
+class LifetimeInformation extends React.PureComponent<Props, State> {
   mounted = false;
   state: State = { loading: true };
 
