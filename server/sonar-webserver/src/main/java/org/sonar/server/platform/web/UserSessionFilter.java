@@ -31,9 +31,9 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.sonar.api.utils.log.Logger;
-import org.sonar.api.utils.log.Loggers;
 import org.sonar.db.DBSessions;
 import org.sonar.server.authentication.UserSessionInitializer;
 import org.sonar.server.http.JavaxHttpRequest;
@@ -43,7 +43,7 @@ import org.sonar.server.platform.PlatformImpl;
 import org.sonar.server.setting.ThreadLocalSettings;
 
 public class UserSessionFilter implements Filter {
-  private static final Logger LOG = Loggers.get(UserSessionFilter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(UserSessionFilter.class);
   private final Platform platform;
 
   public UserSessionFilter() {
@@ -59,10 +59,10 @@ public class UserSessionFilter implements Filter {
   public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain) throws IOException, ServletException {
     HttpServletRequest request = (HttpServletRequest) servletRequest;
     HttpServletResponse response = (HttpServletResponse) servletResponse;
-    
+
     //Fix Me write new filter
     insertIntoMDC(servletRequest);
-    
+
     DBSessions dbSessions = platform.getContainer().getComponentByType(DBSessions.class);
     ThreadLocalSettings settings = platform.getContainer().getComponentByType(ThreadLocalSettings.class);
     UserSessionInitializer userSessionInitializer = platform.getContainer().getOptionalComponentByType(UserSessionInitializer.class).orElse(null);
