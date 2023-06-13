@@ -124,7 +124,7 @@ public class SearchResponseFormat {
 
     if (data.getIssues().size() == 1) {
       IssueDto dto = data.getIssues().get(0);
-      response.setIssue(createIssue(ALL_ADDITIONAL_FIELDS, data, dto));
+      response.setIssue(createIssue(ALL_ADDITIONAL_FIELDS, data, dto, null));
     }
     response.addAllComponents(formatComponents(data));
     response.addAllRules(formatRules(data).getRulesList());
