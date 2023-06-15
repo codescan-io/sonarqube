@@ -179,10 +179,8 @@ public class CreateAction implements WebhooksWsAction {
     webhookBuilder
       .setKey(dto.getUuid())
       .setName(dto.getName())
-      .setUrl(dto.getUrl());
-    if (dto.getSecret() != null) {
-      webhookBuilder.setSecret(dto.getSecret());
-    }
+      .setUrl(dto.getUrl())
+      .setHasSecret(dto.getSecret() != null);
     writeProtobuf(newBuilder().setWebhook(webhookBuilder).build(), request, response);
   }
 
