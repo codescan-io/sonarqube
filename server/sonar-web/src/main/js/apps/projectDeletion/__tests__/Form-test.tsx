@@ -20,18 +20,13 @@
 import { shallow } from 'enzyme';
 import * as React from 'react';
 import { deleteApplication } from '../../../api/application';
-import { deleteProject } from '../../../api/codescan';
-import { deletePortfolio } from '../../../api/components';
+import { deletePortfolio, deleteProject } from '../../../api/project-management';
 import { mockRouter } from '../../../helpers/testMocks';
 import { Form } from '../Form';
 
-jest.mock('../../../api/components', () => ({
+jest.mock('../../../api/project-management', () => ({
   deleteProject: jest.fn().mockResolvedValue(undefined),
   deletePortfolio: jest.fn().mockResolvedValue(undefined),
-}));
-
-jest.mock('../../../api/codescan', () => ({
-  deleteProject: jest.fn().mockResolvedValue(undefined)
 }));
 
 jest.mock('../../../api/application', () => ({
@@ -43,24 +38,24 @@ beforeEach(() => {
 });
 
 it('should render', () => {
-  const component = { key: 'foo', name: 'Foo', qualifier: 'TRK', organization: 'default' };
+  const component = { key: 'foo', name: 'Foo', qualifier: 'TRK' };
   const form = shallow(<Form component={component} router={mockRouter()} />);
   expect(form).toMatchSnapshot();
   expect(form.prop<Function>('children')({ onClick: jest.fn() })).toMatchSnapshot();
 });
 
 it('should delete project', async () => {
-  const component = { key: 'foo', name: 'Foo', qualifier: 'TRK', organization: 'default' };
+  const component = { key: 'foo', name: 'Foo', qualifier: 'TRK' };
   const router = mockRouter();
   const form = shallow(<Form component={component} router={router} />);
   form.prop<Function>('onConfirm')();
-  expect(deleteProject).toHaveBeenCalledWith({ organizationId: 'default', projectKey: 'foo', projectDelete: true });
+  expect(deleteProject).toHaveBeenCalledWith('foo');
   await new Promise(setImmediate);
   expect(router.replace).toHaveBeenCalledWith('/');
 });
 
 it('should delete portfolio', async () => {
-  const component = { key: 'foo', name: 'Foo', qualifier: 'VW', organization: 'default' };
+  const component = { key: 'foo', name: 'Foo', qualifier: 'VW' };
   const router = mockRouter();
   const form = shallow(<Form component={component} router={router} />);
   form.prop<Function>('onConfirm')();

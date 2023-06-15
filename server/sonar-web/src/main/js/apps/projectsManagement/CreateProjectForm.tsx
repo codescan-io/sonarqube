@@ -19,12 +19,12 @@
  */
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
-import { createProject } from '../../api/components';
+import { createProject } from '../../api/project-management';
 import { getValue } from '../../api/settings';
 import Link from '../../components/common/Link';
 import VisibilitySelector from '../../components/common/VisibilitySelector';
-import { ResetButtonLink, SubmitButton } from '../../components/controls/buttons';
 import Modal from '../../components/controls/Modal';
+import { ResetButtonLink, SubmitButton } from '../../components/controls/buttons';
 import { Alert } from '../../components/ui/Alert';
 import MandatoryFieldMarker from '../../components/ui/MandatoryFieldMarker';
 import MandatoryFieldsExplanation from '../../components/ui/MandatoryFieldsExplanation';
@@ -133,13 +133,14 @@ class CreateProjectForm extends React.PureComponent<Props, State> {
   render() {
     const { defaultProjectVisibility } = this.props;
     const { createdProject } = this.state;
+    const header = translate('qualifiers.create.TRK');
 
     return (
-      <Modal contentLabel="modal form" onRequestClose={this.props.onClose}>
+      <Modal contentLabel={header} onRequestClose={this.props.onClose}>
         {createdProject ? (
           <div>
             <header className="modal-head">
-              <h2>{translate('qualifiers.create.TRK')}</h2>
+              <h2>{header}</h2>
             </header>
 
             <div className="modal-body">
@@ -171,7 +172,7 @@ class CreateProjectForm extends React.PureComponent<Props, State> {
         ) : (
           <form id="create-project-form" onSubmit={this.handleFormSubmit}>
             <header className="modal-head">
-              <h2>{translate('qualifiers.create.TRK')}</h2>
+              <h2>{header}</h2>
             </header>
 
             <div className="modal-body">

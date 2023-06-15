@@ -19,9 +19,9 @@
  */
 import * as React from 'react';
 import { deleteApplication } from '../../api/application';
-import { deletePortfolio } from '../../api/components';
 import { Button } from '../../components/controls/buttons';
 import ConfirmButton from '../../components/controls/ConfirmButton';
+import { Button } from '../../components/controls/buttons';
 import { Router, withRouter } from '../../components/hoc/withRouter';
 import { addGlobalSuccessMessage } from '../../helpers/globalMessages';
 import { translate, translateWithParameters } from '../../helpers/l10n';
