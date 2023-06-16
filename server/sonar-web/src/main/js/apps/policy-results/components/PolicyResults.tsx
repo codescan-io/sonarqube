@@ -29,6 +29,7 @@ import { differenceBy } from 'lodash';
 import BranchOverview from '../../overview/branches/BranchOverview';
 import withBranchStatusActions from '../../../../js/app/components/branch-status/withBranchStatusActions';
 
+
 const FETCH_STATUS_WAIT_TIME = 3000;
 
 interface Props extends WithAvailableFeaturesProps {
@@ -380,6 +381,7 @@ class PolicyResults extends React.PureComponent<Props, State> {
             branchesEnabled={branchSupportEnabled}
             component={component}
             projectBinding={projectBinding}
+            grc={true}
           />
           </div>
         ): (<div className='spacer-top'><DeferredSpinner className="spacer-right" loading={true} /></div>)}    
