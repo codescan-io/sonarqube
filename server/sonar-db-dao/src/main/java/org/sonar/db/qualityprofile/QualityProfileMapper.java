@@ -115,6 +115,7 @@ public interface QualityProfileMapper {
   void deleteProjectAssociationByProfileUuids(@Param("profileUuids") Collection<String> profileUuids);
 
   List<ProjectQprofileAssociationDto> selectSelectedProjects(
+    @Param("organizationUuid") String organizationUuid,
     @Param("profileUuid") String profileUuid,
     @Param("nameOrKeyQuery") String nameOrKeyQuery);
 

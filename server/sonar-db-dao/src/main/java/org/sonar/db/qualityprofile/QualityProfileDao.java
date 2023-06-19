@@ -239,9 +239,9 @@ public class QualityProfileDao implements Dao {
     DatabaseUtils.executeLargeUpdates(profileUuids, mapper::deleteProjectAssociationByProfileUuids);
   }
 
-  public List<ProjectQprofileAssociationDto> selectSelectedProjects(DbSession dbSession, QProfileDto profile, @Nullable String query) {
+  public List<ProjectQprofileAssociationDto> selectSelectedProjects(DbSession dbSession, OrganizationDto organization, QProfileDto profile, @Nullable String query) {
     String nameQuery = sqlQueryString(query);
-    return mapper(dbSession).selectSelectedProjects(profile.getKee(), nameQuery);
+    return mapper(dbSession).selectSelectedProjects(organization != null ? organization.getUuid() : null, profile.getKee(), nameQuery);
   }
 
   public List<ProjectQprofileAssociationDto> selectDeselectedProjects(DbSession dbSession, QProfileDto profile, @Nullable String query) {
