@@ -368,6 +368,7 @@ public class SearchAction implements IssuesWsAction {
       .setSince("8.6");
     action.createParam(PARAM_ORGANIZATION)
       .setDescription("Organization key")
+      .setRequired(false)
       .setInternal(true);
   }
 
