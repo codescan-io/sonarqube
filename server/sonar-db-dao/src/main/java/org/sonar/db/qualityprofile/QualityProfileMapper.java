@@ -120,10 +120,12 @@ public interface QualityProfileMapper {
     @Param("nameOrKeyQuery") String nameOrKeyQuery);
 
   List<ProjectQprofileAssociationDto> selectDeselectedProjects(
+    @Param("organizationUuid") String organizationUuid,
     @Param("profileUuid") String profileUuid,
     @Param("nameOrKeyQuery") String nameOrKeyQuery);
 
   List<ProjectQprofileAssociationDto> selectProjectAssociations(
+    @Param("organizationUuid") String organizationUuid,
     @Param("profileUuid") String profileUuid,
     @Param("nameOrKeyQuery") String nameOrKeyQuery);
 

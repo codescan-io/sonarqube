@@ -244,14 +244,14 @@ public class QualityProfileDao implements Dao {
     return mapper(dbSession).selectSelectedProjects(organization != null ? organization.getUuid() : null, profile.getKee(), nameQuery);
   }
 
-  public List<ProjectQprofileAssociationDto> selectDeselectedProjects(DbSession dbSession, QProfileDto profile, @Nullable String query) {
+  public List<ProjectQprofileAssociationDto> selectDeselectedProjects(DbSession dbSession, OrganizationDto organization, QProfileDto profile, @Nullable String query) {
     String nameQuery = sqlQueryString(query);
-    return mapper(dbSession).selectDeselectedProjects(profile.getKee(), nameQuery);
+    return mapper(dbSession).selectDeselectedProjects(organization != null ? organization.getUuid() : null, profile.getKee(), nameQuery);
   }
 
-  public List<ProjectQprofileAssociationDto> selectProjectAssociations(DbSession dbSession, QProfileDto profile, @Nullable String query) {
+  public List<ProjectQprofileAssociationDto> selectProjectAssociations(DbSession dbSession, OrganizationDto organization, QProfileDto profile, @Nullable String query) {
     String nameQuery = sqlQueryString(query);
-    return mapper(dbSession).selectProjectAssociations(profile.getKee(), nameQuery);
+    return mapper(dbSession).selectProjectAssociations(organization != null ? organization.getUuid() : null, profile.getKee(), nameQuery);
   }
 
   public Collection<String> selectUuidsOfCustomRulesProfiles(DbSession dbSession, String language, String name) {
