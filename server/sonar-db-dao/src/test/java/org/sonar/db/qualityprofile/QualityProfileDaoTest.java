@@ -762,14 +762,14 @@ public class QualityProfileDaoTest {
     db.qualityProfiles().associateWithProject(db.components().getProjectDto(project3), profile2);
     QProfileDto profile3 = newQualityProfileDto();
 
-    assertThat(underTest.selectSelectedProjects(dbSession, null, profile1, null))
+    assertThat(underTest.selectSelectedProjects(dbSession, profile1, null))
       .extracting("projectUuid", "projectKey", "projectName", "profileKey")
       .containsOnly(
         tuple(project1.uuid(), project1.getKey(), project1.name(), profile1.getKee()),
         tuple(project2.uuid(), project2.getKey(), project2.name(), profile1.getKee()));
 
-    assertThat(underTest.selectSelectedProjects(dbSession, null, profile1, "ect1")).hasSize(1);
-    assertThat(underTest.selectSelectedProjects(dbSession, null, profile3, null)).isEmpty();
+    assertThat(underTest.selectSelectedProjects(dbSession, profile1, "ect1")).hasSize(1);
+    assertThat(underTest.selectSelectedProjects(dbSession, profile3, null)).isEmpty();
   }
 
   @Test
@@ -893,7 +893,7 @@ public class QualityProfileDaoTest {
     QProfileDto qProfileDto = db.qualityProfiles().insert();
     db.qualityProfiles().associateWithProject(db.components().getProjectDto(privateProject), qProfileDto);
 
-    List<ProjectQprofileAssociationDto> results = underTest.selectSelectedProjects(dbSession, null, qProfileDto, "key");
+    List<ProjectQprofileAssociationDto> results = underTest.selectSelectedProjects(dbSession, qProfileDto, "key");
 
     assertThat(results).extracting(ProjectQprofileAssociationDto::getProjectUuid).containsOnly(privateProject.uuid());
   }

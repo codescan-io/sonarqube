@@ -264,7 +264,7 @@ public class DeleteActionTest {
 
   private void verifyProfileDoesNotExist(QProfileDto profile) {
     assertThat(dbClient.qualityProfileDao().selectByUuid(dbSession, profile.getKee())).isNull();
-    assertThat(dbClient.qualityProfileDao().selectSelectedProjects(dbSession, null, profile, null)).isEmpty();
+    assertThat(dbClient.qualityProfileDao().selectSelectedProjects(dbSession, profile, null)).isEmpty();
   }
 
   private void verifyProfileExists(QProfileDto profile) {

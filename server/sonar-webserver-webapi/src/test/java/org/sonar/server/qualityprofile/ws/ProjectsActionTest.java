@@ -49,7 +49,7 @@ public class ProjectsActionTest {
   @Rule
   public UserSessionRule userSession = UserSessionRule.standalone();
 
-  private final WsActionTester ws = new WsActionTester(new ProjectsAction(db.getDbClient(), userSession, new QProfileWsSupport(db.getDbClient(), userSession, TestDefaultOrganizationProvider.from(db))));
+  private final WsActionTester ws = new WsActionTester(new ProjectsAction(db.getDbClient(), userSession));
 
   @Test
   public void list_authorized_projects_only() {
