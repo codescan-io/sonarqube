@@ -17,17 +17,22 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.server.user.ws;
 
-import java.util.List;
-
-public interface HomepageTypes {
-
-  enum Type {
-    PROJECT, PROJECTS, ISSUES, PORTFOLIOS, PORTFOLIO, APPLICATION, ORGANIZATION, POLICY_RESULTS
+.grc-section{
+    background-color: var(--sonarcloudBlack100);
   }
-
-  List<Type> getTypes();
-
-  Type getDefaultType();
-}
+  
+  .grc-section .tab{
+    padding: 15px 15px 10px 15px;
+    border: 1px solid var(--barBorderColor);
+    border-top: 2px solid var(--blue);
+  }
+  .grc-section .seperator{
+    height: 15px;
+    background: var(--barBackgroundColor);
+  }
+  
+  .grc-section .overview-measures-row{
+    border: 1px solid var(--barBorderColor);
+    border-top: none;
+  }
