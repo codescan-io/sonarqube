@@ -76,7 +76,7 @@ public class AuthorsActionTest {
   private final IssueIndexSyncProgressChecker issueIndexSyncProgressChecker = mock(IssueIndexSyncProgressChecker.class);
   private final ResourceTypesRule resourceTypes = new ResourceTypesRule().setRootQualifiers(PROJECT);
   private final WsActionTester ws = new WsActionTester(new AuthorsAction(userSession, db.getDbClient(), issueIndex,
-    issueIndexSyncProgressChecker, new ComponentFinder(db.getDbClient(), resourceTypes)));
+    issueIndexSyncProgressChecker, new ComponentFinder(db.getDbClient(), resourceTypes),null));
 
   @Test
   public void search_authors() {
