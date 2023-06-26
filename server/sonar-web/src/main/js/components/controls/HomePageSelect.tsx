@@ -59,7 +59,7 @@ export class HomePageSelect extends React.PureComponent<Props> {
   };
 
   handleReset = () => {
-    this.setCurrentUserHomepage(DEFAULT_HOMEPAGE);
+    this.setCurrentUserHomepage({ type: 'PORTFOLIOS' });
   };
 
   render() {
@@ -78,15 +78,6 @@ export class HomePageSelect extends React.PureComponent<Props> {
 
     return (
       <Tooltip overlay={tooltip}>
-        {isDefault ? (
-          <span
-            aria-label={tooltip}
-            className={classNames('display-inline-block', className)}
-            role="img"
-          >
-            <HomeIcon filled={isChecked} />
-          </span>
-        ) : (
           <ButtonLink
             aria-label={tooltip}
             className={classNames('link-no-underline', 'set-homepage-link', className)}
@@ -95,7 +86,6 @@ export class HomePageSelect extends React.PureComponent<Props> {
           >
             <HomeIcon filled={isChecked} />
           </ButtonLink>
-        )}
       </Tooltip>
     );
   }
