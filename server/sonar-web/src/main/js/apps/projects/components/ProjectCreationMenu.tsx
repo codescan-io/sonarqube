@@ -93,10 +93,20 @@ export class ProjectCreationMenu extends React.PureComponent<Props, State> {
     }
   };
 
+  handleProjectCreate(){
+    let url = window.location.href;
+    let newUrl = "";
+    if(url.endsWith("/projects")){
+      newUrl = url.replace("projects", "extension/developer/projects");
+    }
+    window.location.href = newUrl;
+  }
+
   render() {
     const { className, currentUser } = this.props;
     const { boundAlms } = this.state;
 
+    console.log(currentUser);
     const canCreateProject = hasGlobalPermission(currentUser, Permissions.ProjectCreation);
 
     if (!canCreateProject) {
@@ -104,32 +114,9 @@ export class ProjectCreationMenu extends React.PureComponent<Props, State> {
     }
 
     return (
-      <Dropdown
-        className={className}
-        onOpen={this.fetchAlmBindings}
-        overlay={
-          <ul className="menu">
-            {[...boundAlms, 'manual'].map((alm) => (
-              <li className="little-spacer-bottom" key={alm}>
-                <ProjectCreationMenuItem alm={alm} />
-              </li>
-            ))}
-            {boundAlms.length < IMPORT_COMPATIBLE_ALMS.length && (
-              <li className="bordered-top little-padded-top">
-                <Link className="display-flex-center" to={{ pathname: '/projects/create' }}>
-                  <EllipsisIcon className="spacer-right" size={16} />
-                  {translate('more')}
-                </Link>
-              </li>
-            )}
-          </ul>
-        }
-      >
-        <Button className="button-primary">
+      <Button className="button-primary" onClick={this.handleProjectCreate}>
           {translate('projects.add')}
-          <DropdownIcon className="spacer-left " />
         </Button>
-      </Dropdown>
     );
   }
 }
