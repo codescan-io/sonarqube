@@ -20,6 +20,7 @@
 import * as React from 'react';
 import { Outlet } from 'react-router-dom';
 import GlobalFooter from './GlobalFooter';
+import GlobalFooterSonarCloud from './GlobalFooterSonarCloud';
 import PageTracker from './PageTracker';
 
 export default function SimpleSessionsContainer() {
@@ -31,7 +32,7 @@ export default function SimpleSessionsContainer() {
         <div className="page-wrapper" id="container">
           <Outlet />
         </div>
-        <GlobalFooter hideLoggedInInfo={true} />
+        <GlobalFooterSonarCloud/>
       </div>
     </>
   );
