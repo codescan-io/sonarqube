@@ -27,6 +27,16 @@ interface Props {
 }
 
 export default function OrganizationNavigationMeta({ organization }: Props) {
+
+  const href = window.location.href;
+  const firstPart = href.split('?')[0];
+  let setHomePage = true;
+  // if the page is issues page and it is part of organizations, we are hiding it explicitly
+  if(firstPart.indexOf("organizations")>0 && firstPart.endsWith("issues"))
+  {
+    setHomePage = false;
+  }
+
   return (
       <div className="navbar-context-meta">
         {organization.url != null && (
@@ -41,9 +51,13 @@ export default function OrganizationNavigationMeta({ organization }: Props) {
         <div className="text-muted">
           <strong>{translate('organization.key')}:</strong> {organization.kee}
         </div>
-        <div className="navbar-context-meta-secondary">
-          <HomePageSelect currentPage={{ type: 'ORGANIZATION', organization: organization.kee }}/>
-        </div>
+        {
+          setHomePage ? (
+          <div className="navbar-context-meta-secondary">
+            <HomePageSelect currentPage={{ type: 'ORGANIZATION', organization: organization.kee }}/>
+          </div>) : (<></>)
+        }
+        
       </div>
   );
 }
