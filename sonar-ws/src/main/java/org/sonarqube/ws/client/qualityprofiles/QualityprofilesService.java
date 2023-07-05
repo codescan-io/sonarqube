@@ -163,6 +163,7 @@ public class QualityprofilesService extends BaseService {
     return call(
       new GetRequest(path("backup"))
         .setParam("language", request.getLanguage())
+        .setParam("organization", request.getOrganization())
         .setParam("qualityProfile", request.getQualityProfile())
         .setMediaType(MediaTypes.JSON)
     ).content();
