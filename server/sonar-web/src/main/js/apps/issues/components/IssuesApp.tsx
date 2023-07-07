@@ -1080,7 +1080,7 @@ export class App extends React.PureComponent<Props, State> {
 
             {this.renderBulkChange()}
             <PageActions
-              canSetHome={!this.props.component}
+              canSetHome={false}
               effortTotal={this.state.effortTotal}
               paging={paging}
               selectedIndex={selectedIndex}
