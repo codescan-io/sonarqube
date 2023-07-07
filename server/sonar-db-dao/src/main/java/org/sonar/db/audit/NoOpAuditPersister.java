@@ -47,12 +47,12 @@ public class NoOpAuditPersister implements AuditPersister {
   }
 
   @Override
-  public void updateUserGroup(DbSession dbSession, UserGroupNewValue newValue) {
+  public void updateUserGroup(DbSession dbSession, String organizationUuid, UserGroupNewValue newValue) {
     // no op
   }
 
   @Override
-  public void deleteUserGroup(DbSession dbSession, UserGroupNewValue newValue) {
+  public void deleteUserGroup(DbSession dbSession, String organizationUuid, UserGroupNewValue newValue) {
     // no op
   }
 

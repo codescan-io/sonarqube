@@ -72,10 +72,12 @@ public class GroupDao implements Dao {
   }
 
   public void deleteByUuid(DbSession dbSession, String groupUuid, String groupName) {
+    GroupDto dto = selectByUuid(dbSession, groupUuid);
+
     int deletedRows = mapper(dbSession).deleteByUuid(groupUuid);
 
     if (deletedRows > 0) {
-      auditPersister.deleteUserGroup(dbSession, new UserGroupNewValue(groupUuid, groupName));
+      auditPersister.deleteUserGroup(dbSession, dto.getOrganizationUuid(), new UserGroupNewValue(groupUuid, groupName));
     }
   }
 
@@ -100,7 +102,8 @@ public class GroupDao implements Dao {
   public GroupDto update(DbSession session, GroupDto item) {
     item.setUpdatedAt(new Date(system.now()));
     mapper(session).update(item);
-    auditPersister.updateUserGroup(session, new UserGroupNewValue(item));
+    Objects.nonNull(item.getOrganizationUuid());
+    auditPersister.updateUserGroup(session, item.getOrganizationUuid(), new UserGroupNewValue(item));
     return item;
   }
 

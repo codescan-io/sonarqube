@@ -44,9 +44,9 @@ public interface AuditPersister {
 
   void addUserGroup(DbSession dbSession, String organizationUuid, UserGroupNewValue newValue);
 
-  void updateUserGroup(DbSession dbSession, UserGroupNewValue newValue);
+  void updateUserGroup(DbSession dbSession, String organizationUuid, UserGroupNewValue newValue);
 
-  void deleteUserGroup(DbSession dbSession, UserGroupNewValue newValue);
+  void deleteUserGroup(DbSession dbSession, String organizationUuid, UserGroupNewValue newValue);
 
   void addUser(DbSession dbSession, UserNewValue newValue);
 
