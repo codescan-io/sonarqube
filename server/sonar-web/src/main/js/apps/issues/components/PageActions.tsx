@@ -35,6 +35,15 @@ export interface PageActionsProps {
 export default function PageActions(props: PageActionsProps) {
   const { canSetHome, effortTotal, paging, selectedIndex } = props;
 
+  const href = window.location.href;
+  const firstPart = href.split('?')[0];
+  let setHomePage = canSetHome;
+  // if the page is issues page and it is part of organizations, we are hiding it explicitly
+  if(firstPart.indexOf("organizations")>0 && firstPart.endsWith("issues"))
+  {
+    setHomePage = false;
+  }
+
   return (
     <div className="display-flex-center display-flex-justify-end">
       <PageShortcutsTooltip
@@ -47,7 +56,7 @@ export default function PageActions(props: PageActionsProps) {
         {effortTotal !== undefined && <TotalEffort effort={effortTotal} />}
       </div>
 
-      {canSetHome && (
+      {setHomePage && (
         <HomePageSelect className="huge-spacer-left" currentPage={{ type: 'ISSUES' }} />
       )}
     </div>
