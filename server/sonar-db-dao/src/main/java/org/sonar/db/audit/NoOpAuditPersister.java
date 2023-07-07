@@ -42,7 +42,7 @@ import org.sonar.db.audit.model.WebhookNewValue;
 @Priority(2)
 public class NoOpAuditPersister implements AuditPersister {
   @Override
-  public void addUserGroup(DbSession dbSession, UserGroupNewValue newValue) {
+  public void addUserGroup(DbSession dbSession, String organizationUuid, UserGroupNewValue newValue) {
     // no op
   }
 

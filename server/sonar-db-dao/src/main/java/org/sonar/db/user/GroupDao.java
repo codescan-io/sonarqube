@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -91,7 +92,8 @@ public class GroupDao implements Dao {
     item.setCreatedAt(createdAt)
       .setUpdatedAt(createdAt);
     mapper(session).insert(item);
-    auditPersister.addUserGroup(session, new UserGroupNewValue(item.getUuid(), item.getName()));
+    Objects.nonNull(item.getOrganizationUuid());
+    auditPersister.addUserGroup(session, item.getOrganizationUuid(), new UserGroupNewValue(item.getUuid(), item.getName()));
     return item;
   }
 
