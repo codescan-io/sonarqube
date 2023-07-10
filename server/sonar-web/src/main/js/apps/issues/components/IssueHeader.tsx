@@ -34,10 +34,10 @@ import { getKeyboardShortcutEnabled } from '../../../helpers/preferences';
 import { getComponentIssuesUrl, getRuleUrl } from '../../../helpers/urls';
 import { BranchLike } from '../../../types/branch-like';
 import { RuleStatus } from '../../../types/rules';
-import { Issue, RuleDetails, Component } from '../../../types/types';
+import { Issue, RuleDetails } from '../../../types/types';
 
 interface Props {
-  component: Component;
+  organization: string | undefined;
   issue: Issue;
   ruleDetails: RuleDetails;
   branchLike?: BranchLike;
@@ -165,7 +165,7 @@ export default class IssueHeader extends React.PureComponent<Props, State> {
         <div className="display-flex-center display-flex-space-between spacer-top big-spacer-bottom">
           <div>
             <span className="note padded-right">{name}</span>
-            <Link className="small" to={getRuleUrl(key, this.props.component.organization)} target="_blank">
+            <Link className="small" to={getRuleUrl(key, this.props.organization)} target="_blank">
               {key}
             </Link>
           </div>
