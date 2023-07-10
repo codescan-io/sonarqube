@@ -40,6 +40,7 @@ interface Props {
 
 interface State {
   boundAlms: Array<string>;
+  showProjectsLink: boolean;
 }
 
 const almSettingsValidators = {
@@ -52,10 +53,16 @@ const almSettingsValidators = {
 
 export class ProjectCreationMenu extends React.PureComponent<Props, State> {
   mounted = false;
-  state: State = { boundAlms: [] };
+  state: State = { boundAlms: [],
+                  showProjectsLink: true };
 
   componentDidMount() {
     this.mounted = true;
+    const href = window.location.href;
+    let boolValue = false;
+    boolValue = href.indexOf("organizations")>0;
+    this.setState({showProjectsLink:boolValue})
+
   }
 
   componentWillUnmount() {
@@ -104,7 +111,7 @@ export class ProjectCreationMenu extends React.PureComponent<Props, State> {
 
   render() {
     const { className, currentUser } = this.props;
-    const { boundAlms } = this.state;
+    const { boundAlms, showProjectsLink } = this.state;
 
     console.log(currentUser);
     const canCreateProject = hasGlobalPermission(currentUser, Permissions.ProjectCreation);
@@ -114,9 +121,11 @@ export class ProjectCreationMenu extends React.PureComponent<Props, State> {
     }
 
     return (
-      <Button className="button-primary" onClick={this.handleProjectCreate}>
+      showProjectsLink ? (
+        <Button className="button-primary" onClick={this.handleProjectCreate}>
           {translate('projects.add')}
-        </Button>
+        </Button>):
+        (<></>)
     );
   }
 }
