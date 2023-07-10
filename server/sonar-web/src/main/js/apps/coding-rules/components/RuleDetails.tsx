@@ -25,7 +25,7 @@ import ConfirmButton from '../../../components/controls/ConfirmButton';
 import HelpTooltip from '../../../components/controls/HelpTooltip';
 import DeferredSpinner from '../../../components/ui/DeferredSpinner';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
-import { Dict, RuleActivation, RuleDetails as TypeRuleDetails, Component } from '../../../types/types';
+import { Dict, RuleActivation, RuleDetails as TypeRuleDetails } from '../../../types/types';
 import { Activation, Query } from '../query';
 import CustomRuleButton from './CustomRuleButton';
 import RuleDetailsCustomRules from './RuleDetailsCustomRules';
@@ -38,7 +38,6 @@ import RuleDetailsProfiles from './RuleDetailsProfiles';
 interface Props {
   allowCustomRules?: boolean;
   canWrite?: boolean;
-  component: Component;
   onActivate: (profile: string, rule: string, activation: Activation) => void;
   onDeactivate: (profile: string, rule: string) => void;
   onDelete: (rule: string) => void;
@@ -159,7 +158,7 @@ export default class RuleDetails extends React.PureComponent<Props, State> {
       return <div className="coding-rule-details" />;
     }
 
-    const { allowCustomRules, canWrite, referencedProfiles, organization, component } = this.props;
+    const { allowCustomRules, canWrite, referencedProfiles, organization } = this.props;
     const { params = [] } = ruleDetails;
 
     const isCustom = !!ruleDetails.templateKey;
