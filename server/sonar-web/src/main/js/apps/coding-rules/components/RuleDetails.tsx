@@ -170,7 +170,6 @@ export default class RuleDetails extends React.PureComponent<Props, State> {
         <DeferredSpinner loading={this.state.loading}>
           <RuleDetailsMeta
             canWrite={canWrite}
-            component={component}
             onFilterChange={this.props.onFilterChange}
             onTagsChange={this.handleTagsChange}
             organization={organization}

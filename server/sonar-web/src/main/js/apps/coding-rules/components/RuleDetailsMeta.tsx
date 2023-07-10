@@ -31,17 +31,17 @@ import TagsList from '../../../components/tags/TagsList';
 import { PopupPlacement } from '../../../components/ui/popups';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { getRuleUrl } from '../../../helpers/urls';
-import { Dict, RuleDetails, Component} from '../../../types/types';
+import { Dict, RuleDetails } from '../../../types/types';
 import { Query } from '../query';
 import RuleDetailsTagsPopup from './RuleDetailsTagsPopup';
 import SimilarRulesFilter from './SimilarRulesFilter';
 
 interface Props {
   canWrite: boolean | undefined;
-  component: Component;
   hideSimilarRulesFilter?: boolean;
   onFilterChange: (changes: Partial<Query>) => void;
   onTagsChange: (tags: string[]) => void;
+  organization: string;
   referencedRepositories: Dict<{ key: string; language: string; name: string }>;
   ruleDetails: RuleDetails;
 }
@@ -166,7 +166,7 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
       <li className="coding-rules-detail-property">
         {translate('coding_rules.custom_rule')}
         {' ('}
-        <Link to={getRuleUrl(ruleDetails.templateKey, this.props.component.organization)}>
+        <Link to={getRuleUrl(ruleDetails.templateKey, ruleDetails.organization)}>
           {translate('coding_rules.show_template')}
         </Link>
         {')'}
@@ -236,7 +236,7 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
               <Link
                 className="coding-rules-detail-permalink link-no-underline spacer-left text-middle"
                 title={translate('permalink')}
-                to={getRuleUrl(ruleDetails.key, this.props.component.organization)}
+                to={getRuleUrl(ruleDetails.key, ruleDetails.organization)}
               >
                 <LinkIcon />
               </Link>
