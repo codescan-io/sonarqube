@@ -36,6 +36,7 @@ interface Props {
   loadSearchResultCount: (property: string, changes: Partial<Query>) => Promise<Facet>;
   onChange: (changes: Partial<Query>) => void;
   onToggle: (property: string) => void;
+  organization: string;
   open: boolean;
   query: Query;
   stats: Dict<number> | undefined;
@@ -50,6 +51,7 @@ export default class TagFacet extends React.PureComponent<Props> {
     const project =
       component && ['TRK', 'VW', 'APP'].includes(component.qualifier) ? component.key : undefined;
     return searchIssueTags({
+      organization: this.props.organization,
       project,
       branch,
       ps: SEARCH_SIZE,
