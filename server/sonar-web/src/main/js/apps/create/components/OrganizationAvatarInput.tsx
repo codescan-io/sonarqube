@@ -106,6 +106,7 @@ export default class OrganizationAvatarInput extends React.PureComponent<Props, 
     if (url.length > 0 && !isWebUri(url) ){
       return translate('onboarding.create_organization.url.error');
     }
+
     if(url.length > 0 && !this.isValidDomain(url)){
       return translate('onboarding.create_organization.url.domain.error');
     }

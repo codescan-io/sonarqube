@@ -57,8 +57,7 @@ export default class OrganizationAvatarUrlInput extends React.PureComponent<Prop
         this.setState({error, touched: Boolean(error), value});
       }
     },5000)
-    
-  }
+  }  
 
   handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.currentTarget.value.trim();
