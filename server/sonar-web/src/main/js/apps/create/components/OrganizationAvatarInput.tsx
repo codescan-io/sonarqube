@@ -63,9 +63,39 @@ export default class OrganizationAvatarInput extends React.PureComponent<Props, 
     this.setState({editing: true});
   };
 
-  validateUrl(url: string) {
-    if (url.length > 0 && !isWebUri(url)) {
+  domainFromUrl = (url:string) => {
+    let result;
+    let match;
+    if (match = url.match(/^(?:https?:\/\/)?(?:[^@\n]+@)?(?:www\.)?([^:\/\n\?\=]+)/im)) {
+        result = match[1]
+        if (match = result.match(/^[^\.]+\.(.+\..+)$/)) {
+            result = match[1]
+        }
+    }
+    return result
+  }
+  
+  isValidDomain = (url : string) => {
+    const validDomainUrls = ['amazon.com','amazon.in','google.com'];
+    let isUrlValid = false;
+    
+    let domain = this.domainFromUrl(url);
+    for(let i=0;i<validDomainUrls.length; i++){
+      if(domain?.endsWith(validDomainUrls[i])){
+        isUrlValid = true;
+        break;
+      }  
+    }
+    return isUrlValid;
+  }
+  
+
+  validateUrl=(url: string)=> {
+    if (url.length > 0 && !isWebUri(url) ){
       return translate('onboarding.create_organization.url.error');
+    }
+    if(!this.isValidDomain(url)){
+      return translate('onboarding.create_organization.url.domain.error');
     }
     return undefined;
   }

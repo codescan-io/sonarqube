@@ -93,7 +93,7 @@ export default class OrganizationDetailsForm extends React.PureComponent<Props, 
     this.setState({ avatar });
   };
 
-  handleDescriptionUpdate = (value:string) => {
+  handleDescriptionUpdate = (value:string|undefined) => {
     this.setState({ description: value });
   };
 
