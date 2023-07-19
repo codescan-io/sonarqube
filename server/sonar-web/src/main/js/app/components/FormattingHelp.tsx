@@ -38,15 +38,15 @@ export default function FormattingHelp() {
             </td>
           </tr>
           <tr>
-            <td>https://sonarqube.org</td>
+            <td>https://app.codescan.io</td>
             <td className="markdown">
-              <a href="https://sonarqube.org">https://sonarqube.org</a>
+              <a href="https://app.codescan.io">https://app.codescan.io</a>
             </td>
           </tr>
           <tr>
-            <td className="text-top">[SonarQube™ Home Page](https://www.sonarqube.org)</td>
+            <td className="text-top">[Codescan Home Page](https://app.codescan.io)</td>
             <td className="markdown text-top">
-              <a href="https://www.sonarqube.org">SonarQube™ Home Page</a>
+              <a href="https://app.codescan.io">Codescan Home Page</a>
             </td>
           </tr>
           <tr>
