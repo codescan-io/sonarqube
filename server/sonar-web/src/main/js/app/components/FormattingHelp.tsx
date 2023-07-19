@@ -38,15 +38,15 @@ export default function FormattingHelp() {
             </td>
           </tr>
           <tr>
-            <td>https://app.codescan.io</td>
+            <td>https://knowledgebase.autorabit.com/codescan/en</td>
             <td className="markdown">
-              <a href="https://app.codescan.io">https://app.codescan.io</a>
+              <a href="https://knowledgebase.autorabit.com/codescan/en">https://knowledgebase.autorabit.com/codescan/en</a>
             </td>
           </tr>
           <tr>
-            <td className="text-top">[Codescan Home Page](https://app.codescan.io)</td>
+            <td className="text-top">[Codescan Home Page](https://knowledgebase.autorabit.com/codescan/en)</td>
             <td className="markdown text-top">
-              <a href="https://app.codescan.io">Codescan Home Page</a>
+              <a href="https://knowledgebase.autorabit.com/codescan/en">Codescan Home Page</a>
             </td>
           </tr>
           <tr>
