@@ -22,6 +22,7 @@ import classNames from 'classnames';
 import { isWebUri } from 'valid-url';
 import ValidationInput from "../../../components/controls/ValidationInput";
 import { translate } from "../../../helpers/l10n";
+import { FEATURE_FLAG_AMAZON } from "../../../helpers/constants";
 import OrganizationAvatar from "../../organizations/components/OrganizationAvatar";
 import { getWhiteListDomains } from '../../../../js/api/organizations';
 import { throwGlobalError } from '../../../../js/helpers/error';
@@ -44,19 +45,10 @@ interface State {
 export default class OrganizationAvatarInput extends React.PureComponent<Props, State> {
   state: State = {error: undefined, editing: false, touched: false, value: ''};
   whiteListDomains: string[] = [];
-  amazon = "AMAZON";
   whiteLabel = this.props.appState.whiteLabel;
 
-  async fetchWhiteListDomains() {
-    await getWhiteListDomains().then((data : string[])=>{
-      this.whiteListDomains = data;
-    },
-    throwGlobalError)
-  }
-
-
   componentDidMount() {
-    if (this.whiteLabel === this.amazon) {
+    if (this.whiteLabel === FEATURE_FLAG_AMAZON) {
       this.fetchWhiteListDomains();
     }
     setTimeout(()=>{
@@ -66,6 +58,13 @@ export default class OrganizationAvatarInput extends React.PureComponent<Props, 
         this.setState({error, touched: Boolean(error), value});
       }
     },0);
+  }
+
+  async fetchWhiteListDomains() {
+    await getWhiteListDomains().then((data : string[])=>{
+      this.whiteListDomains = data;
+    },
+    throwGlobalError)
   }
 
   handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,7 +114,7 @@ export default class OrganizationAvatarInput extends React.PureComponent<Props, 
       return translate('onboarding.create_organization.url.error');
     }
 
-    if(url.length > 0 && this.whiteLabel === this.amazon && !this.isValidDomain(url)){
+    if(url.length > 0 && this.whiteLabel === FEATURE_FLAG_AMAZON && !this.isValidDomain(url)){
       return translate('onboarding.create_organization.url.domain.error');
     }
     return undefined;

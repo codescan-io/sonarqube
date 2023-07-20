@@ -32,6 +32,7 @@ import {
   getAvailableExpirationOptions,
 } from '../../../helpers/tokens';
 import { hasGlobalPermission } from '../../../helpers/users';
+import { FEATURE_FLAG_AMAZON } from '../../../helpers/constants';
 import { Permissions } from '../../../types/permissions';
 import { TokenExpiration, TokenType, UserToken } from '../../../types/token';
 import { CurrentUser } from '../../../types/users';
@@ -133,7 +134,6 @@ export class TokensForm extends React.PureComponent<Props, State> {
   constructTokenTypeOptions = (projects: BasicSelectOption[]) => {
     const { currentUser } = this.props;
     const { whiteLabel } = this.props.appState;
-    const amazon = "AMAZON";
     const tokenTypeOptions = [];
     if (hasGlobalPermission(currentUser, Permissions.Admin)) {
       tokenTypeOptions.unshift({
@@ -142,7 +142,7 @@ export class TokensForm extends React.PureComponent<Props, State> {
       });
     }
 
-    if (whiteLabel !== amazon) {
+    if (whiteLabel !== FEATURE_FLAG_AMAZON) {
       tokenTypeOptions.unshift({
         label: translate('users.tokens', TokenType.User),
         value: TokenType.User,
