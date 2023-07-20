@@ -37,8 +37,10 @@ import { TokenExpiration, TokenType, UserToken } from '../../../types/token';
 import { CurrentUser } from '../../../types/users';
 import TokensFormItem, { TokenDeleteConfirmation } from './TokensFormItem';
 import TokensFormNewToken from './TokensFormNewToken';
+import { AppState } from "../../../types/appstate";
 
 interface Props {
+  appState: AppState;
   deleteConfirmation: TokenDeleteConfirmation;
   login: string;
   updateTokensCount?: (login: string, tokensCount: number) => void;
@@ -130,18 +132,23 @@ export class TokensForm extends React.PureComponent<Props, State> {
 
   constructTokenTypeOptions = (projects: BasicSelectOption[]) => {
     const { currentUser } = this.props;
-
+    const { whiteLabel } = this.props.appState;
+    const amazon = "AMAZON";
     const tokenTypeOptions = [];
     if (hasGlobalPermission(currentUser, Permissions.Admin)) {
-      tokenTypeOptions.unshift({
-        label: translate('users.tokens', TokenType.User),
-        value: TokenType.User,
-      });
       tokenTypeOptions.unshift({
         label: translate('users.tokens', TokenType.Global),
         value: TokenType.Global,
       });
     }
+
+    if (whiteLabel !== amazon) {
+      tokenTypeOptions.unshift({
+        label: translate('users.tokens', TokenType.User),
+        value: TokenType.User,
+      });
+    }
+
     if (!isEmpty(projects)) {
       tokenTypeOptions.unshift({
         label: translate('users.tokens', TokenType.Project),

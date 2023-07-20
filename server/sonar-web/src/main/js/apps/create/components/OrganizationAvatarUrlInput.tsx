@@ -24,8 +24,10 @@ import { translate } from "../../../helpers/l10n";
 import ValidationInput from "../../../components/controls/ValidationInput";
 import { getWhiteListDomains } from '../../../../js/api/organizations';
 import { throwGlobalError } from '../../../../js/helpers/error';
+import { AppState } from '../../../types/appstate';
 
 interface Props {
+  appState: AppState;
   initialValue?: string;
   onChange: (value: string | undefined) => void;
 }
@@ -40,6 +42,8 @@ interface State {
 export default class OrganizationAvatarUrlInput extends React.PureComponent<Props, State> {
   state: State = {error: undefined, editing: false, touched: false, value: ''};
   whiteListDomains: string[] = [];
+  amazon = "AMAZON";
+  whiteLabel = this.props.appState.whiteLabel;
 
   async fetchWhiteListDomains() {
     await getWhiteListDomains().then((data : string[])=>{
@@ -49,7 +53,9 @@ export default class OrganizationAvatarUrlInput extends React.PureComponent<Prop
   }
 
   async componentDidMount() {
-    await this.fetchWhiteListDomains();
+    if (this.whiteLabel === this.amazon) {
+      await this.fetchWhiteListDomains();
+    }
     setTimeout(()=>{
       if (this.props.initialValue) {
         const value = this.props.initialValue;
@@ -105,7 +111,7 @@ export default class OrganizationAvatarUrlInput extends React.PureComponent<Prop
     if (url.length > 0 && !isWebUri(url) ){
       return translate('onboarding.create_organization.url.error');
     }
-    if(url.length > 0 && !this.isValidDomain(url)){
+    if(url.length > 0 && this.whiteLabel === this.amazon &&  !this.isValidDomain(url)){
       return translate('onboarding.create_organization.url.domain.error');
     }
     return undefined;
