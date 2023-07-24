@@ -72,7 +72,7 @@ public class ProjectFinder {
   }
 
   private List<ProjectDto> searchProjectsWithOrgLevelPermissions(DbSession dbSession) {
-    List<OrganizationDto> orgs = dbClient.organizationDao().selectByPermission(dbSession, userSession.getUuid(),
+    List<OrganizationDto> orgs = dbClient.organizationDao().selectOrgsForUserAndRole(dbSession, userSession.getUuid(),
             OrganizationPermission.SCAN.toString());
     List<String> orgUuids = orgs.stream().map(o -> o.getUuid())
             .collect(Collectors.toList());
