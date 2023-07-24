@@ -76,7 +76,8 @@ public class ProjectFinder {
             OrganizationPermission.SCAN.toString());
     List<String> orgUuids = orgs.stream().map(o -> o.getUuid())
             .collect(Collectors.toList());
-    return dbClient.projectDao().selectProjectsByOrganizationUuids(dbSession, orgUuids);
+    List<ProjectDto> projects = dbClient.projectDao().selectProjectsByOrganizationUuids(dbSession, orgUuids);
+    return projects;
   }
 
   private void applyQueryAndPermissionFilter(@Nullable String searchQuery, final List<ProjectDto> projects,
