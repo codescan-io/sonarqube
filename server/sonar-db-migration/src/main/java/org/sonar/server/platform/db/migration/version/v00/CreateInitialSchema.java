@@ -65,6 +65,7 @@ public class CreateInitialSchema extends DdlChange {
   private static final String GROUP_UUID_COL_NAME = "group_uuid";
   private static final String LANGUAGE_COL_NAME = "language";
   private static final String METRIC_UUID_COL_NAME = "metric_uuid";
+  private static final String ORGANIZATION_UUID_COL_NAME = "organization_uuid";
   private static final String PROJECT_UUID_COL_NAME = "project_uuid";
   public static final String RULE_UUID_COL_NAME = "rule_uuid";
   private static final String STATUS_COL_NAME = "status";
@@ -1222,10 +1223,11 @@ public class CreateInitialSchema extends DdlChange {
     addIndex(context, "rules", "rules_repo_key", true, pluginRuleKeyCol, pluginNameCol);
   }
 
-  private void createRulesMetadata(Context context) {
+  public void createRulesMetadata(Context context) {
     String tableName = "rules_metadata";
     context.execute(newTableBuilder(tableName)
       .addPkColumn(newVarcharColumnDefBuilder(RULE_UUID_COL_NAME).setLimit(UUID_SIZE).setIsNullable(false).build())
+      .addPkColumn(newVarcharColumnDefBuilder(ORGANIZATION_UUID_COL_NAME).setLimit(UUID_SIZE).setIsNullable(false).build())
       .addColumn(newClobColumnDefBuilder().setColumnName("note_data").setIsNullable(true).build())
       .addColumn(newVarcharColumnDefBuilder("note_user_uuid").setLimit(USER_UUID_SIZE).setIsNullable(true).build())
       .addColumn(newBigIntegerColumnDefBuilder().setColumnName("note_created_at").setIsNullable(true).build())
