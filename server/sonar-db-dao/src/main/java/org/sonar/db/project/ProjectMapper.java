@@ -65,5 +65,5 @@ public interface ProjectMapper {
   Set<String> selectProjectUuidsAssociatedToDefaultQualityProfileByLanguage(
           @Param("languageFilters") Set<String> languageFilters);
 
-  List<ProjectDto> selectProjectsByOrganizationUuids(List<String> orgUuids);
+  List<ProjectDto> selectProjectsByOrganizationUuids(@Param("orgUuids") List<String> orgUuids);
 }
