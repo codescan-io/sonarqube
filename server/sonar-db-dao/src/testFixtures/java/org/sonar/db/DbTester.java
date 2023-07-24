@@ -121,7 +121,7 @@ public class DbTester extends AbstractDbTester<TestDbImpl> {
   }
 
   public static DbTester create() {
-    return new DbTester(System2.INSTANCE, null, new NoOpAuditPersister());
+    return new DbTester(System2.INSTANCE, null, new NoOpAuditPersister(null, null));
   }
 
   public static DbTester create(AuditPersister auditPersister) {
@@ -133,11 +133,11 @@ public class DbTester extends AbstractDbTester<TestDbImpl> {
   }
 
   public static DbTester create(System2 system2) {
-    return new DbTester(system2, null, new NoOpAuditPersister());
+    return new DbTester(system2, null, new NoOpAuditPersister(null, null));
   }
 
   public static DbTester createWithExtensionMappers(System2 system2, Class<?> firstMapperClass, Class<?>... otherMapperClasses) {
-    return new DbTester(system2, null, new NoOpAuditPersister(), new DbTesterMyBatisConfExtension(firstMapperClass, otherMapperClasses));
+    return new DbTester(system2, null, new NoOpAuditPersister(null, null), new DbTesterMyBatisConfExtension(firstMapperClass, otherMapperClasses));
   }
 
   private void initDbClient() {

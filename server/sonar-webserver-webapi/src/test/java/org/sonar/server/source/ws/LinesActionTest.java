@@ -62,7 +62,7 @@ public class LinesActionTest {
   @Rule
   public UserSessionRule userSession = UserSessionRule.standalone();
 
-  private final ComponentDao componentDao = new ComponentDao(new NoOpAuditPersister());
+  private final ComponentDao componentDao = new ComponentDao(new NoOpAuditPersister(dao, userSession));
   private final SnapshotDao snapshotDao = new SnapshotDao();
   private final HtmlSourceDecorator htmlSourceDecorator = mock(HtmlSourceDecorator.class);
   private final SourceService sourceService = new SourceService(db.getDbClient(), htmlSourceDecorator);

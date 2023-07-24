@@ -40,7 +40,8 @@ public class PermissionTemplateCharacteristicDaoTest {
   @Rule
   public DbTester db = DbTester.create(System2.INSTANCE);
   private final DbSession dbSession = db.getSession();
-  private final PermissionTemplateCharacteristicDao underTest = new PermissionTemplateCharacteristicDao(new NoOpAuditPersister());
+  private final PermissionTemplateCharacteristicDao underTest = new PermissionTemplateCharacteristicDao(new NoOpAuditPersister(
+          null, null));
 
   @Test
   public void selectByTemplateId_filter_by_template_uuid() {

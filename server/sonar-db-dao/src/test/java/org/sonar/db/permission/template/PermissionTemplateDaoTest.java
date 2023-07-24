@@ -61,7 +61,8 @@ public class PermissionTemplateDaoTest {
   private PermissionTemplateDbTester templateDb = db.permissionTemplates();
   private UuidFactory uuidFactory = UuidFactoryFast.getInstance();
 
-  private PermissionTemplateDao underTest = new PermissionTemplateDao(uuidFactory, system2, new NoOpAuditPersister());
+  private PermissionTemplateDao underTest = new PermissionTemplateDao(uuidFactory, system2, new NoOpAuditPersister(null,
+          null));
 
   @Before
   public void setUp() {

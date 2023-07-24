@@ -118,7 +118,7 @@ public class ComponentDaoTest {
 
   private final Random random = new Random();
   private final DbSession dbSession = db.getSession();
-  private final ComponentDao underTest = new ComponentDao(new NoOpAuditPersister());
+  private final ComponentDao underTest = new ComponentDao(new NoOpAuditPersister(null, null));
   private final ComponentDao underTestWithAuditPersister = new ComponentDao(auditPersister);
 
   private static ComponentTreeQuery.Builder newTreeQuery(String baseUuid) {

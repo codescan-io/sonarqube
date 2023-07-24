@@ -60,6 +60,7 @@ public class UserSessionInitializerTest {
   public DbTester dbTester = DbTester.create(System2.INSTANCE);
 
   private ThreadLocalUserSession threadLocalSession = mock(ThreadLocalUserSession.class);
+  private org.sonar.db.audit.ThreadLocalUserSession auditThreadLocalUserSession = mock(org.sonar.db.audit.ThreadLocalUserSession.class);
   private HttpServletRequest request = mock(HttpServletRequest.class);
   private HttpServletResponse response = mock(HttpServletResponse.class);
   private RequestAuthenticator authenticator = mock(RequestAuthenticator.class);
@@ -67,7 +68,7 @@ public class UserSessionInitializerTest {
   private MapSettings settings = new MapSettings();
   private ArgumentCaptor<Cookie> cookieArgumentCaptor = ArgumentCaptor.forClass(Cookie.class);
 
-  private UserSessionInitializer underTest = new UserSessionInitializer(settings.asConfig(), threadLocalSession, authenticationEvent, authenticator);
+  private UserSessionInitializer underTest = new UserSessionInitializer(settings.asConfig(), threadLocalSession, authenticationEvent, authenticator, auditThreadLocalUserSession);
 
   @Before
   public void setUp() {

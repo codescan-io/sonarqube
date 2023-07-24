@@ -60,7 +60,7 @@ public class GroupPermissionDaoTest {
   public DbTester db = DbTester.create(System2.INSTANCE);
 
   private final DbSession dbSession = db.getSession();
-  private final GroupPermissionDao underTest = new GroupPermissionDao(new NoOpAuditPersister());
+  private final GroupPermissionDao underTest = new GroupPermissionDao(new NoOpAuditPersister(null, null));
 
   @Test
   public void group_count_by_permission_and_component_id_on_private_projects() {

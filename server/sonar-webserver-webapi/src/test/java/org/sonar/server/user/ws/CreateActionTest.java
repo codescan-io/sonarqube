@@ -79,7 +79,8 @@ public class CreateActionTest {
   private GroupDto defaultGroup;
   private final CredentialsLocalAuthentication localAuthentication = new CredentialsLocalAuthentication(db.getDbClient(), settings.asConfig());
   private final WsActionTester tester = new WsActionTester(new CreateAction(db.getDbClient(), new UserUpdater(mock(NewUserNotifier.class),
-    db.getDbClient(), userIndexer, new DefaultGroupFinder(db.getDbClient()), settings.asConfig(), new NoOpAuditPersister(), localAuthentication), userSessionRule));
+    db.getDbClient(), userIndexer, new DefaultGroupFinder(db.getDbClient()), settings.asConfig(), new NoOpAuditPersister(
+          dao, userSession), localAuthentication), userSessionRule));
 
   @Before
   public void setUp() {

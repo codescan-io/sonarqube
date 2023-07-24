@@ -49,7 +49,8 @@ public class ProjectAlmSettingDaoTest {
 
   private DbSession dbSession = db.getSession();
   private UuidFactory uuidFactory = mock(UuidFactory.class);
-  private ProjectAlmSettingDao underTest = new ProjectAlmSettingDao(system2, uuidFactory, new NoOpAuditPersister());
+  private ProjectAlmSettingDao underTest = new ProjectAlmSettingDao(system2, uuidFactory, new NoOpAuditPersister(null,
+          null));
 
   @Test
   public void select_by_project() {

@@ -87,7 +87,7 @@ public class ChangePasswordActionTest {
 
   private final UserUpdater userUpdater = new UserUpdater(mock(NewUserNotifier.class), db.getDbClient(),
     new UserIndexer(db.getDbClient(), es.client()), new DefaultGroupFinder(db.getDbClient()),
-    new MapSettings().asConfig(), new NoOpAuditPersister(), localAuthentication);
+    new MapSettings().asConfig(), new NoOpAuditPersister(dao, userSession), localAuthentication);
 
   private final JwtHttpHandler jwtHttpHandler = mock(JwtHttpHandler.class);
 

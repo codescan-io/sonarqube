@@ -50,7 +50,7 @@ public class ScrollForFileMoveComponentDaoTest {
 
   private Random random = new Random();
   private DbSession dbSession = db.getSession();
-  private ComponentDao underTest = new ComponentDao(new NoOpAuditPersister());
+  private ComponentDao underTest = new ComponentDao(new NoOpAuditPersister(null, null));
 
   @Test
   public void scrollAllFilesForFileMove_has_no_effect_if_project_does_not_exist() {

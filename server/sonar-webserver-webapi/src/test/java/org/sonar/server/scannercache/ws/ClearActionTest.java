@@ -54,7 +54,7 @@ public class ClearActionTest {
   public DbTester dbTester = DbTester.create(System2.INSTANCE);
 
   private final ScannerAnalysisCacheDao dao = new ScannerAnalysisCacheDao();
-  private final ProjectDao projectDao = new ProjectDao(System2.INSTANCE, new NoOpAuditPersister());
+  private final ProjectDao projectDao = new ProjectDao(System2.INSTANCE, new NoOpAuditPersister(dao, userSession));
   private final BranchDao branchDao = new BranchDao(System2.INSTANCE);
   private final ScannerCache cache = new ScannerCache(dbTester.getDbClient(), dao, projectDao, branchDao);
   private final ClearAction ws = new ClearAction(userSession, cache);

@@ -19,6 +19,11 @@
  */
 package org.sonar.db.audit;
 
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import javax.annotation.Priority;
 import org.sonar.db.DbSession;
 import org.sonar.db.audit.model.ComponentKeyNewValue;
@@ -27,6 +32,7 @@ import org.sonar.db.audit.model.DevOpsPlatformSettingNewValue;
 import org.sonar.db.audit.model.AbstractEditorNewValue;
 import org.sonar.db.audit.model.GroupPermissionNewValue;
 import org.sonar.db.audit.model.LicenseNewValue;
+import org.sonar.db.audit.model.NewValue;
 import org.sonar.db.audit.model.PermissionTemplateNewValue;
 import org.sonar.db.audit.model.PersonalAccessTokenNewValue;
 import org.sonar.db.audit.model.PluginNewValue;
@@ -38,9 +44,85 @@ import org.sonar.db.audit.model.UserNewValue;
 import org.sonar.db.audit.model.UserPermissionNewValue;
 import org.sonar.db.audit.model.UserTokenNewValue;
 import org.sonar.db.audit.model.WebhookNewValue;
+import org.sonar.server.user.ThreadLocalUserSession;
 
 @Priority(2)
 public class NoOpAuditPersister implements AuditPersister {
+
+  private static final Set<String> TRACKED_PROPERTIES = Set.of(
+          "sonar.forceAuthentication",
+          "sonar.developerAggregatedInfo.disabled",
+          "sonar.scm.disabled",
+          "sonar.core.serverBaseURL",
+          "sonar.validateWebhooks",
+          "sonar.plugins.risk.consent",
+          "email.smtp_host.secured",
+          "email.smtp_password.secured",
+          "email.smtp_port.secured",
+          "email.smtp_secure_connection.secured",
+          "email.smtp_username.secured",
+          "sonar.auth.github.allowUsersToSignUp",
+          "sonar.auth.github.apiUrl",
+          "sonar.auth.github.clientId.secured",
+          "sonar.auth.github.clientSecret.secured",
+          "sonar.auth.github.enabled",
+          "sonar.auth.github.groupsSync",
+          "sonar.auth.github.organizations",
+          "sonar.auth.github.webUrl",
+          "sonar.auth.gitlab.allowUsersToSignUp",
+          "sonar.auth.gitlab.applicationId.secured",
+          "sonar.auth.gitlab.enabled",
+          "sonar.auth.gitlab.secret.secured",
+          "sonar.auth.gitlab.groupsSync",
+          "sonar.auth.gitlab.url",
+          "defaultTemplate.prj",
+          "defaultTemplate.app",
+          "defaultTemplate.port",
+          "sonar.auth.saml.applicationId",
+          "sonar.auth.saml.certificate.secured",
+          "sonar.auth.saml.enabled",
+          "sonar.auth.saml.group.name",
+          "sonar.auth.saml.loginUrl",
+          "sonar.auth.saml.providerId",
+          "sonar.auth.saml.providerName",
+          "sonar.auth.saml.user.email",
+          "sonar.auth.saml.user.login",
+          "sonar.auth.saml.user.name",
+          "sonar.auth.saml.signature.enabled",
+          "sonar.auth.saml.sp.certificate.secured",
+          "sonar.auth.saml.sp.privateKey.secured",
+          "sonar.auth.token.max.allowed.lifetime"
+  );
+
+  private static final Map<String, AuditCategory> COMPONENT_QUALIFIERS = Map.of(
+          "VW", AuditCategory.PORTFOLIO,
+          "APP", AuditCategory.APPLICATION,
+          "TRK", AuditCategory.PROJECT);
+
+  private final AuditDao dao;
+
+  private final ThreadLocalUserSession userSession;
+
+//  public DbAuditPersister(AuditDao dao, ThreadLocalUserSession paramThreadLocalUserSession) {
+//    this.dao = dao;
+//    this.userSession = paramThreadLocalUserSession;
+//  }
+//
+//  public DbAuditPersister(AuditDao dao) {
+//    this.dao = dao;
+//    this.userSession = null;
+//  }
+
+  public NoOpAuditPersister(AuditDao dao, ThreadLocalUserSession userSession) {
+    this.dao = dao;
+    this.userSession = userSession;
+  }
+
+  @Override
+  public boolean isTrackedProperty(String paramString) {
+    return TRACKED_PROPERTIES.contains(paramString);
+  }
+
   @Override
   public void addUserGroup(DbSession dbSession, String organizationUuid, UserGroupNewValue newValue) {
     // no op
@@ -53,6 +135,7 @@ public class NoOpAuditPersister implements AuditPersister {
 
   @Override
   public void deleteUserGroup(DbSession dbSession, String organizationUuid, UserGroupNewValue newValue) {
+    persist(dbSession, organizationUuid, AuditCategory.USER_GROUP, AuditOperation.DELETE, newValue);
     // no op
   }
 
@@ -286,10 +369,10 @@ public class NoOpAuditPersister implements AuditPersister {
     // no op
   }
 
-  @Override
-  public boolean isTrackedProperty(String propertyKey) {
-    return false;
-  }
+//  @Override
+//  public boolean isTrackedProperty(String propertyKey) {
+//    return false;
+//  }
 
   @Override
   public void addComponent(DbSession dbSession, ComponentNewValue newValue) {
@@ -319,5 +402,103 @@ public class NoOpAuditPersister implements AuditPersister {
   @Override
   public void componentKeyBranchUpdate(DbSession session, ComponentKeyNewValue componentKeyNewValue, String qualifier) {
     // no op
+  }
+
+  private void persist(DbSession dbSession, String organizationUuid, @Nullable String component, AuditOperation operation,
+          NewValue paramNewValue) {
+    getAuditCategory(component).ifPresent(category -> persist(dbSession, organizationUuid, category, operation, paramNewValue));
+  }
+
+  private void persist(DbSession dbSession, String organizationUuid, AuditCategory category, AuditOperation operation,
+          @Nullable NewValue paramNewValue) {
+    dao.insert(dbSession, buildAuditDto(organizationUuid, category, operation, paramNewValue));
+  }
+
+  private static Optional<AuditCategory> getAuditCategory(@Nullable String paramString) {
+    return Optional.ofNullable(paramString).map(COMPONENT_QUALIFIERS::get);
+  }
+
+  private AuditDto buildAuditDto(String organizationUuid, AuditCategory category, AuditOperation operation, @Nullable NewValue newValue) {
+    AuditDto auditDto = new AuditDto();
+    auditDto.setOrganizationUuid(organizationUuid != null ? organizationUuid : "");
+    if (userSession == null) {
+      withSystemUser(auditDto);
+    } else if (userSession.hasSession()) {
+      withUserSession(auditDto);
+    } else {
+      withoutUserSession(newValue, auditDto);
+    }
+    auditDto.setCategory(category.name());
+    auditDto.setOperation(operation.name());
+    auditDto.setNewValue((newValue == null) ? "{}" : newValue.toString());
+    return auditDto;
+  }
+
+  private void withUserSession(AuditDto paramAuditDto) {
+    if (userSession.isLoggedIn()) {
+      withRegularUser(paramAuditDto);
+    } else if (userSession.isSystemAdministrator()) {
+      withSystemUser(paramAuditDto);
+    } else {
+      withUnauthenticatedUser(paramAuditDto);
+    }
+  }
+
+  private static void withoutUserSession(@CheckForNull NewValue paramNewValue, AuditDto paramAuditDto) {
+    if (isNewValueAllowedWithoutUserSession(paramNewValue)) {
+      withUserExctractedFromNewValue(paramAuditDto, paramNewValue);
+    } else {
+      withUnauthenticatedUser(paramAuditDto);
+    }
+  }
+
+  private static boolean isNewValueAllowedWithoutUserSession(@CheckForNull NewValue newValue) {
+    if (newValue instanceof UserNewValue) {
+      return true;
+    }
+
+    if (newValue instanceof UserGroupNewValue userGroupNewValue) {
+      return userGroupNewValue.getUserUuid() != null && userGroupNewValue.getUserLogin() != null;
+    }
+
+    return false;
+  }
+
+  private static void withUserExctractedFromNewValue(AuditDto paramAuditDto, @CheckForNull NewValue paramNewValue) {
+    if (paramNewValue instanceof UserNewValue userValue) {
+      withUserValue(paramAuditDto, userValue);
+    } else if (paramNewValue instanceof UserGroupNewValue userGroupValue) {
+      withUserGroupValue(paramAuditDto, userGroupValue);
+    }
+  }
+
+  private static void withUserValue(AuditDto paramAuditDto, UserNewValue userValue) {
+    paramAuditDto.setUserLogin(userValue.getUserLogin());
+    paramAuditDto.setUserUuid(userValue.getUserUuid());
+    paramAuditDto.setUserTriggered(true);
+  }
+
+  private static void withUserGroupValue(AuditDto auditDto, UserGroupNewValue userGroupValue) {
+    auditDto.setUserLogin(userGroupValue.getUserLogin());
+    auditDto.setUserUuid(userGroupValue.getUserUuid());
+    auditDto.setUserTriggered(true);
+  }
+
+  private void withRegularUser(AuditDto auditDto) {
+    auditDto.setUserLogin(this.userSession.getLogin());
+    auditDto.setUserUuid(this.userSession.getUuid());
+    auditDto.setUserTriggered(true);
+  }
+
+  private static void withSystemUser(AuditDto auditDto) {
+    auditDto.setUserLogin("System");
+    auditDto.setUserUuid("-");
+    auditDto.setUserTriggered(false);
+  }
+
+  private static void withUnauthenticatedUser(AuditDto auditDto) {
+    auditDto.setUserLogin("Unauthenticated user");
+    auditDto.setUserUuid("-");
+    auditDto.setUserTriggered(false);
   }
 }

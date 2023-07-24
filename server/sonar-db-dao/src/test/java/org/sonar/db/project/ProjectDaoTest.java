@@ -65,7 +65,7 @@ public class ProjectDaoTest {
 
   private final AuditPersister auditPersister = mock(AuditPersister.class);
 
-  private final ProjectDao projectDao = new ProjectDao(system2, new NoOpAuditPersister());
+  private final ProjectDao projectDao = new ProjectDao(system2, new NoOpAuditPersister(null, null));
   private final ProjectDao projectDaoWithAuditPersister = new ProjectDao(system2, auditPersister);
 
   @Test

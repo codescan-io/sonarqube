@@ -63,7 +63,7 @@ public class UserPermissionDaoTest {
   public DbTester db = DbTester.create(System2.INSTANCE);
 
   private DbSession dbSession = db.getSession();
-  private UserPermissionDao underTest = new UserPermissionDao(new NoOpAuditPersister());
+  private UserPermissionDao underTest = new UserPermissionDao(new NoOpAuditPersister(null, null));
 
   @Test
   public void select_global_permissions() {

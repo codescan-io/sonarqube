@@ -52,7 +52,8 @@ public class GenerateSecretKeyActionTest {
   private DbClient dbClient = db.getDbClient();
   private MapSettings settings = new MapSettings();
   private Encryption encryption = settings.getEncryption();
-  private GenerateSecretKeyAction underTest = new GenerateSecretKeyAction(dbClient, settings, userSession, new NoOpAuditPersister());
+  private GenerateSecretKeyAction underTest = new GenerateSecretKeyAction(dbClient, settings, userSession, new NoOpAuditPersister(
+          dao, userSession));
   private WsActionTester ws = new WsActionTester(underTest);
 
   @Test
