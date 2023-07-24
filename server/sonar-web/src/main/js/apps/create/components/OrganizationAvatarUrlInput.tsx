@@ -20,15 +20,13 @@
 import * as React from 'react';
 import classNames from 'classnames';
 import { isWebUri } from 'valid-url';
-import ValidationInput from "../../../components/controls/ValidationInput";
 import { translate } from "../../../helpers/l10n";
-import OrganizationAvatar from "../../organizations/components/OrganizationAvatar";
+import ValidationInput from "../../../components/controls/ValidationInput";
 import { getWhiteListDomains } from '../../../../js/api/organizations';
 import { throwGlobalError } from '../../../../js/helpers/error';
 
 interface Props {
   initialValue?: string;
-  name?: string;
   onChange: (value: string | undefined) => void;
 }
 
@@ -39,7 +37,7 @@ interface State {
   value: string;
 }
 
-export default class OrganizationAvatarInput extends React.PureComponent<Props, State> {
+export default class OrganizationAvatarUrlInput extends React.PureComponent<Props, State> {
   state: State = {error: undefined, editing: false, touched: false, value: ''};
   whiteListDomains: string[] = [];
 
@@ -50,17 +48,16 @@ export default class OrganizationAvatarInput extends React.PureComponent<Props, 
     throwGlobalError)
   }
 
-
-  componentDidMount() {
-    this.fetchWhiteListDomains();
+  async componentDidMount() {
+    await this.fetchWhiteListDomains();
     setTimeout(()=>{
       if (this.props.initialValue) {
         const value = this.props.initialValue;
         const error = this.validateUrl(value);
         this.setState({error, touched: Boolean(error), value});
       }
-    },0);
-  }
+    },0)
+  }  
 
   handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.currentTarget.value.trim();
@@ -108,7 +105,6 @@ export default class OrganizationAvatarInput extends React.PureComponent<Props, 
     if (url.length > 0 && !isWebUri(url) ){
       return translate('onboarding.create_organization.url.error');
     }
-
     if(url.length > 0 && !this.isValidDomain(url)){
       return translate('onboarding.create_organization.url.domain.error');
     }
@@ -117,40 +113,26 @@ export default class OrganizationAvatarInput extends React.PureComponent<Props, 
 
   render() {
     const isInvalid = this.state.touched && !this.state.editing && this.state.error !== undefined;
-    const isValidUrl = this.state.error === undefined && this.state.value !== '';
-    const isValid = this.state.touched && isValidUrl;
+    const isValid = this.state.touched && this.state.error === undefined && this.state.value !== '';
     return (
         <ValidationInput
-            description={translate('onboarding.create_organization.avatar.description')}
             error={this.state.error}
             isInvalid={isInvalid}
             isValid={isValid}
             labelHtmlFor="organization-avatar"
             label={translate('onboarding.create_organization.avatar')}>
-          <>
-            {(isValidUrl || this.props.name) && (
-                <OrganizationAvatar
-                    className="display-block spacer-bottom"
-                    organization={{
-                      avatar: isValidUrl ? this.state.value : undefined,
-                      name: this.props.name || ''
-                    }}
-                />
-            )}
-            <input
-                className={classNames('input-super-large', 'text-middle', {
-                  'is-invalid': isInvalid,
-                  'is-valid': isValid
-                })}
-                id="organization-avatar"
-                onBlur={this.handleBlur}
-                onChange={this.handleChange}
-                onFocus={this.handleFocus}
-                placeholder={translate('onboarding.create_organization.avatar.placeholder')}
-                type="text"
-                value={this.state.value}
-            />
-          </>
+          <input
+              className={classNames('input-super-large', 'text-middle', {
+                'is-invalid': isInvalid,
+                'is-valid': isValid
+              })}
+              id="organization-avatar"
+              onBlur={this.handleBlur}
+              onChange={this.handleChange}
+              onFocus={this.handleFocus}
+              type="text"
+              value={this.state.value}
+          />
         </ValidationInput>
     );
   }

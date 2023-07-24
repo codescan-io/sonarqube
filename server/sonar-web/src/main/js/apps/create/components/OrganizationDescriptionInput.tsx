@@ -27,7 +27,6 @@ import HelpTooltip from "../../../components/controls/HelpTooltip";
 interface Props {
   initialValue?: string;
   showHelpIcon: boolean;
-  isEditMode: boolean;
   onChange: (value: string | undefined) => void;
 }
 
@@ -39,7 +38,7 @@ interface State {
   
 }
 
-export default class OrganizationNameInput extends React.PureComponent<Props, State> {
+export default class OrganizationDescriptionInput extends React.PureComponent<Props, State> {
   mounted = false;
   constructor(props: Props) {
     super(props);
@@ -51,7 +50,7 @@ export default class OrganizationNameInput extends React.PureComponent<Props, St
     this.mounted = true;
     if (this.props.initialValue !== undefined) {
       this.setState({ value: this.props.initialValue });
-      this.validateKey(this.props.initialValue);
+      this.validateDescription(this.props.initialValue);
     }
   }
 
@@ -59,50 +58,30 @@ export default class OrganizationNameInput extends React.PureComponent<Props, St
     this.mounted = false;
   }
 
-  checkFreeKey = (key: string | undefined) => {
+  checkFreeKey = (key: string) => {
     this.setState({ validating: false });
     this.setState({ error: undefined});
     this.props.onChange(key)
   };
 
-  handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  handleChange = (event: React.ChangeEvent<any>) => {
     const { value } = event.currentTarget;
     this.setState({ touched: true, value });
-    this.validateKey(value);
+    this.validateDescription(value);
   };
 
-  validateKey(key: string) {
-  
-    if(this.props.isEditMode){
-      if(key.length === 0){
-        this.setState({
-          error: translate('onboarding.create_organization.organization_name.required'),
-          touched: true
-        });
-        this.props.onChange(undefined);
-      }else if (key.length > 80 || !/^[a-z0-9A-Z][A-Za-z0-9-]*[A-Za-z0-9]?$/.test(key)) {
-        this.setState({
-          error: translate('onboarding.create_organization.organization_name.error'),
-          touched: true
-        });
-        this.props.onChange(undefined);
-      } else {
-        this.checkFreeKey(key);
-      }
-    }else{
-      if(key.length == 0){
-        this.checkFreeKey("");
-      }else if (key.length > 80 || !/^[a-z0-9A-Z][A-Za-z0-9-]*[A-Za-z0-9]?$/.test(key)) {
-        this.setState({
-          error: translate('onboarding.create_organization.organization_name.error'),
-          touched: true
-        });
-        this.props.onChange(undefined);
-      } else {
-        this.checkFreeKey(key);
-      }
+  validateDescription(desc: string) {
+    if(desc.length == 0){
+      this.checkFreeKey("");
+    }else if (desc.length > 256 || !/^[A-Za-z0-9][A-Za-z0-9- ]*[A-Za-z0-9]?$/.test(desc)) {
+      this.setState({
+        error: translate('onboarding.create_organization.organization_name.error'),
+        touched: true
+      });
+      this.props.onChange(undefined);
+    } else {
+      this.checkFreeKey(desc);
     }
-     
   }
 
   render() {
@@ -111,22 +90,21 @@ export default class OrganizationNameInput extends React.PureComponent<Props, St
     const {showHelpIcon} = this.props;
     return (
       <ValidationInput
-        required={true}
         error={this.state.error}
         isInvalid={isInvalid}
         isValid={isValid}
         label={translate('onboarding.create_organization.organization_name')}>
         <div className="display-inline-flex-center">
-          <input
+          <textarea
             className={classNames('input-super-large', {
               'is-invalid': isInvalid,
               'is-valid': isValid
             })}
-            id="organization-name"
-            maxLength={80}
+            id="organization-description"
+            maxLength={256}
             onChange={this.handleChange}
-            type="text"
             value={this.state.value}
+            rows={3}
           />
           {
             showHelpIcon ? (<HelpTooltip
