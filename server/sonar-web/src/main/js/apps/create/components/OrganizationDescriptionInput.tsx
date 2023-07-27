@@ -73,7 +73,7 @@ export default class OrganizationDescriptionInput extends React.PureComponent<Pr
   validateDescription(desc: string) {
     if(desc.length == 0){
       this.checkFreeKey("");
-    }else if (desc.length > 256 || !/^[A-Za-z0-9][A-Za-z0-9- ]*[A-Za-z0-9]?$/.test(desc)) {
+    }else if (desc.length > 256 || !/^[A-Za-z0-9][A-Za-z0-9-. ]*[A-Za-z0-9]?$/.test(desc)) {
       this.setState({
         error: translate('onboarding.create_organization.organization_name.error'),
         touched: true
