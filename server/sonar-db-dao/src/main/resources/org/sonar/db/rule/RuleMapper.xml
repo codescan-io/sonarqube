@@ -519,11 +519,12 @@
       and organization_uuid=#{organizationUuid,jdbcType=VARCHAR}
   </update>
 
-  <delete id="deleteMetadata" parameterType="String">
+  <delete id="deleteMetadata" parameterType="org.sonar.db.rule.RuleMetadataDto">
     delete from
       rules_metadata
     where
-      rule_uuid=#{uuid,jdbcType=INTEGER}
+      rule_uuid=#{ruleUuid,jdbcType=VARCHAR}
+      and organization_uuid=#{organizationUuid,jdbcType=VARCHAR}
   </delete>
 
   <delete id="deleteParams" parameterType="String">
