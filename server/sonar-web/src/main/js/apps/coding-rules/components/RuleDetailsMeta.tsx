@@ -227,6 +227,8 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
 
   render() {
     const { ruleDetails } = this.props;
+    const { organization } = this.props;
+
     const hasTypeData = !ruleDetails.isExternal || ruleDetails.type !== 'UNKNOWN';
     return (
       <div className="js-rule-meta">
@@ -237,7 +239,7 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
               <Link
                 className="coding-rules-detail-permalink link-no-underline spacer-left text-middle"
                 title={translate('permalink')}
-                to={getRuleUrl(ruleDetails.key, ruleDetails.organization)}
+                to={getRuleUrl(ruleDetails.key, organization)}
               >
                 <LinkIcon />
               </Link>
