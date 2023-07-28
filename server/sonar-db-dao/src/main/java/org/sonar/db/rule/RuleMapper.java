@@ -94,7 +94,7 @@ public interface RuleMapper {
 
   void insertMetadata(RuleMetadataDto ruleMetadataDto);
 
-  void deleteMetadata(@Param("uuid") String uuid);
+  void deleteMetadata(RuleMetadataDto ruleMetadataDto);
 
   void updateMetadata(RuleMetadataDto ruleMetadataDto);
 }

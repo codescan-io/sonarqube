@@ -289,7 +289,7 @@ public class RuleDao implements Dao {
   @VisibleForTesting
   void insertOrUpdateRuleMetadata(DbSession session, RuleMetadataDto ruleMetadataDto) {
     if (ruleMetadataDto.isUndefined()) {
-      mapper(session).deleteMetadata(ruleMetadataDto.getRuleUuid());
+      mapper(session).deleteMetadata(ruleMetadataDto);
     } else if (mapper(session).countMetadata(ruleMetadataDto) > 0) {
       mapper(session).updateMetadata(ruleMetadataDto);
     } else {
