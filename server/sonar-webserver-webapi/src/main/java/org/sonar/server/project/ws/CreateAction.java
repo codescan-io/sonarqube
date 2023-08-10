@@ -21,6 +21,8 @@ package org.sonar.server.project.ws;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
@@ -53,6 +55,7 @@ import static org.sonarqube.ws.client.project.ProjectsWsParameters.PARAM_VISIBIL
 
 public class CreateAction implements ProjectsWsAction {
 
+  private static final Logger LOG = LoggerFactory.getLogger(CreateAction.class);
   private final DbClient dbClient;
   private final UserSession userSession;
   private final ComponentUpdater componentUpdater;
@@ -132,7 +135,9 @@ public class CreateAction implements ProjectsWsAction {
         userSession.isLoggedIn() ? userSession.getUuid() : null,
         userSession.isLoggedIn() ? userSession.getLogin() : null,
         request.getMainBranchKey());
-      return toCreateResponse(componentDto);
+      CreateWsResponse response = toCreateResponse(componentDto);
+      LOG.info("Project creation is successful: {}", response.getProject().getKey());
+      return response;
     }
   }
 

@@ -19,6 +19,8 @@
  */
 package org.sonar.server.usergroups.ws;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
@@ -42,6 +44,7 @@ import static org.sonar.server.usergroups.ws.GroupWsSupport.defineLoginWsParamet
 
 public class RemoveUserAction implements UserGroupsWsAction {
 
+  private static final Logger LOG = LoggerFactory.getLogger(RemoveUserAction.class);
   private final DbClient dbClient;
   private final UserSession userSession;
   private final GroupWsSupport support;
@@ -85,7 +88,7 @@ public class RemoveUserAction implements UserGroupsWsAction {
 
       dbClient.userGroupDao().delete(dbSession, group, user);
       dbSession.commit();
-
+      LOG.info("User removed successfully: {}", login);
       response.noContent();
     }
   }

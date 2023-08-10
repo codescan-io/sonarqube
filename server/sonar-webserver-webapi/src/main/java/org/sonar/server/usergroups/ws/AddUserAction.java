@@ -19,6 +19,8 @@
  */
 package org.sonar.server.usergroups.ws;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
@@ -45,6 +47,7 @@ import static org.sonar.server.usergroups.ws.GroupWsSupport.defineLoginWsParamet
 
 public class AddUserAction implements UserGroupsWsAction {
 
+  private static final Logger LOG = LoggerFactory.getLogger(AddUserAction.class);
   private final DbClient dbClient;
   private final UserSession userSession;
   private final GroupWsSupport support;
@@ -90,7 +93,7 @@ public class AddUserAction implements UserGroupsWsAction {
         dbClient.userGroupDao().insert(dbSession, membershipDto, group.getName(), login);
         dbSession.commit();
       }
-
+      LOG.info("User added successfully: {}", login);
       response.noContent();
     }
   }
