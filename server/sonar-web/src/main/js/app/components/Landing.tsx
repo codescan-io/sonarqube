@@ -31,13 +31,14 @@ export function Landing({ currentUser }: LandingProps) {
   let redirectUrl: To;
     if(isLoggedIn(currentUser)) {
       if(!currentUser.onboarded){
-          this.props.router.replace('/home');
-      }
-      else if (currentUser.homepage) {
+        redirectUrl = '/home'
+      }else{
+        if (currentUser.homepage) {
           redirectUrl = getHomePageUrl(currentUser.homepage);
         } else {
           redirectUrl = '/projects';
         }
+      }
     } else {
       redirectUrl = '/sessions/new';
     }
