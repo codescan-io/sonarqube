@@ -56,7 +56,7 @@ public class CspFilter implements Filter {
             "script-src 'self' https://www.googletagmanager.com https://pendo-io-static.storage.googleapis.com "
                     + "https://app.pendo.io https://cdn.pendo.io https://data.pendo.io https://edge.fullstory.com "
                     + "https://rs.fullstory.com https://ssl.google-analytics.com/ga.js "
-                    + "https://static.zdassets.com/ekr/snippet.js?key=98ba4b78-5aed-46c5-af86-5e07d588c632 "
+                    + "https://static.zdassets.com/ekr/snippet.js "
                     + "https://connect.facebook.net/en_US/fbevents.js "
                     + "https://snap.licdn.com/li.lms-analytics/insight.min.js 'unsafe-inline' 'unsafe-eval'");
 
