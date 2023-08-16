@@ -21,7 +21,6 @@ import * as React from 'react';
 import { Navigate, To } from 'react-router-dom';
 import { getHomePageUrl } from '../../helpers/urls';
 import { CurrentUser, isLoggedIn } from '../../types/users';
-import withCurrentUserContext from './current-user/withCurrentUserContext';
 
 export interface LandingProps {
   currentUser: CurrentUser;
@@ -30,16 +29,18 @@ export interface LandingProps {
 export function Landing({ currentUser }: LandingProps) {
   let redirectUrl: To;
     if(isLoggedIn(currentUser)) {
-      if (currentUser.homepage) {
+      if(!currentUser.onboarded){
+        redirectUrl = '/home'
+      }else{
+        if (currentUser.homepage) {
           redirectUrl = getHomePageUrl(currentUser.homepage);
         } else {
           redirectUrl = '/projects';
         }
+      }
     } else {
       redirectUrl = '/sessions/new';
     }
 
   return <Navigate to={redirectUrl} replace={true} />;
 }
-
-export default withCurrentUserContext(Landing);
