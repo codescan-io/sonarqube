@@ -102,6 +102,5 @@ export function setHomePage(homepage: HomePage): Promise<void | Response> {
 }
 
 export function skipOnboarding(): Promise<void | Response> {
-  //TODO need to update the logic based on the new API
   return post('/api/users/onboarded').catch(throwGlobalError);
 }
