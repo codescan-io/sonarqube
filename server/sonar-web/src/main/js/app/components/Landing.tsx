@@ -21,6 +21,7 @@ import * as React from 'react';
 import { Navigate, To } from 'react-router-dom';
 import { getHomePageUrl } from '../../helpers/urls';
 import { CurrentUser, isLoggedIn } from '../../types/users';
+import withCurrentUserContext from './current-user/withCurrentUserContext';
 
 export interface LandingProps {
   currentUser: CurrentUser;
@@ -44,3 +45,5 @@ export function Landing({ currentUser }: LandingProps) {
 
   return <Navigate to={redirectUrl} replace={true} />;
 }
+
+export default withCurrentUserContext(Landing);
