@@ -53,23 +53,25 @@ class Home extends React.PureComponent<Props, State> {
         this.mounted = false;
     }
 
-    handleProjectsClick = () => {
+    handleProjectsClick = async() => {
         const url = "projects";
         const type: any = {type:"PROJECTS"}
-        Promise.all([setHomePage(type),
-                     skipOnboarding()]).then(()=>{
-            window.location.href = window.location.href.replace("home",url);
-        }); 
+
+        await setHomePage(type);
+        await skipOnboarding();
+
+        window.location.href = window.location.href.replace("home",url);
     }
 
-    handlePolicyClick = () => { 
+    handlePolicyClick = async() => { 
         const defaultOrg = (this.props.currentUser as any).orgGroups[0].organizationKey;
         const type: any = {type:"POLICY_RESULTS", organization: defaultOrg}
-        Promise.all([setHomePage(type),
-                     skipOnboarding()]).then(()=>{
-            const url = "organizations/"+defaultOrg+"/policy-results";
-            window.location.href = window.location.href.replace("home",url);
-        }); 
+        
+        await setHomePage(type);
+        await skipOnboarding();
+        
+        const url = "organizations/"+defaultOrg+"/policy-results";
+        window.location.href = window.location.href.replace("home",url);  
     }
 
     render() {
