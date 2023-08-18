@@ -31,26 +31,30 @@ export interface LandingProps {
   currentUser: CurrentUser;
 }
 
-export function Landing({ appState, currentUser }: LandingProps) {
+function getRedirectURL(currentUser: any){
+  let redirectUrl: To = "";
+  if(currentUser.homepage) {
+    redirectUrl = getHomePageUrl(currentUser.homepage);
+  } else {
+    redirectUrl = '/projects';
+  }
+  return redirectUrl;
+}
+
+function Landing({ appState, currentUser }: LandingProps) {
   const { whiteLabel } = appState
-  let redirectUrl: To;
+  let redirectUrl: To = "";
+
   if(isLoggedIn(currentUser)) {
-    if(isDeploymentForCodeScan(whiteLabel)){
-      if(!currentUser.onboarded){
+    if(isDeploymentForCodeScan(whiteLabel)) {
+      if(!currentUser.onboarded) {
         redirectUrl = '/home'
-      }else{
-        if (currentUser.homepage) {
-          redirectUrl = getHomePageUrl(currentUser.homepage);
-        } else {
-          redirectUrl = '/projects';
-        }
-      }
-    }else if(isDeploymentForAmazon(whiteLabel)){
-      if (currentUser.homepage) {
-        redirectUrl = getHomePageUrl(currentUser.homepage);
       } else {
-        redirectUrl = '/projects';
+        redirectUrl = getRedirectURL(currentUser);
       }
+    } else if(isDeploymentForAmazon(whiteLabel)) {
+      redirectUrl = getRedirectURL(currentUser);
+    }      
   } else {
     redirectUrl = '/sessions/new';
   }
@@ -59,3 +63,7 @@ export function Landing({ appState, currentUser }: LandingProps) {
 }
 
 export default withCurrentUserContext(withAppStateContext(Landing));
+
+
+
+
