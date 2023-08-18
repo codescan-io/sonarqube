@@ -54,9 +54,6 @@
   background-color: #f2dede;
   color: #862422;
   height: 30px;
-  width: 100%;
-  z-index: 100 !important;
-  position: fixed;
 }
 .org-alert-inner{
     max-width: 1290px;
@@ -77,12 +74,4 @@
 .org-alert .msg{
   float:left;
   padding: 7px;
-}
-
-.org-alert + .layout-page{
-  margin-top: 30px;
-}
-
-.org-alert + .layout-page .layout-page-side.projects-page-side{
-  top: 150px !important;
 }
