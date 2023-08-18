@@ -66,6 +66,10 @@
   border-color: var(--darkBlue);
 }
 
+.button:disabled,
+.button:disabled:active,
+.button:disabled:focus,
+.button:disabled:hover,
 .button.disabled {
   color: var(--disableGrayText) !important;
   border-color: var(--disableGrayBorder) !important;
