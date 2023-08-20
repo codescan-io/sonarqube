@@ -38,6 +38,7 @@ import org.sonar.db.DbSession;
 import org.sonar.db.RowNotFoundException;
 import org.sonar.db.es.RuleExtensionId;
 import org.sonar.db.organization.OrganizationDto;
+import org.sonar.server.qualityprofile.RuleDefinitionDto;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.Collections.emptyList;
@@ -126,6 +127,10 @@ public class RuleDao implements Dao {
 
   public List<RuleDto> selectByQuery(DbSession session, RuleQuery ruleQuery) {
     return mapper(session).selectByQuery(ruleQuery);
+  }
+
+  public List<RuleDefinitionDto> selectAllDefinitions(DbSession session) {
+    return mapper(session).selectAllDefinitions();
   }
 
   public void insert(DbSession session, RuleDto ruleDto) {

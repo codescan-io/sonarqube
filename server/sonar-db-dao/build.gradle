@@ -18,8 +18,9 @@ dependencies {
   api project(':server:sonar-db-core')
   api project(':server:sonar-db-migration')
   api project(':sonar-core')
+    implementation project(path: ':server:sonar-webserver-auth')
 
-  compileOnlyApi 'com.google.code.findbugs:jsr305'
+    compileOnlyApi 'com.google.code.findbugs:jsr305'
 
   testImplementation 'com.tngtech.java:junit-dataprovider'
   testImplementation 'commons-dbutils:commons-dbutils'

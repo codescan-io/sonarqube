@@ -27,10 +27,12 @@ import org.apache.ibatis.session.ResultHandler;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rules.RuleQuery;
 import org.sonar.db.es.RuleExtensionId;
+import org.sonar.server.qualityprofile.RuleDefinitionDto;
 
 public interface RuleMapper {
 
   List<RuleDto> selectAll(@Param("organizationUuid") String organizationUuid);
+  List<RuleDefinitionDto> selectAllDefinitions();
 
   List<RuleDto> selectAllRules();
 

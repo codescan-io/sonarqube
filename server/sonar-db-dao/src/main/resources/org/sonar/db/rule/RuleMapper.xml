@@ -43,6 +43,33 @@
     r.education_principles as "educationPrinciplesField"
   </sql>
 
+  <sql id="selectDefinitionColumns">
+    r.uuid,
+    r.plugin_rule_key as "ruleKey",
+    r.plugin_name as "repositoryKey",
+    r.description,
+    r.description_format as "descriptionFormat",
+    r.status,
+    r.name,
+    r.plugin_config_key as "configKey",
+    r.priority as "severity",
+    r.is_template as "isTemplate",
+    r.is_external as "isExternal",
+    r.is_ad_hoc as "isAdHoc",
+    r.language as "language",
+    r.template_uuid as "templateUuid",
+    r.organization_uuid as "organizationUuid",
+    r.def_remediation_function as "defRemediationFunction",
+    r.def_remediation_gap_mult as "defRemediationGapMultiplier",
+    r.def_remediation_base_effort as "defRemediationBaseEffort",
+    r.gap_description as "gapDescription",
+    r.system_tags as "systemTagsField",
+    r.security_standards as "securityStandardsField",
+    r.rule_type as "type",
+    r.plugin_key as "pluginKey",
+    r.scope,
+  </sql>
+
   <sql id="leftOuterJoinRulesMetadata">
     left outer join rules_metadata rm on
       rm.rule_uuid = r.uuid
@@ -68,6 +95,19 @@
     r.uuid as "r_uuid",
 
     <include refid="ruleColumns"/>
+  </sql>
+
+  <select id="selectAllDefinitions" resultType="org.sonar.db.rule.RuleDefinitionDto">
+    select
+    <include refid="selectRuleTableColumns"/>
+    from
+    rules r
+  </select>
+
+  <sql id="selectRuleTableColumns">
+    <include refid="selectDefinitionColumns"/>
+    r.created_at as "createdAt",
+    r.updated_at as "updatedAt"
   </sql>
 
   <select id="selectAll" resultMap="ruleResultMap">
