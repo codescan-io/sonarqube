@@ -72,8 +72,12 @@ const OrganizationApp: React.FC<OrganizationAppProps> = ({ currentUser, userOrga
     return null;
   }
 
+  console.log('1', organization)
+  console.log('2', userOrganizations)
+  console.log('3', currentUser)
   const isMember = userOrganizations.find(o => o.kee == organization.kee);
   const isSysAdmin = hasGlobalPermission(currentUser, Permissions.Admin);
+  console.log('4', isMember, isSysAdmin)
   if (!isMember && !isSysAdmin) {
     return <NotFound withContainer={false} />;
   }
