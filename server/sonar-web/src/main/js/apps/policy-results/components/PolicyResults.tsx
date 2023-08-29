@@ -105,7 +105,6 @@ class PolicyResults extends React.PureComponent<Props, State> {
     
 
     handleChange = ({target} : any) => {
-        console.log('option changed :: ', target.value)
         
         this.setState({selectedOption:target.value});
         this.fetchComponent(target.value);
@@ -360,12 +359,7 @@ class PolicyResults extends React.PureComponent<Props, State> {
       };
 
     render(){
-        const {currentUser, organization} = {...this.props}
         const {loading, component, branchLike, branchLikes, loadingProjects, projects, selectedOption} = {...this.state}
-        console.log("------ Current User -------");
-        console.log(currentUser);
-        console.log("------ Organization -------");
-        console.log(organization)
         const branchSupportEnabled = false;
         const projectBinding:any = {};
         const style = {
@@ -393,27 +387,28 @@ class PolicyResults extends React.PureComponent<Props, State> {
                             }
                     </div>
                 </div>
-
-        {!loading && component?.analysisDate ?  (
-            <div style={style}> 
-          <BranchOverview
-            branch={branchLike}
-            branchesEnabled={branchSupportEnabled}
-            component={component}
-            projectBinding={projectBinding}
-            grc={true}
-          />
-          </div>
-        ): (<div className='spacer-top'><DeferredSpinner className="spacer-right" loading={true} /></div>)}    
-            </>)}
-
-                            
-        
+        {!loadingProjects && projects?.length >0 ? (<>
+              {!loading ? (<>
+                {component?.analysisDate ? (
+                  <div style={style}> 
+                    <BranchOverview
+                      branch={branchLike}
+                      branchesEnabled={branchSupportEnabled}
+                      component={component}
+                      projectBinding={projectBinding}
+                      grc={true}
+                    />
+                  </div>):( <div className='spacer-top'> No Data Found</div>)
+                }
+              </>):(<>
+                <div className='spacer-top'><DeferredSpinner className="spacer-right" loading={true} /></div>
+              </>)}
+          </>) : 
+          (<></>)}
+        </>)}
         </div>
     </>
     }
 }
   
   export default withCurrentUserContext(withOrganizationContext(withBranchStatusActions(withAvailableFeatures(PolicyResults))));
-
-  

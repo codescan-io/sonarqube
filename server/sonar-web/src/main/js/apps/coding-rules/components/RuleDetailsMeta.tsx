@@ -41,6 +41,7 @@ interface Props {
   hideSimilarRulesFilter?: boolean;
   onFilterChange: (changes: Partial<Query>) => void;
   onTagsChange: (tags: string[]) => void;
+  organization: string;
   referencedRepositories: Dict<{ key: string; language: string; name: string }>;
   ruleDetails: RuleDetails;
 }
@@ -101,6 +102,7 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
                 setTags={this.props.onTagsChange}
                 sysTags={sysTags}
                 tags={tags}
+                organization={this.props.organization}
               />
             }
             overlayPlacement={PopupPlacement.BottomLeft}
@@ -165,7 +167,7 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
       <li className="coding-rules-detail-property">
         {translate('coding_rules.custom_rule')}
         {' ('}
-        <Link to={getRuleUrl(ruleDetails.templateKey)}>
+        <Link to={getRuleUrl(ruleDetails.templateKey, ruleDetails.organization)}>
           {translate('coding_rules.show_template')}
         </Link>
         {')'}
@@ -225,6 +227,8 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
 
   render() {
     const { ruleDetails } = this.props;
+    const { organization } = this.props;
+
     const hasTypeData = !ruleDetails.isExternal || ruleDetails.type !== 'UNKNOWN';
     return (
       <div className="js-rule-meta">
@@ -235,7 +239,7 @@ export default class RuleDetailsMeta extends React.PureComponent<Props> {
               <Link
                 className="coding-rules-detail-permalink link-no-underline spacer-left text-middle"
                 title={translate('permalink')}
-                to={getRuleUrl(ruleDetails.key)}
+                to={getRuleUrl(ruleDetails.key, organization)}
               >
                 <LinkIcon />
               </Link>

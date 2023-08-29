@@ -23,6 +23,7 @@ export interface CurrentUser {
   usingSonarLintConnectedMode?: boolean;
   dismissedNotices: { [key: string]: boolean };
   groups?:string[];
+  onboarded: boolean;
 }
 
 export interface Notice {
@@ -63,7 +64,9 @@ export type HomePage =
   | { type: 'ORGANIZATION'; organization: string }
   | { type: 'PORTFOLIOS' }
   | { type: 'PROJECT'; branch: string | undefined; component: string }
-  | { type: 'PROJECTS' };
+  | { type: 'PROJECTS' }
+  | { type: 'POLICY_RESULTS'; organization: string };
+  
 
 export interface CurrentUserSetting {
   key: CurrentUserSettingNames;

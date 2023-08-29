@@ -37,13 +37,13 @@ public class CspFilterTest {
 
   private static final String TEST_CONTEXT = "/sonarqube";
   private static final String EXPECTED = "default-src 'self'; " +
-    "base-uri 'none'; " +
-    "connect-src 'self' http: https:; " +
-    "img-src * data: blob:; " +
-    "object-src 'none'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-    "style-src 'self' 'unsafe-inline'; " +
-    "worker-src 'none'";
+          "base-uri 'none'; " +
+          "connect-src 'self' http: https:; " +
+          "img-src * data: blob:; " +
+          "object-src 'none'; " +
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+          "style-src 'self' 'unsafe-inline'; " +
+          "worker-src 'none'";
   private final ServletContext servletContext = mock(ServletContext.class, RETURNS_MOCKS);
   private final HttpServletResponse response = mock(HttpServletResponse.class);
   private final FilterChain chain = mock(FilterChain.class);

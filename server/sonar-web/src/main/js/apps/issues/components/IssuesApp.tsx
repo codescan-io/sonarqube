@@ -350,7 +350,7 @@ export class App extends React.PureComponent<Props, State> {
       return;
     }
     this.setState({ loadingRule: true });
-    const openRuleDetails = await getRuleDetails({ key: openIssue.rule, organization: this.props.organization?.kee})
+    const openRuleDetails = await getRuleDetails({ key: openIssue.rule, organization: openIssue.organization})
       .then((response) => response.rule)
       .catch(() => undefined);
     if (this.mounted) {
@@ -1080,7 +1080,7 @@ export class App extends React.PureComponent<Props, State> {
 
             {this.renderBulkChange()}
             <PageActions
-              canSetHome={!this.props.component}
+              canSetHome={!this.props.organization && !this.props.component}
               effortTotal={this.state.effortTotal}
               paging={paging}
               selectedIndex={selectedIndex}
@@ -1102,12 +1102,14 @@ export class App extends React.PureComponent<Props, State> {
       paging,
       loadingRule,
     } = this.state;
+    const organization = this.props.organization?.kee;
     return (
       <div className="layout-page-main-inner">
         <DeferredSpinner loading={loadingRule}>
           {openIssue && openRuleDetails ? (
             <>
               <IssueHeader
+                organization={organization}
                 issue={openIssue}
                 ruleDetails={openRuleDetails}
                 branchLike={fillBranchLike(openIssue.branch, openIssue.pullRequest)}

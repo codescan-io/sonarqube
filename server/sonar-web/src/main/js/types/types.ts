@@ -260,9 +260,11 @@ export interface Issue {
   line?: number;
   message: string;
   messageFormattings?: MessageFormatting[];
+  organization: string;
   project: string;
   projectName: string;
   projectKey: string;
+  projectOrganization: string;
   pullRequest?: string;
   resolution?: string;
   rule: string;
