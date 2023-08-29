@@ -27,6 +27,8 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.sonar.api.server.ws.WebService;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 import org.sonar.api.web.ServletFilter;
 import org.sonar.server.authentication.JwtHttpHandler;
 import org.sonar.server.authentication.event.AuthenticationEvent;
@@ -44,6 +46,7 @@ public class LogoutAction extends ServletFilter implements AuthenticationWsActio
 
   private final JwtHttpHandler jwtHttpHandler;
   private final AuthenticationEvent authenticationEvent;
+  private final Logger logger = Loggers.get(LogoutAction.class);
 
   public LogoutAction(JwtHttpHandler jwtHttpHandler, AuthenticationEvent authenticationEvent) {
     this.jwtHttpHandler = jwtHttpHandler;
@@ -77,6 +80,7 @@ public class LogoutAction extends ServletFilter implements AuthenticationWsActio
   }
 
   private void logout(HttpServletRequest request, HttpServletResponse response) {
+    logger.info("Logout request from host {}", request.getRemoteHost());
     generateAuthenticationEvent(request, response);
     jwtHttpHandler.removeToken(request, response);
   }
