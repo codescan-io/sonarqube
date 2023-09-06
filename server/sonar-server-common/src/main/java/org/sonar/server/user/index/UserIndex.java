@@ -92,9 +92,9 @@ public class UserIndex {
 
   public SearchResult<UserDoc> search(UserQuery userQuery, SearchOptions options) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
-            .size(options.getLimit())
-            .from(options.getOffset())
-            .sort(FIELD_NAME, SortOrder.ASC);
+      .size(options.getLimit())
+      .from(options.getOffset())
+      .sort(FIELD_NAME, SortOrder.ASC);
 
     BoolQueryBuilder filter = boolQuery().must(termQuery(FIELD_ACTIVE, userQuery.isActive()));
     // UserQuery for Search Members API uses a single organization.
@@ -111,12 +111,12 @@ public class UserIndex {
     Optional<String> textQuery = userQuery.getTextQuery();
     if (textQuery.isPresent()) {
       esQuery = QueryBuilders.multiMatchQuery(textQuery.get(),
-                      FIELD_LOGIN,
-                      USER_SEARCH_GRAMS_ANALYZER.subField(FIELD_LOGIN),
-                      FIELD_NAME,
-                      USER_SEARCH_GRAMS_ANALYZER.subField(FIELD_NAME),
-                      FIELD_EMAIL,
-        USER_SEARCH_GRAMS_ANALYZER.subField(FIELD_EMAIL))
+          FIELD_LOGIN,
+          USER_SEARCH_GRAMS_ANALYZER.subField(FIELD_LOGIN),
+          FIELD_NAME,
+          USER_SEARCH_GRAMS_ANALYZER.subField(FIELD_NAME),
+          FIELD_EMAIL,
+          USER_SEARCH_GRAMS_ANALYZER.subField(FIELD_EMAIL))
         .operator(Operator.AND);
     }
 

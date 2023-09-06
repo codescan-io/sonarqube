@@ -83,22 +83,12 @@ public class SearchAction implements UsersWsAction {
   public void define(WebService.NewController controller) {
     WebService.NewAction action = controller.createAction("search")
       .setDescription("Get a list of users. By default, only active users are returned.<br/>" +
-        "The following fields are only returned when user has Administer System permission or for logged-in in user "
-        + "or for Organization Admin :" +
-        "<ul>" +
-        "   <li>'email'</li>" +
-        "   <li>'externalIdentity'</li>" +
-        "   <li>'externalProvider'</li>" +
-        "   <li>'groups'</li>" +
-        "   <li>'lastConnectionDate'</li>" +
-        "   <li>'tokensCount'</li>" +
-        "</ul>" +
-        "Field 'lastConnectionDate' is only updated every hour, so it may not be accurate, for instance when a user authenticates many " +
-        "times in less than one hour.")
+        "Requires 'Administer System' permission at an Organization Level or at Global Level." +
+        " For Organization Admins, list of users part of the organization(s) are returned")
       .setSince("3.6")
       .setChangelog(
         new Change("9.9", "Organization Admin can access Email and Last Connection Info of all members of the "
-          + "organization"),
+          + "organization. API is accessible only for System Administrators or Organization Administrators"),
         new Change("9.7", "New parameter 'deactivated' to optionally search for deactivated users"),
         new Change("7.7", "New field 'lastConnectionDate' is added to response"),
         new Change("7.4", "External identity is only returned to system administrators"),
@@ -199,8 +189,7 @@ public class SearchAction implements UsersWsAction {
         userBuilder.setScmAccounts(ScmAccounts.newBuilder().addAllScmAccounts(user.getScmAccountsAsList()));
       }
     }
-    if (userSession.isSystemAdministrator() || Objects.equals(userSession.getUuid(), user.getUuid())
-      || showEmailAndLastConnectionInfo) {
+    if (userSession.isSystemAdministrator() || showEmailAndLastConnectionInfo) {
       ofNullable(user.getEmail()).ifPresent(userBuilder::setEmail);
       if (!groups.isEmpty()) {
         userBuilder.setGroups(Groups.newBuilder().addAllGroups(groups));
@@ -208,7 +197,7 @@ public class SearchAction implements UsersWsAction {
       ofNullable(user.getExternalLogin()).ifPresent(userBuilder::setExternalIdentity);
       ofNullable(tokensCount).ifPresent(userBuilder::setTokensCount);
       ofNullable(user.getLastConnectionDate()).ifPresent(
-              date -> userBuilder.setLastConnectionDate(formatDateTime(date)));
+        date -> userBuilder.setLastConnectionDate(formatDateTime(date)));
     }
     return userBuilder.build();
   }
