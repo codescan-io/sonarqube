@@ -83,27 +83,28 @@ public class SearchAction implements UsersWsAction {
   public void define(WebService.NewController controller) {
     WebService.NewAction action = controller.createAction("search")
       .setDescription("Get a list of users. By default, only active users are returned.<br/>" +
-              "The following fields are only returned when user has Administer System permission or for logged-in in user "
-              + "or for Organization Admin :" +
-              "<ul>" +
-              "   <li>'email'</li>" +
-              "   <li>'externalIdentity'</li>" +
-              "   <li>'externalProvider'</li>" +
-              "   <li>'groups'</li>" +
-              "   <li>'lastConnectionDate'</li>" +
-              "   <li>'tokensCount'</li>" +
-              "</ul>" +
-              "Field 'lastConnectionDate' is only updated every hour, so it may not be accurate, for instance when a user authenticates many times in less than one hour.")
+        "The following fields are only returned when user has Administer System permission or for logged-in in user "
+        + "or for Organization Admin :" +
+        "<ul>" +
+        "   <li>'email'</li>" +
+        "   <li>'externalIdentity'</li>" +
+        "   <li>'externalProvider'</li>" +
+        "   <li>'groups'</li>" +
+        "   <li>'lastConnectionDate'</li>" +
+        "   <li>'tokensCount'</li>" +
+        "</ul>" +
+        "Field 'lastConnectionDate' is only updated every hour, so it may not be accurate, for instance when a user authenticates many " +
+        "times in less than one hour.")
       .setSince("3.6")
       .setChangelog(
-              new Change("9.9", "Organization Admin can access Email and Last Connection Info of all members of the "
-                      + "organization"),
-              new Change("9.7", "New parameter 'deactivated' to optionally search for deactivated users"),
-              new Change("7.7", "New field 'lastConnectionDate' is added to response"),
-              new Change("7.4", "External identity is only returned to system administrators"),
-              new Change("6.4", "Paging response fields moved to a Paging object"),
-              new Change("6.4", "Avatar has been added to the response"),
-              new Change("6.4", "Email is only returned when user has Administer System permission"))
+        new Change("9.9", "Organization Admin can access Email and Last Connection Info of all members of the "
+          + "organization"),
+        new Change("9.7", "New parameter 'deactivated' to optionally search for deactivated users"),
+        new Change("7.7", "New field 'lastConnectionDate' is added to response"),
+        new Change("7.4", "External identity is only returned to system administrators"),
+        new Change("6.4", "Paging response fields moved to a Paging object"),
+        new Change("6.4", "Avatar has been added to the response"),
+        new Change("6.4", "Email is only returned when user has Administer System permission"))
       .setHandler(this)
       .setResponseExample(getClass().getResource("search-example.json"));
 
@@ -144,12 +145,12 @@ public class SearchAction implements UsersWsAction {
     SearchOptions options = new SearchOptions().setPage(request.getPage(), request.getPageSize());
     if (!isSystemAdmin) {
       List<String> userOrganizations =
-              userIndex.search(UserQuery.builder().setActive(true).setTextQuery(userSession.getLogin()).build(),
-                      options).getDocs().get(0).organizationUuids();
+        userIndex.search(UserQuery.builder().setActive(true).setTextQuery(userSession.getLogin()).build(),
+          options).getDocs().get(0).organizationUuids();
       var orgsWithUserAsAdmin =
-              userOrganizations.stream().filter(o -> userSession.hasPermission(OrganizationPermission.ADMINISTER, o))
-                      .collect(
-                              Collectors.toList());
+        userOrganizations.stream().filter(o -> userSession.hasPermission(OrganizationPermission.ADMINISTER, o))
+          .collect(
+            Collectors.toList());
       if (!orgsWithUserAsAdmin.isEmpty()) {
         userQuery.addOrganizationUuids(orgsWithUserAsAdmin);
         showEmailAndLastConnectionInfo = true;
@@ -158,35 +159,35 @@ public class SearchAction implements UsersWsAction {
       }
     }
     SearchResult<UserDoc> result = userIndex.search(
-            userQuery.setActive(!request.isDeactivated()).setTextQuery(request.getQuery()).build(), options);
+      userQuery.setActive(!request.isDeactivated()).setTextQuery(request.getQuery()).build(), options);
     try (DbSession dbSession = dbClient.openSession(false)) {
       List<String> logins = result.getDocs().stream().map(UserDoc::login).collect(toList());
       Multimap<String, String> groupsByLogin = dbClient.groupMembershipDao().selectGroupsByLogins(dbSession, logins);
       List<UserDto> users = dbClient.userDao().selectByOrderedLogins(dbSession, logins);
       Map<String, Integer> tokenCountsByLogin = dbClient.userTokenDao().countTokensByUsers(dbSession, users);
       Paging paging = forPageIndex(request.getPage()).withPageSize(request.getPageSize())
-              .andTotal((int) result.getTotal());
+        .andTotal((int) result.getTotal());
       return buildResponse(users, groupsByLogin, tokenCountsByLogin, paging, showEmailAndLastConnectionInfo);
     }
   }
 
   private SearchWsResponse buildResponse(List<UserDto> users, Multimap<String, String> groupsByLogin,
-          Map<String, Integer> tokenCountsByLogin, Paging paging,
-          boolean showEmailAndLastConnectionInfo) {
+    Map<String, Integer> tokenCountsByLogin, Paging paging,
+    boolean showEmailAndLastConnectionInfo) {
     SearchWsResponse.Builder responseBuilder = newBuilder();
     users.forEach(user -> responseBuilder.addUsers(
-            towsUser(user, firstNonNull(tokenCountsByLogin.get(user.getUuid()), 0),
-                    groupsByLogin.get(user.getLogin()), showEmailAndLastConnectionInfo)));
+      towsUser(user, firstNonNull(tokenCountsByLogin.get(user.getUuid()), 0),
+        groupsByLogin.get(user.getLogin()), showEmailAndLastConnectionInfo)));
     responseBuilder.getPagingBuilder()
-            .setPageIndex(paging.pageIndex())
-            .setPageSize(paging.pageSize())
-            .setTotal(paging.total())
-            .build();
+      .setPageIndex(paging.pageIndex())
+      .setPageSize(paging.pageSize())
+      .setTotal(paging.total())
+      .build();
     return responseBuilder.build();
   }
 
   private User towsUser(UserDto user, @Nullable Integer tokensCount, Collection<String> groups,
-          boolean showEmailAndLastConnectionInfo) {
+    boolean showEmailAndLastConnectionInfo) {
     User.Builder userBuilder = User.newBuilder().setLogin(user.getLogin());
     ofNullable(user.getName()).ifPresent(userBuilder::setName);
     if (userSession.isLoggedIn()) {
@@ -199,7 +200,7 @@ public class SearchAction implements UsersWsAction {
       }
     }
     if (userSession.isSystemAdministrator() || Objects.equals(userSession.getUuid(), user.getUuid())
-            || showEmailAndLastConnectionInfo) {
+      || showEmailAndLastConnectionInfo) {
       ofNullable(user.getEmail()).ifPresent(userBuilder::setEmail);
       if (!groups.isEmpty()) {
         userBuilder.setGroups(Groups.newBuilder().addAllGroups(groups));
