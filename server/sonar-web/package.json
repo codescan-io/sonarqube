@@ -8,6 +8,7 @@
     "@emotion/react": "11.10.5",
     "@emotion/styled": "11.10.5",
     "@types/react-select": "^5.0.1",
+    "ar-chat-bot": "0.0.3",
     "classnames": "2.3.2",
     "clipboard": "2.0.11",
     "core-js": "3.26.1",
@@ -117,7 +118,9 @@
     "validate-ci": "yarn install --immutable && yarn dep-check && yarn test --coverage --maxWorkers=4 --ci",
     "check-ci": "yarn install --immutable && yarn ts-check && yarn format-check",
     "update-cwes": "node scripts/update-cwes.js",
-    "dep-check": "node scripts/validate-package-json.js"
+    "dep-check": "node scripts/validate-package-json.js",
+    "co:login": "aws codeartifact login --tool npm --repository ar-ui-modules --domain autorabit",
+    "prepare": "npm run co:login"
   },
   "engines": {
     "node": ">=8"

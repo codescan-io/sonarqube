@@ -26,6 +26,9 @@ import { getBaseUrl, getSystemStatus } from '../helpers/system';
 import './styles/sonar.ts';
 import { getUserOrganizations } from "../api/organizations";
 
+import { defineCustomElement } from "ar-chat-bot/dist/components/ar-chat-bot"
+defineCustomElement();
+
 installWebAnalyticsHandler();
 installExtensionsHandler();
 initApplication();

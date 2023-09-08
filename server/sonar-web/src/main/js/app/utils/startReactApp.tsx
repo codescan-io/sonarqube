@@ -250,6 +250,7 @@ export default function startReactApp(
           <CurrentUserContextProvider currentUser={currentUser} userOrganizations={userOrganizations}>
             <IntlProvider defaultLocale={lang} locale={lang}>
               <GlobalMessagesContainer />
+              <ar-chat-bot product="Codescan"></ar-chat-bot>
               <BrowserRouter basename={getBaseUrl()}>
                 <Routes>
                   {renderRedirects()}
