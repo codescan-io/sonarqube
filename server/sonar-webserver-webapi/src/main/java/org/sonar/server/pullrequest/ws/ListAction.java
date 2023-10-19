@@ -148,12 +148,15 @@ public class ListAction implements PullRequestWsAction {
 
         ProjectPullRequests.PullRequest.Builder builder = ProjectPullRequests.PullRequest.newBuilder();
         builder.setKey(branch.getKey());
+        builder.setBranch(branch.getKey());
 
-        DbProjectBranches.PullRequestData pullRequestData = requireNonNull(branch.getPullRequestData(),
-                "Pull request data should be available for branch type PULL_REQUEST");
-        builder.setBranch(pullRequestData.getBranch());
-        ofNullable(emptyToNull(pullRequestData.getUrl())).ifPresent(builder::setUrl);
-        ofNullable(emptyToNull(pullRequestData.getTitle())).ifPresent(builder::setTitle);
+        // The additional PR information might be optionally specified inside data attribute.
+        DbProjectBranches.PullRequestData pullRequestData = branch.getPullRequestData();
+        if (pullRequestData != null) {
+            builder.setBranch(pullRequestData.getBranch());
+            ofNullable(emptyToNull(pullRequestData.getUrl())).ifPresent(builder::setUrl);
+            ofNullable(emptyToNull(pullRequestData.getTitle())).ifPresent(builder::setTitle);
+        }
 
         if (mergeBranch.isPresent()) {
             String mergeBranchKey = mergeBranch.get().getKey();
