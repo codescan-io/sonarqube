@@ -154,6 +154,7 @@ public class ListAction implements PullRequestWsAction {
         DbProjectBranches.PullRequestData pullRequestData = branch.getPullRequestData();
         if (pullRequestData != null) {
             builder.setBranch(pullRequestData.getBranch());
+            builder.setTarget(pullRequestData.getTarget());
             ofNullable(emptyToNull(pullRequestData.getUrl())).ifPresent(builder::setUrl);
             ofNullable(emptyToNull(pullRequestData.getTitle())).ifPresent(builder::setTitle);
         }
@@ -161,14 +162,9 @@ public class ListAction implements PullRequestWsAction {
         if (mergeBranch.isPresent()) {
             String mergeBranchKey = mergeBranch.get().getKey();
             builder.setBase(mergeBranchKey);
+            builder.setTarget(mergeBranchKey);
         } else {
             builder.setIsOrphan(true);
-        }
-
-        if (StringUtils.isNotEmpty(pullRequestData.getTarget())) {
-            builder.setTarget(pullRequestData.getTarget());
-        } else if (mergeBranch.isPresent()) {
-            builder.setTarget(mergeBranch.get().getKey());
         }
 
         ofNullable(analysisDate).ifPresent(builder::setAnalysisDate);
