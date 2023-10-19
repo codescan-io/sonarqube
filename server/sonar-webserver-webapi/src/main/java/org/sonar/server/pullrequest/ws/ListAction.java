@@ -146,7 +146,6 @@ public class ListAction implements PullRequestWsAction {
 
         ProjectPullRequests.PullRequest.Builder builder = ProjectPullRequests.PullRequest.newBuilder();
         builder.setKey(branch.getKey());
-        builder.setBranch(branch.getKey());
 
         // The additional PR information might be optionally specified inside data attribute.
         DbProjectBranches.PullRequestData pullRequestData = branch.getPullRequestData();
@@ -155,6 +154,9 @@ public class ListAction implements PullRequestWsAction {
             builder.setTarget(pullRequestData.getTarget());
             ofNullable(emptyToNull(pullRequestData.getUrl())).ifPresent(builder::setUrl);
             ofNullable(emptyToNull(pullRequestData.getTitle())).ifPresent(builder::setTitle);
+        } else {
+            builder.setBranch(branch.getKey());
+            builder.setTitle(branch.getKey());
         }
 
         if (mergeBranch.isPresent()) {
