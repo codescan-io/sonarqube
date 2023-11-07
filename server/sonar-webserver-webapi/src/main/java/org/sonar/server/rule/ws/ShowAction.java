@@ -98,30 +98,54 @@ public class ShowAction implements RulesWsAction {
 
     action.createParam(PARAM_ORGANIZATION)
             .setDescription("Organization key")
-            .setRequired(true)
+            .setRequired(false)
             .setExampleValue("my-org");
   }
 
   @Override
   public void handle(Request request, Response response) throws Exception {
     RuleKey key = RuleKey.parse(request.mandatoryParam(PARAM_KEY));
-    try (DbSession dbSession = dbClient.openSession(false)) {
-      OrganizationDto organization = ruleWsSupport.getOrganizationByKey(dbSession, request.mandatoryParam(PARAM_ORGANIZATION));
-      RuleDto rule = dbClient.ruleDao().selectByKey(dbSession, organization.getUuid(), key)
-        .orElseThrow(() -> new NotFoundException(format("Rule not found: %s", key)));
+    if (request.getParam(PARAM_ORGANIZATION) != null) {
+      try (DbSession dbSession = dbClient.openSession(false)) {
+        OrganizationDto organization = ruleWsSupport.getOrganizationByKey(dbSession,
+                request.mandatoryParam(PARAM_ORGANIZATION));
+        RuleDto rule = dbClient.ruleDao().selectByKey(dbSession, organization.getUuid(), key)
+                .orElseThrow(() -> new NotFoundException(format("Rule not found: %s", key)));
 
-      List<RuleDto> templateRules = ofNullable(rule.getTemplateUuid())
-        .flatMap(templateUuid -> dbClient.ruleDao().selectByUuid(rule.getTemplateUuid(), dbSession))
-        .map(Collections::singletonList).orElseGet(Collections::emptyList);
+        List<RuleDto> templateRules = ofNullable(rule.getTemplateUuid())
+                .flatMap(templateUuid -> dbClient.ruleDao().selectByUuid(rule.getTemplateUuid(), dbSession))
+                .map(Collections::singletonList).orElseGet(Collections::emptyList);
 
-      List<RuleParamDto> ruleParameters = dbClient.ruleDao().selectRuleParamsByRuleUuids(dbSession, singletonList(rule.getUuid()));
-      ShowResponse showResponse = buildResponse(dbSession, organization, request,
-        new SearchAction.SearchResult()
-          .setRules(singletonList(rule))
-          .setTemplateRules(templateRules)
-          .setRuleParameters(ruleParameters)
-          .setTotal(1L));
-      writeProtobuf(showResponse, request, response);
+        List<RuleParamDto> ruleParameters = dbClient.ruleDao()
+                .selectRuleParamsByRuleUuids(dbSession, singletonList(rule.getUuid()));
+        ShowResponse showResponse = buildResponse(dbSession, organization, request,
+                new SearchAction.SearchResult()
+                        .setRules(singletonList(rule))
+                        .setTemplateRules(templateRules)
+                        .setRuleParameters(ruleParameters)
+                        .setTotal(1L));
+        writeProtobuf(showResponse, request, response);
+      }
+    } else {
+      try (DbSession dbSession = dbClient.openSession(false)) {
+
+        RuleDto rule = dbClient.ruleDao().selectByKey(dbSession, key)
+                .orElseThrow(() -> new NotFoundException(format("Rule not found: %s", key)));
+        OrganizationDto organization = ruleWsSupport.getOrganizationByUuid(dbSession, rule.getOrganizationUuid());
+        List<RuleDto> templateRules = ofNullable(rule.getTemplateUuid())
+                .flatMap(templateUuid -> dbClient.ruleDao().selectByUuid(rule.getTemplateUuid(), dbSession))
+                .map(Collections::singletonList).orElseGet(Collections::emptyList);
+
+        List<RuleParamDto> ruleParameters = dbClient.ruleDao()
+                .selectRuleParamsByRuleUuids(dbSession, singletonList(rule.getUuid()));
+        ShowResponse showResponse = buildResponse(dbSession, organization, request,
+                new SearchAction.SearchResult()
+                        .setRules(singletonList(rule))
+                        .setTemplateRules(templateRules)
+                        .setRuleParameters(ruleParameters)
+                        .setTotal(1L));
+        writeProtobuf(showResponse, request, response);
+      }
     }
   }
 

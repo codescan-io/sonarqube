@@ -95,6 +95,13 @@ public class RuleWsSupport {
             "No organization with key '%s'", organizationKey);
   }
 
+  public OrganizationDto getOrganizationByUuid(DbSession dbSession, String uuid) {
+    return checkFoundWithOptional(
+            dbClient.organizationDao().selectByUuid(dbSession, uuid),
+            "No organization with key '%s'", uuid);
+  }
+
+
   Map<String, UserDto> getUsersByUuid(DbSession dbSession, List<RuleDto> rules) {
     Set<String> userUuids = rules.stream().map(RuleDto::getNoteUserUuid).filter(Objects::nonNull).collect(toSet());
     return dbClient.userDao().selectByUuids(dbSession, userUuids).stream().collect(uniqueIndex(UserDto::getUuid));
