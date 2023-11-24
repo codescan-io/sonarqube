@@ -26,6 +26,7 @@ import static org.sonar.application.EsStartupOnlyManagedProcess.Status.KO;
 import static org.sonar.application.EsStartupOnlyManagedProcess.Status.RED;
 import static org.sonar.application.EsStartupOnlyManagedProcess.Status.YELLOW;
 import static org.sonar.process.ProcessProperties.Property.CLUSTER_SEARCH_HOSTS;
+import static org.sonar.process.ProcessProperties.Property.CLUSTER_SEARCH_PASSWORD;
 
 import com.google.common.net.HostAndPort;
 import java.io.InputStream;
@@ -64,7 +65,7 @@ public class EsStartupOnlyManagedProcess implements ManagedProcess {
         Set<HostAndPort> hostAndPorts = Arrays.stream(searchHosts.split(","))
                 .map(HostAndPort::fromString)
                 .collect(Collectors.toSet());
-        this.esConnector = new EsConnectorImpl(hostAndPorts, null);
+        this.esConnector = new EsConnectorImpl(hostAndPorts, props.value(CLUSTER_SEARCH_PASSWORD.getKey()));
     }
 
     @Override
