@@ -85,9 +85,8 @@ public class DefaultHighlighting extends DefaultStorable implements NewHighlight
     try {
       newRange = inputFile.newRange(startLine, startLineOffset, endLine, endLineOffset);
     } catch (Exception e) {
-      newRange = inputFile.newRange(1, 1, 1, 1);
-      LOG.debug("Unable to highlight file " + inputFile, e);
-      //throw new IllegalArgumentException("Unable to highlight file " + inputFile, e);
+      LOG.debug("Unable to highlight file ");
+      throw new CodescanException(" ");
     }
     return highlight(newRange, typeOfText);
   }
