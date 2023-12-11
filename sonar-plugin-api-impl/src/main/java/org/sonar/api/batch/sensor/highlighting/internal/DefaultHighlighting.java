@@ -30,6 +30,8 @@ import org.sonar.api.batch.sensor.highlighting.TypeOfText;
 import org.sonar.api.batch.sensor.internal.SensorStorage;
 import org.sonar.api.batch.fs.internal.DefaultInputFile;
 import org.sonar.api.batch.sensor.internal.DefaultStorable;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 
 import static java.util.Objects.requireNonNull;
 import static org.sonar.api.utils.Preconditions.checkState;
@@ -38,6 +40,7 @@ public class DefaultHighlighting extends DefaultStorable implements NewHighlight
 
   private final List<SyntaxHighlightingRule> syntaxHighlightingRules;
   private DefaultInputFile inputFile;
+  private static final Logger LOG = Loggers.get(DefaultHighlighting.class);
 
   public DefaultHighlighting(SensorStorage storage) {
     super(storage);
@@ -78,11 +81,13 @@ public class DefaultHighlighting extends DefaultStorable implements NewHighlight
   @Override
   public DefaultHighlighting highlight(int startLine, int startLineOffset, int endLine, int endLineOffset, TypeOfText typeOfText) {
     checkInputFileNotNull();
-    TextRange newRange;
+    TextRange newRange ;
     try {
       newRange = inputFile.newRange(startLine, startLineOffset, endLine, endLineOffset);
     } catch (Exception e) {
-      throw new IllegalArgumentException("Unable to highlight file " + inputFile, e);
+      newRange = inputFile.newRange(0, 0, 0, 0);
+      LOG.debug("Unable to highlight file " + inputFile, e);
+      //throw new IllegalArgumentException("Unable to highlight file " + inputFile, e);
     }
     return highlight(newRange, typeOfText);
   }
