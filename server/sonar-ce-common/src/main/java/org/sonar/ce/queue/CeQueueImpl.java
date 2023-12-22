@@ -291,8 +291,7 @@ public class CeQueueImpl implements CeQueue {
     if (deletedTasks == 1) {
       dbSession.commit();
     } else {
-      Loggers.get(CeQueueImpl.class).debug(
-              "Remove rolled back because task in queue with uuid {} and status {} could not be deleted",
+      LOGGER.debug("Remove rolled back because task in queue with uuid {} and status {} could not be deleted",
               taskUuid, expectedQueueDtoStatus);
       dbSession.rollback();
     }
