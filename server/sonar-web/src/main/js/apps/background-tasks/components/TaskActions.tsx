@@ -92,7 +92,8 @@ export default class TaskActions extends React.PureComponent<Props, State> {
     const { component, task } = this.props;
 
     const canFilter = component === undefined && task.componentName;
-    const canCancel = (task.status === TaskStatuses.Pending || task.type === TaskTypes.Report);
+    const canCancel = task.status === TaskStatuses.Pending || (task.status === TaskStatuses.InProgress && task.type ===
+     TaskTypes.Report);
     const canShowStacktrace = task.errorMessage !== undefined;
     const canShowWarnings = task.warningCount !== undefined && task.warningCount > 0;
     const hasActions =
