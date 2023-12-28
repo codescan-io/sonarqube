@@ -70,17 +70,17 @@ public class SyntaxHighlightingSensor implements Sensor {
 
   private static void processLine(File highlightingFile, int lineNumber, NewHighlighting highlighting, String line) {
     try {
-      LOG.debug("Line value for the file is: {}", line);
+      LOG.info("Line value for the file is: {}", line);
       String[] split = line.split(":");
       if (split.length == 5) {
         int startLine = parseInt(split[0]);
         int startLineOffset = parseInt(split[1]);
         int endLine = parseInt(split[2]);
         int endLineOffset = parseInt(split[3]);
-        LOG.debug("StartLine value for the file is: {}", startLine);
-        LOG.debug("startLine offset value for the file is: {}", startLineOffset);
-        LOG.debug("endLine value for the file is: {}", endLine);
-        LOG.debug("endLine offset value for the file is: {}", line);
+        LOG.info("StartLine value for the file is: {}", startLine);
+        LOG.info("startLine offset value for the file is: {}", startLineOffset);
+        LOG.info("endLine value for the file is: {}", endLine);
+        LOG.info("endLine offset value for the file is: {}", line);
         highlighting.highlight(startLine, startLineOffset, endLine, endLineOffset, TypeOfText.forCssClass(split[4]));
       } else {
         throw new IllegalStateException("Illegal number of elements separated by ':'. " +
