@@ -112,12 +112,6 @@ export function SonarLintConnection({ appState, currentUser }: Props) {
               <h1 className="big-spacer-top big-spacer-bottom">
                 {translate('sonarlint-connection.request.title')}
               </h1>
-              <img
-                alt=""
-                aria-hidden={true}
-                className="big-spacer-top big-spacer-bottom"
-                src="/images/SonarLint-connection-request.png"
-              />
               <p className="big big-spacer-top big-spacer-bottom">
                 {translateWithParameters('sonarlint-connection.request.description', ideName)}
               </p>
