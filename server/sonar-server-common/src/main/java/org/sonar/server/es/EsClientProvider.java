@@ -58,13 +58,14 @@ public class EsClientProvider {
 
     // mandatory property defined by bootstrap process
     esSettings.put("cluster.name", config.get(CLUSTER_NAME.getKey()).get());
+    boolean clusterEnabled = config.getBoolean(CLUSTER_ENABLED.getKey()).orElse(false);
+    boolean searchNode = !clusterEnabled || SEARCH.equals(NodeType.parse(config.get(CLUSTER_NODE_TYPE.getKey()).orElse(null)));
 
-    //boolean clusterEnabled = config.getBoolean(CLUSTER_ENABLED.getKey()).orElse(false);
-    //boolean searchNode = !clusterEnabled || SEARCH.equals(NodeType.parse(config.get(CLUSTER_NODE_TYPE.getKey()).orElse(null)));
     List<HttpHost> httpHosts;
-    if (StringUtils.isNotBlank(config.get(CLUSTER_SEARCH_HOSTS.getKey()).orElse(null))){
-      httpHosts = getHttpHosts(config);
+    LOGGER.info("clusterEnabled && !searchNode : {}", (clusterEnabled && !searchNode));
 
+    if (clusterEnabled && !searchNode) {
+      httpHosts = getHttpHosts(config);
       LOGGER.info("Connected to remote Elasticsearch: [{}]", displayedAddresses(httpHosts));
     } else {
       // defaults provided in:
