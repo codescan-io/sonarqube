@@ -90,6 +90,9 @@ allprojects {
       }
     }
     mavenCentral()
+    maven{
+      url 	"https://maven.scijava.org/content/repositories/public/"
+    }
   }
 
   task allDependencies {
