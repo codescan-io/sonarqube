@@ -90,8 +90,8 @@ allprojects {
       }
     }
     mavenCentral()
-    maven{
-      url 	"https://maven.scijava.org/content/repositories/public/"
+    maven {
+      url 'https://jitpack.io'
     }
   }
 
