@@ -84,7 +84,7 @@ export class GlobalNavUser extends React.PureComponent<Props, State> {
           "        },\n" +
           "        account: {\n" +
           "          id: '" + orgKeys + "',\n" +
-          "          host: '" + host + "'\n" +
+          "          instance: '" + host + "'\n" +
           "        }\n" +
           "      });";
 
