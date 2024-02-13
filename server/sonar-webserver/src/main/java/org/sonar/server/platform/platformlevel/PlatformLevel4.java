@@ -39,6 +39,8 @@ import org.sonar.api.profiles.XMLProfileSerializer;
 import org.sonar.api.resources.ResourceTypes;
 import org.sonar.api.rules.AnnotationRuleParser;
 import org.sonar.api.server.rule.RulesDefinitionXmlLoader;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 import org.sonar.auth.bitbucket.BitbucketModule;
 import org.sonar.auth.github.GitHubModule;
 import org.sonar.auth.gitlab.GitLabModule;
@@ -211,7 +213,7 @@ import static org.sonar.core.extension.CoreExtensionsInstaller.noAdditionalSideF
 import static org.sonar.core.extension.PlatformLevelPredicates.hasPlatformLevel4OrNone;
 
 public class PlatformLevel4 extends PlatformLevel {
-
+  private static final Logger LOGGER = Loggers.get(PlatformLevel4.class);
   private final List<Object> level4AddedComponents;
 
   public PlatformLevel4(PlatformLevel parent, List<Object> level4AddedComponents) {

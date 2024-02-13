@@ -95,9 +95,10 @@ public class ClusterSettings implements Consumer<Props> {
   private void checkForApplicationNode(Props props) {
     ensureNotH2(props);
     requireValue(props, AUTH_JWT_SECRET);
-    Set<AddressAndPort> hzNodes = parseAndCheckHosts(CLUSTER_HZ_HOSTS, requireValue(props, CLUSTER_HZ_HOSTS));
-    ensureNotLoopbackAddresses(CLUSTER_HZ_HOSTS, hzNodes);
-    checkClusterNodeHost(props);
+
+    //Set<AddressAndPort> hzNodes = parseAndCheckHosts(CLUSTER_HZ_HOSTS, requireValue(props, CLUSTER_HZ_HOSTS));
+    //ensureNotLoopbackAddresses(CLUSTER_HZ_HOSTS, hzNodes);
+    //checkClusterNodeHost(props);
     checkClusterSearchHosts(props);
   }
 

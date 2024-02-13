@@ -26,6 +26,9 @@ import com.hazelcast.config.NetworkConfig;
 import com.hazelcast.core.Hazelcast;
 import java.util.List;
 import java.util.stream.Stream;
+
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 import org.sonar.process.ProcessId;
 import org.sonar.process.cluster.hz.HazelcastMember.Attribute;
 
@@ -35,7 +38,9 @@ import static java.util.Objects.requireNonNull;
 import static org.sonar.process.ProcessProperties.Property.CLUSTER_NODE_HZ_PORT;
 import static org.sonar.process.cluster.hz.JoinConfigurationType.KUBERNETES;
 
+
 public class HazelcastMemberBuilder {
+  private static final Logger LOGGER = Loggers.get(HazelcastMemberBuilder.class);
   private String nodeName;
   private int port;
   private ProcessId processId;
@@ -85,31 +90,34 @@ public class HazelcastMemberBuilder {
     // Apparently this behavior exists since Hazelcast 3.8.2 (see note
     // at http://docs.hazelcast.org/docs/3.8.6/manual/html-single/index.html#creating-cluster-groups)
     config.setClusterName("SonarQube");
+    LOGGER.info("networkInterface : {}", networkInterface);
+    LOGGER.info("type : {}", type);
 
     // Configure network
     NetworkConfig netConfig = config.getNetworkConfig();
     netConfig
-      .setPort(port)
-      .setPortAutoIncrement(false)
-      .setReuseAddress(true);
+            .setPort(port)
+            .setPortAutoIncrement(false)
+            .setReuseAddress(true);
+
     netConfig.getInterfaces()
-      .setEnabled(true)
-      .setInterfaces(singletonList(requireNonNull(networkInterface, "Network interface is missing")));
+            .setEnabled(true)
+            .setInterfaces(singletonList(networkInterface));
 
     JoinConfig joinConfig = netConfig.getJoin();
-    joinConfig.getAwsConfig().setEnabled(false);
+    joinConfig.getAwsConfig().setEnabled(true);
     joinConfig.getMulticastConfig().setEnabled(false);
-
+    LOGGER.info("config : {}", config);
     if (KUBERNETES.equals(type)) {
       joinConfig.getKubernetesConfig().setEnabled(true)
-        .setProperty("service-dns", requireNonNull(members, "Service DNS is missing"))
-        .setProperty("service-port", CLUSTER_NODE_HZ_PORT.getDefaultValue());
+              .setProperty("service-dns", requireNonNull(members, "Service DNS is missing"))
+              .setProperty("service-port", CLUSTER_NODE_HZ_PORT.getDefaultValue());
     } else {
       List<String> addressesWithDefaultPorts = Stream.of(this.members.split(","))
-          .filter(host -> !host.isBlank())
-          .map(String::trim)
-          .map(HazelcastMemberBuilder::applyDefaultPortToHost)
-          .toList();
+              .filter(host -> !host.isBlank())
+              .map(String::trim)
+              .map(HazelcastMemberBuilder::applyDefaultPortToHost)
+              .toList();
       joinConfig.getTcpIpConfig().setEnabled(true);
       joinConfig.getTcpIpConfig().setMembers(requireNonNull(addressesWithDefaultPorts, "Members are missing"));
     }
@@ -119,14 +127,14 @@ public class HazelcastMemberBuilder {
 
     // Tweak HazelCast configuration
     config
-      // Increase the number of tries
-      .setProperty("hazelcast.tcp.join.port.try.count", "10")
-      // Don't bind on all interfaces
-      .setProperty("hazelcast.socket.bind.any", "false")
-      // Don't phone home
-      .setProperty("hazelcast.phone.home.enabled", "false")
-      // Use slf4j for logging
-      .setProperty("hazelcast.logging.type", "slf4j");
+            // Increase the number of tries
+            .setProperty("hazelcast.tcp.join.port.try.count", "10")
+            // Don't bind on all interfaces
+            .setProperty("hazelcast.socket.bind.any", "false")
+            // Don't phone home
+            .setProperty("hazelcast.phone.home.enabled", "false")
+            // Use slf4j for logging
+            .setProperty("hazelcast.logging.type", "slf4j");
 
     MemberAttributeConfig attributes = config.getMemberAttributeConfig();
     attributes.setAttribute(Attribute.NODE_NAME.getKey(), requireNonNull(nodeName, "Node name is missing"));
