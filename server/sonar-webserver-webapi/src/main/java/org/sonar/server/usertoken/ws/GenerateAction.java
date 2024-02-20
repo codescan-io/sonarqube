@@ -136,10 +136,12 @@ public class GenerateAction implements UserTokensWsAction {
 
       String organizationKee = null;
       if (userTokenDto.getProjectKey() != null) {
-        Optional<ProjectDto> project = dbClient.projectDao().selectProjectByKey(dbSession, userTokenDto.getProjectKey());
-        if(project.isPresent() && project.get().getOrganizationUuid() != null) {
-          Optional<OrganizationDto> organization = dbClient.organizationDao().selectByUuid(dbSession, project.get().getOrganizationUuid());
-          if(organization.isPresent()) {
+        Optional<ProjectDto> project = dbClient.projectDao()
+          .selectProjectByKey(dbSession, userTokenDto.getProjectKey());
+        if (project.isPresent() && project.get().getOrganizationUuid() != null) {
+          Optional<OrganizationDto> organization = dbClient.organizationDao()
+            .selectByUuid(dbSession, project.get().getOrganizationUuid());
+          if (organization.isPresent()) {
             organizationKee = organization.get().getKey();
           }
         }

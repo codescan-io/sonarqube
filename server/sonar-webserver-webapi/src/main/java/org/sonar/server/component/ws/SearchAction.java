@@ -140,7 +140,7 @@ public class SearchAction implements ComponentsWsAction {
       List<ComponentDto> components = dbClient.componentDao().selectByUuids(dbSession, results.getUuids());
 
       Optional<UserTokenDto> userToken = getUserToken();
-      if(userToken.isPresent() && PROJECT_ANALYSIS_TOKEN.name().equals(userToken.get().getType())) {
+      if (userToken.isPresent() && PROJECT_ANALYSIS_TOKEN.name().equals(userToken.get().getType())) {
         String projectUuid = userToken.get().getProjectUuid();
         components = components.stream()
           .filter(c -> c.branchUuid().equals(projectUuid))
@@ -158,7 +158,7 @@ public class SearchAction implements ComponentsWsAction {
     if (userSession instanceof ThreadLocalUserSession) {
       UserSession tokenUserSession = ((ThreadLocalUserSession) userSession).get();
       if (tokenUserSession instanceof TokenUserSession) {
-        return  Optional.ofNullable(((TokenUserSession) tokenUserSession).getUserToken());
+        return Optional.ofNullable(((TokenUserSession) tokenUserSession).getUserToken());
       }
     }
     return Optional.empty();
