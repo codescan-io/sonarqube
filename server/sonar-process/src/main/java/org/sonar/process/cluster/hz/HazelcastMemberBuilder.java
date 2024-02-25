@@ -152,7 +152,13 @@ public class HazelcastMemberBuilder {
     DiscoveryStrategyConfig discoveryStrategyConfig = new DiscoveryStrategyConfig(awsDiscoveryStrategyFactory, properties);
     //joinConfig.getDiscoveryConfig().addDiscoveryStrategyConfig(discoveryStrategyConfig);
     joinConfig.getDiscoveryConfig().setDiscoveryStrategyConfigs(singletonList(discoveryStrategyConfig));
-
+    joinConfig.getAutoDetectionConfig().setEnabled(false);
+    joinConfig.getAzureConfig().setEnabled(false);
+    joinConfig.getMulticastConfig().setEnabled(false);
+    joinConfig.getEurekaConfig().setEnabled(false);
+    joinConfig.getGcpConfig().setEnabled(false);
+    joinConfig.getKubernetesConfig().setEnabled(false);
+    joinConfig.getTcpIpConfig().setEnabled(false);
     LOGGER.info("config after Update : {}", config);
     MemberAttributeConfig attributes = config.getMemberAttributeConfig();
     attributes.setAttribute(Attribute.NODE_NAME.getKey(), requireNonNull(nodeName, "Node name is missing"));
