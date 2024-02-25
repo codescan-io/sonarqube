@@ -94,6 +94,8 @@ public class HazelcastMemberBuilder {
     LOGGER.info("networkInterface : {}", networkInterface);
     LOGGER.info("service-name {}", "web-amazon-dev-infra");
     LOGGER.info("type : {}", type);
+    LOGGER.info("port : {}", port);
+
 
     // Configure network
     NetworkConfig netConfig = config.getNetworkConfig();
@@ -107,7 +109,7 @@ public class HazelcastMemberBuilder {
             .setInterfaces(singletonList(networkInterface));
 
     JoinConfig joinConfig = netConfig.getJoin();
-    joinConfig.getAwsConfig().setEnabled(true);
+    joinConfig.getAwsConfig().setEnabled(true).setProperty("hz-port", String.valueOf(port));
     joinConfig.getMulticastConfig().setEnabled(false);
     /*if (KUBERNETES.equals(type)) {
       joinConfig.getKubernetesConfig().setEnabled(true)
@@ -125,6 +127,7 @@ public class HazelcastMemberBuilder {
 
     // We are not using the partition group of Hazelcast, so disabling it
     config.getPartitionGroupConfig().setEnabled(false);
+    LOGGER.info("joinConfig.getDiscoveryConfig : {}",joinConfig.getDiscoveryConfig().toString());
 
     // Tweak HazelCast configuration
     config

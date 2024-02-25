@@ -266,6 +266,8 @@ subprojects {
         entry 'hazelcast'
       }
       dependency group: "com.hazelcast", name: "hazelcast-aws", version: "5.2.1"
+      // https://mvnrepository.com/artifact/com.hazelcast/hazelcast-all
+      dependency group: "com.hazelcast", name: "hazelcast-all", version: "4.2.8"
       // Documentation must be updated if mssql-jdbc is updated: https://github.com/SonarSource/sonarqube/commit/03e4773ebf6cba854cdcf57a600095f65f4f53e7
       dependency('com.microsoft.sqlserver:mssql-jdbc:11.2.2.jre17') {
         exclude 'com.fasterxml.jackson.core:jackson-databind'
