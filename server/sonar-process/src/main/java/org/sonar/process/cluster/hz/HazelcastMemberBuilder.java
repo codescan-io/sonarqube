@@ -90,7 +90,9 @@ public class HazelcastMemberBuilder {
     // Apparently this behavior exists since Hazelcast 3.8.2 (see note
     // at http://docs.hazelcast.org/docs/3.8.6/manual/html-single/index.html#creating-cluster-groups)
     config.setClusterName("SonarQube");
+    config.setProperty("service-name", "web-amazon-dev-infra");
     LOGGER.info("networkInterface : {}", networkInterface);
+    LOGGER.info("service-name {}", "web-amazon-dev-infra");
     LOGGER.info("type : {}", type);
 
     // Configure network
@@ -107,8 +109,7 @@ public class HazelcastMemberBuilder {
     JoinConfig joinConfig = netConfig.getJoin();
     joinConfig.getAwsConfig().setEnabled(true);
     joinConfig.getMulticastConfig().setEnabled(false);
-    LOGGER.info("config : {}", config);
-    if (KUBERNETES.equals(type)) {
+    /*if (KUBERNETES.equals(type)) {
       joinConfig.getKubernetesConfig().setEnabled(true)
               .setProperty("service-dns", requireNonNull(members, "Service DNS is missing"))
               .setProperty("service-port", CLUSTER_NODE_HZ_PORT.getDefaultValue());
@@ -120,7 +121,7 @@ public class HazelcastMemberBuilder {
               .toList();
       joinConfig.getTcpIpConfig().setEnabled(true);
       joinConfig.getTcpIpConfig().setMembers(requireNonNull(addressesWithDefaultPorts, "Members are missing"));
-    }
+    }*/
 
     // We are not using the partition group of Hazelcast, so disabling it
     config.getPartitionGroupConfig().setEnabled(false);
@@ -135,7 +136,7 @@ public class HazelcastMemberBuilder {
             .setProperty("hazelcast.phone.home.enabled", "false")
             // Use slf4j for logging
             .setProperty("hazelcast.logging.type", "slf4j");
-
+    LOGGER.info("config after Update : {}", config);
     MemberAttributeConfig attributes = config.getMemberAttributeConfig();
     attributes.setAttribute(Attribute.NODE_NAME.getKey(), requireNonNull(nodeName, "Node name is missing"));
     attributes.setAttribute(Attribute.PROCESS_KEY.getKey(), requireNonNull(processId, "Process key is missing").getKey());
