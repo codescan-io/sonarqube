@@ -107,11 +107,12 @@ public class HazelcastMemberBuilder {
 
     netConfig.getInterfaces()
             .setEnabled(true)
-            .setInterfaces(singletonList(networkInterface));
+            .addInterface(networkInterface);
 
     JoinConfig joinConfig = netConfig.getJoin();
     joinConfig.getAwsConfig().setEnabled(true).setProperty("hz-port", String.valueOf(port));
     joinConfig.getMulticastConfig().setEnabled(false);
+    joinConfig.getTcpIpConfig().setEnabled(false);
     /*if (KUBERNETES.equals(type)) {
       joinConfig.getKubernetesConfig().setEnabled(true)
               .setProperty("service-dns", requireNonNull(members, "Service DNS is missing"))
@@ -144,9 +145,10 @@ public class HazelcastMemberBuilder {
     AwsDiscoveryStrategyFactory awsDiscoveryStrategyFactory = new AwsDiscoveryStrategyFactory();
     Map<String, Comparable> properties = new HashMap<>();
     properties.put("region","eu-central-1");
-    //properties.put("host-header","ec2.amazonaws.com");
+    properties.put("host-header","ec2");
     properties.put("security-group-name","ecs-amazon-dev-infra-sg");
     properties.put("hz-port","9003");
+    properties.put("service-name", "web-amazon-dev-infra");
     DiscoveryStrategyConfig discoveryStrategyConfig = new DiscoveryStrategyConfig(awsDiscoveryStrategyFactory, properties);
     joinConfig.getDiscoveryConfig().addDiscoveryStrategyConfig(discoveryStrategyConfig);
 
