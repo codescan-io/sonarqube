@@ -23,6 +23,7 @@ import com.hazelcast.aws.AwsDiscoveryStrategyFactory;
 import com.hazelcast.config.*;
 import com.hazelcast.core.Hazelcast;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -149,8 +150,8 @@ public class HazelcastMemberBuilder {
     properties.put("service-name", "web-amazon-dev-infra");
     properties.put("cluster", "codescan-ecs-amazon-dev-infra");
     DiscoveryStrategyConfig discoveryStrategyConfig = new DiscoveryStrategyConfig(awsDiscoveryStrategyFactory, properties);
-    joinConfig.getDiscoveryConfig().addDiscoveryStrategyConfig(discoveryStrategyConfig);
-
+    //joinConfig.getDiscoveryConfig().addDiscoveryStrategyConfig(discoveryStrategyConfig);
+    joinConfig.getDiscoveryConfig().setDiscoveryStrategyConfigs(singletonList(discoveryStrategyConfig));
 
     LOGGER.info("config after Update : {}", config);
     MemberAttributeConfig attributes = config.getMemberAttributeConfig();
