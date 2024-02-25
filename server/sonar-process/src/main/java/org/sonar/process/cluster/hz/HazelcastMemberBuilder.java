@@ -19,12 +19,13 @@
  */
 package org.sonar.process.cluster.hz;
 
-import com.hazelcast.config.Config;
-import com.hazelcast.config.JoinConfig;
-import com.hazelcast.config.MemberAttributeConfig;
-import com.hazelcast.config.NetworkConfig;
+import com.hazelcast.aws.AwsDiscoveryStrategyFactory;
+import com.hazelcast.config.*;
 import com.hazelcast.core.Hazelcast;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import org.sonar.api.utils.log.Logger;
@@ -139,6 +140,17 @@ public class HazelcastMemberBuilder {
             .setProperty("hazelcast.phone.home.enabled", "false")
             // Use slf4j for logging
             .setProperty("hazelcast.logging.type", "slf4j");
+
+    AwsDiscoveryStrategyFactory awsDiscoveryStrategyFactory = new AwsDiscoveryStrategyFactory();
+    Map<String, Comparable> properties = new HashMap<>();
+    properties.put("region","eu-central-1");
+    //properties.put("host-header","ec2.amazonaws.com");
+    properties.put("security-group-name","ecs-amazon-dev-infra-sg");
+    properties.put("hz-port","9003");
+    DiscoveryStrategyConfig discoveryStrategyConfig = new DiscoveryStrategyConfig(awsDiscoveryStrategyFactory, properties);
+    joinConfig.getDiscoveryConfig().addDiscoveryStrategyConfig(discoveryStrategyConfig);
+
+
     LOGGER.info("config after Update : {}", config);
     MemberAttributeConfig attributes = config.getMemberAttributeConfig();
     attributes.setAttribute(Attribute.NODE_NAME.getKey(), requireNonNull(nodeName, "Node name is missing"));
