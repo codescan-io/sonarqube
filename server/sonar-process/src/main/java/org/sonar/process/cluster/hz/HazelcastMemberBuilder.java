@@ -147,7 +147,6 @@ public class HazelcastMemberBuilder {
     properties.put("region","eu-central-1");
     properties.put("hz-port","9003");
     properties.put("service-name", "web-amazon-dev-infra");
-    properties.put("family", "web-amazon-dev-infra");
     properties.put("cluster", "codescan-ecs-amazon-dev-infra");
     DiscoveryStrategyConfig discoveryStrategyConfig = new DiscoveryStrategyConfig(awsDiscoveryStrategyFactory, properties);
     joinConfig.getDiscoveryConfig().addDiscoveryStrategyConfig(discoveryStrategyConfig);
