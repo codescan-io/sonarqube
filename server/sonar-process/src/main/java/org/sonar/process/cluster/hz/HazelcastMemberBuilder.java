@@ -145,10 +145,10 @@ public class HazelcastMemberBuilder {
     AwsDiscoveryStrategyFactory awsDiscoveryStrategyFactory = new AwsDiscoveryStrategyFactory();
     Map<String, Comparable> properties = new HashMap<>();
     properties.put("region","eu-central-1");
-    properties.put("host-header","ec2");
-    properties.put("security-group-name","ecs-amazon-dev-infra-sg");
     properties.put("hz-port","9003");
     properties.put("service-name", "web-amazon-dev-infra");
+    properties.put("family", "web-amazon-dev-infra");
+    properties.put("cluster", "codescan-ecs-amazon-dev-infra");
     DiscoveryStrategyConfig discoveryStrategyConfig = new DiscoveryStrategyConfig(awsDiscoveryStrategyFactory, properties);
     joinConfig.getDiscoveryConfig().addDiscoveryStrategyConfig(discoveryStrategyConfig);
 
