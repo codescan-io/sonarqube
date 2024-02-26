@@ -91,8 +91,6 @@ public class HazelcastMemberBuilder {
     // Hazelcast does not fail when joining a cluster with different name.
     // Apparently this behavior exists since Hazelcast 3.8.2 (see note
     // at http://docs.hazelcast.org/docs/3.8.6/manual/html-single/index.html#creating-cluster-groups)
-    config.setClusterName("SonarQube");
-    config.setProperty("service-name", "web-amazon-dev-infra");
     LOGGER.info("networkInterface : {}", networkInterface);
     LOGGER.info("service-name {}", "web-amazon-dev-infra");
     LOGGER.info("type : {}", type);
@@ -111,9 +109,16 @@ public class HazelcastMemberBuilder {
             .addInterface(networkInterface);
 
     JoinConfig joinConfig = netConfig.getJoin();
-    joinConfig.getAwsConfig().setEnabled(true).setProperty("hz-port", String.valueOf(port));
+    joinConfig.getAwsConfig().setEnabled(true).setProperty("hz-port", String.valueOf(port))
+            .setProperty("region","eu-central-1").setProperty("service-name", "web-amazon-dev-infra").setProperty("cluster", "codescan-ecs-amazon-dev-infra");
     joinConfig.getMulticastConfig().setEnabled(false);
     joinConfig.getTcpIpConfig().setEnabled(false);
+
+    joinConfig.getAzureConfig().setEnabled(false);
+    joinConfig.getMulticastConfig().setEnabled(false);
+    joinConfig.getEurekaConfig().setEnabled(false);
+    joinConfig.getGcpConfig().setEnabled(false);
+    joinConfig.getKubernetesConfig().setEnabled(false);
     /*if (KUBERNETES.equals(type)) {
       joinConfig.getKubernetesConfig().setEnabled(true)
               .setProperty("service-dns", requireNonNull(members, "Service DNS is missing"))
@@ -143,22 +148,8 @@ public class HazelcastMemberBuilder {
             // Use slf4j for logging
             .setProperty("hazelcast.logging.type", "slf4j");
 
-    AwsDiscoveryStrategyFactory awsDiscoveryStrategyFactory = new AwsDiscoveryStrategyFactory();
-    Map<String, Comparable> properties = new HashMap<>();
-    properties.put("region","eu-central-1");
-    properties.put("hz-port","9003");
-    properties.put("service-name", "web-amazon-dev-infra");
-    properties.put("cluster", "codescan-ecs-amazon-dev-infra");
-    DiscoveryStrategyConfig discoveryStrategyConfig = new DiscoveryStrategyConfig(awsDiscoveryStrategyFactory, properties);
-    //joinConfig.getDiscoveryConfig().addDiscoveryStrategyConfig(discoveryStrategyConfig);
-    joinConfig.getDiscoveryConfig().setDiscoveryStrategyConfigs(singletonList(discoveryStrategyConfig));
-    joinConfig.getAutoDetectionConfig().setEnabled(false);
-    joinConfig.getAzureConfig().setEnabled(false);
-    joinConfig.getMulticastConfig().setEnabled(false);
-    joinConfig.getEurekaConfig().setEnabled(false);
-    joinConfig.getGcpConfig().setEnabled(false);
-    joinConfig.getKubernetesConfig().setEnabled(false);
-    joinConfig.getTcpIpConfig().setEnabled(false);
+
+
     LOGGER.info("config after Update : {}", config);
     MemberAttributeConfig attributes = config.getMemberAttributeConfig();
     attributes.setAttribute(Attribute.NODE_NAME.getKey(), requireNonNull(nodeName, "Node name is missing"));
