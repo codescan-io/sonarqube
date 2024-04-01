@@ -76,16 +76,16 @@
   padding: 7px;
 }
 .org-alert-warning{
-  border: 1px solid #f4b1b0;
-  background-color: #f2dede;
-  color: #862422;
+  border: 1px solid #faebcc;
+  background-color: #fcf8e3;
+  color: #6f4f17;
   height: 30px;
 }
 .org-alert-warning .icon{
   float: left;
-  color: #f2dede;
+  color: #db781a;
   border-radius: 54px;
-  border: 1px solid #f4b1b0;
+  border: 1px solid #faebcc;
   background-color: orange;
   width: 14px;
   margin: 6px 7px;
