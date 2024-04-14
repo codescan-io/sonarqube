@@ -101,7 +101,6 @@
     FROM new_code_periods ncp
     WHERE
     ncp.project_uuid=#{projectUuid, jdbcType=VARCHAR}
-    AND ncp.branch_uuid is null
   </select>
 
   <select id="selectAllByProject" parameterType="map" resultType="org.sonar.db.newcodeperiod.NewCodePeriodDto">
