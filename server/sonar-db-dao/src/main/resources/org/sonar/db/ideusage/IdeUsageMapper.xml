@@ -3,21 +3,11 @@
 
 <mapper namespace="org.sonar.db.ideusage.IdeUsageMapper">
 
-  <select id="selectUuidsByOrganizationAndUser" parameterType="map" resultType="String">
-    select iu.uuid
-    from cs_ide_usage iu
+  <delete id="deleteByOrganizationAndUser" parameterType="map">
+    delete from cs_ide_usage iu
     where
     iu.user_uuid=#{userUuid,jdbcType=VARCHAR}
     and iu.organization_uuid=#{organizationUuid,jdbcType=VARCHAR}
-  </select>
-
-  <delete id="deleteByUuids" parameterType="String">
-    delete from cs_ide_usage
-    where
-    uuid in
-    <foreach collection="uuids" open="(" close=")" item="uuid" separator=",">
-      #{uuid}
-    </foreach>
   </delete>
 
 </mapper>

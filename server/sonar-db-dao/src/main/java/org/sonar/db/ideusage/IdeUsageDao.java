@@ -19,17 +19,14 @@
  */
 package org.sonar.db.ideusage;
 
-import static org.sonar.db.DatabaseUtils.executeLargeInputsWithoutOutput;
 import static org.sonar.db.ideusage.IdeUsageMapper.getMapper;
 
-import java.util.List;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
 
 public class IdeUsageDao implements Dao {
 
   public void deleteByOrganizationAndUser(DbSession dbSession, String organizationUuid, String userUuid) {
-    List<String> uuids = getMapper(dbSession).selectUuidsByOrganizationAndUser(organizationUuid, userUuid);
-    executeLargeInputsWithoutOutput(uuids, subList -> getMapper(dbSession).deleteByUuids(subList));
+    getMapper(dbSession).deleteByOrganizationAndUser(organizationUuid, userUuid);
   }
 }

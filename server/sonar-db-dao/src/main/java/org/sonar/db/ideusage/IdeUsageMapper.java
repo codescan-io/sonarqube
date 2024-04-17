@@ -28,7 +28,6 @@ public interface IdeUsageMapper {
   static IdeUsageMapper getMapper(DbSession session) {
     return session.getMapper(IdeUsageMapper.class);
   }
-  List<String> selectUuidsByOrganizationAndUser(@Param("organizationUuid") String organizationUuid, @Param("userUuid") String userUuid);
 
-  void deleteByUuids(@Param("uuids") List<String> uuids);
+  void deleteByOrganizationAndUser(@Param("organizationUuid") String organizationUuid, @Param("userUuid") String userUuid);
 }
