@@ -42,9 +42,9 @@ export function OrganizationNavigation({ location, organization, userOrganizatio
   React.useEffect(() => {
     const fetchNotifications = async () => {
         const notifications = await getRawNotificationsForOrganization(organization.kee);
-        if(notifications.length > 0) {
+        if (notifications.length > 0) {
           const errorNotifications = notifications.filter(notification => notification.type == 'ERROR');
-          if(errorNotifications.length > 0) {
+          if (errorNotifications.length > 0) {
             setNotifications(errorNotifications);
             setHeight(contextNavHeightWithError + orgAlertHeight * (errorNotifications.length - 1));
           } else {
@@ -75,16 +75,16 @@ export function OrganizationNavigation({ location, organization, userOrganizatio
               location={location}
               organization={organization}
           />
-          { notifications.length>0 ? notifications.map((notification, key) => (
-            <div className={notification.type === 'ERROR' ? 'org-alert-error' : 'org-alert-warning'} key = {key}>
-              <div className='org-alert-inner'>
-                <div className='icon'>
-                  {notification.type === 'ERROR' ? 'x' : '!'}
+          { notifications.map((notification, key) => (
+              <div className={"org-alert-" + notification.type.toLowerCase()} key={key}>
+                <div className='org-alert-inner'>
+                  <div className='icon'>
+                    {notification.type === 'ERROR' ? 'x' : '!'}
+                  </div>
+                  <div className='msg' dangerouslySetInnerHTML={{ __html: sanitizeUserInput(notification.message) }} />
                 </div>
-                <div className='msg' dangerouslySetInnerHTML={{ __html: sanitizeUserInput(notification.message) }} />
               </div>
-            </div>
-          )) : (<></>)
+            ))
           }
         </ContextNavBar>
       </>
