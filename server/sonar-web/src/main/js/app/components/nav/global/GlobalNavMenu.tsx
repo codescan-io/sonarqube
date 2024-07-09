@@ -68,11 +68,7 @@ export class GlobalNavMenu extends React.PureComponent<Props> {
   }
 
   renderIssuesLink() {
-    const search = (
-      this.props.currentUser.isLoggedIn && isMySet()
-        ? new URLSearchParams({ resolved: 'false', myIssues: 'true' })
-        : new URLSearchParams({ resolved: 'false' })
-    ).toString();
+    const search = new URLSearchParams({ resolved: 'false', myIssues: 'true' }).toString();
 
     return (
       <li>
