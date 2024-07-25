@@ -78,7 +78,9 @@ allprojects {
         // https://www.jfrog.com/jira/browse/RTFACT-13797
         repository = 'public'
       }
-      url "https://repox.jfrog.io/repox/${repository}"
+      //url "https://repox.jfrog.io/repox/${repository}"
+      def autorabitRepository = System.env.'ARTIFACTORY_CODESCAN_REPO' ?: (project.hasProperty('artifactoryRepo') ? project.getProperty('artifactoryRepo') : 'libs-release-local')
+      url "https://artifactory.autorabit.com/artifactory/${autorabitRepository}"
     }
 
     maven {
