@@ -229,7 +229,7 @@ public class ComponentAction implements MeasuresWsAction {
   }
 
   private Optional<RefComponent> getReference(DbSession dbSession, ComponentDto component) {
-    String copyComponentUuid = component.getMainBranchProjectUuid();
+    String copyComponentUuid = component.getCopyComponentUuid();
     if (copyComponentUuid == null) {
       return Optional.empty();
     }

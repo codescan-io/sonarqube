@@ -36,6 +36,7 @@ public class ReferenceBranchSupplier {
   private static final Logger LOG = Loggers.get(ReferenceBranchSupplier.class);
   private static final String LOG_MSG_WS = "Load New Code definition";
   private static final String NEW_CODE_PARAM_KEY = "sonar.newCode.referenceBranch";
+  private static final String ORG_PARAM_KEY = "sonar.organization";
 
   private final Configuration configuration;
   private final NewCodePeriodLoader newCodePeriodLoader;
@@ -94,6 +95,18 @@ public class ReferenceBranchSupplier {
         throw new IllegalStateException(format("Reference branch set with '%s' points to the current branch '%s'", NEW_CODE_PARAM_KEY, referenceBranchName));
       }
       return referenceBranchName;
+    }
+    return null;
+  }
+
+  @CheckForNull
+  public String getOrgFromProperties() {
+
+    Optional<String> value = configuration.get(ORG_PARAM_KEY);
+    if (value.isPresent()) {
+      String orgName = value.get();
+
+      return orgName;
     }
     return null;
   }
