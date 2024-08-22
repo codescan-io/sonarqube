@@ -40,6 +40,7 @@ import org.sonar.scanner.protocol.output.ScannerReportWriter;
 import org.sonar.scanner.repository.ReferenceBranchSupplier;
 import org.sonar.scanner.rule.QProfile;
 import org.sonar.scanner.rule.QualityProfiles;
+import org.sonar.scanner.scan.ScanProperties;
 import org.sonar.scanner.scan.branch.BranchConfiguration;
 import org.sonar.scanner.scan.filesystem.InputComponentStore;
 import org.sonar.scanner.scm.ScmConfiguration;
@@ -59,10 +60,12 @@ public class MetadataPublisher implements ReportPublisherStep {
   private final InputComponentStore componentStore;
   private final ScmConfiguration scmConfiguration;
   private final ReferenceBranchSupplier referenceBranchSupplier;
+  private final ScanProperties scanProperties;
 
   public MetadataPublisher(ProjectInfo projectInfo, InputModuleHierarchy moduleHierarchy, QualityProfiles qProfiles,
     CpdSettings cpdSettings, ScannerPluginRepository pluginRepository, BranchConfiguration branchConfiguration,
-    ScmRevision scmRevision, InputComponentStore componentStore, ScmConfiguration scmConfiguration, ReferenceBranchSupplier referenceBranchSupplier) {
+    ScmRevision scmRevision, InputComponentStore componentStore, ScmConfiguration scmConfiguration,
+    ReferenceBranchSupplier referenceBranchSupplier, ScanProperties scanProperties) {
     this.projectInfo = projectInfo;
     this.moduleHierarchy = moduleHierarchy;
     this.qProfiles = qProfiles;
@@ -73,6 +76,7 @@ public class MetadataPublisher implements ReportPublisherStep {
     this.componentStore = componentStore;
     this.scmConfiguration = scmConfiguration;
     this.referenceBranchSupplier = referenceBranchSupplier;
+    this.scanProperties = scanProperties;
   }
 
   @Override
@@ -86,6 +90,7 @@ public class MetadataPublisher implements ReportPublisherStep {
       .setRootComponentRef(rootProject.scannerId());
     projectInfo.getProjectVersion().ifPresent(builder::setProjectVersion);
     projectInfo.getBuildString().ifPresent(builder::setBuildString);
+    scanProperties.organizationKey().ifPresent(builder::setOrganizationKey);
 
     if (branchConfiguration.branchName() != null) {
       addBranchInformation(builder);

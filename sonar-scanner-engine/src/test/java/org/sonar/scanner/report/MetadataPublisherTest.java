@@ -53,6 +53,7 @@ import org.sonar.scanner.protocol.output.ScannerReportWriter;
 import org.sonar.scanner.repository.ReferenceBranchSupplier;
 import org.sonar.scanner.rule.QProfile;
 import org.sonar.scanner.rule.QualityProfiles;
+import org.sonar.scanner.scan.ScanProperties;
 import org.sonar.scanner.scan.branch.BranchConfiguration;
 import org.sonar.scanner.scan.branch.BranchType;
 import org.sonar.scanner.scan.filesystem.InputComponentStore;
@@ -78,6 +79,7 @@ public class MetadataPublisherTest {
   private final ProjectInfo projectInfo = mock(ProjectInfo.class);
   private final CpdSettings cpdSettings = mock(CpdSettings.class);
   private final ReferenceBranchSupplier referenceBranchSupplier = mock(ReferenceBranchSupplier.class);
+  private final ScanProperties scanProperties = mock(ScanProperties.class);
   private final ScannerPluginRepository pluginRepository = mock(ScannerPluginRepository.class);
   private BranchConfiguration branches;
   private ScmConfiguration scmConfiguration;
@@ -121,7 +123,7 @@ public class MetadataPublisherTest {
     scmConfiguration = mock(ScmConfiguration.class);
     when(scmConfiguration.provider()).thenReturn(scmProvider);
     underTest = new MetadataPublisher(projectInfo, inputModuleHierarchy, qProfiles, cpdSettings,
-      pluginRepository, branches, scmRevision, componentStore, scmConfiguration, referenceBranchSupplier);
+      pluginRepository, branches, scmRevision, componentStore, scmConfiguration, referenceBranchSupplier, scanProperties);
   }
 
   @Test
