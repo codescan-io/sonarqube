@@ -139,9 +139,9 @@ task zip(type: Zip, dependsOn: [configurations.compileClasspath]) {
   into("${archiveDir}/lib/jdbc/postgresql/") {
     from configurations.jdbc_postgresql
   }
-  into("${archiveDir}/lib/jdbc/h2/") {
-    from configurations.jdbc_h2
-  }
+//  into("${archiveDir}/lib/jdbc/h2/") {
+//    from configurations.jdbc_h2
+//  }
   into("${archiveDir}/lib/") {
     from configurations.shutdowner
   }
