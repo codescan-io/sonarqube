@@ -62,24 +62,6 @@ allprojects {
   }
 
   repositories {
-    def repository = project.hasProperty('qa') ? 'sonarsource-qa' : 'sonarsource'
-    maven {
-      // The environment variables ARTIFACTORY_PRIVATE_USERNAME and ARTIFACTORY_PRIVATE_PASSWORD are used on QA env (Jenkins)
-      // On local box, please add artifactoryUsername and artifactoryPassword to ~/.gradle/gradle.properties
-      def artifactoryUsername = System.env.'ARTIFACTORY_PRIVATE_USERNAME' ?: (project.hasProperty('artifactoryUsername') ? project.getProperty('artifactoryUsername') : '')
-      def artifactoryPassword = System.env.'ARTIFACTORY_PRIVATE_PASSWORD' ?: (project.hasProperty('artifactoryPassword') ? project.getProperty('artifactoryPassword') : '')
-      if (artifactoryUsername && artifactoryPassword) {
-        credentials {
-          username artifactoryUsername
-          password artifactoryPassword
-        }
-      } else {
-        // Workaround for artifactory
-        // https://www.jfrog.com/jira/browse/RTFACT-13797
-        repository = 'public'
-      }
-      url "https://repox.jfrog.io/repox/${repository}"
-    }
 
     maven {
       def autorabitRepository = System.env.'ARTIFACTORY_CODESCAN_REPO' ?: (project.hasProperty('artifactoryRepo') ? project.getProperty('artifactoryRepo') : 'libs-release-local')
@@ -235,6 +217,8 @@ subprojects {
       dependency 'commons-dbutils:commons-dbutils:1.7'
       dependency 'commons-io:commons-io:2.11.0'
       dependency 'commons-lang:commons-lang:2.6'
+      dependency 'org.apache.sshd:sshd-common:2.10.0'
+      dependency 'org.apache.sshd:sshd-core:2.12.0'
       imports { mavenBom 'com.fasterxml.jackson:jackson-bom:2.14.1' }
       dependency 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
       dependencySet(group: 'com.github.scribejava', version: '8.3.2') {
@@ -374,6 +358,9 @@ subprojects {
   configurations.all {
     // do not conflict with com.sun.mail:javax.mail
     exclude group: 'javax.mail', module: 'mail'
+    resolutionStrategy {
+      force 'com.google.guava:guava:33.3.0-jre'
+    }
   }
 
   tasks.withType(Javadoc) {
