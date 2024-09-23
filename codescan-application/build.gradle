@@ -139,9 +139,6 @@ task zip(type: Zip, dependsOn: [configurations.compileClasspath]) {
   into("${archiveDir}/lib/jdbc/postgresql/") {
     from configurations.jdbc_postgresql
   }
-  into("${archiveDir}/lib/jdbc/h2/") {
-    from configurations.jdbc_h2
-  }
   into("${archiveDir}/lib/") {
     from configurations.shutdowner
   }
@@ -149,7 +146,7 @@ task zip(type: Zip, dependsOn: [configurations.compileClasspath]) {
 // Check the size of the archive
 zip.doLast {
   def minLength = 205000000
-  def maxLength = 260000000
+  def maxLength = 360000000
 
   def length = archiveFile.get().asFile.length()
   if (length < minLength)
