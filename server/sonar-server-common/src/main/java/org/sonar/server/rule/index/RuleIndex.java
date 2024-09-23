@@ -143,6 +143,7 @@ public class RuleIndex {
 
   private static final int MAX_FACET_SIZE = 100;
 
+
   public static final List<String> ALL_STATUSES_EXCEPT_REMOVED = Arrays.stream(RuleStatus.values())
     .filter(status -> !RuleStatus.REMOVED.equals(status))
     .map(RuleStatus::toString)
@@ -152,6 +153,8 @@ public class RuleIndex {
 
   private final EsClient client;
   private final System2 system2;
+
+  private static final String COMM_LITERAL="activation";
 
   public RuleIndex(EsClient client, System2 system2) {
     this.client = client;
@@ -337,17 +340,23 @@ public class RuleIndex {
         QueryBuilders.termQuery(FIELD_RULE_TEMPLATE_KEY, template));
     }
 
+    buildActivationQuery(query, filters);
+
+    return filters;
+  }
+
+  private static void buildActivationQuery(RuleQuery query, Map<String, QueryBuilder> filters) {
     /* Implementation of activation query */
     QProfileDto profile = query.getQProfile();
     if (query.getActivation() != null && profile != null) {
       QueryBuilder childQuery = buildActivationFilter(query, profile);
 
       if (TRUE.equals(query.getActivation())) {
-        filters.put("activation",
+        filters.put(COMM_LITERAL,
           JoinQueryBuilders.hasChildQuery(TYPE_ACTIVE_RULE.getName(),
             childQuery, ScoreMode.None));
       } else if (FALSE.equals(query.getActivation())) {
-        filters.put("activation",
+        filters.put(COMM_LITERAL,
           boolQuery().mustNot(
             JoinQueryBuilders.hasChildQuery(TYPE_ACTIVE_RULE.getName(),
               childQuery, ScoreMode.None)));
@@ -361,8 +370,6 @@ public class RuleIndex {
             ScoreMode.None));
       }
     }
-
-    return filters;
   }
 
   private static void addSecurityStandardFilter(Map<String, QueryBuilder> filters, String key, Collection<String> values) {
@@ -568,7 +575,7 @@ public class RuleIndex {
       // from which we remove filters that concern active rules ("activation")
       HasParentQueryBuilder ruleFilter = JoinQueryBuilders.hasParentQuery(
         TYPE_RULE.getType(),
-        stickyFacetBuilder.getStickyFacetFilter("activation"),
+        stickyFacetBuilder.getStickyFacetFilter(COMM_LITERAL),
         false);
 
       // Rebuilding the active rule filter without severities
