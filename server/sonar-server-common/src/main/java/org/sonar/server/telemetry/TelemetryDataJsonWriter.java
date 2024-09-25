@@ -50,9 +50,10 @@ public class TelemetryDataJsonWriter {
   }
 
   public void writeTelemetryData(JsonWriter json, TelemetryData statistics) {
+    String version="version";
     json.beginObject();
     json.prop("id", statistics.getServerId());
-    json.prop("version", statistics.getVersion());
+    json.prop(version, statistics.getVersion());
     json.prop("messageSequenceNumber", statistics.getMessageSequenceNumber());
     json.prop("localTimestamp", toUtc(system2.now()));
     statistics.getEdition().ifPresent(e -> json.prop("edition", e.name().toLowerCase(Locale.ENGLISH)));
@@ -60,14 +61,14 @@ public class TelemetryDataJsonWriter {
     json.name("database");
     json.beginObject();
     json.prop("name", statistics.getDatabase().name());
-    json.prop("version", statistics.getDatabase().version());
+    json.prop(version, statistics.getDatabase().version());
     json.endObject();
     json.name("plugins");
     json.beginArray();
     statistics.getPlugins().forEach((plugin, version) -> {
       json.beginObject();
       json.prop("name", plugin);
-      json.prop("version", version);
+      json.prop(version, version);
       json.endObject();
     });
     json.endArray();
