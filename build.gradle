@@ -218,8 +218,8 @@ subprojects {
       dependency 'commons-dbutils:commons-dbutils:1.7'
       dependency 'commons-io:commons-io:2.11.0'
       dependency 'commons-lang:commons-lang:2.6'
-      dependency 'org.apache.sshd:sshd-common:2.10.0'
-      dependency 'org.apache.sshd:sshd-core:2.12.0'
+      dependency 'org.apache.sshd:sshd-common:2.13.2'
+      dependency 'org.apache.sshd:sshd-core:2.13.2'
       imports { mavenBom 'com.fasterxml.jackson:jackson-bom:2.14.1' }
       dependency 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
       dependencySet(group: 'com.github.scribejava', version: '8.3.2') {

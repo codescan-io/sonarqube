@@ -44,7 +44,6 @@ import org.sonar.auth.bitbucket.BitbucketModule;
 import org.sonar.auth.github.GitHubModule;
 import org.sonar.auth.gitlab.GitLabModule;
 import org.sonar.auth.ldap.LdapModule;
-import org.sonar.auth.saml.SamlModule;
 import org.sonar.ce.configuration.WorkerCountProviderImpl;
 import org.sonar.ce.task.projectanalysis.notification.ReportAnalysisFailureNotificationModule;
 import org.sonar.ce.task.projectanalysis.taskprocessor.AuditPurgeTaskProcessor;
@@ -96,7 +95,6 @@ import org.sonar.server.extension.CoreExtensionStopper;
 import org.sonar.server.favorite.FavoriteModule;
 import org.sonar.server.favorite.ws.FavoriteWsModule;
 import org.sonar.server.feature.ws.FeatureWsModule;
-import org.sonar.server.health.NodeHealthModule;
 import org.sonar.server.hotspot.ws.HotspotsWsModule;
 import org.sonar.server.issue.AddTagsAction;
 import org.sonar.server.issue.AssignAction;
@@ -151,7 +149,6 @@ import org.sonar.server.permission.PermissionUpdater;
 import org.sonar.server.permission.UserPermissionChanger;
 import org.sonar.server.permission.index.PermissionIndexer;
 import org.sonar.server.permission.ws.PermissionsWsModule;
-import org.sonar.server.platform.ClusterVerification;
 import org.sonar.server.platform.PersistentSettings;
 import org.sonar.server.platform.SystemInfoWriterModule;
 import org.sonar.server.platform.WebCoreExtensionsInstaller;
@@ -225,7 +222,6 @@ import org.sonar.server.rule.ws.RuleQueryFactory;
 import org.sonar.server.rule.ws.RuleWsSupport;
 import org.sonar.server.rule.ws.RulesWs;
 import org.sonar.server.rule.ws.TagsAction;
-import org.sonar.server.saml.ws.SamlValidationModule;
 import org.sonar.server.scannercache.ScannerCache;
 import org.sonar.server.scannercache.ws.AnalysisCacheWsModule;
 import org.sonar.server.setting.ProjectConfigurationLoaderImpl;
@@ -393,8 +389,6 @@ public class PlatformLevel4 extends PlatformLevel {
       new GitHubModule(),
       new GitLabModule(),
       new LdapModule(),
-      new SamlModule(),
-      new SamlValidationModule(),
       DefaultAdminCredentialsVerifierImpl.class,
       DefaultAdminCredentialsVerifierNotificationTemplate.class,
       DefaultAdminCredentialsVerifierNotificationHandler.class,
