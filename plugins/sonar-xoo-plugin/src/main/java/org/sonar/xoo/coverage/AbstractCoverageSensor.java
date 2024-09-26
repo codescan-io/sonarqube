@@ -47,31 +47,35 @@ public abstract class AbstractCoverageSensor implements Sensor {
         NewCoverage coverageBuilder = context.newCoverage()
           .onFile(inputFile);
         int lineNumber = 0;
-        for (String line : lines) {
-          lineNumber++;
-          if (StringUtils.isBlank(line)) {
-            continue;
-          }
-          if (line.startsWith("#")) {
-            continue;
-          }
-          try {
-            Iterator<String> split = Splitter.on(":").split(line).iterator();
-            int lineId = Integer.parseInt(split.next());
-            int lineHits = Integer.parseInt(split.next());
-            coverageBuilder.lineHits(lineId, lineHits);
-            if (split.hasNext()) {
-              int conditions = Integer.parseInt(split.next());
-              int coveredConditions = Integer.parseInt(split.next());
-              coverageBuilder.conditions(lineId, conditions, coveredConditions);
-            }
-          } catch (Exception e) {
-            throw new IllegalStateException("Error processing line " + lineNumber + " of file " + coverageFile.getAbsolutePath(), e);
-          }
-        }
+        iterateThroughLines(lines, lineNumber, coverageBuilder, coverageFile);
         coverageBuilder.save();
       } catch (IOException e) {
         throw new RuntimeException(e);
+      }
+    }
+  }
+
+  private static void iterateThroughLines(List<String> lines, int lineNumber, NewCoverage coverageBuilder, File coverageFile) {
+    for (String line : lines) {
+      lineNumber++;
+      if (StringUtils.isBlank(line)) {
+        continue;
+      }
+      if (line.startsWith("#")) {
+        continue;
+      }
+      try {
+        Iterator<String> split = Splitter.on(":").split(line).iterator();
+        int lineId = Integer.parseInt(split.next());
+        int lineHits = Integer.parseInt(split.next());
+        coverageBuilder.lineHits(lineId, lineHits);
+        if (split.hasNext()) {
+          int conditions = Integer.parseInt(split.next());
+          int coveredConditions = Integer.parseInt(split.next());
+          coverageBuilder.conditions(lineId, conditions, coveredConditions);
+        }
+      } catch (Exception e) {
+        throw new IllegalStateException("Error processing line " + lineNumber + " of file " + coverageFile.getAbsolutePath(), e);
       }
     }
   }
