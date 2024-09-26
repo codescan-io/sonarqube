@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Map.Entry;
 import java.util.Properties;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.sonar.api.utils.log.Loggers;
 import org.sonar.application.command.CommandFactory;
 import org.sonar.application.command.CommandFactoryImpl;
