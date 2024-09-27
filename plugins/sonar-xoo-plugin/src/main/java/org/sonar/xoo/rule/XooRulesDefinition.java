@@ -52,7 +52,7 @@ public class XooRulesDefinition implements RulesDefinition {
 
   public static final String XOO_REPOSITORY = "xoo";
   public static final String XOO2_REPOSITORY = "xoo2";
-  private static final String CONSTANT_LITERAL="It takes about 1 minute to an experienced software craftsman to remove a line of code";
+  private static final String TIME_TO_REMOVE_A_LINE_OF_CODE ="It takes about 1 minute to an experienced software craftsman to remove a line of code";
 
   private static final String TEN_MIN = "10min";
 
@@ -84,7 +84,7 @@ public class XooRulesDefinition implements RulesDefinition {
     addAllDescriptionSections(oneIssuePerLine, "Generate an issue on each line of a file. It requires the metric \"lines\".");
     oneIssuePerLine
       .setDebtRemediationFunction(hasTag.debtRemediationFunctions().linear("1min"))
-      .setGapDescription(CONSTANT_LITERAL);
+      .setGapDescription(TIME_TO_REMOVE_A_LINE_OF_CODE);
 
     repo.done();
   }
@@ -120,7 +120,7 @@ public class XooRulesDefinition implements RulesDefinition {
     addHowToFixSectionsWithContexts(oneIssuePerLine);
     oneIssuePerLine
       .setDebtRemediationFunction(oneIssuePerLine.debtRemediationFunctions().linear("1min"))
-      .setGapDescription(CONSTANT_LITERAL)
+      .setGapDescription(TIME_TO_REMOVE_A_LINE_OF_CODE)
       .addEducationPrincipleKeys("defense_in_depth", "never_trust_user_input");
 
     NewRule oneQuickFixPerLine = repo.createRule(OneQuickFixPerLineSensor.RULE_KEY).setName("One Quick Fix Per Line")
@@ -130,7 +130,7 @@ public class XooRulesDefinition implements RulesDefinition {
 
     oneQuickFixPerLine
       .setDebtRemediationFunction(oneQuickFixPerLine.debtRemediationFunctions().linear("1min"))
-      .setGapDescription(CONSTANT_LITERAL);
+      .setGapDescription(TIME_TO_REMOVE_A_LINE_OF_CODE);
 
     NewRule oneIssueOnDirPerFile = repo.createRule(OneIssueOnDirPerFileSensor.RULE_KEY).setName("One Issue On Dir Per File");
     addAllDescriptionSections(oneIssueOnDirPerFile,

@@ -154,7 +154,7 @@ public class RuleIndex {
   private final EsClient client;
   private final System2 system2;
 
-  private static final String COMM_LITERAL="activation";
+  private static final String ACTIVATION_STR="activation";
 
   public RuleIndex(EsClient client, System2 system2) {
     this.client = client;
@@ -352,11 +352,11 @@ public class RuleIndex {
       QueryBuilder childQuery = buildActivationFilter(query, profile);
 
       if (TRUE.equals(query.getActivation())) {
-        filters.put(COMM_LITERAL,
+        filters.put(ACTIVATION_STR,
           JoinQueryBuilders.hasChildQuery(TYPE_ACTIVE_RULE.getName(),
             childQuery, ScoreMode.None));
       } else if (FALSE.equals(query.getActivation())) {
-        filters.put(COMM_LITERAL,
+        filters.put(ACTIVATION_STR,
           boolQuery().mustNot(
             JoinQueryBuilders.hasChildQuery(TYPE_ACTIVE_RULE.getName(),
               childQuery, ScoreMode.None)));
@@ -575,7 +575,7 @@ public class RuleIndex {
       // from which we remove filters that concern active rules ("activation")
       HasParentQueryBuilder ruleFilter = JoinQueryBuilders.hasParentQuery(
         TYPE_RULE.getType(),
-        stickyFacetBuilder.getStickyFacetFilter(COMM_LITERAL),
+        stickyFacetBuilder.getStickyFacetFilter(ACTIVATION_STR),
         false);
 
       // Rebuilding the active rule filter without severities
