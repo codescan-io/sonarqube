@@ -41,8 +41,6 @@ public class EducationRulesDefinition implements RulesDefinition {
   public static final String EDUCATION_RULE_REPOSITORY_KEY = "edu";
   public static final String EDUCATION_KEY = "education";
 
-  private static final String[] ALL_SECTIONS = {INTRODUCTION_SECTION_KEY, ROOT_CAUSE_SECTION_KEY, ASSESS_THE_PROBLEM_SECTION_KEY,
-    RESOURCES_SECTION_KEY, HOW_TO_FIX_SECTION_KEY};
   private static final String IGNORED_FAKE_SECTION = "fake_section_to_be_ignored";
 
   public static final String[] CONTEXTS = {"spring", "hibernate", "apache_commons", "vaadin", "mybatis"};
@@ -51,6 +49,8 @@ public class EducationRulesDefinition implements RulesDefinition {
     "elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco " +
     "laboris nisi ut aliquip ex ea commodo consequat.<br />Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu " +
     "fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+
+  private static final String COMM_TEXT = "trigger an issue using this rule you need to scan any text file with a line containing %s key word.";
 
   @Override
   public void define(Context context) {
@@ -92,7 +92,7 @@ public class EducationRulesDefinition implements RulesDefinition {
 
     ruleWithSingleContext
       .setHtmlDescription(String.format("This rule contains description sections and single context for 'how to fix' section. To " +
-        "trigger an issue using this rule you need to scan any text file with a line containing %s key word.", ruleKey));
+              COMM_TEXT, ruleKey));
 
     addNonContextualizedDescriptionSections(ruleWithSingleContext);
 
@@ -142,7 +142,7 @@ public class EducationRulesDefinition implements RulesDefinition {
 
     rule2CodeSnippetsIn2Sections
       .setHtmlDescription(String.format("This rule contains description sections and 2 linked code snippets in 2 sections. To " +
-          "trigger an issue using this rule you need to scan any text file with a line containing %s key word.", ruleKey));
+              COMM_TEXT, ruleKey));
 
     String completelyDifferentSnippetsHtml = readResource("2completelyDifferentSnippets.html");
     String codeSnippetsHtml = readResource("2codeSnippets.html");
@@ -162,7 +162,7 @@ public class EducationRulesDefinition implements RulesDefinition {
 
     rule2CodeSnippetsInTheSameSection
       .setHtmlDescription(String.format("This rule contains description sections and 4 linked code snippets in the same section. To " +
-        "trigger an issue using this rule you need to scan any text file with a line containing %s key word.", ruleKey));
+              COMM_TEXT, ruleKey));
 
     String codeSnippetsHtml = readResource("4codeSnippets.html");
 
