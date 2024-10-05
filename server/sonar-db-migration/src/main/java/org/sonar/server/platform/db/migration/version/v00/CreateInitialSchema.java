@@ -171,6 +171,7 @@ public class CreateInitialSchema extends DdlChange {
     createRulesRepository(context);
     createRuleDescSections(context);
     createRules(context);
+    createRulesMetadata(context);
     createRulesParameters(context);
     createRulesProfiles(context);
     createSamlMessageIds(context);
