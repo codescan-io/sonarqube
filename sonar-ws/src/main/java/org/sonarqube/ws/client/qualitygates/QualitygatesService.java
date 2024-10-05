@@ -288,8 +288,8 @@ public class QualitygatesService extends BaseService {
   public ShowWsResponse show(ShowRequest request) {
     return call(
       new GetRequest(path("show"))
+        .setParam("organization", request.getOrganization())
         .setParam("name", request.getName()),
-        .setParam("organization", request.getOrganization()),
       ShowWsResponse.parser());
   }
 

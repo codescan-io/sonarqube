@@ -108,8 +108,7 @@ public class SearchAction implements QualityGatesWsAction {
 
       String gateName = request.mandatoryParam(PARAM_GATE_NAME);
 
-
-      QualityGateDto qualityGate = wsSupport.getByName(dbSession, gateName);
+      QualityGateDto qualityGate = wsSupport.getByOrganizationAndName(dbSession, organization, gateName);
 
       ProjectQgateAssociationQuery projectQgateAssociationQuery = ProjectQgateAssociationQuery.builder()
         .qualityGate(qualityGate)

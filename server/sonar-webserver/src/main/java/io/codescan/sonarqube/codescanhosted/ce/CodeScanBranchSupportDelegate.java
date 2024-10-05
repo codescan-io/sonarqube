@@ -100,10 +100,8 @@ public class CodeScanBranchSupportDelegate implements BranchSupportDelegate {
         String branchUuid = uuidFactory.create();
         ComponentDto componentDto = mainComponentDto.copy()
                 .setUuid(branchUuid)
-                .setRootUuid(branchUuid)
                 .setBranchUuid(branchUuid)
                 .setUuidPath(ComponentDto.UUID_PATH_OF_ROOT)
-                .setModuleUuidPath(ComponentDto.UUID_PATH_SEPARATOR + branchUuid + ComponentDto.UUID_PATH_SEPARATOR)
                 .setMainBranchProjectUuid(mainComponentDto.uuid())
                 .setCreatedAt(new Date(clock.millis()));
         dbClient.componentDao().insert(dbSession, componentDto);
