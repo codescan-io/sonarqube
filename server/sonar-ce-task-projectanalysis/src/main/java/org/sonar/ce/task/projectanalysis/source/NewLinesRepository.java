@@ -20,8 +20,10 @@
 package org.sonar.ce.task.projectanalysis.source;
 
 import com.google.common.base.Preconditions;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -40,6 +42,13 @@ public class NewLinesRepository {
   private final ScmInfoRepository scmInfoRepository;
   private final PeriodHolder periodHolder;
   private final Map<Component, Optional<Set<Integer>>> reportChangedLinesCache = new HashMap<>();
+  private final List<String> sfMetaLanguages = Arrays.asList("object", "object-meta.xml", "profile", "profile-meta.xml",
+          "settings", "settings-meta.xml",
+          "permissionset", "permissionset-meta.xml", "group", "group-meta.xml", "workflow", "workflow-meta.xml",
+          "flow", "flow-meta.xml", "sharingRules", "sharingRules-meta.xml",
+          "profileSessionSetting", "profilePasswordPolicy", "field-meta.xml", "validationRule-meta.xml",
+          "messagechannel", "messagechannel-meta.xml", "cspTrustedSite", "corsWhitelistOrigin", "remoteSite",
+          "cspTrustedSite-meta.xml", "corsWhitelistOrigin-meta.xml", "remoteSite-meta.xml");
 
   public NewLinesRepository(BatchReportReader reportReader, AnalysisMetadataHolder analysisMetadataHolder, PeriodHolder periodHolder, ScmInfoRepository scmInfoRepository) {
     this.reportReader = reportReader;
@@ -54,7 +63,7 @@ public class NewLinesRepository {
 
   public Optional<Set<Integer>> getNewLines(Component file) {
     Preconditions.checkArgument(file.getType() == Component.Type.FILE, "Changed lines are only available on files, but was: " + file.getType().name());
-    if (!newLinesAvailable()) {
+    if (!newLinesAvailable() || (isSfMetaFile(file.getName()) && file.getFileAttributes().getLines()>10000)) {
       return Optional.empty();
     }
     Optional<Set<Integer>> reportChangedLines = getChangedLinesFromReport(file);
@@ -64,6 +73,9 @@ public class NewLinesRepository {
     return computeNewLinesFromScm(file);
   }
 
+  private boolean isSfMetaFile(String fileName) {
+    return sfMetaLanguages.stream().anyMatch(fileSuffix -> fileName.endsWith(fileSuffix));
+  }
   /**
    * If the changed lines are not in the report or if we are not analyzing a P/R or a branch using a "reference branch", we fall back to this method.
    * If there is a period and SCM information, we compare the change dates of each line with the start of the period to figure out if a line is new or not.
