@@ -59,6 +59,8 @@
     max-width: 1290px;
     margin-left: auto;
     margin-right: auto;
+    display: flex;
+    align-items: center;
 }
 .org-alert-error .icon{
   float: left;
@@ -79,7 +81,7 @@
   border: 1px solid #faebcc;
   background-color: #fcf8e3;
   color: #6f4f17;
-  height: 30px;
+  height: auto;
 }
 .org-alert-warning .icon{
   float: left;
