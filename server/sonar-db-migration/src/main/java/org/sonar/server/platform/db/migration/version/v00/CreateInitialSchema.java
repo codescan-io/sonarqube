@@ -341,6 +341,7 @@ public class CreateInitialSchema extends DdlChange {
 
     context.execute(newTableBuilder(tableName)
       .addPkColumn(UUID_COL)
+      .addColumn(newVarcharColumnDefBuilder(ORGANIZATION_UUID_COL_NAME).setLimit(UUID_SIZE).setIsNullable(true).build())
       .addColumn(newVarcharColumnDefBuilder(USER_UUID_COL_NAME).setIsNullable(false).setLimit(USER_UUID_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder("user_login").setIsNullable(false).setLimit(USER_UUID_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder("category").setIsNullable(false).setLimit(25).build())
@@ -1453,6 +1454,7 @@ public class CreateInitialSchema extends DdlChange {
         .addColumn(NULLABLE_TECHNICAL_CREATED_AT_COL)
         .addColumn(NULLABLE_TECHNICAL_UPDATED_AT_COL)
         .addColumn(newVarcharColumnDefBuilder(TEMPLATE_UUID_COL_NAME).setIsNullable(true).setLimit(UUID_SIZE).build())
+        .addColumn(newVarcharColumnDefBuilder("education_principles").setLimit(255).setIsNullable(true).build())
         .build());
     addIndex(context, "rules", "rules_repo_key", true, pluginRuleKeyCol, pluginNameCol);
     addIndex(context, "rules", "rules_organization_uuid", false, organizationUuidCol, pluginNameCol);
@@ -1635,7 +1637,9 @@ public class CreateInitialSchema extends DdlChange {
         .addColumn(externalLoginCol)
         .addColumn(externalIdentityProviderCol)
         .addColumn(externalIdCol)
+        .addColumn(newBooleanColumnDefBuilder().setColumnName("is_root").setIsNullable(false).setDefaultValue(false).build())
         .addColumn(newBooleanColumnDefBuilder().setColumnName("user_local").setIsNullable(true).build())
+        .addColumn(newBooleanColumnDefBuilder().setColumnName("onboarded").setIsNullable(false).setDefaultValue(false).build())
         .addColumn(newVarcharColumnDefBuilder("homepage_type").setLimit(40).setIsNullable(true).build())
         .addColumn(newVarcharColumnDefBuilder("homepage_parameter").setLimit(40).setIsNullable(true).build())
         .addColumn(newBigIntegerColumnDefBuilder().setColumnName("last_connection_date").setIsNullable(true).build())

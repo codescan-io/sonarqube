@@ -43,6 +43,7 @@ jar.enabled = false
 shadowJar {
   archiveBaseName = 'codescan-application'
   archiveClassifier = null
+  zip64 = true
   mergeServiceFiles()
   manifest {
     attributes('Main-Class': 'org.sonar.application.App')

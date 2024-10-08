@@ -1131,20 +1131,6 @@ public class IssueIndex {
             .collect(MoreCollectors.toList(branchUuids.size()));
   }
 
-  /**
-   * @deprecated SansTop25 report is outdated and will be removed in future versions
-   */
-  @Deprecated
-  public List<SecurityStandardCategoryStatistics> getSansTop25Report(String projectUuid, boolean isViewOrApp, boolean includeCwe) {
-    SearchSourceBuilder request = prepareNonClosedVulnerabilitiesAndHotspotSearch(projectUuid, isViewOrApp);
-    Stream.of(SANS_TOP_25_INSECURE_INTERACTION, SANS_TOP_25_RISKY_RESOURCE, SANS_TOP_25_POROUS_DEFENSES)
-      .forEach(sansCategory -> request.aggregation(newSecurityReportSubAggregations(
-        AggregationBuilders.filter(sansCategory, boolQuery().filter(termQuery(FIELD_ISSUE_SANS_TOP_25, sansCategory))),
-        includeCwe,
-        SecurityStandards.CWES_BY_SANS_TOP_25.get(sansCategory))));
-    return search(request, includeCwe, null);
-  }
-
   public List<SecurityStandardCategoryStatistics> getCweTop25Reports(String projectUuid, boolean isViewOrApp) {
     SearchSourceBuilder request = prepareNonClosedVulnerabilitiesAndHotspotSearch(projectUuid, isViewOrApp);
     CWES_BY_CWE_TOP_25.keySet()

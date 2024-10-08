@@ -72,11 +72,11 @@ async function run() {
       servedir: 'build/webapp',
     })
     .then((result) => {
-      const { port: esbuildport } = result;
+      const { port: esbuildport, host: esbuildhost } = result;
 
       const proxy = httpProxy.createProxyServer();
       const esbuildProxy = httpProxy.createProxyServer({
-        target: `http://localhost:${esbuildport}`,
+        target: `http://${esbuildhost}:${esbuildport}`,
       });
 
       proxy.on('error', (error) => {
@@ -102,7 +102,7 @@ async function run() {
                 req,
                 res,
                 {
-                  target: proxyTarget
+                  target: 'http://localhost:8080'
                 },
                 e => console.error('req error', e)
             );
