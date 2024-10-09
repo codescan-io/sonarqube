@@ -64,10 +64,10 @@ public class ProcessProperties {
 
     JDBC_EMBEDDED_PORT("sonar.embeddedDatabase.port"),
 
-    PATH_DATA("sonar.path.data", "/conf/data"),
+    PATH_DATA("sonar.path.data", "data"),
     PATH_HOME("sonar.path.home"),
-    PATH_LOGS("sonar.path.logs", "/conf/logs"),
-    PATH_TEMP("sonar.path.temp", "/conf/temp"),
+    PATH_LOGS("sonar.path.logs", "logs"),
+    PATH_TEMP("sonar.path.temp", "temp"),
     PATH_WEB("sonar.path.web", "web"),
 
     LOG_LEVEL("sonar.log.level"),
