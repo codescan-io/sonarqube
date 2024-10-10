@@ -40,6 +40,8 @@ public class ServerFileSystemImpl implements ServerFileSystem, org.sonar.api.pla
   private final File deployDir;
   private final File uninstallDir;
 
+  private final String dataStorageDirPath = "/data-storage";
+
   public ServerFileSystemImpl(Configuration config) {
     this.homeDir = createDir(new File(config.get(PATH_HOME.getKey()).get()));
     this.tempDir = createDir(new File(config.get(PATH_TEMP.getKey()).get()));
@@ -75,17 +77,17 @@ public class ServerFileSystemImpl implements ServerFileSystem, org.sonar.api.pla
 
   @Override
   public File getDownloadedPluginsDir() {
-    return new File(getHomeDir(), "extensions/downloads");
+    return new File(dataStorageDirPath, "extensions/downloads");
   }
 
   @Override
   public File getInstalledExternalPluginsDir() {
-    return new File(getHomeDir(), "extensions/plugins");
+    return new File(dataStorageDirPath, "extensions/plugins");
   }
 
   @Override
   public File getInstalledBundledPluginsDir() {
-    return new File(getHomeDir(), "lib/extensions");
+    return new File(dataStorageDirPath, "lib/extensions");
   }
 
   @Override

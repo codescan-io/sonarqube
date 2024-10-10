@@ -88,7 +88,7 @@ public class App {
     }
 
     private void createDefaultSonarPropertiesIfRequired() throws IOException {
-        File out = new File("/conf/sonar.properties");
+        File out = new File("/data-storage/conf/sonar.properties");
         if (!out.exists()) {
             Properties props = new Properties();
             props.load(App.class.getResourceAsStream("/default.sonar.properties"));

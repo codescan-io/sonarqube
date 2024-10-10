@@ -8,4 +8,4 @@ SQ_HOME=$1
 
 port=5006
 echo "enabling debug on compute engine, listening on port $port"
-set_property sonar.ce.javaAdditionalOpts "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$port" "/conf/sonar.properties"
+set_property sonar.ce.javaAdditionalOpts "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$port" "/data-storage/conf/sonar.properties"

@@ -141,7 +141,7 @@ public class AppSettingsLoaderImpl implements AppSettingsLoader {
    */
   private static Properties loadPropertiesFile(File homeDir) {
     Properties p = new Properties();
-    File propsFile = new File(homeDir, "/conf/sonar.properties");
+    File propsFile = new File("/data-storage/conf/sonar.properties");
     if (propsFile.exists()) {
       try (Reader reader = new InputStreamReader(new FileInputStream(propsFile), UTF_8)) {
         p.load(reader);

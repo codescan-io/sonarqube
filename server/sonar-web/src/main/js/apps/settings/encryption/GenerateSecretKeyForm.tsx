@@ -86,7 +86,7 @@ export default class GenerateSecretKeyForm extends React.PureComponent<Props, St
                     values={{
                       secret_file: <code>~/.sonar/sonar-secret.txt</code>,
                       property: <code>sonar.secretKeyPath</code>,
-                      propreties_file: <code>/conf/sonar.properties</code>,
+                      propreties_file: <code>/data-storage/conf/sonar.properties</code>,
                     }}
                   />
                 </li>
