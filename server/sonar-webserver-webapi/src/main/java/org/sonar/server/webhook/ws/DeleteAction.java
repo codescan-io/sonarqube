@@ -79,7 +79,7 @@ public class DeleteAction implements WebhooksWsAction {
       String organizationUuid = webhookDto.getOrganizationUuid();
       if (organizationUuid != null) {
         Optional<OrganizationDto> optionalDto = dbClient.organizationDao().selectByUuid(dbSession, organizationUuid);
-        OrganizationDto organizationDto = checkStateWithOptional(optionalDto, "the requested organization '%s' was not found", organizationUuid);
+        OrganizationDto organizationDto = optionalDto.orElseThrow(() -> new IllegalStateException(format("the requested organization '%s' was not found", organizationUuid)));
         webhookSupport.checkPermission(organizationDto);
         deleteWebhook(dbSession, webhookDto);
       }
