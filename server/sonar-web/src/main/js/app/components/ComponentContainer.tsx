@@ -121,7 +121,7 @@ export class ComponentContainer extends React.PureComponent<Props, State> {
         getOrganization(component.organization),
         getOrganizationNavigation(component.organization)
       ]);
-      this.setState({ organization: { ...organization, ...navigation }, comparisonBranchesEnabled: settings[0].value === "true" });
+      this.setState({ organization: { ...organization, ...navigation }, comparisonBranchesEnabled: settings[0]?.value === "true" });
     } catch (e) {
       if (this.mounted) {
         if (e && e instanceof Response && e.status === HttpStatus.Forbidden) {

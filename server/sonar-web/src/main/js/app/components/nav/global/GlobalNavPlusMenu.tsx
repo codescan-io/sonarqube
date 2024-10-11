@@ -36,17 +36,13 @@ function GlobalNavPlusMenu(props: Props) {
 
   return (
       <ul className="menu">
-        <li>
-          <ItemLink to="/projects/create">
-            {translate('my_account.analyze_new_project')}
-          </ItemLink>
-        </li>
+        <ItemLink to="/projects/create">
+          {translate('my_account.analyze_new_project')}
+        </ItemLink>
         {canCreateOrganizations && (
-          <li>
-            <ItemLink to="/organizations/create">
-              {translate('my_account.create_new_organization')}
-            </ItemLink>
-          </li>
+          <ItemLink to="/organizations/create">
+            {translate('my_account.create_new_organization')}
+          </ItemLink>
         )}
       </ul>
   );
