@@ -28,7 +28,7 @@ import BranchLikeNavigation from './branch-like/BranchLikeNavigation';
 import CurrentBranchLikeMergeInformation from './branch-like/CurrentBranchLikeMergeInformation';
 import { Breadcrumb } from './Breadcrumb';
 import OrganizationAvatar from "../../../../apps/organizations/components/OrganizationAvatar";
-import OrganizationLink from "../../../../apps/organizations/components/OrganizationLink";
+import { Link } from "design-system";
 
 export interface HeaderProps {
   branchLikes: BranchLike[];
@@ -48,15 +48,16 @@ export function Header(props: HeaderProps) {
       {organization &&
         <>
           <OrganizationAvatar organization={organization}/>
-          <OrganizationLink
+          <Link
             className="navbar-context-header-breadcrumb-link link-base-color link-no-underline spacer-left"
-            organization={organization}>
+            to={`/organizations/${organization.kee}`}
+          >
             {organization.name}
-          </OrganizationLink>
+          </Link>
           <span className="slash-separator"/>
         </>
       }
-      <Breadcrumb component={component} currentBranchLike={currentBranchLike}/>
+      <Breadcrumb component={component} currentBranchLike={currentBranchLike} currentUser={currentUser} />
       {isLoggedIn(currentUser) && (
         <Favorite
           className="spacer-left"

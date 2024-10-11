@@ -45,7 +45,7 @@ export default function OrganizationNavigationHeader({
                 overlay={
                   <ul className="menu">
                     {sortBy(other, org => org.name.toLowerCase()).map(organization => (
-                        <OrganizationListItem key={organization.kee} organization={organization}/>
+                      <OrganizationListItem key={organization.kee} organization={organization}/>
                     ))}
                   </ul>
                 }>

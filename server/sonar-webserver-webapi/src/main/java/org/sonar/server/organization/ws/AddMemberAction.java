@@ -93,6 +93,7 @@ public class AddMemberAction implements OrganizationsWsAction {
       userSession.checkPermission(OrganizationPermission.ADMINISTER, organization);
       UserDto user = checkFound(dbClient.userDao().selectByLogin(dbSession, login), "User '%s' is not found", login);
       memberUpdater.addMember(dbSession, organization, user);
+      dbSession.commit();
 
       int groups = dbClient.groupMembershipDao().countGroups(dbSession, GroupMembershipQuery.builder()
         .organizationUuid(organization.getUuid())

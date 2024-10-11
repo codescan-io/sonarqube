@@ -84,6 +84,7 @@ public class RemoveMemberAction implements OrganizationsWsAction {
 
       UserDto user = checkFound(dbClient.userDao().selectActiveUserByLogin(dbSession, login), "User '%s' is not found", login);
       memberUpdater.removeMember(dbSession, organization, user);
+      dbSession.commit();
     }
     response.noContent();
   }

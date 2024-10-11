@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
-import { ItemNavLink } from "design-system";
+import { ItemNavLink, Link } from "design-system";
 
 interface Props {
   children?: React.ReactNode;
