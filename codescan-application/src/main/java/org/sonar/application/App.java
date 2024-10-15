@@ -102,20 +102,24 @@ public class App {
                     props.put(((String) e.getKey()).substring(5), e.getValue());
                 }
             }
-            String sqProps = System.getenv("SONARQUBE_PROPERTIES");
-            if (sqProps != null) {
-                for (String prop : sqProps.split(";")) {
-                    if (prop.contains("=")) {
-                        String[] keyValue = StringUtils.split(prop, "=", 2);
-                        props.put(keyValue[0].trim(), keyValue[1].trim());
-                    }
-                }
-            }
+            addPropsToMap(props);
 
             if (!out.getParentFile().exists()) {
                 Files.createDirectories(out.getParentFile().toPath());
             }
             props.store(new FileOutputStream(out), "#default and overwritten properties from environment");
+        }
+    }
+
+    private static void addPropsToMap(Properties props) {
+        String sqProps = System.getenv("SONARQUBE_PROPERTIES");
+        if (sqProps != null) {
+            for (String prop : sqProps.split(";")) {
+                if (prop.contains("=")) {
+                    String[] keyValue = StringUtils.split(prop, "=", 2);
+                    props.put(keyValue[0].trim(), keyValue[1].trim());
+                }
+            }
         }
     }
 
