@@ -21,8 +21,6 @@
 .navbar-context .navbar-inner {
   background-color: #fff;
   z-index: var(--contextbarZIndex);
-  height: auto !important;
-  position: relative;
 }
 
 .navbar-context .navbar-inner {
