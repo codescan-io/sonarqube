@@ -375,12 +375,7 @@ public class UserUpdater {
       } else {
         List<UserDto> matchingUsers = dbClient.userDao().selectByScmAccountOrLoginOrEmail(dbSession, scmAccount);
         List<String> matchingUsersWithoutExistingUser = newArrayList();
-        for (UserDto matchingUser : matchingUsers) {
-          if (existingUser != null && matchingUser.getUuid().equals(existingUser.getUuid())) {
-            continue;
-          }
-          matchingUsersWithoutExistingUser.add(getNameOrLogin(matchingUser) + " (" + matchingUser.getLogin() + ")");
-        }
+        iterateThroughMatchingUsers(existingUser, matchingUsers, matchingUsersWithoutExistingUser);
         if (!matchingUsersWithoutExistingUser.isEmpty()) {
           messages.add(format("The scm account '%s' is already used by user(s) : '%s'", scmAccount, Joiner.on(", ").join(matchingUsersWithoutExistingUser)));
           isValid = false;
@@ -388,6 +383,16 @@ public class UserUpdater {
       }
     }
     return isValid;
+  }
+
+  private static void iterateThroughMatchingUsers(@org.jetbrains.annotations.Nullable UserDto existingUser, List<UserDto> matchingUsers,
+          List<String> matchingUsersWithoutExistingUser) {
+    for (UserDto matchingUser : matchingUsers) {
+      if (existingUser != null && matchingUser.getUuid().equals(existingUser.getUuid())) {
+        continue;
+      }
+      matchingUsersWithoutExistingUser.add(getNameOrLogin(matchingUser) + " (" + matchingUser.getLogin() + ")");
+    }
   }
 
   private static String getNameOrLogin(UserDto user) {

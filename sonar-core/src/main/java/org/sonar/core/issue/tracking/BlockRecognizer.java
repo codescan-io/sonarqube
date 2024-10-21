@@ -44,19 +44,7 @@ class BlockRecognizer<RAW extends Trackable, BASE extends Trackable> {
     Multimap<Integer, BASE> basesByLine = groupByLine(tracking.getUnmatchedBases(), baseHashSequence);
     Map<Integer, HashOccurrence> occurrencesByHash = new HashMap<>();
 
-    for (Integer line : basesByLine.keySet()) {
-      int hash = baseHashSequence.getBlockHashForLine(line);
-      HashOccurrence hashOccurrence = occurrencesByHash.get(hash);
-      if (hashOccurrence == null) {
-        // first occurrence in base
-        hashOccurrence = new HashOccurrence();
-        hashOccurrence.baseLine = line;
-        hashOccurrence.baseCount = 1;
-        occurrencesByHash.put(hash, hashOccurrence);
-      } else {
-        hashOccurrence.baseCount++;
-      }
-    }
+    iterateThroughBaseByLineMap(basesByLine, baseHashSequence, occurrencesByHash);
 
     for (Integer line : rawsByLine.keySet()) {
       int hash = rawHashSequence.getBlockHashForLine(line);
@@ -94,6 +82,23 @@ class BlockRecognizer<RAW extends Trackable, BASE extends Trackable> {
     for (LinePair linePair : possibleLinePairs) {
       // High probability that baseLine has been moved to rawLine, so we can map all issues on baseLine to all issues on rawLine
       map(rawsByLine.get(linePair.rawLine), basesByLine.get(linePair.baseLine), tracking);
+    }
+  }
+
+  private static <BASE extends Trackable> void iterateThroughBaseByLineMap(Multimap<Integer, BASE> basesByLine,
+          BlockHashSequence baseHashSequence, Map<Integer, HashOccurrence> occurrencesByHash) {
+    for (Integer line : basesByLine.keySet()) {
+      int hash = baseHashSequence.getBlockHashForLine(line);
+      HashOccurrence hashOccurrence = occurrencesByHash.get(hash);
+      if (hashOccurrence == null) {
+        // first occurrence in base
+        hashOccurrence = new HashOccurrence();
+        hashOccurrence.baseLine = line;
+        hashOccurrence.baseCount = 1;
+        occurrencesByHash.put(hash, hashOccurrence);
+      } else {
+        hashOccurrence.baseCount++;
+      }
     }
   }
 

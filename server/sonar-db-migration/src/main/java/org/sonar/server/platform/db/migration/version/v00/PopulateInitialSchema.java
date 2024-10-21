@@ -45,6 +45,8 @@ public class PopulateInitialSchema extends DataChange {
   private static final String ADMIN_CRYPTED_PASSWORD = "$2a$12$uCkkXmhW5ThVK8mpBvnXOOJRLd64LJeHTeCkSuB3lfaR2N0AYBaSi";
   private static final List<String> ADMIN_ROLES = Arrays.asList("admin", "profileadmin", "gateadmin", "provisioning", "applicationcreator", "portfoliocreator");
   private static final String ORGANIZATION_ENABLED = "organization.enabled";
+  private static final String ORGANIZATION_UUID="organization_uuid";
+  private static final String CREATED_AT="created_at";
 
   private final System2 system2;
   private final UuidFactory uuidFactory;
@@ -116,7 +118,7 @@ public class PopulateInitialSchema extends DataChange {
     truncateTable(context, tableName);
 
     long now = system2.now();
-    Upsert upsert = context.prepareUpsert(createInsertStatement(tableName, "kee", "is_empty", "text_value", "created_at"));
+    Upsert upsert = context.prepareUpsert(createInsertStatement(tableName, "kee", "is_empty", "text_value", CREATED_AT));
     upsert
       .setString(1, "organization.default")
       .setBoolean(2, false)
@@ -146,7 +148,7 @@ public class PopulateInitialSchema extends DataChange {
 
     long now = system2.now();
     var upsert = context
-      .prepareUpsert(createInsertStatement(tableName, "uuid", "prop_key", "is_empty", "text_value", "created_at"));
+      .prepareUpsert(createInsertStatement(tableName, "uuid", "prop_key", "is_empty", "text_value", CREATED_AT));
 
     upsert.setString(1, uuidFactory.create())
       .setString(2, "sonar.forceAuthentication")
@@ -182,7 +184,7 @@ public class PopulateInitialSchema extends DataChange {
     Date now = new Date(system2.now());
     Upsert upsert = context.prepareUpsert(createInsertStatement(
       "groups",
-      "uuid", "organization_uuid", "name", "description", "created_at", "updated_at"));
+      "uuid", ORGANIZATION_UUID, "name", "description", CREATED_AT, "updated_at"));
     upsert
       .setString(1, uuidFactory.create())
       .setString(2, organizationUuid)
@@ -226,7 +228,7 @@ public class PopulateInitialSchema extends DataChange {
 
     String uuid = uuidFactory.create();
     Date now = new Date(system2.now());
-    context.prepareUpsert(createInsertStatement("quality_gates", "uuid", "name", "is_built_in", "created_at", "updated_at"))
+    context.prepareUpsert(createInsertStatement("quality_gates", "uuid", "name", "is_built_in", CREATED_AT, "updated_at"))
       .setString(1, uuid)
       .setString(2, "Sonar way")
       .setBoolean(3, true)
@@ -243,7 +245,7 @@ public class PopulateInitialSchema extends DataChange {
   private void insertGroupRoles(Context context, String organizationUuid, Groups groups) throws SQLException {
     truncateTable(context, "group_roles");
 
-    Upsert upsert = context.prepareUpsert(createInsertStatement("group_roles", "uuid", "organization_uuid", "group_uuid", "role"));
+    Upsert upsert = context.prepareUpsert(createInsertStatement("group_roles", "uuid", ORGANIZATION_UUID, "group_uuid", "role"));
     for (String adminRole : ADMIN_ROLES) {
       upsert
         .setString(1, uuidFactory.create())
@@ -307,7 +309,7 @@ public class PopulateInitialSchema extends DataChange {
   private void insertOrgQualityGate(Context context, String organizationUuid, String defaultQGUuid) throws SQLException {
     truncateTable(context, "org_quality_gates");
 
-    context.prepareUpsert(createInsertStatement("org_quality_gates", "uuid", "organization_uuid", "quality_gate_uuid"))
+    context.prepareUpsert(createInsertStatement("org_quality_gates", "uuid", ORGANIZATION_UUID, "quality_gate_uuid"))
             .setString(1, uuidFactory.create())
             .setString(2, organizationUuid)
             .setString(3, defaultQGUuid)
@@ -318,7 +320,7 @@ public class PopulateInitialSchema extends DataChange {
   private static void insertOrganizationMember(Context context, String adminUserUuid, String organizationUuid) throws SQLException {
     truncateTable(context, "organization_members");
 
-    context.prepareUpsert(createInsertStatement("organization_members", "organization_uuid", "user_uuid"))
+    context.prepareUpsert(createInsertStatement("organization_members", ORGANIZATION_UUID, "user_uuid"))
             .setString(1, organizationUuid)
             .setString(2, adminUserUuid)
             .execute()

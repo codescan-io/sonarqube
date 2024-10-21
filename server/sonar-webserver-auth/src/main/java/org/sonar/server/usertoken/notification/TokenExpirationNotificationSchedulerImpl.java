@@ -31,8 +31,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class TokenExpirationNotificationSchedulerImpl implements TokenExpirationNotificationScheduler {
   // Lock 23 hours in case of server restart or multiple nodes in data center edition
-  private static int LOCK_DURATION = 23 * 60 * 60;
-  private static String LOCK_NAME = "token-notif";
+  private static int lockDuration = 23 * 60 * 60;
+  private static String lockName = "token-notif";
   private static final Logger LOG = Loggers.get(TokenExpirationNotificationSchedulerImpl.class);
   private final TokenExpirationNotificationExecutorService executorService;
   private final GlobalLockManager lockManager;
@@ -58,7 +58,7 @@ public class TokenExpirationNotificationSchedulerImpl implements TokenExpiration
   void notifyTokenExpiration() {
     try {
       // Avoid notification multiple times in case of data center edition
-      if (!lockManager.tryLock(LOCK_NAME, LOCK_DURATION)) {
+      if (!lockManager.tryLock(lockName, lockDuration)) {
         return;
       }
       notificationSender.sendNotifications();

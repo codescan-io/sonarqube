@@ -76,6 +76,9 @@ public class CreateInitialSchema extends DdlChange {
   private static final String USER_UUID_COL_NAME = "user_uuid";
   private static final String VALUE_COL_NAME = "value";
   private static final String QPROFILE_UUID_COL_NAME = "qprofile_uuid";
+  private static final String CLOB_VALUE="clob_value";
+  private static final String IS_EMPTY="is_empty";
+  private static final String RULES="rules";
 
   private static final String UNIQUE_INDEX_SUFFIX = "_unique";
 
@@ -273,8 +276,8 @@ public class CreateInitialSchema extends DdlChange {
         .addColumn(snapshotUuidColumn)
         .addColumn(newVarcharColumnDefBuilder("kee").setIsNullable(false).setLimit(512).build())
         .addColumn(newVarcharColumnDefBuilder(TEXT_VALUE_COL_NAME).setIsNullable(true).setLimit(MAX_SIZE).build())
-        .addColumn(newClobColumnDefBuilder().setColumnName("clob_value").setIsNullable(true).build())
-        .addColumn(newBooleanColumnDefBuilder().setColumnName("is_empty").setIsNullable(false).build())
+        .addColumn(newClobColumnDefBuilder().setColumnName(CLOB_VALUE).setIsNullable(true).build())
+        .addColumn(newBooleanColumnDefBuilder().setColumnName(IS_EMPTY).setIsNullable(false).build())
         .addColumn(TECHNICAL_CREATED_AT_COL)
         .build());
     addIndex(context, tableName, "analysis_properties_analysis", false, snapshotUuidColumn);
@@ -700,9 +703,9 @@ public class CreateInitialSchema extends DdlChange {
     context.execute(
       newTableBuilder("internal_properties")
         .addPkColumn(newVarcharColumnDefBuilder("kee").setLimit(20).setIsNullable(false).build())
-        .addColumn(newBooleanColumnDefBuilder().setColumnName("is_empty").setIsNullable(false).build())
+        .addColumn(newBooleanColumnDefBuilder().setColumnName(IS_EMPTY).setIsNullable(false).build())
         .addColumn(newVarcharColumnDefBuilder().setColumnName(TEXT_VALUE_COL_NAME).setLimit(MAX_SIZE).setIgnoreOracleUnit(true).build())
-        .addColumn(newClobColumnDefBuilder().setColumnName("clob_value").setIsNullable(true).build())
+        .addColumn(newClobColumnDefBuilder().setColumnName(CLOB_VALUE).setIsNullable(true).build())
         .addColumn(TECHNICAL_CREATED_AT_COL)
         .build());
   }
@@ -1151,9 +1154,9 @@ public class CreateInitialSchema extends DdlChange {
     context.execute(newTableBuilder(tableName)
       .addPkColumn(UUID_COL)
       .addColumn(propKey)
-      .addColumn(newBooleanColumnDefBuilder().setColumnName("is_empty").setIsNullable(false).build())
+      .addColumn(newBooleanColumnDefBuilder().setColumnName(IS_EMPTY).setIsNullable(false).build())
       .addColumn(newVarcharColumnDefBuilder(TEXT_VALUE_COL_NAME).setLimit(MAX_SIZE).build())
-      .addColumn(newClobColumnDefBuilder().setColumnName("clob_value").setIsNullable(true).build())
+      .addColumn(newClobColumnDefBuilder().setColumnName(CLOB_VALUE).setIsNullable(true).build())
       .addColumn(TECHNICAL_CREATED_AT_COL)
       .addColumn(newVarcharColumnDefBuilder().setColumnName(COMPONENT_UUID_COL_NAME).setIsNullable(true).setLimit(UUID_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(USER_UUID_COL_NAME).setIsNullable(true).setLimit(USER_UUID_SIZE).build())
@@ -1259,7 +1262,7 @@ public class CreateInitialSchema extends DdlChange {
     VarcharColumnDef pluginNameCol = newVarcharColumnDefBuilder("plugin_name").setLimit(255).setIsNullable(false).build();
     VarcharColumnDef organizationUuidCol = newVarcharColumnDefBuilder(ORGANIZATION_UUID_COL_NAME).setLimit(UUID_SIZE).setIsNullable(true).build();
     context.execute(
-      newTableBuilder("rules")
+      newTableBuilder(RULES)
         .addPkColumn(UUID_COL)
         .addColumn(organizationUuidCol)
         .addColumn(newVarcharColumnDefBuilder("name").setLimit(200).setIsNullable(true).build())
@@ -1287,8 +1290,8 @@ public class CreateInitialSchema extends DdlChange {
         .addColumn(NULLABLE_TECHNICAL_UPDATED_AT_COL)
         .addColumn(newVarcharColumnDefBuilder(TEMPLATE_UUID_COL_NAME).setIsNullable(true).setLimit(UUID_SIZE).build())
         .build());
-    addIndex(context, "rules", "rules_repo_key", true, pluginRuleKeyCol, pluginNameCol);
-    addIndex(context, "rules", "rules_organization_uuid", false, organizationUuidCol, pluginNameCol);
+    addIndex(context, RULES, "rules_repo_key", true, pluginRuleKeyCol, pluginNameCol);
+    addIndex(context, RULES, "rules_organization_uuid", false, organizationUuidCol, pluginNameCol);
   }
 
   public void createRulesMetadata(Context context) {
