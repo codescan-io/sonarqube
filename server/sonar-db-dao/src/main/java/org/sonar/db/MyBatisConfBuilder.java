@@ -49,6 +49,14 @@ class MyBatisConfBuilder {
     this.conf.getVariables().setProperty("_from_dual", dialect.getSqlFromDual());
     this.conf.getVariables().setProperty("_scrollFetchSize", String.valueOf(dialect.getScrollDefaultFetchSize()));
     this.conf.setLocalCacheScope(LocalCacheScope.STATEMENT);
+
+    String encryptionKey = System.getenv("ENC_KEY");
+
+    if (encryptionKey == null || encryptionKey.isEmpty()) {
+      throw new IllegalStateException("ENC_KEY environment variable is not set for encryptionKey");
+    }
+
+    this.conf.getVariables().setProperty("encryptionKey", encryptionKey);
   }
 
   void loadAlias(String alias, Class dtoClass) {
