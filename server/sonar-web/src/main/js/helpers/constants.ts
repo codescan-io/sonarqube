@@ -54,7 +54,7 @@ export const RATING_COLORS = [
   { fill: colors.error400, fillTransparent: colors.error400a20, stroke: colors.error700 },
 ];
 
-export const PROJECT_KEY_MAX_LEN = 400;
+export const PROJECT_KEY_MAX_LEN = 255;
 
 export const ALM_DOCUMENTATION_PATHS = {
   [AlmKeys.Azure]: 'https://knowledgebase.autorabit.com/codescan/docs',
