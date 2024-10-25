@@ -80,6 +80,10 @@
   background-color: #fcf8e3;
   color: #6f4f17;
   height: 30px;
+  overflow: hidden;
+}
+.org-alert-warning:hover{
+    height: auto;
 }
 .org-alert-warning .icon{
   float: left;
@@ -95,4 +99,12 @@
 .org-alert-warning .msg{
   float:left;
   padding: 7px;
+  width: 95%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-height: 18.9px;
+}
+.org-alert-warning .msg:hover{
+    -webkit-line-clamp: unset;
 }
