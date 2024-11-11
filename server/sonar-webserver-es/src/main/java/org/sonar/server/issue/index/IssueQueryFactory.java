@@ -221,7 +221,6 @@ public class IssueQueryFactory {
 
       if (!QUALIFIERS_WITHOUT_LEAK_PERIOD.contains(component.qualifier()) && request.getPullRequest() == null) {
         Optional<SnapshotDto> snapshot = getLastAnalysis(dbSession, component);
-
         // if last analysis has no period date, then no issue should be considered new.
         Date createdAfterFromSnapshot = findCreatedAfterFromComponentUuid(snapshot);
         setCreatedAfterFromDates(builder, createdAfterFromSnapshot, null, false);
