@@ -26,6 +26,7 @@ import { Extension, NavigationComponent } from '../types/types';
 export function getComponentNavigation(
   data: { component: string } & BranchParameters
 ): Promise<NavigationComponent> {
+  data.component = decodeURIComponent(data.component);
   return getJSON('/api/navigation/component', data).catch(throwGlobalError);
 }
 
