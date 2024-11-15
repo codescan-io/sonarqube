@@ -45,7 +45,10 @@ export function ProjectBranchesApp(props: ProjectBranchesAppProps) {
                 : translate('project_branch_pull_request.page')
           }
         </h1>
-        <LifetimeInformation comparisonBranchesEnabled={props.comparisonBranchesEnabled}/>
+        <LifetimeInformation
+          comparisonBranchesEnabled={props.comparisonBranchesEnabled}
+          component={component}
+        />
       </header>
 
       <BranchLikeTabs
