@@ -169,6 +169,7 @@ export function getDirectories(data: GetTreeParams) {
 }
 
 export function getComponentData(data: { component: string } & BranchParameters): Promise<any> {
+  data.component = decodeURIComponent(data.component);
   return getJSON('/api/components/show', data);
 }
 
