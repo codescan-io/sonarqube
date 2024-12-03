@@ -41,7 +41,9 @@ public class DigestUtil {
             byte[] hashBytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
             return Hex.toHexString(hashBytes);
         } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error while hashing with SHA3-224", e);
+        } finally {
+            Security.removeProvider(BouncyCastleFipsProvider.PROVIDER_NAME);
         }
 
     }
