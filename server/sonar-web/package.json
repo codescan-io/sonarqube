@@ -150,6 +150,6 @@
   },
   "packageManager": "yarn@4.2.2",
   "resolutions": {
-    "eslint/cross-spawn": "7.0.6"
+    "eslint/cross-spawn": "7.0.5"
   }
 }
