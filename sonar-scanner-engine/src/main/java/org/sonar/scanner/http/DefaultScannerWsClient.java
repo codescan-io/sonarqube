@@ -85,8 +85,11 @@ public class DefaultScannerWsClient implements ScannerWsClient {
   public WsResponse call(WsRequest request) {
     checkState(!globalMode.isMediumTest(), "No WS call should be made in medium test mode");
     WsResponse response = target.wsConnector().call(request);
+    LOG.info("entered line 88");
     failIfUnauthorized(response);
+    LOG.info("entered line 90");
     checkAuthenticationWarnings(response);
+    LOG.info("entered line 92");
     return response;
   }
 
@@ -102,13 +105,16 @@ public class DefaultScannerWsClient implements ScannerWsClient {
     int code = response.code();
 
     if (code == HTTP_UNAUTHORIZED) {
-      logResponseDetailsIfDebug(response);
+      String content = response.hasContent() ? response.content() : "<no content>";
+      Map<String, List<String>> headers = response.headers();
+      LOG.warn("entered Error response content: {}, headers: {}", content, headers);
       response.close();
       if (hasCredentials) {
         // credentials are not valid
         throw MessageException.of(format("Not authorized. Please check the user token in the property '%s' or the credentials in the properties '%s' and '%s'.",
           ScannerWsClientProvider.TOKEN_PROPERTY, CoreProperties.LOGIN, CoreProperties.PASSWORD));
       }
+      LOG.info("entered line 117");
       // not authenticated - see https://jira.sonarsource.com/browse/SONAR-4048
       throw MessageException.of(format("Not authorized. Analyzing this project requires authentication. " +
         "Please check the user token in the property '%s' or the credentials in the properties '%s' and '%s'.",

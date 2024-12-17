@@ -20,12 +20,15 @@
 package org.sonar.server.authentication;
 
 import com.google.common.collect.ImmutableMap;
+import com.hazelcast.logging.ILogger;
 import io.jsonwebtoken.Claims;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.server.ServerSide;
 import org.sonar.api.server.http.Cookie;
@@ -72,6 +75,8 @@ public class JwtHttpHandler {
   private final int sessionTimeoutInSeconds;
   private final JwtCsrfVerifier jwtCsrfVerifier;
 
+  private static final Logger LOG = LoggerFactory.getLogger(JwtHttpHandler.class);
+
   public JwtHttpHandler(System2 system2, DbClient dbClient, Configuration config, JwtSerializer jwtSerializer, JwtCsrfVerifier jwtCsrfVerifier) {
     this.jwtSerializer = jwtSerializer;
     this.dbClient = dbClient;
@@ -81,6 +86,7 @@ public class JwtHttpHandler {
   }
 
   public void generateToken(UserDto user, Map<String, Object> properties, HttpRequest request, HttpResponse response) {
+    LOG.warn("entered line 84");
     String csrfState = jwtCsrfVerifier.generateState(request, response, sessionTimeoutInSeconds);
     long expirationTime = system2.now() + sessionTimeoutInSeconds * 1000L;
     SessionTokenDto sessionToken = createSessionToken(user, expirationTime);
@@ -99,6 +105,7 @@ public class JwtHttpHandler {
 
   private SessionTokenDto createSessionToken(UserDto user, long expirationTime) {
     try (DbSession dbSession = dbClient.openSession(false)) {
+      LOG.warn("entered line 108");
       SessionTokenDto sessionToken = new SessionTokenDto()
         .setUserUuid(user.getUuid())
         .setExpirationDate(expirationTime);
@@ -109,16 +116,19 @@ public class JwtHttpHandler {
   }
 
   public void generateToken(UserDto user, HttpRequest request, HttpResponse response) {
+    LOG.warn("entered line 119");
     generateToken(user, Collections.emptyMap(), request, response);
   }
 
   public Optional<UserDto> validateToken(HttpRequest request, HttpResponse response) {
+    LOG.warn("entered line 124");
     Optional<Token> token = getToken(request, response);
     return token.map(Token::getUserDto);
   }
 
   public Optional<Token> getToken(HttpRequest request, HttpResponse response) {
     Optional<String> encodedToken = getTokenFromCookie(request);
+    LOG.warn("entered line 131");
     if (encodedToken.isEmpty()) {
       return Optional.empty();
     }
@@ -128,6 +138,7 @@ public class JwtHttpHandler {
   }
 
   private static Optional<String> getTokenFromCookie(HttpRequest request) {
+    LOG.warn("entered line 141");
     Optional<Cookie> jwtCookie = findCookie(JWT_COOKIE, request);
     if (jwtCookie.isEmpty()) {
       return Optional.empty();
@@ -141,6 +152,7 @@ public class JwtHttpHandler {
   }
 
   private Optional<Token> validateToken(DbSession dbSession, String tokenEncoded, HttpRequest request, HttpResponse response) {
+    LOG.warn("entered line 155");
     Optional<Claims> claims = jwtSerializer.decode(tokenEncoded);
     if (claims.isEmpty()) {
       return Optional.empty();
@@ -164,7 +176,7 @@ public class JwtHttpHandler {
     if (now.after(addSeconds(getLastRefreshDate(token), SESSION_REFRESH_IN_SECONDS))) {
       refreshToken(dbSession, sessionToken.get(), token, request, response);
     }
-
+    LOG.warn("entered line 179");
     Optional<UserDto> user = selectUserFromUuid(dbSession, token.getSubject());
     return user.map(userDto -> new Token(userDto, claims.get()));
   }
@@ -177,15 +189,17 @@ public class JwtHttpHandler {
 
   private void refreshToken(DbSession dbSession, SessionTokenDto tokenFromDb, Claims tokenFromCookie, HttpRequest request, HttpResponse response) {
     long expirationTime = system2.now() + sessionTimeoutInSeconds * 1000L;
+    LOG.warn("entered line 192");
     String refreshToken = jwtSerializer.refresh(tokenFromCookie, expirationTime);
     response.addHeader(SET_COOKIE, createJwtSession(request, JWT_COOKIE, refreshToken, sessionTimeoutInSeconds));
     jwtCsrfVerifier.refreshState(request, response, (String) tokenFromCookie.get(CSRF_JWT_PARAM), sessionTimeoutInSeconds);
-
+    LOG.warn("entered line 196");
     dbClient.sessionTokensDao().update(dbSession, tokenFromDb.setExpirationDate(expirationTime));
     dbSession.commit();
   }
 
   public void removeToken(HttpRequest request, HttpResponse response) {
+    LOG.warn("entered line 202");
     removeSessionToken(request);
     response.addCookie(createCookie(request, JWT_COOKIE, null, 0));
     jwtCsrfVerifier.removeState(request, response);
@@ -206,20 +220,27 @@ public class JwtHttpHandler {
     }
   }
 
+
   private static Cookie createCookie(HttpRequest request, String name, @Nullable String value, int expirationInSeconds) {
+    LOG.warn("entered line 255");
     return newCookieBuilder(request).setName(name).setValue(value).setHttpOnly(true).setExpiry(expirationInSeconds).build();
+
+
   }
 
   private static String createJwtSession(HttpRequest request, String name, @Nullable String value, int expirationInSeconds) {
+    LOG.warn("entered line 231");
     return newCookieBuilder(request).setName(name).setValue(value).setHttpOnly(true).setExpiry(expirationInSeconds).setSameSite(SAMESITE_LAX).toValueString();
   }
 
   private Optional<UserDto> selectUserFromUuid(DbSession dbSession, String userUuid) {
+    LOG.warn("entered line 237");
     UserDto user = dbClient.userDao().selectByUuid(dbSession, userUuid);
     return Optional.ofNullable(user != null && user.isActive() ? user : null);
   }
 
   private static int getSessionTimeoutInSeconds(Configuration config) {
+    LOG.warn("entered line 243");
     int minutes = config.getInt(WEB_SESSION_TIMEOUT_IN_MIN.getKey()).orElse(SESSION_TIMEOUT_DEFAULT_VALUE_IN_MINUTES);
     checkArgument(minutes > SESSION_REFRESH_IN_SECONDS / 60 && minutes <= MAX_SESSION_TIMEOUT_IN_MINUTES,
       "Property %s must be higher than 5 minutes and must not be greater than 3 months. Got %s minutes", WEB_SESSION_TIMEOUT_IN_MIN.getKey(),

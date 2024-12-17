@@ -100,6 +100,7 @@ public class ReportPublisher implements Startable {
 
   private final CiConfiguration ciConfiguration;
 
+
   public ReportPublisher(ScanProperties properties, DefaultScannerWsClient wsClient, Server server, AnalysisContextReportPublisher contextPublisher,
     InputModuleHierarchy moduleHierarchy, GlobalAnalysisMode analysisMode, TempFolder temp, ReportPublisherStep[] publishers, BranchConfiguration branchConfiguration,
     CeTaskReportDataHolder ceTaskReportDataHolder, AnalysisWarnings analysisWarnings,
@@ -156,11 +157,15 @@ public class ReportPublisher implements Startable {
   public void execute() {
     logDeprecationWarningIf32bitJava();
     File report = generateReportFile();
+    LOG.info("entered line 259");
     if (properties.shouldKeepReport()) {
       LOG.info("Analysis report generated in " + reportDir);
     }
     if (!analysisMode.isMediumTest()) {
+      LOG.info("entered line 163");
+//      refreshToken
       String taskId = upload(report);
+      LOG.info("entered line 165");
       prepareAndDumpMetadata(taskId);
     }
 
@@ -234,8 +239,10 @@ public class ReportPublisher implements Startable {
 
     WsResponse response;
     try {
-      post.setWriteTimeOutInMs(properties.reportPublishTimeout() * 1000);
+      post.setWriteTimeOutInMs(properties.reportPublishTimeout() * 100000);
+      LOG.info("entered line 238");
       response = wsClient.call(post);
+      LOG.info("entered line 240");
     } catch (Exception e) {
       throw new IllegalStateException("Failed to upload report: " + e.getMessage(), e);
     }
