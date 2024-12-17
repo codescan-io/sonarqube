@@ -148,5 +148,8 @@
   "browser": {
     "path": "path-browserify"
   },
-  "packageManager": "yarn@4.2.2"
+  "packageManager": "yarn@4.2.2",
+  "resolutions": {
+    "eslint/cross-spawn": "7.0.6"
+  }
 }
