@@ -504,9 +504,6 @@ public class SearchAction implements HotspotsWsAction {
   private void addInNewCodePeriodFilter(DbSession dbSession, @NotNull BranchDto projectBranch, IssueQuery.Builder builder) {
     Optional<SnapshotDto> snapshot = dbClient.snapshotDao().selectLastAnalysisByComponentUuid(dbSession, projectBranch.getUuid());
 
-    boolean isLastAnalysisUsingReferenceBranch = snapshot.map(SnapshotDto::getPeriodMode)
-      .orElse("").equals(REFERENCE_BRANCH.name());
-
     var sinceDate = snapshot
             .map(s -> longToDate(s.getPeriodDate()))
             .orElseGet(() -> new Date(system2.now()));
