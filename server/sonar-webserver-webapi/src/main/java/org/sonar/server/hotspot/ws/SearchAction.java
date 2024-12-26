@@ -507,15 +507,11 @@ public class SearchAction implements HotspotsWsAction {
     boolean isLastAnalysisUsingReferenceBranch = snapshot.map(SnapshotDto::getPeriodMode)
       .orElse("").equals(REFERENCE_BRANCH.name());
 
-    if (isLastAnalysisUsingReferenceBranch) {
-      builder.newCodeOnReference(true);
-    } else {
-      var sinceDate = snapshot
-        .map(s -> longToDate(s.getPeriodDate()))
-        .orElseGet(() -> new Date(system2.now()));
+    var sinceDate = snapshot
+            .map(s -> longToDate(s.getPeriodDate()))
+            .orElseGet(() -> new Date(system2.now()));
 
-      builder.createdAfter(sinceDate, false);
-    }
+    builder.createdAfter(sinceDate, false);
   }
 
   private void addInNewCodePeriodFilterByProjects(IssueQuery.Builder builder, DbSession dbSession, BranchDto appBranch) {
