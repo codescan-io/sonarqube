@@ -45,6 +45,7 @@ import static org.sonar.api.CoreProperties.CORE_FORCE_AUTHENTICATION_DEFAULT_VAL
 import static org.sonar.api.CoreProperties.CORE_FORCE_AUTHENTICATION_PROPERTY;
 import static org.sonar.api.utils.DateUtils.formatDateTime;
 import static org.sonar.api.web.ServletFilter.UrlPattern.Builder.staticResourcePatterns;
+import static org.sonar.process.logging.LogMaskingUtil.maskEmail;
 import static org.sonar.server.authentication.AuthenticationError.handleAuthenticationError;
 import static org.sonar.server.authentication.AuthenticationRedirection.redirectTo;
 
@@ -150,7 +151,7 @@ public class UserSessionInitializer {
         .build();
     }
     threadLocalSession.set(session);
-    MDC.put("userId", session.getLogin());
+    MDC.put("userId", maskEmail(session.getLogin()));
     checkTokenUserSession(response, session);
     request.setAttribute(ACCESS_LOG_LOGIN, defaultString(session.getLogin(), "-"));
   }
