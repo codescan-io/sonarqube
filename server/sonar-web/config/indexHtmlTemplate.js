@@ -42,7 +42,7 @@ module.exports = (cssHash, jsHash) => `
 
     <!-- Google Tag Manager -->
     <script>
-      if (%GA_ENABLE% == true && (window.location.hostname.includes('codescan.io'))) {
+      if (%GA_DISABLE% == false && (window.location.hostname.includes('codescan.io') || window.location.hostname.includes('localhost'))) {
         (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
         new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
         j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
@@ -54,7 +54,7 @@ module.exports = (cssHash, jsHash) => `
 
     <!-- Pendo.io -->
     <script>
-      if (%PENDO_ENABLE% == true && (window.location.hostname.includes('codescan.io') || window.location.hostname.includes('autorabit.com'))) {
+      if (%PENDO_DISABLE% == false && (window.location.hostname.includes('codescan.io') || window.location.hostname.includes('autorabit.com') || window.location.hostname.includes('localhost'))) {
         (function(p,e,n,d,o){var v,w,x,y,z;o=p[d]=p[d]||{};o._q=o._q||[];
         v=['initialize','identify','updateOptions','pageLoad','track'];for(w=0,x=v.length;w<x;++w)(function(m){
           o[m]=o[m]||function(){o._q[m===v[0]?'unshift':'push']([m].concat([].slice.call(arguments,0)));};})(v[w]);

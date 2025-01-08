@@ -43,11 +43,11 @@ public class WebPagesCache {
   private static final String INSTANCE_PLACEHOLDER = "%INSTANCE%";
   private static final String OFFICIAL_PLACEHOLDER = "%OFFICIAL%";
   private static final String SONARQUBE_INSTANCE_VALUE = "CodeScanCloud";
-  private static final String PENDO_ENABLE_PLACEHOLDER = "%PENDO_ENABLE%";
-  private static final String GA_ENABLE_PLACEHOLDER = "%GA_ENABLE%";
-  private static final String PENDO_ENABLE_TOGGLE = "PENDO_ENABLE";
-  private static final String GA_ENABLE_TOGGLE = "GA_ENABLE";
-  public static final String DEFAULT_TOGGLE_VALUE = "true";
+  private static final String PENDO_DISABLE_PLACEHOLDER = "%PENDO_DISABLE%";
+  private static final String PENDO_DISABLE_TOGGLE = "PENDO_DISABLE";
+  private static final String GA_DISABLE_PLACEHOLDER = "%GA_DISABLE%";
+  private static final String GA_DISABLE_TOGGLE = "GA_DISABLE";
+  public static final String DEFAULT_TOGGLE_VALUE = "false";
   private static final String INDEX_HTML_PATH = "/index.html";
 
   private static final Set<String> HTML_PATHS = Set.of(INDEX_HTML_PATH);
@@ -102,9 +102,9 @@ public class WebPagesCache {
         .replace(SERVER_STATUS_PLACEHOLDER, serverStatus)
         .replace(INSTANCE_PLACEHOLDER, WebPagesCache.SONARQUBE_INSTANCE_VALUE)
         .replace(OFFICIAL_PLACEHOLDER, String.valueOf(officialDistribution.check()))
-        .replace(PENDO_ENABLE_PLACEHOLDER, ofNullable(System.getenv(PENDO_ENABLE_TOGGLE)).map(String::toLowerCase).orElse(
+        .replace(PENDO_DISABLE_PLACEHOLDER, ofNullable(System.getenv(PENDO_DISABLE_TOGGLE)).map(String::toLowerCase).orElse(
                 DEFAULT_TOGGLE_VALUE))
-        .replace(GA_ENABLE_PLACEHOLDER, ofNullable(System.getenv(GA_ENABLE_TOGGLE)).map(String::toLowerCase).orElse(
+        .replace(GA_DISABLE_PLACEHOLDER, ofNullable(System.getenv(GA_DISABLE_TOGGLE)).map(String::toLowerCase).orElse(
                 DEFAULT_TOGGLE_VALUE));
     } catch (Exception e) {
       throw new IllegalStateException("Fail to load file " + path, e);
