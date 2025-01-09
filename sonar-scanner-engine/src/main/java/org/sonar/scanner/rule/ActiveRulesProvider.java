@@ -47,6 +47,7 @@ public class ActiveRulesProvider {
   public DefaultActiveRules provide(ActiveRulesLoader loader, QualityProfiles qProfiles) {
     Profiler profiler = Profiler.create(LOG).startInfo(LOG_MSG);
     DefaultActiveRules activeRules = load(loader, qProfiles);
+    System.out.println("Loads the rules that are activated on the Quality profiles");
     profiler.stopInfo();
     return activeRules;
   }

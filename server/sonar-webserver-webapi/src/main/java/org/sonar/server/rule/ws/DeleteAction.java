@@ -84,6 +84,7 @@ public class DeleteAction implements RulesWsAction {
   }
 
   public void delete(RuleKey ruleKey, String organizationKey) {
+    System.out.println("started delete line 87");
     try (DbSession dbSession = dbClient.openSession(false)) {
       OrganizationDto organization = ruleWsSupport.getOrganizationByKey(dbSession, organizationKey);
       ruleWsSupport.checkQProfileAdminPermission(organization);
@@ -95,9 +96,9 @@ public class DeleteAction implements RulesWsAction {
               .orElseThrow(() -> new NotFoundException("No organization with key " + organizationKey));
       checkArgument(Objects.equals(rule.getOrganizationUuid(), organizationDto.getUuid()),
               "Rule '%s' cannot be deleted because it's organization does not equals the input param", rule.getKey().toString());
-
-      qProfileRules.deleteRule(dbSession, rule);
-
+      System.out.println("entered delete line 98");
+      qProfileRules.deleteRuleAndCommit(dbSession, rule);
+      System.out.println("after deleteRuleAndCommit delete line 101");
       rule.setStatus(RuleStatus.REMOVED);
       rule.setUpdatedAt(system2.now());
       dbClient.ruleDao().update(dbSession, rule);
