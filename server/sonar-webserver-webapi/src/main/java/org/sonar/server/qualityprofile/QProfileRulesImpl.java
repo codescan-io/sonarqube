@@ -127,7 +127,24 @@ public class QProfileRulesImpl implements QProfileRules {
 
     db.activeRuleDao().deleteByUuids(dbSession, activeRuleUuids);
     db.activeRuleDao().deleteParamsByActiveRuleUuids(dbSession, activeRuleUuids);
+    return changes;
+  }
 
+  @Override
+  public List<ActiveRuleChange> deleteRuleAndCommit(DbSession dbSession, RuleDto rule) {
+    List<ActiveRuleChange> changes = new ArrayList<>();
+    List<String> activeRuleUuids = new ArrayList<>();
+    db.activeRuleDao().selectByRuleUuid(dbSession, rule.getUuid()).forEach(ar -> {
+      activeRuleUuids.add(ar.getUuid());
+      changes.add(new ActiveRuleChange(ActiveRuleChange.Type.DEACTIVATED, ar, rule));
+    });
+
+    db.activeRuleDao().deleteByUuids(dbSession, activeRuleUuids);
+    db.activeRuleDao().deleteParamsByActiveRuleUuids(dbSession, activeRuleUuids);
+    System.out.println("Reached Commited and Indexed all the Deleted Rules");
+    // Commited and Indexed all the Deleted Rules.
+    activeRuleIndexer.commitAndIndex(dbSession, changes);
+    System.out.println("Done with Commited and Indexed all the Deleted Rules");
     return changes;
   }
 

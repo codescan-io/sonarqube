@@ -61,4 +61,9 @@ public interface QProfileRules {
    * consequence Elasticsearch indices are NOT updated.
    */
   List<ActiveRuleChange> deleteRule(DbSession dbSession, RuleDto rule);
+
+  /**
+   * Delete a rule from all Quality profiles. Db session is committed and Elasticsearch indices are updated.
+   */
+  List<ActiveRuleChange> deleteRuleAndCommit(DbSession dbSession, RuleDto rule);
 }
