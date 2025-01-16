@@ -64,7 +64,6 @@ export default function ProfileRules({ organization, profile }: Readonly<Props>)
 
   const { data: allRules, isLoading: isAllRulesLoading } = useSearchRulesQuery(
     {
-      organization,
       ps: 1,
       languages: profile.language,
       facets: isStandardMode
