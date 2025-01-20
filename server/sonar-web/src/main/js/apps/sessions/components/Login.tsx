@@ -19,7 +19,7 @@
  */
 
 import styled from '@emotion/styled';
-import { LogoSize, LogoSonar, Spinner } from '@sonarsource/echoes-react';
+import { Spinner } from '@sonarsource/echoes-react';
 import { Helmet } from 'react-helmet-async';
 import { FormattedMessage } from 'react-intl';
 import {
@@ -33,9 +33,9 @@ import {
   themeColor,
 } from '~design-system';
 import { Location } from '~sonar-aligned/types/router';
-import { SonarQubeProductLogo } from '../../../components/branding/SonarQubeProductLogo';
 import { translate } from '../../../helpers/l10n';
 import { getReturnUrl } from '../../../helpers/urls';
+import { Image } from '../../../sonar-aligned/components/common/Image';
 import { IdentityProvider } from '../../../types/types';
 import LoginForm from './LoginForm';
 import OAuthProviders from './OAuthProviders';
@@ -54,13 +54,13 @@ export default function Login(props: Readonly<LoginProps>) {
   const displayError = Boolean(location.query.authorizationError);
 
   return (
-    <div className="sw-flex sw-flex-col sw-items-center sw-pt-32" id="login_form">
+    <div className="sw-flex sw-flex-col sw-items-center" id="login_form">
       <Helmet defer={false} title={translate('login.page')} />
-      <LogoSonar hasText size={LogoSize.Large} />
+
       <Card className="sw-my-14 sw-p-0 sw-w-abs-350">
         <PageContentFontWrapper className="sw-typo-lg sw-flex sw-flex-col sw-items-center sw-py-8 sw-px-4">
-          <SonarQubeProductLogo size={LogoSize.Small} />
-          <Title className="sw-my-6 sw-text-center">
+           <Image alt="" className="sw-mb-6" src="/images/embed-doc/codescan.svg" width={100} />
+          <Title className="sw-mb-6 sw-text-center">
             <FormattedMessage id="login.login_to_sonarqube" />
           </Title>
           <Spinner isLoading={loading}>
