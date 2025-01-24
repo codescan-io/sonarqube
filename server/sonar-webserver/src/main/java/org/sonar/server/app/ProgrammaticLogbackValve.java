@@ -20,7 +20,10 @@
 package org.sonar.server.app;
 
 import ch.qos.logback.access.tomcat.LogbackValve;
+import ch.qos.logback.core.spi.ConfigurationEventListener;
 import ch.qos.logback.core.util.ExecutorServiceUtil;
+import java.util.Properties;
+import java.util.concurrent.ExecutorService;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.LifecycleState;
 import org.apache.commons.lang3.reflect.FieldUtils;
@@ -42,5 +45,20 @@ public class ProgrammaticLogbackValve extends LogbackValve {
     } catch (IllegalAccessException e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  @Override
+  public ExecutorService getAlternateExecutorService() {
+    return super.getAlternateExecutorService();
+  }
+
+  @Override
+  public void removeConfigurationEventListener(ConfigurationEventListener listener) {
+    super.removeConfigurationEventListener(listener);
+  }
+
+  @Override
+  public void addSubstitutionProperties(Properties props) {
+    super.addSubstitutionProperties(props);
   }
 }
