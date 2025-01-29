@@ -25,16 +25,16 @@
 }
 
 .cross-btn-icon-with-img {
-  position: fixed;
-  top: 20px;
-  right: 20px;
+  position: absolute;
+  top: 150px;
+  right: 200px;
   z-index: 2;
   cursor: pointer;
 }
 
 .cross-btn-icon-with-img > * {
    display: contents;
-   font-size: xxx-large;
+   font-size: xx-large;
    color: grey;
 }
 

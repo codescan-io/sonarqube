@@ -182,13 +182,14 @@ code.rule {
   overflow: auto;
 }
 
-.display-img-dialog{
+.display-img-dialog {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  object-fit: fill;
+  top: 50%;
+  left: 50%;
+  width: 75vw;
+  height: 75vh;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
   z-index: 1;
 }
 
