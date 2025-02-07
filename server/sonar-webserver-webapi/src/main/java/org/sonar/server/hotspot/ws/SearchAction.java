@@ -167,7 +167,7 @@ public class SearchAction implements HotspotsWsAction {
 
     return new WsRequest(
       request.mandatoryParamAsInt(PAGE), request.mandatoryParamAsInt(PAGE_SIZE), request.param(PARAM_PROJECT), request.param(PARAM_BRANCH),
-      request.param(PARAM_PULL_REQUEST), hotspotKeys, request.param(PARAM_STATUS), request.param(PARAM_RESOLUTION),
+      request.param(PARAM_PULL_REQUEST), hotspotKeys, request.param(PARAM_STATUS), request.paramAsStrings(PARAM_RESOLUTION),
       request.paramAsBoolean(PARAM_IN_NEW_CODE_PERIOD), request.paramAsBoolean(PARAM_ONLY_MINE), request.paramAsInt(PARAM_OWASP_ASVS_LEVEL),
       pciDss32, pciDss40, owaspAsvs40, owasp2017Top10, owasp2021Top10, stigAsdV5R3, casa, sansTop25, sonarsourceSecurity, cwes, files);
   }
@@ -288,7 +288,8 @@ public class SearchAction implements HotspotsWsAction {
       .setDescription(format(
         "If '%s' is provided and if status is '%s', only Security Hotspots with the specified resolution are returned.",
         PARAM_PROJECT, STATUS_REVIEWED))
-      .setPossibleValues(RESOLUTION_FIXED, RESOLUTION_SAFE, RESOLUTION_ACKNOWLEDGED, RESOLUTION_EXCEPTION)
+      .setPossibleValues(List.of(RESOLUTION_FIXED, RESOLUTION_SAFE, RESOLUTION_ACKNOWLEDGED, RESOLUTION_EXCEPTION))
+      .setExampleValue(RESOLUTION_FIXED+","+RESOLUTION_ACKNOWLEDGED)
       .setRequired(false);
     action.createParam(PARAM_IN_NEW_CODE_PERIOD)
       .setDescription("If '%s' is provided, only Security Hotspots created in the new code period are returned.", PARAM_IN_NEW_CODE_PERIOD)
@@ -443,7 +444,7 @@ public class SearchAction implements HotspotsWsAction {
     }
 
     wsRequest.getStatus().ifPresent(status -> builder.resolved(STATUS_REVIEWED.equals(status)));
-    wsRequest.getResolution().ifPresent(resolution -> builder.resolutions(singleton(resolution)));
+    wsRequest.getResolution().ifPresent(builder::resolutions);
     addSecurityStandardFilters(wsRequest, builder);
 
     IssueQuery query = builder.build();
@@ -473,7 +474,7 @@ public class SearchAction implements HotspotsWsAction {
       "Only one of parameters '%s' and '%s' can be provided", PARAM_BRANCH, PARAM_PULL_REQUEST);
 
     Optional<String> status = wsRequest.getStatus();
-    Optional<String> resolution = wsRequest.getResolution();
+    Optional<List<String>> resolution = wsRequest.getResolution();
     checkArgument(status.isEmpty() || hotspotKeys.isEmpty(),
       "Parameter '%s' can't be used with parameter '%s'", PARAM_STATUS, PARAM_HOTSPOTS);
     checkArgument(resolution.isEmpty() || hotspotKeys.isEmpty(),
@@ -634,7 +635,7 @@ public class SearchAction implements HotspotsWsAction {
     private final String pullRequest;
     private final Set<String> hotspotKeys;
     private final String status;
-    private final String resolution;
+    private final List<String> resolution;
     private final boolean inNewCodePeriod;
     private final boolean onlyMine;
     private final Integer owaspAsvsLevel;
@@ -652,7 +653,7 @@ public class SearchAction implements HotspotsWsAction {
 
     private WsRequest(int page, int index,
       @Nullable String projectKey, @Nullable String branch, @Nullable String pullRequest, Set<String> hotspotKeys,
-      @Nullable String status, @Nullable String resolution, @Nullable Boolean inNewCodePeriod, @Nullable Boolean onlyMine,
+      @Nullable String status, @Nullable List<String> resolution, @Nullable Boolean inNewCodePeriod, @Nullable Boolean onlyMine,
       @Nullable Integer owaspAsvsLevel, Set<String> pciDss32, Set<String> pciDss40, Set<String> owaspAsvs40,
       Set<String> owaspTop10For2017, Set<String> owaspTop10For2021, Set<String> stigAsdV5R3, Set<String> casa, Set<String> sansTop25, Set<String> sonarsourceSecurity,
       Set<String> cwe, @Nullable Set<String> files) {
@@ -708,7 +709,7 @@ public class SearchAction implements HotspotsWsAction {
       return ofNullable(status);
     }
 
-    Optional<String> getResolution() {
+    Optional<List<String>> getResolution() {
       return ofNullable(resolution);
     }
 
