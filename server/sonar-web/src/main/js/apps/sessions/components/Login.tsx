@@ -39,6 +39,7 @@ import { Image } from '../../../sonar-aligned/components/common/Image';
 import { IdentityProvider } from '../../../types/types';
 import LoginForm from './LoginForm';
 import OAuthProviders from './OAuthProviders';
+import DataAccessConsent from './DataAccessConsent';
 
 export interface LoginProps {
   identityProviders: IdentityProvider[];
@@ -46,10 +47,11 @@ export interface LoginProps {
   location: Location;
   message?: string;
   onSubmit: (login: string, password: string) => Promise<void>;
+  accessConsentMessage?: string;
 }
 
 export default function Login(props: Readonly<LoginProps>) {
-  const { identityProviders, loading, location, message } = props;
+  const { identityProviders, loading, location, message, accessConsentMessage } = props;
   const returnTo = getReturnUrl(location);
   const displayError = Boolean(location.query.authorizationError);
 
@@ -82,6 +84,10 @@ export default function Login(props: Readonly<LoginProps>) {
               )}
 
               <LoginForm collapsed={identityProviders.length > 0} onSubmit={props.onSubmit} />
+
+              { accessConsentMessage !== undefined && accessConsentMessage.length > 0 && (
+                <DataAccessConsent message={accessConsentMessage}/>
+              )}
             </>
           </Spinner>
         </PageContentFontWrapper>
