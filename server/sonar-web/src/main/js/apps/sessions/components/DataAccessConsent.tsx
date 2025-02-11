@@ -52,9 +52,7 @@ export default function DataAccessConsent({
       {isOpen && (
           <Modal onClose={noop} closeOnOverlayClick={false} >
             <Modal.Body>
-             <div className="flag-content">
                 <SafeHTMLInjection htmlAsString={message}/>
-             </div>
             </Modal.Body>
             <Modal.Footer
               primaryButton={
