@@ -18,6 +18,7 @@ dependencies {
   api 'org.apache.commons:commons-email'
   api 'org.apache.commons:commons-lang3'
   api 'org.bouncycastle:bc-fips'
+  api 'org.bouncycastle:bctls-fips'
   api 'org.elasticsearch.client:elasticsearch-rest-high-level-client'
   api 'org.slf4j:slf4j-api'
   api 'org.sonarsource.api.plugin:sonar-plugin-api'
