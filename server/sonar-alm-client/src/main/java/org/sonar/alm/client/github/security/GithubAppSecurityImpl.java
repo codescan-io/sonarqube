@@ -23,6 +23,10 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.RSAKeyProvider;
+import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
+import org.bouncycastle.util.io.pem.PemObject;
+import org.bouncycastle.util.io.pem.PemReader;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.security.KeyFactory;
@@ -36,10 +40,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
-
-import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
-import org.bouncycastle.util.io.pem.PemObject;
-import org.bouncycastle.util.io.pem.PemReader;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -71,7 +71,6 @@ public class GithubAppSecurityImpl implements GithubAppSecurity {
   private static Algorithm readApplicationPrivateKey(long appId, String encodedPrivateKey) {
     byte[] decodedPrivateKey = encodedPrivateKey.getBytes(UTF_8);
     try (PemReader pemReader = new PemReader(new InputStreamReader(new ByteArrayInputStream(decodedPrivateKey)))) {
-      Security.addProvider(new BouncyCastleFipsProvider());
 
       PemObject pemObject = pemReader.readPemObject();
       if (pemObject == null) {

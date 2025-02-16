@@ -20,19 +20,11 @@
 package org.sonar.server.app;
 
 import com.google.common.collect.ImmutableMap;
-import java.io.File;
-import java.security.Security;
-
-import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
-import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.slf4j.LoggerFactory;
-import org.sonar.process.MinimumViableSystem;
-import org.sonar.process.Monitored;
-import org.sonar.process.PluginSecurityManager;
-import org.sonar.process.ProcessEntryPoint;
-import org.sonar.process.ProcessId;
-import org.sonar.process.Props;
+import org.sonar.process.*;
 import org.sonar.process.sharedmemoryfile.DefaultProcessCommands;
+
+import java.io.File;
 
 import static org.sonar.process.ProcessId.WEB_SERVER;
 
@@ -99,8 +91,6 @@ public class WebServer implements Monitored {
    * Can't be started as is. Needs to be bootstrapped by sonar-application
    */
   public static void main(String[] args) {
-    Security.addProvider(new BouncyCastleFipsProvider());
-    Security.addProvider(new BouncyCastleJsseProvider("fips:BCFIPS"));
     ProcessEntryPoint entryPoint = ProcessEntryPoint.createForArguments(args);
     Props props = entryPoint.getProps();
     new WebServerProcessLogging().configure(props);
