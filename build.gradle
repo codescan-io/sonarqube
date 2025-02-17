@@ -420,9 +420,6 @@ subprojects {
       dependency 'org.apache.sshd:sshd-core:2.13.2'
       dependency 'org.assertj:assertj-core:3.26.3'
       dependency 'org.assertj:assertj-guava:3.26.3'
-      dependency 'org.bouncycastle:bc-fips:2.0.0'
-      dependency 'org.bouncycastle:bcpkix-fips:2.0.7'
-      dependency 'org.bouncycastle:bctls-fips:2.0.19'
       dependency('org.codehaus.sonar:sonar-channel:4.2') {
         exclude 'org.slf4j:slf4j-api'
       }

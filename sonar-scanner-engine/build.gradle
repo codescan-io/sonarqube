@@ -32,7 +32,6 @@ dependencies {
   api 'com.squareup.okhttp3:okhttp'
   api 'com.fasterxml.staxmate:staxmate'
   implementation 'io.github.hakky54:sslcontext-kickstart'
-  implementation 'org.bouncycastle:bc-fips'
   api 'javax.annotation:javax.annotation-api'
   api 'org.eclipse.jgit:org.eclipse.jgit'
   api 'org.tmatesoft.svnkit:svnkit'
@@ -44,6 +43,7 @@ dependencies {
   api 'org.sonarsource.git.blame:git-files-blame'
   api 'org.sonarsource.update-center:sonar-update-center-common'
   api 'org.springframework:spring-context'
+  compileOnly('org.bouncycastle:bc-fips:2.1.0')
 
 
   api project(':sonar-core')
