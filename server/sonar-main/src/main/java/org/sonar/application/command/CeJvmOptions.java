@@ -46,6 +46,13 @@ public class CeJvmOptions extends JvmOptions<CeJvmOptions> {
     res.put("--add-opens=java.management/sun.management=ALL-UNNAMED", "");
     res.put("--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED", "");
 
+    // Add Bouncy Castle JVM options
+    res.put("-Dorg.bouncycastle.fips.approved_only=", "true");
+    res.put("-Dorg.bouncycastle.jca.enable_jks=", "true");
+
+    // Use module-path for Bouncy Castle
+    res.put("--module-path=", "/app/bc-libs");
+
     return res;
   }
 }
