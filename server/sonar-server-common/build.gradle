@@ -17,6 +17,8 @@ dependencies {
   api 'com.squareup.okhttp3:okhttp'
   api 'org.apache.commons:commons-email'
   api 'org.apache.commons:commons-lang3'
+  api 'org.bouncycastle:bc-fips'
+  api 'org.bouncycastle:bctls-fips'
   api 'org.elasticsearch.client:elasticsearch-rest-high-level-client'
   api 'org.slf4j:slf4j-api'
   api 'org.sonarsource.api.plugin:sonar-plugin-api'
@@ -65,8 +67,6 @@ dependencies {
 
   testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
   testRuntimeOnly 'org.junit.vintage:junit-vintage-engine'
-  compileOnly('org.bouncycastle:bc-fips:2.1.0')
-
 }
 
 test {
