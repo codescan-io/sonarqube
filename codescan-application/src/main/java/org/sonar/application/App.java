@@ -19,10 +19,13 @@
  */
 package org.sonar.application;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Map.Entry;
+import java.util.Properties;
 import org.apache.commons.lang3.StringUtils;
-import org.bouncycastle.crypto.CryptoServicesRegistrar;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.sonar.api.utils.log.Loggers;
 import org.sonar.application.command.CommandFactory;
 import org.sonar.application.command.CommandFactoryImpl;
@@ -33,28 +36,16 @@ import org.sonar.core.extension.ServiceLoaderWrapper;
 import org.sonar.process.System2;
 import org.sonar.process.SystemExit;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.security.Security;
-import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.stream.IntStream;
-
 import static org.sonar.application.config.SonarQubeVersionHelper.getSonarqubeVersion;
 import static org.sonar.process.ProcessProperties.Property.CLUSTER_NAME;
 
 public class App {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
 
     private final SystemExit systemExit = new SystemExit();
     private StopRequestWatcher stopRequestWatcher = null;
     private StopRequestWatcher hardStopRequestWatcher = null;
 
     public void start(String[] cliArguments) throws IOException {
-        logProviderDetails();
         createDefaultSonarPropertiesIfRequired();
 
         AppSettingsLoader settingsLoader = new AppSettingsLoaderImpl(System2.INSTANCE, cliArguments, new ServiceLoaderWrapper());
@@ -93,28 +84,6 @@ public class App {
         }
 
         systemExit.exit(0);
-    }
-
-    private static void logProviderDetails() {
-
-        var providers = Security.getProviders();
-
-        LOGGER.info("Available Security Providers ({} in total):", providers.length);
-
-        IntStream.range(0, providers.length)
-                .forEachOrdered(i -> {
-                    var provider = providers[i];
-                    LOGGER.info("Precedence: {}, Provider: {}, Version: {}, Info: {}",
-                            i + 1, provider.getName(), provider.getVersionStr(), provider.getInfo());
-                });
-
-        var bcProvider = Security.getProvider("BCFIPS");
-
-        if (bcProvider != null) {
-            LOGGER.info("CryptoServicesRegistrar.isInApprovedOnlyMode():{}", CryptoServicesRegistrar.isInApprovedOnlyMode());
-        } else {
-            LOGGER.warn("Bouncy Castle FIPS Provider (BCFIPS) is not installed!");
-        }
     }
 
     private void createDefaultSonarPropertiesIfRequired() throws IOException {

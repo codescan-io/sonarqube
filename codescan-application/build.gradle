@@ -64,8 +64,6 @@ dependencies {
     shutdowner project(':sonar-shutdowner')
 
     jdbc_postgresql 'org.postgresql:postgresql'
-
-    compileOnly('org.bouncycastle:bc-fips:2.1.0')
 }
 
 // declare dependencies in configuration bundledPlugin to be packaged in lib/extensions
