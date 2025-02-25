@@ -25,6 +25,7 @@ import {translate, translateWithParameters} from "../../helpers/l10n";
 import {formatMeasure} from "../../helpers/measures";
 import ActionsDropdown, {ActionsDropdownDivider, ActionsDropdownItem} from "../../components/controls/ActionsDropdown";
 import { Group, Organization, OrganizationMember } from "../../types/types";
+import { setMemberType } from '../../api/organizations';
 
 interface Props {
   member: OrganizationMember;
@@ -41,13 +42,14 @@ interface Props {
 interface State {
   removeMemberForm: boolean;
   manageGroupsForm: boolean;
+  type: string;
 }
 
 const AVATAR_SIZE = 36;
 
 export default class MembersListItem extends React.PureComponent<Props, State> {
   mounted = false;
-  state: State = { removeMemberForm: false, manageGroupsForm: false };
+  state: State = { removeMemberForm: false, manageGroupsForm: false, type: this.props.member.type };
 
   componentDidMount() {
     this.mounted = true;
@@ -77,9 +79,15 @@ export default class MembersListItem extends React.PureComponent<Props, State> {
     }
   };
 
+  handleRadioChange = async (login: string, type: string) => {
+      await setMemberType(this.props.organization.kee, login, type); // API Call
+      this.setState({ type });
+  };
+
   render() {
     const { member, organization, removeMember } = this.props;
     const { actions = {} } = organization;
+    const { type } = this.state;
     return (
       <tr>
         <td className="thin nowrap">
@@ -88,6 +96,28 @@ export default class MembersListItem extends React.PureComponent<Props, State> {
         <td className="nowrap text-middle">
           <strong>{member.name}</strong>
           <span className="note little-spacer-left">{member.login}</span>
+        </td>
+        <td className="nowrap text-middle">
+          <input
+            type="radio"
+            name={member.login}
+            value="STANDARD"
+            className={`member-type-${member.type}`}
+            checked={type === "STANDARD"}
+            onChange={actions.admin ? () => this.handleRadioChange(member.login, "STANDARD") : undefined}
+          />
+          <span className='note little-spacer-left'>Standard User</span>
+        </td>
+        <td className="nowrap text-middle">
+          <input
+            type="radio"
+            name={member.login}
+            value="PLATFORM"
+            className={`member-type-${member.type}`}
+            checked={type === "PLATFORM"}
+            onChange={actions.admin ? () => this.handleRadioChange(member.login, "PLATFORM") : undefined}
+          />
+          <span className='note little-spacer-left'>Platform Integration User</span>
         </td>
         {actions.admin && (
           <td className="text-right text-middle">

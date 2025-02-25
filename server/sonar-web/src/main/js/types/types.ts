@@ -867,6 +867,7 @@ export interface OrganizationBase {
 
 export interface OrganizationMember extends UserActive {
   groupCount?: number;
+  type: string;
 }
 
 export interface Notification {

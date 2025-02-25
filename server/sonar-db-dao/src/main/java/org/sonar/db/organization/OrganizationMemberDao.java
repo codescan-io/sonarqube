@@ -23,6 +23,7 @@ import static org.sonar.db.DatabaseUtils.executeLargeInputsWithoutOutput;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -54,12 +55,20 @@ public class OrganizationMemberDao implements Dao {
     mapper(dbSession).deleteByOrganization(organizationMemberUuid);
   }
 
+  public void updateOrgMemberType(DbSession dbSession,String organizationKee, String login, String type ){
+    mapper(dbSession).updateOrgMemberType(organizationKee,login,type);
+  }
+
   public void deleteByUserUuid(DbSession dbSession, String userUuid) {
     mapper(dbSession).deleteByUserUuid(userUuid);
   }
 
   public Set<String> selectOrganizationUuidsByUser(DbSession dbSession, String userUuid) {
     return mapper(dbSession).selectOrganizationUuidsByUser(userUuid);
+  }
+
+  public List<Map<String, Object>> selectMembersIdsAndType(DbSession dbSession, String orgUuid){
+    return mapper(dbSession).selectMembersIdsAndType(orgUuid);
   }
 
   /**

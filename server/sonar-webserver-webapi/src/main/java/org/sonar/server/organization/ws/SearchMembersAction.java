@@ -31,6 +31,8 @@ import static org.sonar.server.ws.WsUtils.writeProtobuf;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Ordering;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
@@ -117,15 +119,20 @@ public class SearchMembersAction implements OrganizationsWsAction {
       if (userSession.hasPermission(ADMINISTER, organization)) {
         groupCountByLogin = dbClient.groupMembershipDao().countGroupByLoginsAndOrganization(dbSession, orderedLogins, organization.getUuid());
       }
-
+      List<Map<String, Object>> userIdAndTypeMap= dbClient.organizationMemberDao().selectMembersIdsAndType(dbSession,organization.getUuid());
+      Map<String, String> resultMap = userIdAndTypeMap.stream()
+              .collect(Collectors.toMap(
+                      row -> (String) row.get("user_uuid"),  // Key: user_uuid
+                      row -> (String) row.get("type")   // Value: user_type
+              ));
       Common.Paging wsPaging = buildWsPaging(request, searchResults);
-      SearchMembersWsResponse wsResponse = buildResponse(users, wsPaging, groupCountByLogin);
+      SearchMembersWsResponse wsResponse = buildResponse(users, wsPaging, groupCountByLogin, resultMap);
 
       writeProtobuf(wsResponse, request, response);
     }
   }
 
-  private SearchMembersWsResponse buildResponse(List<UserDto> users, Common.Paging wsPaging, @Nullable Multiset<String> groupCountByLogin) {
+  private SearchMembersWsResponse buildResponse(List<UserDto> users, Common.Paging wsPaging, @Nullable Multiset<String> groupCountByLogin, Map<String, String> userIdTypeMap) {
     SearchMembersWsResponse.Builder response = SearchMembersWsResponse.newBuilder();
 
     User.Builder wsUser = User.newBuilder();
@@ -134,7 +141,8 @@ public class SearchMembersAction implements OrganizationsWsAction {
         String login = userDto.getLogin();
         wsUser
           .clear()
-          .setLogin(login);
+          .setLogin(login)
+          .setType(userIdTypeMap.getOrDefault(userDto.getUuid(),"STANDARD"));
         ofNullable(emptyToNull(userDto.getEmail())).ifPresent(text -> wsUser.setAvatar(avatarResolver.create(userDto)));
         ofNullable(userDto.getName()).ifPresent(wsUser::setName);
         ofNullable(groupCountByLogin).ifPresent(count -> wsUser.setGroupCount(groupCountByLogin.count(login)));
