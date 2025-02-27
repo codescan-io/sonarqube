@@ -44,10 +44,12 @@ import org.sonar.core.util.stream.MoreCollectors;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
+import org.sonar.db.organization.OrganizationMemberDto;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.es.SearchOptions;
 import org.sonar.server.es.SearchResult;
 import org.sonar.server.issue.AvatarResolver;
+import org.sonar.server.organization.ws.MemberUpdater.MemberType;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.user.index.UserDoc;
 import org.sonar.server.user.index.UserIndex;
@@ -111,6 +113,8 @@ public class SearchMembersAction implements OrganizationsWsAction {
       SearchResult<UserDoc> searchResults = userIndex.search(userQuery.build(), searchOptions);
       List<String> orderedLogins = searchResults.getDocs().stream().map(UserDoc::login).collect(MoreCollectors.toList());
 
+      List<OrganizationMemberDto> organizationMemberDtoList = dbClient.organizationMemberDao().selectAllOrganizationMemberDtos(dbSession, organization.getUuid());
+
       List<UserDto> users = dbClient.userDao().selectByLogins(dbSession, orderedLogins).stream()
         .sorted(Ordering.explicit(orderedLogins).onResultOf(UserDto::getLogin))
         .collect(MoreCollectors.toList());
@@ -119,30 +123,34 @@ public class SearchMembersAction implements OrganizationsWsAction {
       if (userSession.hasPermission(ADMINISTER, organization)) {
         groupCountByLogin = dbClient.groupMembershipDao().countGroupByLoginsAndOrganization(dbSession, orderedLogins, organization.getUuid());
       }
-      List<Map<String, Object>> userIdAndTypeMap= dbClient.organizationMemberDao().selectMembersIdsAndType(dbSession,organization.getUuid());
-      Map<String, String> resultMap = userIdAndTypeMap.stream()
-              .collect(Collectors.toMap(
-                      row -> (String) row.get("user_uuid"),  // Key: user_uuid
-                      row -> (String) row.get("type")   // Value: user_type
-              ));
+
       Common.Paging wsPaging = buildWsPaging(request, searchResults);
-      SearchMembersWsResponse wsResponse = buildResponse(users, wsPaging, groupCountByLogin, resultMap);
+      SearchMembersWsResponse wsResponse = buildResponse(users, wsPaging, groupCountByLogin, organizationMemberDtoList);
 
       writeProtobuf(wsResponse, request, response);
     }
   }
 
-  private SearchMembersWsResponse buildResponse(List<UserDto> users, Common.Paging wsPaging, @Nullable Multiset<String> groupCountByLogin, Map<String, String> userIdTypeMap) {
+  private SearchMembersWsResponse buildResponse(List<UserDto> users, Common.Paging wsPaging, @Nullable Multiset<String> groupCountByLogin, List<OrganizationMemberDto> organizationMemberDtoList) {
     SearchMembersWsResponse.Builder response = SearchMembersWsResponse.newBuilder();
+
+    Map<String, String> userUuidTypeMap = organizationMemberDtoList.stream()
+            .collect(Collectors.toMap(
+                    OrganizationMemberDto::getUserUuid,  // Key: userUuid
+                    OrganizationMemberDto::getType,      // Value: type
+                    (existing, replacement) -> existing
+            ));
+
 
     User.Builder wsUser = User.newBuilder();
     users.stream()
       .map(userDto -> {
         String login = userDto.getLogin();
+        String userUuid = userDto.getUuid();
         wsUser
           .clear()
           .setLogin(login)
-          .setType(userIdTypeMap.getOrDefault(userDto.getUuid(),"STANDARD"));
+          .setType(userUuidTypeMap.getOrDefault(userUuid, MemberType.STANDARD.name()));
         ofNullable(emptyToNull(userDto.getEmail())).ifPresent(text -> wsUser.setAvatar(avatarResolver.create(userDto)));
         ofNullable(userDto.getName()).ifPresent(wsUser::setName);
         ofNullable(groupCountByLogin).ifPresent(count -> wsUser.setGroupCount(groupCountByLogin.count(login)));
