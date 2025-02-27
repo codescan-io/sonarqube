@@ -107,6 +107,7 @@ public class WebServer implements Monitored {
     log.info("security provider 1:{}",Security.getProperty("security.provider.1"));
     log.info("jdk.tls.disabledAlgorithms:{}",Security.getProperty("jdk.tls.disabledAlgorithms"));
     log.info("jdk.jar.disabledAlgorithms:{}",Security.getProperty("jdk.jar.disabledAlgorithms"));
+
     ProcessEntryPoint entryPoint = ProcessEntryPoint.createForArguments(args);
     Props props = entryPoint.getProps();
     new WebServerProcessLogging().configure(props);
