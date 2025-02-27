@@ -29,7 +29,7 @@ public interface OrganizationMemberMapper {
 
   Set<String> selectOrganizationUuidsByUser(@Param("userUuid") String userUuid);
 
-  List<Map<String, Object>>selectMembersIdsAndType(@Param("organizationUuid") String orgUuid);
+  List<Map<String, Object>> selectMembersIdsAndType(@Param("organizationUuid") String orgUuid);
 
   List<String> selectUserUuids(String organizationUuid);
 
