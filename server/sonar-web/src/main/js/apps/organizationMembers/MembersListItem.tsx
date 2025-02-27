@@ -27,6 +27,11 @@ import ActionsDropdown, {ActionsDropdownDivider, ActionsDropdownItem} from "../.
 import { Group, Organization, OrganizationMember } from "../../types/types";
 import { setMemberType } from '../../api/organizations';
 
+const USER_TYPES = [
+  { value: "STANDARD", label: "Standard User" },
+  { value: "PLATFORM", label: "Platform Integration User" }
+];
+
 interface Props {
   member: OrganizationMember;
   organization: Organization;
@@ -97,28 +102,19 @@ export default class MembersListItem extends React.PureComponent<Props, State> {
           <strong>{member.name}</strong>
           <span className="note little-spacer-left">{member.login}</span>
         </td>
-        <td className="nowrap text-middle">
-          <input
-            type="radio"
-            name={member.login}
-            value="STANDARD"
-            className={`member-type-${member.type}`}
-            checked={type === "STANDARD"}
-            onChange={actions.admin ? () => this.handleRadioChange(member.login, "STANDARD") : undefined}
-          />
-          <span className='note little-spacer-left'>Standard User</span>
-        </td>
-        <td className="nowrap text-middle">
-          <input
-            type="radio"
-            name={member.login}
-            value="PLATFORM"
-            className={`member-type-${member.type}`}
-            checked={type === "PLATFORM"}
-            onChange={actions.admin ? () => this.handleRadioChange(member.login, "PLATFORM") : undefined}
-          />
-          <span className='note little-spacer-left'>Platform Integration User</span>
-        </td>
+        {USER_TYPES.map(({ value, label }) => (
+          <td key={value} className="nowrap text-middle">
+            <input
+              type="radio"
+              name={member.login}
+              value={value}
+              className={`member-type-${member.type}`}
+              checked={type === value}
+              onChange={actions.admin ? () => this.handleRadioChange(member.login, value) : undefined}
+            />
+            <span className='note little-spacer-left'>{label}</span>
+          </td>
+        ))}
         {actions.admin && (
           <td className="text-right text-middle">
             {translateWithParameters(

@@ -29,8 +29,8 @@
     where om.user_uuid = #{userUuid, jdbcType=VARCHAR}
   </select>
 
-  <select id="selectMembersIdsAndType" resultType="hashmap">
-    SELECT user_uuid, type
+  <select id="selectAllOrganizationMemberDtos" resultType="OrganizationMember">
+    SELECT organization_uuid as organizationUuid , user_uuid as userUuid, type as type
     FROM organization_members
     where organization_uuid=#{organizationUuid,jdbcType=VARCHAR}
   </select>

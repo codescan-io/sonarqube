@@ -23,7 +23,6 @@ import static org.sonar.db.DatabaseUtils.executeLargeInputsWithoutOutput;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -67,8 +66,8 @@ public class OrganizationMemberDao implements Dao {
     return mapper(dbSession).selectOrganizationUuidsByUser(userUuid);
   }
 
-  public List<Map<String, Object>> selectMembersIdsAndType(DbSession dbSession, String orgUuid){
-    return mapper(dbSession).selectMembersIdsAndType(orgUuid);
+  public List<OrganizationMemberDto> selectAllOrganizationMemberDtos(DbSession dbSession, String organizationUuid){
+    return mapper(dbSession).selectAllOrganizationMemberDtos(organizationUuid);
   }
 
   /**

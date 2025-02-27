@@ -56,6 +56,11 @@ public class MemberUpdater {
     this.billingValidations = billingValidations;
   }
 
+  public enum MemberType {
+    STANDARD,
+    PLATFORM;
+  }
+
   public void addMember(DbSession dbSession, OrganizationDto organization, UserDto user) {
     addMembers(dbSession, organization, singletonList(user));
   }
@@ -88,7 +93,7 @@ public class MemberUpdater {
     dbClient.organizationMemberDao().insert(dbSession, new OrganizationMemberDto()
       .setOrganizationUuid(organization.getUuid())
       .setUserUuid(user.getUuid())
-      .setType("STANDARD"));
+      .setType(MemberType.STANDARD.name()));
     GroupDto defaultGroup = defaultGroupFinder.findDefaultGroup(dbSession, organization.getUuid());
     UserGroupDto userGroup = new UserGroupDto()
             .setGroupUuid(defaultGroup.getUuid())
