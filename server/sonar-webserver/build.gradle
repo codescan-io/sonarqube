@@ -47,6 +47,11 @@ dependencies {
 
   testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
   testRuntimeOnly 'org.junit.vintage:junit-vintage-engine'
+
+  implementation group: 'org.bouncycastle', name: 'bc-fips', version: '2.1.0'
+  implementation group: 'org.bouncycastle', name: 'bctls-fips', version: '2.0.19'
+  implementation group: 'org.bouncycastle', name: 'bcutil-fips', version: '2.0.3'
+
 }
 
 test {

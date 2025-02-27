@@ -20,16 +20,24 @@
 package org.sonar.server.app;
 
 import com.google.common.collect.ImmutableMap;
+
+import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
+import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.process.*;
 import org.sonar.process.sharedmemoryfile.DefaultProcessCommands;
 
 import java.io.File;
+import java.security.Security;
+import java.util.Arrays;
 
 import static org.sonar.process.ProcessId.WEB_SERVER;
 
 public class WebServer implements Monitored {
   public static final String PROPERTY_SHARED_PATH = "process.sharedDir";
+
+  private static final Logger log = LoggerFactory.getLogger(WebServer.class);
 
   private final File sharedDir;
   private final EmbeddedTomcat tomcat;
@@ -91,6 +99,14 @@ public class WebServer implements Monitored {
    * Can't be started as is. Needs to be bootstrapped by sonar-application
    */
   public static void main(String[] args) {
+    log.info("Sonarqub web started.....");
+    System.setProperty("org.bouncycastle.jsse.enable_md5", "true");
+    Security.addProvider(new BouncyCastleFipsProvider());
+    Security.addProvider(new BouncyCastleJsseProvider("fips:BCFIPS"));
+    Arrays.stream(Security.getProviders()).forEach(p->log.info("provider info Sonar qube:{}",p.getName()));
+    log.info("security provider 1:{}",Security.getProperty("security.provider.1"));
+    log.info("jdk.tls.disabledAlgorithms:{}",Security.getProperty("jdk.tls.disabledAlgorithms"));
+    log.info("jdk.jar.disabledAlgorithms:{}",Security.getProperty("jdk.jar.disabledAlgorithms"));
     ProcessEntryPoint entryPoint = ProcessEntryPoint.createForArguments(args);
     Props props = entryPoint.getProps();
     new WebServerProcessLogging().configure(props);
