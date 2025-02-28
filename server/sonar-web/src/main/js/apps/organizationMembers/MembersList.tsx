@@ -22,8 +22,7 @@ import { sortBy } from 'lodash';
 import MembersListItem from './MembersListItem';
 import {LoggedInUser} from "../../types/users";
 import {Organization, OrganizationMember} from "../../types/types";
-import {doc} from "prettier";
-import Group = doc.builders.Group;
+import { Group } from '../../types/types';
 
 interface Props {
   currentUser: LoggedInUser;
