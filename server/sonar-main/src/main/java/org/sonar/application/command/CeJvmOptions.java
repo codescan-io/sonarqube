@@ -49,6 +49,8 @@ public class CeJvmOptions extends JvmOptions<CeJvmOptions> {
     // Add Bouncy Castle JVM options
     res.put("-Dorg.bouncycastle.fips.approved_only=", "true");
     res.put("-Dorg.bouncycastle.jca.enable_jks=", "true");
+    res.put("-Dsun.nio.ch.disableSystemWideOverlappingFileLockCheck","true");
+    res.put("-Djdk.nio.maxCachedBufferSize","262144");
 
     // Use module-path for Bouncy Castle
     res.put("--module-path=", "/app/bc-libs");

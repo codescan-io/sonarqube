@@ -26,6 +26,8 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.rightPad;
@@ -87,6 +89,8 @@ public class AllProcessesCommands implements AutoCloseable {
   private static final byte UP = (byte) 0x01;
   private static final byte EMPTY = (byte) 0x00;
 
+  private static final Logger log = LoggerFactory.getLogger(AllProcessesCommands.class);
+
   // VisibleForTesting
   final MappedByteBuffer mappedByteBuffer;
   private final RandomAccessFile sharedMemory;
@@ -100,6 +104,7 @@ public class AllProcessesCommands implements AutoCloseable {
       sharedMemory = new RandomAccessFile(new File(directory, "sharedmemory"), "rw");
       mappedByteBuffer = sharedMemory.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, MAX_SHARED_MEMORY);
     } catch (IOException e) {
+     log.info("error message in allprocess commands...{}",e.getMessage());
       throw new IllegalArgumentException("Unable to create shared memory : ", e);
     }
   }
