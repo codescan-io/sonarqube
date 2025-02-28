@@ -105,7 +105,7 @@ public class ProcessProperties {
     WEB_ACCESSLOGS_ENABLE("sonar.web.accessLogs.enable"),
     WEB_ACCESSLOGS_PATTERN("sonar.web.accessLogs.pattern"),
 
-    CE_JAVA_OPTS("sonar.ce.javaOpts", "-Xmx512m -Xms128m -XX:+HeapDumpOnOutOfMemoryError"),
+    CE_JAVA_OPTS("sonar.ce.javaOpts", "-Xmx2048m -Xms1024m -XX:+HeapDumpOnOutOfMemoryError"),
     CE_JAVA_ADDITIONAL_OPTS("sonar.ce.javaAdditionalOpts", ""),
     CE_GRACEFUL_STOP_TIMEOUT("sonar.ce.gracefulStopTimeOutInMs", "" + 6 * 60 * 60 * 1_000L),
 
