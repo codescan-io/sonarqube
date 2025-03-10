@@ -28,6 +28,7 @@ import Tooltip from '../../../../components/controls/Tooltip';
 import { PopupPlacement } from '../../../../components/ui/popups';
 import { translate } from '../../../../helpers/l10n';
 import { Component } from '../../../../types/types';
+import { almTagsList } from '../../utils';
 
 interface Props {
   component: Component;
@@ -113,17 +114,21 @@ function MetaTagsSelector({ selectedTags, setProjectTags }: MetaTagsSelectorProp
       q: query,
       ps: Math.min(selectedTags.length - 1 + LIST_SIZE, MAX_LIST_SIZE),
     }).then(
-      ({ tags }) => setSearchResult(tags),
+      ({ tags }) => setSearchResult(tags.filter((item) => !almTagsList.includes(item))),
       () => {},
     );
   };
 
   const onSelect = (tag: string) => {
-    setProjectTags([...selectedTags, tag]);
+    if (!almTagsList.find((t) => t === tag)) {
+      setProjectTags([...selectedTags, tag]);
+    }
   };
 
   const onUnselect = (tag: string) => {
-    setProjectTags(without(selectedTags, tag));
+    if (!almTagsList.find((t) => t === tag)) {
+      setProjectTags(without(selectedTags, tag));
+    }
   };
 
   return (
@@ -136,7 +141,7 @@ function MetaTagsSelector({ selectedTags, setProjectTags }: MetaTagsSelectorProp
       onSelect={onSelect}
       onUnselect={onUnselect}
       selectedElements={selectedTags}
-      elements={availableTags}
+      elements={availableTags.filter((item) => !almTagsList.includes(item))}
     />
   );
 }
