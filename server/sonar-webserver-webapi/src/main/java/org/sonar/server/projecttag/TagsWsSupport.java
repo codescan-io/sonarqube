@@ -19,9 +19,11 @@
  */
 package org.sonar.server.projecttag;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.sonar.api.utils.System2;
 import org.sonar.api.web.UserRole;
@@ -63,6 +65,23 @@ public class TagsWsSupport {
     updateTagsForProjectsOrApplication(dbSession, validatedTags, project);
   }
 
+  public void addProjectTags(DbSession dbSession, String projectKey, List<String> providedTags) {
+    ProjectDto project = componentFinder.getProjectByKey(dbSession, projectKey);
+    List<String> validatedTags = checkAndUnifyTags(providedTags);
+    List<String> updatedTags = new ArrayList<>(validatedTags);
+    updatedTags.addAll(project.getTags());
+    updatedTags = updatedTags.stream().distinct().collect(Collectors.toList());
+    updateTagsForProjectsOrApplicationBypassPermissions(dbSession, updatedTags, project);
+  }
+
+  public void removeProjectTags(DbSession dbSession, String projectKey, List<String> providedTags) {
+    ProjectDto project = componentFinder.getProjectByKey(dbSession, projectKey);
+    List<String> validatedTags = checkAndUnifyTags(providedTags);
+    List<String> updatedTags = new ArrayList<>(project.getTags());
+    updatedTags.removeAll(validatedTags);
+    updateTagsForProjectsOrApplicationBypassPermissions(dbSession, updatedTags, project);
+  }
+
   public void updateApplicationTags(DbSession dbSession, String applicationKey, List<String> providedTags) {
     List<String> validatedTags = checkAndUnifyTags(providedTags);
     ProjectDto application = componentFinder.getApplicationByKey(dbSession, applicationKey);
@@ -71,6 +90,15 @@ public class TagsWsSupport {
 
   private void updateTagsForProjectsOrApplication(DbSession dbSession, List<String> tags, ProjectDto projectOrApplication) {
     userSession.checkEntityPermission(UserRole.ADMIN, projectOrApplication);
+    updateTags(dbSession, tags, projectOrApplication);
+  }
+
+  private void updateTagsForProjectsOrApplicationBypassPermissions(DbSession dbSession, List<String> validatedTags,
+          ProjectDto projectOrApplication) {
+    updateTags(dbSession, validatedTags, projectOrApplication);
+  }
+
+  private void updateTags(DbSession dbSession, List<String> tags, ProjectDto projectOrApplication) {
     projectOrApplication.setTags(tags);
     projectOrApplication.setUpdatedAt(system2.now());
     dbClient.projectDao().updateTags(dbSession, projectOrApplication);

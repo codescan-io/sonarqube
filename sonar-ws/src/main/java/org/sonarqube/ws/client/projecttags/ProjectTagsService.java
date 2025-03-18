@@ -22,11 +22,11 @@ package org.sonarqube.ws.client.projecttags;
 import java.util.stream.Collectors;
 import javax.annotation.Generated;
 import org.sonarqube.ws.MediaTypes;
+import org.sonarqube.ws.ProjectTags.SearchResponse;
 import org.sonarqube.ws.client.BaseService;
 import org.sonarqube.ws.client.GetRequest;
 import org.sonarqube.ws.client.PostRequest;
 import org.sonarqube.ws.client.WsConnector;
-import org.sonarqube.ws.ProjectTags.SearchResponse;
 
 /**
  * @see <a href="https://next.sonarqube.com/sonarqube/web_api/api/project_tags">Further information about this web service online</a>
@@ -68,4 +68,17 @@ public class ProjectTagsService extends BaseService {
         .setMediaType(MediaTypes.JSON)
       ).content();
   }
+
+  public void addProjectTags(AddProjectTagsRequest request) {
+    call(new PostRequest(path("add")).setParam("project", request.getProject())
+            .setParam("tags", request.getTags() == null ? null : request.getTags())
+            .setMediaType(MediaTypes.JSON)).content();
+  }
+
+  public void removeProjectTags(RemoveProjectTagsRequest request) {
+    call(new PostRequest(path("remove")).setParam("project", request.getProject())
+            .setParam("tags", request.getTags() == null ? null : request.getTags())
+            .setMediaType(MediaTypes.JSON)).content();
+  }
+
 }
