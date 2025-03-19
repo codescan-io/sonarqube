@@ -71,7 +71,7 @@ public class TagsWsSupport {
     List<String> updatedTags = new ArrayList<>(validatedTags);
     updatedTags.addAll(project.getTags());
     updatedTags = updatedTags.stream().distinct().collect(Collectors.toList());
-    updateTagsForProjectsOrApplicationBypassPermissions(dbSession, updatedTags, project);
+    updateTagsForProjectsOrApplicationForAllUsers(dbSession, updatedTags, project);
   }
 
   public void removeProjectTags(DbSession dbSession, String projectKey, List<String> providedTags) {
@@ -79,7 +79,7 @@ public class TagsWsSupport {
     List<String> validatedTags = checkAndUnifyTags(providedTags);
     List<String> updatedTags = new ArrayList<>(project.getTags());
     updatedTags.removeAll(validatedTags);
-    updateTagsForProjectsOrApplicationBypassPermissions(dbSession, updatedTags, project);
+    updateTagsForProjectsOrApplicationForAllUsers(dbSession, updatedTags, project);
   }
 
   public void updateApplicationTags(DbSession dbSession, String applicationKey, List<String> providedTags) {
@@ -93,7 +93,7 @@ public class TagsWsSupport {
     updateTags(dbSession, tags, projectOrApplication);
   }
 
-  private void updateTagsForProjectsOrApplicationBypassPermissions(DbSession dbSession, List<String> validatedTags,
+  private void updateTagsForProjectsOrApplicationForAllUsers(DbSession dbSession, List<String> validatedTags,
           ProjectDto projectOrApplication) {
     updateTags(dbSession, validatedTags, projectOrApplication);
   }
