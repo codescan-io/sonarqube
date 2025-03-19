@@ -19,11 +19,10 @@
  */
 
 import { Title } from '~design-system';
-import DocumentationLink from '../../../components/common/DocumentationLink';
-import { DocLink } from '../../../helpers/doc-links';
 import { translate } from '../../../helpers/l10n';
 import { Component } from '../../../types/types';
 import Workers from './Workers';
+import { Link } from '@sonarsource/echoes-react';
 
 interface Props {
   component?: Component;
@@ -36,9 +35,10 @@ export default function Header(props: Readonly<Props>) {
         <Title className="sw-mb-4">{translate('background_tasks.page')}</Title>
         <p className="sw-max-w-3/4">
           {translate('background_tasks.page.description')}
-          <DocumentationLink className="sw-ml-2" to={DocLink.BackgroundTasks}>
+          <Link className="sw-ml-2" shouldOpenInNewTab={true}
+            to="https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/background-tasks/">
             {translate('learn_more')}
-          </DocumentationLink>
+          </Link>
         </p>
       </div>
       {!props.component && (
