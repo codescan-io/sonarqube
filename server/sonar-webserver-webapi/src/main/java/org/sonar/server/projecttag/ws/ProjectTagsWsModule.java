@@ -29,7 +29,9 @@ public class ProjectTagsWsModule extends Module {
       TagsWsSupport.class,
       ProjectTagsWs.class,
       SetAction.class,
-      SearchAction.class
+      SearchAction.class,
+      AddAction.class,
+      RemoveAction.class
     );
   }
 }
