@@ -28,6 +28,7 @@ import org.sonar.db.user.UserDto;
 import org.sonar.server.common.PaginationInformation;
 import org.sonar.server.common.user.UsersSearchResponseGenerator;
 import org.sonar.server.common.user.service.UserInformation;
+import org.sonar.server.exceptions.UnauthorizedException;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.v2.api.response.PageRestResponse;
 import org.sonar.server.v2.api.user.response.UserRestResponse;
@@ -93,7 +94,8 @@ public class UsersSearchRestResponseGenerator implements UsersSearchResponseGene
         slLastConnectionDate,
         scmAccounts);
     }
-    return new UserRestResponseForLoggedInUsers(id, login, name, email, active, local, externalIdentityProvider, avatar);
+    // User is logged in and not a System Admin
+    throw new UnauthorizedException("Insufficient privileges");
   }
 
   private static String toDateTime(@Nullable Long dateTimeMs) {
