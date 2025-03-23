@@ -31,12 +31,22 @@ import {
   severityOptions, versionOptions
 } from "./constants";
 import * as React from "react";
+import {getValue} from "../../api/settings";
+import {GlobalSettingKeys} from "../../types/settings";
 
 export default function WebToCase() {
 
   const [pageReturnUrl, setPageReturnUrl] = React.useState<any>();
+  const [supportSalesforceOrgId, setSupportSalesforceOrgId] = React.useState<any>();
+  const [webToCaseURL, setWebToCaseURL] = React.useState<any>();
   React.useEffect(() => {
     setPageReturnUrl(window.location.href);
+
+    getValue({key: GlobalSettingKeys.CodescanSupportSalesforceOrdId}).then((salesforceOrgId)=>{
+      setSupportSalesforceOrgId(salesforceOrgId?.value);
+      setWebToCaseURL("https://webto.salesforce.com/servlet/servlet.WebToCase?encoding=UTF-8&orgId="+salesforceOrgId?.value);
+    });
+
   }, []);
   const header = translate('docs.web_to_case');
   return (
@@ -50,10 +60,9 @@ export default function WebToCase() {
           </header>
         </div>
 
-        <form action="https://webto.salesforce.com/servlet/servlet.WebToCase?encoding=UTF-8&orgId=00Dcs000000c3Hp"
-              method="POST">
+        <form action={webToCaseURL} method="POST">
 
-          <input type="hidden" name="orgid" value="00Dcs000000c3Hp"/>
+          <input type="hidden" name="orgid" value={supportSalesforceOrgId}/>
           <InputField name="retURL" type="hidden" value={pageReturnUrl}/>
           <div className="center">
             <div className="row">
