@@ -59,7 +59,9 @@ public class DefaultGroupMembershipController implements GroupMembershipControll
   public GroupsMembershipSearchRestResponse search(GroupsMembershipSearchRestRequest groupsSearchRestRequest, RestPage restPage) {
     OrganizationDto organization = organizationService.getOrganizationByKey(groupsSearchRestRequest.organization());
     userSession.checkPermission(OrganizationPermission.ADMINISTER, organization);
-    groupMembershipService.checkMembership(organization,groupsSearchRestRequest.userId());
+    if(groupsSearchRestRequest.userId() != null){
+      groupMembershipService.checkMembership(organization,groupsSearchRestRequest.userId());
+    }
 
     SearchResults<UserGroupDto> groupMembershipSearchResults = searchMembership(groupsSearchRestRequest, restPage);
 

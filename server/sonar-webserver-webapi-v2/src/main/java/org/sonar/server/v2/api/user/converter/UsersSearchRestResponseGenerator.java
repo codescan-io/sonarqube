@@ -94,8 +94,7 @@ public class UsersSearchRestResponseGenerator implements UsersSearchResponseGene
         slLastConnectionDate,
         scmAccounts);
     }
-    // User is logged in and not a System Admin
-    throw new UnauthorizedException("Insufficient privileges");
+    return new UserRestResponseForLoggedInUsers(id, login, name, email, active, local, externalIdentityProvider, avatar);
   }
 
   private static String toDateTime(@Nullable Long dateTimeMs) {
