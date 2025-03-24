@@ -259,6 +259,8 @@ public interface UserSession {
    */
   boolean hasMembership(OrganizationDto organization);
 
+  boolean hasMembership(String organizationKey);
+
   /**
    * Ensures that {@link #hasMembership(OrganizationDto)} is {@code true},
    * otherwise throws a {@link org.sonar.server.exceptions.ForbiddenException}.
