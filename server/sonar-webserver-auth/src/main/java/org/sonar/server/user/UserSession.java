@@ -259,7 +259,9 @@ public interface UserSession {
    */
   boolean hasMembership(OrganizationDto organization);
 
-  boolean hasMembership(String organizationKey);
+  default boolean hasMembership(String organizationKey) {
+    return false;
+  }
 
   /**
    * Ensures that {@link #hasMembership(OrganizationDto)} is {@code true},
