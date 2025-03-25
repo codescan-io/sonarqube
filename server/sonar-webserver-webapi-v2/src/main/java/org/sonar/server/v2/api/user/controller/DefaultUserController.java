@@ -125,10 +125,10 @@ public class DefaultUserController implements UserController {
     userService.deactivate(id, anonymize);
   }
 
-  @Override
-  public UserRestResponse fetchUser(String id) {
-    return usersSearchResponseGenerator.toRestUser(userService.fetchUser(id), false /* TODO */);
-  }
+//  @Override
+//  public UserRestResponse fetchUser(String id) {
+//    return usersSearchResponseGenerator.toRestUser(userService.fetchUser(id), false /* TODO */);
+//  }
 
   @Override
   public UserRestResponse updateUser(String id, UserUpdateRestRequest updateRequest) {
