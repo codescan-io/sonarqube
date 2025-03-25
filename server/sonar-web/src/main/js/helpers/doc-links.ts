@@ -44,7 +44,7 @@ export enum DocLink {
   AlmGitLabIntegration = '/devops-platform-integration/gitlab-integration/introduction/',
   AlmSamlAuth = '/instance-administration/authentication/saml/overview/',
   AlmSamlScimAuth = '/instance-administration/authentication/saml/scim/overview/',
-  AnalysisScope = 'https://knowledgebase.autorabit.com/codescan/docs',
+  AnalysisScope = '/product-guides/codescan/report-and-analysis/analysis-scope-on-codescan-cloud',
   AuthOverview = 'https://knowledgebase.autorabit.com/codescan/docs',
   BackgroundTasks = '/codescan/docs/background-tasks',
   BranchAnalysis = 'https://knowledgebase.autorabit.com/codescan/docs',
