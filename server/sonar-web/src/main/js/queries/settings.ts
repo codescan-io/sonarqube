@@ -87,7 +87,6 @@ export function useSaveValuesMutation() {
           .map(async ({ newValue, definition }) => {
             try {
               if (isDefaultValue(newValue as string | boolean | string[], definition)) {
-                console.log('reset the value to default')
                 await resetSettingValue({ keys: definition.key });
               } else {
                 await setSettingValue(definition, newValue);
@@ -123,7 +122,6 @@ export function useSaveValueMutation() {
       definition: ExtendedSettingDefinition;
       newValue: SettingFinalValue;
     }) => {
-      console.log('set the new value')
       return setSettingValue(definition, newValue, component);
     },
     onSuccess: (_, { definition }) => {
