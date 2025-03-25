@@ -161,18 +161,10 @@ public class SearchAction implements MeasuresWsAction {
     }
 
     private List<ComponentDto> searchProjects() {
-      List<ComponentDto> componentDtos = filterPermittedComponents(searchByProjectKeys(dbSession, request.getProjectKeys()));
+      List<ComponentDto> componentDtos = searchByProjectKeys(dbSession, request.getProjectKeys());
       checkArgument(ALLOWED_QUALIFIERS.containsAll(componentDtos.stream().map(ComponentDto::qualifier).collect(Collectors.toSet())),
         "Only component of qualifiers %s are allowed", ALLOWED_QUALIFIERS);
       return getAuthorizedProjects(componentDtos);
-    }
-
-    private List<ComponentDto> filterPermittedComponents(List<ComponentDto> componentDtos) {
-      Set<String> organizationUuids = componentDtos.stream().map(ComponentDto::getOrganizationUuid).collect(Collectors.toSet());
-      List<OrganizationDto> organizationDtos = dbClient.organizationDao().selectByUuids(dbSession, organizationUuids);
-      Set<String> permittedOrgUuids = organizationDtos.stream().filter(userSession::hasMembership)
-              .map(OrganizationDto::getUuid).collect(Collectors.toSet());
-      return componentDtos.stream().filter(c -> permittedOrgUuids.contains(c.getOrganizationUuid())).toList();
     }
 
     private List<ComponentDto> searchByProjectKeys(DbSession dbSession, List<String> projectKeys) {
