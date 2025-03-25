@@ -84,7 +84,7 @@ public class UserSessionInitializer {
     "/api/monitoring/metrics");
 
   private static final UrlPattern ORG_PERMISSION_CHECK_URLS =  UrlPattern.builder()
-          .includes("/api/qualityprofiles/*", "/api/organizations/*", "/api/qualitygates/*")
+          .includes("/api/qualityprofiles/*", "/api/organizations/*")
           .build();
 
   private static final UrlPattern URL_PATTERN = UrlPattern.builder()
