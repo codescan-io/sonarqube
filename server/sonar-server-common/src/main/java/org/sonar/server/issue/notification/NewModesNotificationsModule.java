@@ -31,7 +31,7 @@ public class NewModesNotificationsModule extends Module {
         */
 
 //      NewModesNotificationsSender.class,
-//      QualityGateConditionsValidator.class,
+      QualityGateConditionsValidator.class,
 //      MQRAndStandardModesExistNotification.class,
 //      MQRAndStandardModesExistNotificationHandler.class,
 //      MQRAndStandardModesExistTemplate.class,
