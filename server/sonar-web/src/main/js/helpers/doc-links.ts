@@ -47,7 +47,7 @@ export enum DocLink {
   AnalysisScope = '/product-guides/codescan/report-and-analysis/analysis-scope-on-codescan-cloud',
   AuthOverview = 'https://knowledgebase.autorabit.com/codescan/docs',
   BackgroundTasks = '/codescan/docs/background-tasks',
-  BranchAnalysis = 'https://knowledgebase.autorabit.com/codescan/docs',
+  BranchAnalysis = 'codescan/docs/understanding-branches-in-codescan-cloud',
   CaYC = '/codescan/docs/',
   CFamilyBuildWrapper = 'https://knowledgebase.autorabit.com/codescan/docs',
   CFamilyCompilationDatabase = 'https://knowledgebase.autorabit.com/codescan/docs',
