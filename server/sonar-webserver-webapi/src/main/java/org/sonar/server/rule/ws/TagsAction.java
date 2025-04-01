@@ -36,13 +36,16 @@ import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.Pagination;
 import org.sonar.server.exceptions.NotFoundException;
+import org.sonar.server.user.UserSession;
 
 public class TagsAction implements RulesWsAction {
 
   private final DbClient dbClient;
+  private final UserSession userSession;
 
-  public TagsAction(DbClient dbClient) {
+  public TagsAction(DbClient dbClient, UserSession userSession) {
     this.dbClient = dbClient;
+    this.userSession = userSession;
   }
 
   @Override
@@ -60,7 +63,7 @@ public class TagsAction implements RulesWsAction {
 
     action.createParam(PARAM_ORGANIZATION)
             .setDescription("Organization key")
-            .setRequired(false)
+            .setRequired(true)
             .setInternal(true)
             .setExampleValue("my-org")
             .setSince("6.4");
@@ -68,11 +71,12 @@ public class TagsAction implements RulesWsAction {
 
   @Override
   public void handle(Request request, Response response) {
-    OrganizationDto organization = getOrganization(request.param(PARAM_ORGANIZATION));
+    OrganizationDto organization = getOrganization(request.mandatoryParam(PARAM_ORGANIZATION));
     String query = request.param(Param.TEXT_QUERY);
     int pageSize = request.mandatoryParamAsInt("ps");
 
     try (DbSession dbSession = dbClient.openSession(false)) {
+      userSession.checkMembership(organization);
       Pagination pagination = Pagination.forPage(1).andSize(pageSize == 0 ? 500 : pageSize);
       List<String> tags = dbClient.ruleDao().selectTags(dbSession, organization.getUuid(), query, pagination);
       writeResponse(response, tags);

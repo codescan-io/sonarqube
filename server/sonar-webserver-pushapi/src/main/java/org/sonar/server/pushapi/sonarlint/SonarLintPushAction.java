@@ -31,6 +31,7 @@ import org.sonar.api.server.ws.WebService;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.project.ProjectDto;
+import org.sonar.server.exceptions.ForbiddenException;
 import org.sonar.server.pushapi.ServerPushAction;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.ws.ServletRequest;
@@ -45,6 +46,7 @@ public class SonarLintPushAction extends ServerPushAction {
   private final UserSession userSession;
   private final DbClient dbClient;
   private final SonarLintPushEventExecutorService sonarLintPushEventExecutorService;
+  private static final String INSUFFICIENT_PRIVILEGES_MESSAGE = "Insufficient privileges";
 
   public SonarLintPushAction(SonarLintClientsRegistry sonarLintClientRegistry, UserSession userSession, DbClient dbClient,
     SonarLintClientPermissionsValidator permissionsValidator, SonarLintPushEventExecutorService sonarLintPushEventExecutorService) {
@@ -80,6 +82,12 @@ public class SonarLintPushAction extends ServerPushAction {
 
   @Override
   public void handle(Request request, Response response) throws IOException {
+
+    throw new ForbiddenException(INSUFFICIENT_PRIVILEGES_MESSAGE);
+    /*
+
+    This API has been commented out as its usage from the plugin is disabled.
+
     userSession.checkLoggedIn();
 
     ServletRequest servletRequest = (ServletRequest) request;
@@ -105,6 +113,8 @@ public class SonarLintPushAction extends ServerPushAction {
     SonarLintClient sonarLintClient = new SonarLintClient(sonarLintPushEventExecutorService, asyncContext, projectUuids, params.getLanguages(), userSession.getUuid());
 
     clientsRegistry.registerClient(sonarLintClient);
+
+    */
   }
 
   class SonarLintPushActionParamsValidator {

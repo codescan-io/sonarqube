@@ -25,6 +25,7 @@ import org.sonar.api.server.ws.WebService;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbTester;
 import org.sonar.server.tester.UserSessionRule;
+import org.sonar.server.user.UserSession;
 import org.sonar.server.ws.WsActionTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +41,7 @@ public class TagsActionIT {
   public DbTester db = DbTester.create();
 
   private final DbClient dbClient = db.getDbClient();
-  private final WsActionTester ws = new WsActionTester(new org.sonar.server.rule.ws.TagsAction(dbClient));
+  private final WsActionTester ws = new WsActionTester(new org.sonar.server.rule.ws.TagsAction(dbClient,userSession));
 
   @Test
   public void definition() {
