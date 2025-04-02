@@ -19,6 +19,8 @@
  */
 package org.sonar.server.pushapi.sonarlint;
 
+import static org.sonar.server.user.AbstractUserSession.insufficientPrivilegesException;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
@@ -32,7 +34,6 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.server.pushapi.ServerPushAction;
-import org.sonar.server.user.AbstractUserSession;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.ws.ServletRequest;
 import org.sonar.server.ws.ServletResponse;
@@ -82,7 +83,7 @@ public class SonarLintPushAction extends ServerPushAction {
   @Override
   public void handle(Request request, Response response) throws IOException {
     userSession.checkLoggedIn();
-    throw AbstractUserSession.insufficientPrivilegesException();
+    throw insufficientPrivilegesException();
 
     /*
 
