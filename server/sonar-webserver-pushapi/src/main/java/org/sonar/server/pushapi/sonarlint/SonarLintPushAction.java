@@ -32,6 +32,7 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.server.pushapi.ServerPushAction;
+import org.sonar.server.user.AbstractUserSession;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.ws.ServletRequest;
 import org.sonar.server.ws.ServletResponse;
@@ -81,6 +82,11 @@ public class SonarLintPushAction extends ServerPushAction {
   @Override
   public void handle(Request request, Response response) throws IOException {
     userSession.checkLoggedIn();
+    throw AbstractUserSession.insufficientPrivilegesException();
+
+    /*
+
+    This API has been commented out as its usage from the plugin is disabled.
 
     ServletRequest servletRequest = (ServletRequest) request;
     ServletResponse servletResponse = (ServletResponse) response;
@@ -105,6 +111,8 @@ public class SonarLintPushAction extends ServerPushAction {
     SonarLintClient sonarLintClient = new SonarLintClient(sonarLintPushEventExecutorService, asyncContext, projectUuids, params.getLanguages(), userSession.getUuid());
 
     clientsRegistry.registerClient(sonarLintClient);
+
+    */
   }
 
   class SonarLintPushActionParamsValidator {
