@@ -20,6 +20,7 @@
 package org.sonar.server.rule.ws;
 
 import com.google.common.collect.Maps;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -35,16 +36,20 @@ import org.sonar.api.server.ws.WebService.NewAction;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.Pagination;
+import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.qualityprofile.QProfileDto;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.db.rule.RuleListQuery;
 import org.sonar.db.rule.RuleListResult;
 import org.sonar.db.rule.RuleParamDto;
+import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.rule.ws.RulesResponseFormatter.SearchResult;
+import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.Common;
 import org.sonarqube.ws.Rules;
 import org.sonarqube.ws.Rules.ListResponse;
 
+import static java.util.Objects.requireNonNull;
 import static org.sonar.api.server.ws.WebService.Param.PAGE;
 import static org.sonar.api.server.ws.WebService.Param.PAGE_SIZE;
 import static org.sonar.db.rule.RuleListQuery.RuleListQueryBuilder.newRuleListQueryBuilder;
@@ -56,10 +61,12 @@ import static org.sonar.server.ws.WsUtils.writeProtobuf;
 public class ListAction implements RulesWsAction {
   private final DbClient dbClient;
   private final RulesResponseFormatter rulesResponseFormatter;
+  private final UserSession userSession;
 
-  public ListAction(DbClient dbClient, RulesResponseFormatter rulesResponseFormatter) {
+  public ListAction(DbClient dbClient, RulesResponseFormatter rulesResponseFormatter, UserSession userSession) {
     this.dbClient = dbClient;
     this.rulesResponseFormatter = rulesResponseFormatter;
+    this.userSession = userSession;
   }
 
   @Override
@@ -99,9 +106,20 @@ public class ListAction implements RulesWsAction {
   @Override
   public void handle(Request request, Response response) throws Exception {
     try (DbSession dbSession = dbClient.openSession(false)) {
-
+      userSession.checkLoggedIn();
+      QProfileDto qProfileDto = getQProfile(dbSession, request);
+      if (qProfileDto != null) {
+        OrganizationDto organization = dbClient.organizationDao()
+                .selectByUuid(dbSession, qProfileDto.getOrganizationUuid())
+                .orElseThrow(() -> new NotFoundException(
+                        "No organization found with key: " + qProfileDto.getOrganizationUuid()));
+        userSession.checkMembership(organization);
+      }
+      String userUuid = requireNonNull(userSession.getUuid(), "User UUID cannot be null.");
+      Set<String> organizationUuidsByUser = dbClient.organizationMemberDao()
+              .selectOrganizationUuidsByUser(dbSession, userUuid);
       WsRequest wsRequest = toWsRequest(dbSession, request);
-      SearchResult searchResult = doSearch(dbSession, wsRequest);
+      SearchResult searchResult = doSearch(dbSession, wsRequest, organizationUuidsByUser);
       ListResponse listResponse = buildResponse(wsRequest, dbSession, searchResult);
 
       writeProtobuf(listResponse, request, response);
@@ -134,20 +152,23 @@ public class ListAction implements RulesWsAction {
     return checkFound(foundProfile, "The specified qualityProfile '%s' does not exist", profileUuid);
   }
 
-  private SearchResult doSearch(DbSession dbSession, WsRequest wsRequest) {
+  private SearchResult doSearch(DbSession dbSession, WsRequest wsRequest, Set<String> organizationUuidsByUser) {
     RuleListResult ruleListResult = dbClient.ruleDao().selectRules(dbSession,
       buildRuleListQuery(wsRequest),
       Pagination.forPage(wsRequest.page).andSize(wsRequest.pageSize));
     Map<String, RuleDto> rulesByUuid = Maps.uniqueIndex(dbClient.ruleDao().selectByUuids(dbSession, ruleListResult.getUuids()), RuleDto::getUuid);
-    Set<String> ruleUuids = rulesByUuid.keySet();
-    List<RuleDto> rules = ruleListResult.getUuids().stream().map(rulesByUuid::get).toList();
-
+    List<RuleDto> rules = new ArrayList<>(ruleListResult.getUuids().stream().map(rulesByUuid::get).toList());
+    rules.removeAll(rules.stream()
+            .filter(ruleDto -> (ruleDto.getOrganizationUuid() != null && !organizationUuidsByUser.contains(
+                    ruleDto.getOrganizationUuid())))
+            .toList());
     List<String> templateRuleUuids = rules.stream()
       .map(RuleDto::getTemplateUuid)
       .filter(Objects::nonNull)
       .toList();
     List<RuleDto> templateRules = dbClient.ruleDao().selectByUuids(dbSession, templateRuleUuids);
-    List<RuleParamDto> ruleParamDtos = dbClient.ruleDao().selectRuleParamsByRuleUuids(dbSession, ruleUuids);
+    Set<String> ruleUuidsByUser = rules.stream().map(RuleDto::getUuid).collect(Collectors.toSet());
+    List<RuleParamDto> ruleParamDtos = dbClient.ruleDao().selectRuleParamsByRuleUuids(dbSession, ruleUuidsByUser);
 
     return new SearchResult()
       .setRules(rules)
