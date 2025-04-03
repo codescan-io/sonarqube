@@ -286,7 +286,7 @@ public class RuleWsSupport {
     return userSession.hasMembership(organization);
   }
 
-  void checkOrganizationMembership(OrganizationDto organization) {
+  void checkMembershipOnPaidOrganization(OrganizationDto organization) {
     userSession.checkMembership(organization);
   }
 

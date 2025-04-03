@@ -102,6 +102,7 @@ public class RuleQueryFactory {
     // Order is important : 1. Load profile, 2. Load compare to profile
     setProfile(dbSession, query, request);
     setOrganization(dbSession, query, request);
+    wsSupport.checkMembershipOnPaidOrganization(query.getOrganization());
     setCompareToProfile(dbSession, query, request);
     QProfileDto profile = query.getQProfile();
     query.setLanguages(profile == null ? request.paramAsStrings(PARAM_LANGUAGES) : List.of(profile.getLanguage()));
@@ -148,13 +149,11 @@ public class RuleQueryFactory {
     QProfileDto profile = query.getQProfile();
     if (profile == null) {
       OrganizationDto organizationDto = wsSupport.getOrganizationByKey(dbSession, organizationKey);
-      wsSupport.checkOrganizationMembership(organizationDto);
       query.setOrganization(organizationDto);
       return;
     }
     OrganizationDto organization = checkFoundWithOptional(dbClient.organizationDao().selectByUuid(dbSession, profile.getOrganizationUuid()), "No organization with UUID %s",
             profile.getOrganizationUuid());
-    wsSupport.checkOrganizationMembership(organization);
     if (organizationKey != null) {
       OrganizationDto inputOrganization = checkFoundWithOptional(dbClient.organizationDao().selectByKey(dbSession, organizationKey), "No organization with key '%s'",
               organizationKey);
