@@ -20,10 +20,10 @@
 package org.sonar.server.rule.ws;
 
 import com.google.common.collect.Maps;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -146,21 +146,22 @@ public class ListAction implements RulesWsAction {
       buildRuleListQuery(wsRequest),
       Pagination.forPage(wsRequest.page).andSize(wsRequest.pageSize));
     Map<String, RuleDto> rulesByUuid = Maps.uniqueIndex(dbClient.ruleDao().selectByUuids(dbSession, ruleListResult.getUuids()), RuleDto::getUuid);
-    List<RuleDto> rules = new ArrayList<>(ruleListResult.getUuids().stream().map(rulesByUuid::get).toList());
     if (wsRequest.qProfile == null) {
       Set<String> organizationUuidsByUser = dbClient.organizationMemberDao()
               .selectOrganizationUuidsByUser(dbSession, ruleWsSupport.getLoggedInUserUuid());
-      rules.removeAll(rules.stream()
-              .filter(ruleDto -> (ruleDto.getOrganizationUuid() != null && !organizationUuidsByUser.contains(
-                      ruleDto.getOrganizationUuid()))).toList());
+      rulesByUuid = rulesByUuid.entrySet().stream()
+              .filter(entry -> (entry.getValue().getOrganizationUuid() == null || organizationUuidsByUser.contains(
+                      entry.getValue().getOrganizationUuid())))
+              .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
     }
+    Set<String> ruleUuids = rulesByUuid.keySet();
+    List<RuleDto> rules = ruleListResult.getUuids().stream().map(rulesByUuid::get).filter(Objects::nonNull).toList();
     List<String> templateRuleUuids = rules.stream()
       .map(RuleDto::getTemplateUuid)
       .filter(Objects::nonNull)
       .toList();
     List<RuleDto> templateRules = dbClient.ruleDao().selectByUuids(dbSession, templateRuleUuids);
-    Set<String> ruleUuidsByUser = rules.stream().map(RuleDto::getUuid).collect(Collectors.toSet());
-    List<RuleParamDto> ruleParamDtos = dbClient.ruleDao().selectRuleParamsByRuleUuids(dbSession, ruleUuidsByUser);
+    List<RuleParamDto> ruleParamDtos = dbClient.ruleDao().selectRuleParamsByRuleUuids(dbSession, ruleUuids);
 
     return new SearchResult()
       .setRules(rules)
