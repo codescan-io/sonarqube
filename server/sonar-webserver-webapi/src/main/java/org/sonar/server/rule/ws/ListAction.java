@@ -36,15 +36,12 @@ import org.sonar.api.server.ws.WebService.NewAction;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.Pagination;
-import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.qualityprofile.QProfileDto;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.db.rule.RuleListQuery;
 import org.sonar.db.rule.RuleListResult;
 import org.sonar.db.rule.RuleParamDto;
-import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.rule.ws.RulesResponseFormatter.SearchResult;
-import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.Common;
 import org.sonarqube.ws.Rules;
 import org.sonarqube.ws.Rules.ListResponse;
@@ -61,12 +58,12 @@ import static org.sonar.server.ws.WsUtils.writeProtobuf;
 public class ListAction implements RulesWsAction {
   private final DbClient dbClient;
   private final RulesResponseFormatter rulesResponseFormatter;
-  private final UserSession userSession;
+  private final RuleWsSupport ruleWsSupport;
 
-  public ListAction(DbClient dbClient, RulesResponseFormatter rulesResponseFormatter, UserSession userSession) {
+  public ListAction(DbClient dbClient, RulesResponseFormatter rulesResponseFormatter, RuleWsSupport ruleWsSupport) {
     this.dbClient = dbClient;
     this.rulesResponseFormatter = rulesResponseFormatter;
-    this.userSession = userSession;
+    this.ruleWsSupport = ruleWsSupport;
   }
 
   @Override
@@ -105,21 +102,14 @@ public class ListAction implements RulesWsAction {
 
   @Override
   public void handle(Request request, Response response) throws Exception {
+    ruleWsSupport.checkLoggedInUser();
     try (DbSession dbSession = dbClient.openSession(false)) {
-      userSession.checkLoggedIn();
       QProfileDto qProfileDto = getQProfile(dbSession, request);
       if (qProfileDto != null) {
-        OrganizationDto organization = dbClient.organizationDao()
-                .selectByUuid(dbSession, qProfileDto.getOrganizationUuid())
-                .orElseThrow(() -> new NotFoundException(
-                        "No organization found with key: " + qProfileDto.getOrganizationUuid()));
-        userSession.checkMembership(organization);
+        ruleWsSupport.checkMembershipOnPaidOrganization(dbSession, qProfileDto.getOrganizationUuid());
       }
-      String userUuid = requireNonNull(userSession.getUuid(), "User UUID cannot be null.");
-      Set<String> organizationUuidsByUser = dbClient.organizationMemberDao()
-              .selectOrganizationUuidsByUser(dbSession, userUuid);
       WsRequest wsRequest = toWsRequest(dbSession, request);
-      SearchResult searchResult = doSearch(dbSession, wsRequest, organizationUuidsByUser);
+      SearchResult searchResult = doSearch(dbSession, wsRequest);
       ListResponse listResponse = buildResponse(wsRequest, dbSession, searchResult);
 
       writeProtobuf(listResponse, request, response);
@@ -152,16 +142,19 @@ public class ListAction implements RulesWsAction {
     return checkFound(foundProfile, "The specified qualityProfile '%s' does not exist", profileUuid);
   }
 
-  private SearchResult doSearch(DbSession dbSession, WsRequest wsRequest, Set<String> organizationUuidsByUser) {
+  private SearchResult doSearch(DbSession dbSession, WsRequest wsRequest) {
     RuleListResult ruleListResult = dbClient.ruleDao().selectRules(dbSession,
       buildRuleListQuery(wsRequest),
       Pagination.forPage(wsRequest.page).andSize(wsRequest.pageSize));
     Map<String, RuleDto> rulesByUuid = Maps.uniqueIndex(dbClient.ruleDao().selectByUuids(dbSession, ruleListResult.getUuids()), RuleDto::getUuid);
     List<RuleDto> rules = new ArrayList<>(ruleListResult.getUuids().stream().map(rulesByUuid::get).toList());
-    rules.removeAll(rules.stream()
-            .filter(ruleDto -> (ruleDto.getOrganizationUuid() != null && !organizationUuidsByUser.contains(
-                    ruleDto.getOrganizationUuid())))
-            .toList());
+    if (wsRequest.qProfile == null) {
+      Set<String> organizationUuidsByUser = dbClient.organizationMemberDao()
+              .selectOrganizationUuidsByUser(dbSession, ruleWsSupport.getLoggedInUserUuid());
+      rules.removeAll(rules.stream()
+              .filter(ruleDto -> (ruleDto.getOrganizationUuid() != null && !organizationUuidsByUser.contains(
+                      ruleDto.getOrganizationUuid()))).toList());
+    }
     List<String> templateRuleUuids = rules.stream()
       .map(RuleDto::getTemplateUuid)
       .filter(Objects::nonNull)
