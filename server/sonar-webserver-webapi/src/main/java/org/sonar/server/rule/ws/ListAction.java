@@ -153,9 +153,11 @@ public class ListAction implements RulesWsAction {
               .filter(entry -> (entry.getValue().getOrganizationUuid() == null || organizationUuidsByUser.contains(
                       entry.getValue().getOrganizationUuid())))
               .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+      List<String> filteredRuleListResultUuids = rulesByUuid.keySet().stream().toList();
+      ruleListResult = new RuleListResult(filteredRuleListResultUuids, filteredRuleListResultUuids.size());
     }
     Set<String> ruleUuids = rulesByUuid.keySet();
-    List<RuleDto> rules = ruleListResult.getUuids().stream().map(rulesByUuid::get).filter(Objects::nonNull).toList();
+    List<RuleDto> rules = ruleListResult.getUuids().stream().map(rulesByUuid::get).toList();
     List<String> templateRuleUuids = rules.stream()
       .map(RuleDto::getTemplateUuid)
       .filter(Objects::nonNull)
