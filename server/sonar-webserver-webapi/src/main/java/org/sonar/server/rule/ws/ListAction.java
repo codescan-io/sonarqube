@@ -147,6 +147,7 @@ public class ListAction implements RulesWsAction {
       Pagination.forPage(wsRequest.page).andSize(wsRequest.pageSize));
     Map<String, RuleDto> rulesByUuid = Maps.uniqueIndex(dbClient.ruleDao().selectByUuids(dbSession, ruleListResult.getUuids()), RuleDto::getUuid);
     if (wsRequest.qProfile == null) {
+      long countOfRulesByUuid = rulesByUuid.size();
       Set<String> organizationUuidsByUser = dbClient.organizationMemberDao()
               .selectOrganizationUuidsByUser(dbSession, ruleWsSupport.getLoggedInUserUuid());
       rulesByUuid = rulesByUuid.entrySet().stream()
@@ -154,7 +155,8 @@ public class ListAction implements RulesWsAction {
                       entry.getValue().getOrganizationUuid())))
               .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
       List<String> filteredRuleListResultUuids = rulesByUuid.keySet().stream().toList();
-      ruleListResult = new RuleListResult(filteredRuleListResultUuids, filteredRuleListResultUuids.size());
+      long totalRules = ruleListResult.getTotal() - (countOfRulesByUuid - rulesByUuid.size());
+      ruleListResult = new RuleListResult(filteredRuleListResultUuids, totalRules);
     }
     Set<String> ruleUuids = rulesByUuid.keySet();
     List<RuleDto> rules = ruleListResult.getUuids().stream().map(rulesByUuid::get).toList();
