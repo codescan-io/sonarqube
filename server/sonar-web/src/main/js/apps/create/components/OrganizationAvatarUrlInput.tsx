@@ -28,6 +28,8 @@ import { translate } from '../../../helpers/l10n';
 import { allowSpecificDomains } from '../../../helpers/urls';
 import { AppState } from '../../../types/appstate';
 
+export const IMAGE_URL_PATTERN = /\.(jpeg|jpg|png|gif|bmp|webp|svg)(\?.*)?$/i;
+
 interface Props {
   initialValue?: string;
   appState: AppState;
@@ -105,7 +107,7 @@ class OrganizationAvatarUrlInput extends React.PureComponent<Props, State> {
 
   validateUrl = (url: string) => {
     const { whiteLabel } = this.props.appState;
-    if (url.length > 0 && !isWebUri(url)) {
+    if (url.length > 0 && (!isWebUri(url) || !this.isImageUrl(url))) {
       return translate('onboarding.create_organization.url.error');
     }
     if (allowSpecificDomains(whiteLabel) && url.length > 0 && !this.isValidDomain(url)) {
@@ -114,6 +116,17 @@ class OrganizationAvatarUrlInput extends React.PureComponent<Props, State> {
     return undefined;
   };
 
+  isImageUrl=(url: string) => {
+    try {
+      const parsed = new URL(url);
+      const isHttp = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+      const isImage = IMAGE_URL_PATTERN.test(parsed.pathname);
+      return isHttp && isImage;
+    } catch {
+      return false;
+    }
+  }
+
   render() {
     const isInvalid = this.state.touched && !this.state.editing && this.state.error !== undefined;
     const isValid = this.state.touched && this.state.error === undefined && this.state.value !== '';
@@ -121,7 +134,6 @@ class OrganizationAvatarUrlInput extends React.PureComponent<Props, State> {
       <FormField
         htmlFor="organization-avatar"
         label={translate('onboarding.create_organization.avatar')}
-        error={this.state.error}
         isInvalid={isInvalid}
         isValid={isValid}
         description={translate('organization.avatar.description')}
