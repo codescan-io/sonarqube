@@ -447,11 +447,6 @@ subprojects {
         exclude 'org.slf4j:slf4j-api'
       }
       dependency 'com.fasterxml.staxmate:staxmate:2.4.1'
-      dependencySet(group: 'org.eclipse.jetty', version: '11.0.24') {
-        entry 'jetty-proxy'
-        entry 'jetty-server'
-        entry 'jetty-servlet'
-      }
       dependency("org.elasticsearch.client:elasticsearch-rest-high-level-client:${elasticSearchClientVersion}") {
         exclude 'org.apache.logging.log4j:log4j-core'
         exclude 'org.elasticsearch:jna'
