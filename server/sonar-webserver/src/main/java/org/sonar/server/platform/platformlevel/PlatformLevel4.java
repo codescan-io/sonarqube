@@ -542,7 +542,7 @@ public class PlatformLevel4 extends PlatformLevel {
       BuiltInQPChangeNotificationTemplate.class,
       BuiltInQPChangeNotificationHandler.class,
 
-      new NewModesNotificationsModule(),
+//      new NewModesNotificationsModule(),
       new NotificationModule(),
       new NotificationWsModule(),
       new EmailsWsModule(),
