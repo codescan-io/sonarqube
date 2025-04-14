@@ -23,6 +23,7 @@ import org.sonar.core.platform.Module;
 import org.sonar.server.email.EmailSmtpConfiguration;
 import org.sonar.server.notification.email.EmailNotificationChannel;
 import org.sonar.server.oauth.OAuthMicrosoftRestClient;
+import org.sonar.server.qualitygate.QualityGateConditionsValidator;
 
 public class NotificationModule extends Module {
   @Override
@@ -33,6 +34,7 @@ public class NotificationModule extends Module {
       DefaultNotificationManager.class,
       NotificationDaemon.class,
       EmailNotificationChannel.class,
-      OAuthMicrosoftRestClient.class);
+      OAuthMicrosoftRestClient.class,
+      QualityGateConditionsValidator.class);
   }
 }
