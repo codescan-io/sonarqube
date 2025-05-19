@@ -19,6 +19,10 @@
  */
 package org.sonar.ce.task.projectanalysis.step;
 
+import java.util.Date;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.sonar.api.utils.DateUtils;
 import org.sonar.ce.task.projectanalysis.batch.BatchReportReader;
 import org.sonar.ce.task.step.ComputationStep;
 import org.sonar.core.util.CloseableIterator;
@@ -37,6 +41,7 @@ import static java.util.Collections.singleton;
 public class CodescanJobLinkStep implements ComputationStep {
 
     private static final String CODESCAN_JOB_ID_SONAR_PARAM = "sonar.analysis.buildId";
+    private static final Logger log = LoggerFactory.getLogger(CodescanJobLinkStep.class);
 
     private final BatchReportReader reportReader;
     private final DbClient dbClient;
@@ -50,16 +55,23 @@ public class CodescanJobLinkStep implements ComputationStep {
 
     @Override
     public void execute(Context context) {
+        log.info("Executing CodescanJobLinkStep {}", DateUtils.formatDate(new Date()));
         try (CloseableIterator<ContextProperty> it = reportReader.readContextProperties()) {
             it.forEachRemaining(
                     contextProperty -> {
                         String propertyKey = contextProperty.getKey();
                         if (propertyKey.equals(CODESCAN_JOB_ID_SONAR_PARAM)) {
+                            log.info("In CodeScan Job ID Sonar Param");
                             try (DbSession dbSession = dbClient.openSession(false)) {
+                                log.info("DB Client Open");
                                 dbClient.csQueueDao().updateTaskUuid(
                                         dbSession, ceTask.getUuid(), contextProperty.getValue()
                                 );
+                                log.info("DB Client Before Commit");
                                 dbSession.commit();
+                                log.info("DB Client Afte rCommit");
+                            } catch (Exception e) {
+                                log.error("Error updating task uuid", e);
                             }
                         }
                     });

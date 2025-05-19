@@ -44,19 +44,25 @@ public class CsQueueDao implements Dao {
    * @throws IllegalArgumentException if {@code csUniqueKey} is empty or null.
    */
   public void updateTaskUuid(DbSession dbSession, String taskUuid, String csUniqueKey) {
+    log.info("In CsQueueDao cs unique key {}, task {}", csUniqueKey, taskUuid);
     checkArgument(StringUtils.isNotBlank(csUniqueKey), "cs_queue uniquekey can not be empty");
     Connection connection = dbSession.getConnection();
     String query = "UPDATE cs_queue SET ce_task_id = ? WHERE uniquekey = ?";
     try (PreparedStatement stmt = connection.prepareStatement(query)) {
+      log.info("Prepared statement - updating task uuid {} unique key {}", csUniqueKey, csUniqueKey);
       stmt.setString(1, taskUuid);
       stmt.setString(2, csUniqueKey);
       int rows = stmt.executeUpdate();
+      log.info("Rows updated: {}", rows);
       if (rows == 0) {
-        log.warn("No job found for key {} while updating for task {}", csUniqueKey, taskUuid);
+        log.info("No job found for key {} while updating for task {}", csUniqueKey, taskUuid);
       }
       connection.commit();
+      log.info("Post commit");
     } catch (SQLException e) {
       throw new IllegalStateException("Fail to update task_id in cs_queue for task " + taskUuid, e);
+    } catch (Exception e) {
+      log.error("Exception fail to update task_id in cs_queue for task " + taskUuid, e);
     }
   }
 }
