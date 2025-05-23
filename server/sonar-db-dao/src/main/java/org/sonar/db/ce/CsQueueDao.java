@@ -23,6 +23,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -46,16 +47,34 @@ public class CsQueueDao implements Dao {
   public void updateTaskUuid(DbSession dbSession, String taskUuid, String csUniqueKey) {
     log.info("In CsQueueDao cs unique key {}, task {}", csUniqueKey, taskUuid);
     checkArgument(StringUtils.isNotBlank(csUniqueKey), "cs_queue uniquekey can not be empty");
+    checkArgument(StringUtils.isNotBlank(taskUuid), "cs_queue taskUuid can not be empty");
     Connection connection = dbSession.getConnection();
     String query = "UPDATE cs_queue SET ce_task_id = ? WHERE uniquekey = ?";
     try (PreparedStatement stmt = connection.prepareStatement(query)) {
-      log.info("Prepared statement - updating task uuid {} unique key {}", csUniqueKey, csUniqueKey);
+      log.info("Prepared statement - updating task uuid {} unique key {}", taskUuid, csUniqueKey);
+
+      // Update
       stmt.setString(1, taskUuid);
       stmt.setString(2, csUniqueKey);
       int rows = stmt.executeUpdate();
       log.info("Rows updated: {}", rows);
       if (rows == 0) {
-        log.info("No job found for key {} while updating for task {}", csUniqueKey, taskUuid);
+        log.info("No job found for task {} key {}", taskUuid, csUniqueKey);
+      }
+
+      // Verify
+      try (PreparedStatement stmt2 = connection.prepareStatement("Select uniquekey, ce_task_id from cs_queue where uniquekey = ?")) {
+        stmt2.setString(1, csUniqueKey);
+        try (ResultSet rs = stmt2.executeQuery()) {
+          if (rs.next()) {
+            log.info("Fetch statement: task {}, uk {}",
+                    rs.getString("ce_task_id"), rs.getString("uniquekey"));
+          } else {
+            log.info("No result found for uniquekey {}", csUniqueKey);
+          }
+        }
+      } catch (SQLException e) {
+        log.error("Select exception", e);
       }
       connection.commit();
       log.info("Post commit");
