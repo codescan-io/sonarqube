@@ -94,8 +94,11 @@ public class ClusterSettings implements Consumer<Props> {
   private void checkForApplicationNode(Props props) {
     ensureNotH2(props);
     requireValue(props, AUTH_JWT_SECRET);
-    Set<AddressAndPort> hzNodes = parseAndCheckHosts(CLUSTER_HZ_HOSTS, requireValue(props, CLUSTER_HZ_HOSTS));
-    ensureNotLoopbackAddresses(CLUSTER_HZ_HOSTS, hzNodes);
+    // CSAMZ-21: Codescan - We'll use Hazelcast AWS ECS auto-discovery mechanism.
+    if (props.contains(CLUSTER_HZ_HOSTS.getKey())) {
+      Set<AddressAndPort> hzNodes = parseAndCheckHosts(CLUSTER_HZ_HOSTS, requireValue(props, CLUSTER_HZ_HOSTS));
+      ensureNotLoopbackAddresses(CLUSTER_HZ_HOSTS, hzNodes);
+    }
     checkClusterNodeHost(props);
     checkClusterSearchHosts(props);
   }
