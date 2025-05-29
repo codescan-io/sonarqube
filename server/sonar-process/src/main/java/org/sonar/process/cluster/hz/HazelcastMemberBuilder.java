@@ -97,7 +97,7 @@ public class HazelcastMemberBuilder {
       .setInterfaces(singletonList(requireNonNull(networkInterface, "Network interface is missing")));
 
     JoinConfig joinConfig = netConfig.getJoin();
-    joinConfig.getAwsConfig().setEnabled(false);
+    joinConfig.getAwsConfig().setEnabled(true);
     joinConfig.getMulticastConfig().setEnabled(false);
 
     if (KUBERNETES.equals(type)) {
