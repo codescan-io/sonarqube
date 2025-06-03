@@ -94,10 +94,11 @@ export const useMeasuresComponentQuery = createQueryHook(
   }: {
     branchLike?: BranchLike;
     componentKey: string;
-    metricKeys: string[];
+    metricKeys: string[] | null;
   }) => {
     const queryClient = useQueryClient();
     const branchLikeQuery = getBranchLikeQuery(branchLike);
+    const safeMetricKeys = metricKeys && metricKeys.length > 0 ? metricKeys : ['ncloc'];
 
     return queryOptions({
       queryKey: [
@@ -106,15 +107,15 @@ export const useMeasuresComponentQuery = createQueryHook(
         componentKey,
         'branchLike',
         { ...branchLikeQuery },
-        metricKeys,
+        safeMetricKeys,
       ],
       queryFn: async () => {
         const data = await getMeasuresWithPeriodAndMetrics(
           componentKey,
-          metricKeys,
+          safeMetricKeys,
           branchLikeQuery,
         );
-        metricKeys.forEach((metricKey) => {
+        safeMetricKeys.forEach((metricKey) => {
           const measure =
             data.component.measures?.find((measure) => measure.metric === metricKey) ?? null;
           queryClient.setQueryData<Measure | null>(

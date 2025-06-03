@@ -38,13 +38,14 @@ export function getMeasures(
 
 export function getMeasuresWithPeriodAndMetrics(
   component: string,
-  metrics: string[],
+  metrics: string[] | null,
   branchParameters?: BranchParameters,
 ): Promise<MeasuresAndMetaWithPeriod & MeasuresAndMetaWithMetrics> {
+  const safeMetrics = metrics && metrics.length > 0 ? metrics : ['ncloc'];
   return getJSON(COMPONENT_URL, {
     additionalFields: 'period,metrics',
     component,
-    metricKeys: metrics.join(','),
+    metricKeys: safeMetrics.join(','),
     ...branchParameters,
   }).catch(throwGlobalError);
 }
