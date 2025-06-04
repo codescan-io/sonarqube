@@ -19,11 +19,16 @@
  */
 package org.sonar.db.permission;
 
-import com.google.common.annotations.VisibleForTesting;
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Collections.emptyList;
+import static org.sonar.db.DatabaseUtils.executeLargeInputs;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+
 import javax.annotation.Nullable;
+
 import org.sonar.db.Dao;
 import org.sonar.db.DatabaseUtils;
 import org.sonar.db.DbSession;
@@ -34,9 +39,7 @@ import org.sonar.db.permission.template.PermissionTemplateDto;
 import org.sonar.db.user.UserId;
 import org.sonar.db.user.UserIdDto;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Collections.emptyList;
-import static org.sonar.db.DatabaseUtils.executeLargeInputs;
+import com.google.common.annotations.VisibleForTesting;
 
 public class UserPermissionDao implements Dao {
   private final AuditPersister auditPersister;
@@ -50,10 +53,13 @@ public class UserPermissionDao implements Dao {
    * Pagination is NOT applied.
    * No sort is done.
    *
-   * @param query non-null query including optional filters.
-   * @param userUuids Filter on user ids, including disabled users. Must not be empty and maximum size is {@link DatabaseUtils#PARTITION_SIZE_FOR_ORACLE}.
+   * @param query     non-null query including optional filters.
+   * @param userUuids Filter on user ids, including disabled users. Must not be
+   *                  empty and maximum size is
+   *                  {@link DatabaseUtils#PARTITION_SIZE_FOR_ORACLE}.
    */
-  public List<UserPermissionDto> selectUserPermissionsByQuery(DbSession dbSession, PermissionQuery query, Collection<String> userUuids) {
+  public List<UserPermissionDto> selectUserPermissionsByQuery(DbSession dbSession, PermissionQuery query,
+      Collection<String> userUuids) {
     if (userUuids.isEmpty()) {
       return emptyList();
     }
@@ -71,11 +77,12 @@ public class UserPermissionDao implements Dao {
 
   private static List<String> paginate(List<String> results, PermissionQuery query) {
     return results
-      .stream()
-      // Pagination is done in Java because it's too complex to use SQL pagination in Oracle and MsSQL with the distinct
-      .skip(query.getPageOffset())
-      .limit(query.getPageSize())
-      .toList();
+        .stream()
+        // Pagination is done in Java because it's too complex to use SQL pagination in
+        // Oracle and MsSQL with the distinct
+        .skip(query.getPageOffset())
+        .limit(query.getPageSize())
+        .toList();
   }
 
   public int countUsersByQuery(DbSession dbSession, PermissionQuery query) {
@@ -85,7 +92,8 @@ public class UserPermissionDao implements Dao {
   /**
    * Count the number of users per permission for a given list of entities
    *
-   * @param entityUuids a non-null list of entity uuids to filter on. If empty then an empty list is returned.
+   * @param entityUuids a non-null list of entity uuids to filter on. If empty
+   *                    then an empty list is returned.
    */
   @VisibleForTesting
   List<CountPerEntityPermission> countUsersByEntityPermission(DbSession dbSession, Collection<String> entityUuids) {
@@ -95,7 +103,8 @@ public class UserPermissionDao implements Dao {
   /**
    * Gets all the global permissions granted to user
    *
-   * @return the global permissions. An empty list is returned if user do not exist.
+   * @return the global permissions. An empty list is returned if user do not
+   *         exist.
    */
   public List<String> selectGlobalPermissionsOfUser(DbSession dbSession, String userUuid, String organizationUuid) {
     return mapper(dbSession).selectGlobalPermissionsOfUser(userUuid, organizationUuid);
@@ -104,25 +113,32 @@ public class UserPermissionDao implements Dao {
   /**
    * Gets all the entity permissions granted to user for the specified entity.
    *
-   * @return the entity permissions. An empty list is returned if entity or user do not exist.
+   * @return the entity permissions. An empty list is returned if entity or user
+   *         do not exist.
    */
   public List<String> selectEntityPermissionsOfUser(DbSession dbSession, String userUuid, String entityUuid) {
     return mapper(dbSession).selectEntityPermissionsOfUser(userUuid, entityUuid);
   }
 
-  public Set<UserIdDto> selectUserIdsWithPermissionOnEntityBut(DbSession session, String entityUuid, String permission) {
+  public Set<UserIdDto> selectUserIdsWithPermissionOnEntityBut(DbSession session, String entityUuid,
+      String permission) {
     return mapper(session).selectUserIdsWithPermissionOnEntityBut(entityUuid, permission);
   }
 
   public void insert(DbSession dbSession, UserPermissionDto dto, @Nullable EntityDto entityDto,
-    @Nullable UserId userId, @Nullable PermissionTemplateDto templateDto) {
+      @Nullable UserId userId, @Nullable PermissionTemplateDto templateDto) {
     mapper(dbSession).insert(dto);
 
     String entityName = (entityDto != null) ? entityDto.getName() : null;
     String entityKey = (entityDto != null) ? entityDto.getKey() : null;
     String entityQualifier = (entityDto != null) ? entityDto.getQualifier() : null;
-    auditPersister.addUserPermission(dbSession, new UserPermissionNewValue(dto, entityKey, entityName, userId, entityQualifier,
-      templateDto));
+    String organizationUuid = entityDto != null && entityDto.getOrganizationUuid() != null
+            ? entityDto.getOrganizationUuid()
+            : dto.getOrganizationUuid();
+
+    auditPersister.addUserPermission(dbSession, organizationUuid,
+        new UserPermissionNewValue(dto, entityKey, entityName, userId, entityQualifier,
+            templateDto));
   }
 
   /**
@@ -132,7 +148,8 @@ public class UserPermissionDao implements Dao {
     int deletedRows = mapper(dbSession).deleteGlobalPermission(user.getUuid(), permission, organizationUuid);
 
     if (deletedRows > 0) {
-      auditPersister.deleteUserPermission(dbSession, new UserPermissionNewValue(permission, null, null, null, user, null));
+      auditPersister.deleteUserPermission(dbSession, organizationUuid,
+          new UserPermissionNewValue(permission, null, null, null, user, null));
     }
   }
 
@@ -143,7 +160,8 @@ public class UserPermissionDao implements Dao {
     int deletedRows = mapper(dbSession).deleteEntityPermission(user.getUuid(), permission, entity.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteUserPermission(dbSession, new UserPermissionNewValue(permission, entity.getUuid(), entity.getKey(), entity.getName(), user, entity.getQualifier()));
+      auditPersister.deleteUserPermission(dbSession, entity.getOrganizationUuid(), new UserPermissionNewValue(
+          permission, entity.getUuid(), entity.getKey(), entity.getName(), user, entity.getQualifier()));
     }
   }
 
@@ -154,8 +172,9 @@ public class UserPermissionDao implements Dao {
     int deletedRows = mapper(dbSession).deleteEntityPermissions(entity.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteUserPermission(dbSession, new UserPermissionNewValue(null, entity.getUuid(), entity.getKey(),
-        entity.getName(), null, entity.getQualifier()));
+      auditPersister.deleteUserPermission(dbSession, entity.getOrganizationUuid(),
+          new UserPermissionNewValue(null, entity.getUuid(), entity.getKey(),
+              entity.getName(), null, entity.getQualifier()));
     }
   }
 
@@ -166,8 +185,9 @@ public class UserPermissionDao implements Dao {
     int deletedRows = mapper(dbSession).deleteEntityPermissionOfAnyUser(entity.getUuid(), permission);
 
     if (deletedRows > 0) {
-      auditPersister.deleteUserPermission(dbSession, new UserPermissionNewValue(permission, entity.getUuid(), entity.getKey(),
-        entity.getName(), null, entity.getQualifier()));
+      auditPersister.deleteUserPermission(dbSession, entity.getOrganizationUuid(),
+          new UserPermissionNewValue(permission, entity.getUuid(), entity.getKey(),
+              entity.getName(), null, entity.getQualifier()));
     }
 
     return deletedRows;
@@ -185,7 +205,7 @@ public class UserPermissionDao implements Dao {
     int deletedRows = mapper(dbSession).deleteByUserUuid(userId.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteUserPermission(dbSession, new UserPermissionNewValue(userId, null));
+      auditPersister.deleteUserPermission(dbSession, null, new UserPermissionNewValue(userId, null));
     }
   }
 

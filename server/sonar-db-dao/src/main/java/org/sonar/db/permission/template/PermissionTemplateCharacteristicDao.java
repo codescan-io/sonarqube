@@ -19,16 +19,16 @@
  */
 package org.sonar.db.permission.template;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
+import static org.sonar.db.DatabaseUtils.executeLargeInputs;
+
 import java.util.List;
 import java.util.Optional;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
 import org.sonar.db.audit.AuditPersister;
 import org.sonar.db.audit.model.PermissionTemplateNewValue;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
-import static org.sonar.db.DatabaseUtils.executeLargeInputs;
 
 public class PermissionTemplateCharacteristicDao implements Dao {
   private final AuditPersister auditPersister;
@@ -50,7 +50,9 @@ public class PermissionTemplateCharacteristicDao implements Dao {
     checkArgument(dto.getCreatedAt() != 0L && dto.getUpdatedAt() != 0L);
     mapper(dbSession).insert(dto);
 
-    auditPersister.addCharacteristicToPermissionTemplate(dbSession, new PermissionTemplateNewValue(dto.getTemplateUuid(),
+    PermissionTemplateDto templateDto = dbSession.getMapper(PermissionTemplateMapper.class).selectByUuid(dto.getTemplateUuid());
+    auditPersister.addCharacteristicToPermissionTemplate(dbSession, templateDto.getOrganizationUuid(),
+            new PermissionTemplateNewValue(dto.getTemplateUuid(),
       dto.getPermission(), templateName, dto.getWithProjectCreator()));
 
     return dto;
@@ -61,7 +63,8 @@ public class PermissionTemplateCharacteristicDao implements Dao {
     requireNonNull(templatePermissionDto.getUuid());
     mapper(dbSession).update(templatePermissionDto);
 
-    auditPersister.updateCharacteristicInPermissionTemplate(dbSession, new PermissionTemplateNewValue(templatePermissionDto.getTemplateUuid(),
+    PermissionTemplateDto templateDto = dbSession.getMapper(PermissionTemplateMapper.class).selectByUuid(templatePermissionDto.getTemplateUuid());
+    auditPersister.updateCharacteristicInPermissionTemplate(dbSession, templateDto.getOrganizationUuid(), new PermissionTemplateNewValue(templatePermissionDto.getTemplateUuid(),
       templatePermissionDto.getPermission(), templateName, templatePermissionDto.getWithProjectCreator()));
 
     return templatePermissionDto;

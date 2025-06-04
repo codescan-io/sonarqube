@@ -20,7 +20,9 @@
 package org.sonar.db.qualitygate;
 
 import java.util.List;
+
 import javax.annotation.Nullable;
+
 import org.sonar.api.utils.System2;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
@@ -52,16 +54,20 @@ public class QualityGateUserPermissionsDao implements Dao {
     return selectByQualityGateAndUser(dbSession, qualityGateUuid, userUuid) != null;
   }
 
-  public QualityGateUserPermissionsDto selectByQualityGateAndUser(DbSession dbSession, String qualityGateUuid, String userUuid) {
+  public QualityGateUserPermissionsDto selectByQualityGateAndUser(DbSession dbSession, String qualityGateUuid,
+      String userUuid) {
     return mapper(dbSession).selectByQualityGateAndUser(qualityGateUuid, userUuid);
   }
 
   public void insert(DbSession dbSession, QualityGateUserPermissionsDto dto, String qualityGateName, String userLogin) {
     mapper(dbSession).insert(dto, system2.now());
-    auditPersister.addQualityGateEditor(dbSession, new UserEditorNewValue(dto, qualityGateName, userLogin));
+    QualityGateDto qualityGate = dbSession.getMapper(QualityGateMapper.class).selectByUuid(dto.getQualityGateUuid());
+    auditPersister.addQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(),
+        new UserEditorNewValue(dto, qualityGateName, userLogin));
   }
 
-  public List<SearchUserMembershipDto> selectByQuery(DbSession dbSession, SearchPermissionQuery query, Pagination pagination) {
+  public List<SearchUserMembershipDto> selectByQuery(DbSession dbSession, SearchPermissionQuery query,
+      Pagination pagination) {
     return mapper(dbSession).selectByQuery(query, pagination);
   }
 
@@ -73,7 +79,8 @@ public class QualityGateUserPermissionsDao implements Dao {
     int deletedRows = mapper(dbSession).delete(qualityGate.getUuid(), user.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteQualityGateEditor(dbSession, new UserEditorNewValue(qualityGate, user));
+      auditPersister.deleteQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(),
+          new UserEditorNewValue(qualityGate, user));
     }
   }
 
@@ -81,7 +88,7 @@ public class QualityGateUserPermissionsDao implements Dao {
     int deletedRows = mapper(dbSession).deleteByUser(user.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteQualityGateEditor(dbSession, new UserEditorNewValue(user));
+      auditPersister.deleteQualityGateEditor(dbSession, null, new UserEditorNewValue(user));
     }
   }
 
@@ -89,7 +96,8 @@ public class QualityGateUserPermissionsDao implements Dao {
     int deletedRows = mapper(dbSession).deleteByQualityGate(qualityGate.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteQualityGateEditor(dbSession, new UserEditorNewValue(qualityGate));
+      auditPersister.deleteQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(),
+          new UserEditorNewValue(qualityGate));
     }
   }
 

@@ -465,7 +465,7 @@ public class GroupServiceTest {
 
   private void verifyNoGroupDelete(DbSession dbSession, GroupDto groupDto) {
     verify(dbClient.roleDao(), never()).deleteGroupRolesByGroupUuid(dbSession, groupDto.getUuid());
-    verify(dbClient.permissionTemplateDao(), never()).deleteByGroup(dbSession, groupDto.getUuid(), groupDto.getName());
+    verify(dbClient.permissionTemplateDao(), never()).deleteByGroup(dbSession, groupDto);
     verify(dbClient.userGroupDao(), never()).deleteByGroupUuid(dbSession, groupDto.getUuid(), groupDto.getName());
     verify(dbClient.qProfileEditGroupsDao(), never()).deleteByGroup(dbSession, groupDto);
     verify(dbClient.qualityGateGroupPermissionsDao(), never()).deleteByGroup(dbSession, groupDto);
@@ -476,7 +476,7 @@ public class GroupServiceTest {
 
   private void verifyGroupDelete(DbSession dbSession, GroupDto groupDto) {
     verify(dbClient.roleDao()).deleteGroupRolesByGroupUuid(dbSession, groupDto.getUuid());
-    verify(dbClient.permissionTemplateDao()).deleteByGroup(dbSession, groupDto.getUuid(), groupDto.getName());
+    verify(dbClient.permissionTemplateDao()).deleteByGroup(dbSession, groupDto);
     verify(dbClient.userGroupDao()).deleteByGroupUuid(dbSession, groupDto.getUuid(), groupDto.getName());
     verify(dbClient.qProfileEditGroupsDao()).deleteByGroup(dbSession, groupDto);
     verify(dbClient.qualityGateGroupPermissionsDao()).deleteByGroup(dbSession, groupDto);
