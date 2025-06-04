@@ -19,17 +19,20 @@
  */
 package org.sonar.db.component;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.BiConsumer;
+
 import javax.annotation.Nullable;
+
 import org.apache.commons.lang3.StringUtils;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
 import org.sonar.db.audit.AuditPersister;
 import org.sonar.db.audit.model.ComponentKeyNewValue;
+
+import com.google.common.annotations.VisibleForTesting;
 
 /**
  * Class used to rename the key of a project and its resources.
@@ -52,10 +55,10 @@ public class ComponentKeyUpdaterDao implements Dao {
 
     // add all branch components
     dbSession.getMapper(BranchMapper.class).selectByProjectUuid(projectUuid)
-      .forEach(branch -> {
-        resources.addAll(mapper.selectBranchResources(branch.getUuid()));
-        resources.add(mapper.selectComponentByUuid(branch.getUuid()));
-      });
+        .forEach(branch -> {
+          resources.addAll(mapper.selectBranchResources(branch.getUuid()));
+          resources.add(mapper.selectComponentByUuid(branch.getUuid()));
+        });
 
     // and then proceed with the batch UPDATE at once
     runBatchUpdateForAllResources(resources, projectOldKey, newKey, mapper, (resource, oldKey) -> {
@@ -67,8 +70,9 @@ public class ComponentKeyUpdaterDao implements Dao {
     return key.replace(stringToReplace, replacementString);
   }
 
-  private void runBatchUpdateForAllResources(Collection<ResourceDto> resources, String oldKey, String newKey, ComponentKeyUpdaterMapper mapper,
-    @Nullable BiConsumer<ResourceDto, String> consumer, DbSession dbSession) {
+  private void runBatchUpdateForAllResources(Collection<ResourceDto> resources, String oldKey, String newKey,
+      ComponentKeyUpdaterMapper mapper,
+      @Nullable BiConsumer<ResourceDto, String> consumer, DbSession dbSession) {
     for (ResourceDto resource : resources) {
       String oldResourceKey = resource.getKey();
       String newResourceKey = newKey + oldResourceKey.substring(oldKey.length());
@@ -80,8 +84,11 @@ public class ComponentKeyUpdaterDao implements Dao {
       }
       mapper.updateComponent(resource);
       if (resource.getScope().equals(ComponentScopes.PROJECT)
-        && (resource.getQualifier().equals(ComponentQualifiers.PROJECT) || resource.getQualifier().equals(ComponentQualifiers.APP))) {
-        auditPersister.componentKeyUpdate(dbSession, new ComponentKeyNewValue(resource.getUuid(), oldResourceKey, newResourceKey), resource.getQualifier());
+          && (resource.getQualifier().equals(ComponentQualifiers.PROJECT)
+              || resource.getQualifier().equals(ComponentQualifiers.APP))) {
+        ComponentDto componentDto = dbSession.getMapper(ComponentMapper.class).selectByUuid(resource.getUuid());
+        auditPersister.componentKeyUpdate(dbSession, componentDto.getOrganizationUuid(),
+            new ComponentKeyNewValue(resource.getUuid(), oldResourceKey, newResourceKey), resource.getQualifier());
         mapper.updateProject(oldResourceKey, newResourceKey);
       }
 
@@ -93,7 +100,8 @@ public class ComponentKeyUpdaterDao implements Dao {
 
   public static void checkExistentKey(ComponentKeyUpdaterMapper mapper, String resourceKey) {
     if (mapper.countComponentsByKey(resourceKey) > 0) {
-      throw new IllegalArgumentException("Impossible to update key: a component with key \"" + resourceKey + "\" already exists.");
+      throw new IllegalArgumentException(
+          "Impossible to update key: a component with key \"" + resourceKey + "\" already exists.");
     }
   }
 }

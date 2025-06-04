@@ -19,7 +19,10 @@
  */
 package org.sonar.db.qualityprofile;
 
+import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
+
 import java.util.List;
+
 import org.sonar.api.utils.System2;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
@@ -29,8 +32,6 @@ import org.sonar.db.audit.model.UserEditorNewValue;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.user.SearchUserMembershipDto;
 import org.sonar.db.user.UserDto;
-
-import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
 
 public class QProfileEditUsersDao implements Dao {
 
@@ -50,47 +51,52 @@ public class QProfileEditUsersDao implements Dao {
     return mapper(dbSession).countByQuery(query);
   }
 
-  public List<SearchUserMembershipDto> selectByQuery(DbSession dbSession, SearchQualityProfilePermissionQuery query, Pagination pagination) {
+  public List<SearchUserMembershipDto> selectByQuery(DbSession dbSession, SearchQualityProfilePermissionQuery query,
+      Pagination pagination) {
     return mapper(dbSession).selectByQuery(query, pagination);
   }
 
-  public List<String> selectQProfileUuidsByOrganizationAndUser(DbSession dbSession, OrganizationDto organization, UserDto userDto) {
+  public List<String> selectQProfileUuidsByOrganizationAndUser(DbSession dbSession, OrganizationDto organization,
+      UserDto userDto) {
     return mapper(dbSession).selectQProfileUuidsByOrganizationAndUser(organization.getUuid(), userDto.getUuid());
   }
 
   public void insert(DbSession dbSession, QProfileEditUsersDto dto, String qualityProfileName, String userLogin) {
     mapper(dbSession).insert(dto, system2.now());
-    auditPersister.addQualityProfileEditor(dbSession, new UserEditorNewValue(dto, qualityProfileName, userLogin));
+    QProfileDto profile = dbSession.getMapper(QualityProfileMapper.class).selectByUuid(dto.getQProfileUuid());
+    auditPersister.addQualityProfileEditor(dbSession, profile.getOrganizationUuid(),
+        new UserEditorNewValue(dto, qualityProfileName, userLogin));
   }
 
   public void deleteByQProfileAndUser(DbSession dbSession, QProfileDto profile, UserDto user) {
     int deletedRows = mapper(dbSession).delete(profile.getKee(), user.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteQualityProfileEditor(dbSession, new UserEditorNewValue(profile, user));
+      auditPersister.deleteQualityProfileEditor(dbSession, profile.getOrganizationUuid(),
+          new UserEditorNewValue(profile, user));
     }
   }
 
   public void deleteByQProfiles(DbSession dbSession, List<QProfileDto> qProfiles) {
     executeLargeUpdates(qProfiles,
-      partitionedProfiles ->
-      {
-        int deletedRows = mapper(dbSession).deleteByQProfiles(partitionedProfiles
-          .stream()
-          .map(QProfileDto::getKee)
-          .toList());
+        partitionedProfiles -> {
+          int deletedRows = mapper(dbSession).deleteByQProfiles(partitionedProfiles
+              .stream()
+              .map(QProfileDto::getKee)
+              .toList());
 
-        if (deletedRows > 0) {
-          partitionedProfiles.forEach(p -> auditPersister.deleteQualityProfileEditor(dbSession, new UserEditorNewValue(p)));
-        }
-      });
+          if (deletedRows > 0) {
+            partitionedProfiles.forEach(p -> auditPersister.deleteQualityProfileEditor(dbSession,
+                p.getOrganizationUuid(), new UserEditorNewValue(p)));
+          }
+        });
   }
 
   public void deleteByUser(DbSession dbSession, UserDto user) {
     int deletedRows = mapper(dbSession).deleteByUser(user.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteQualityProfileEditor(dbSession, new UserEditorNewValue(user));
+      auditPersister.deleteQualityProfileEditor(dbSession, null, new UserEditorNewValue(user));
     }
   }
 
