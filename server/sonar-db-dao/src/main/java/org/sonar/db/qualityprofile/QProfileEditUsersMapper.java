@@ -21,19 +21,23 @@ package org.sonar.db.qualityprofile;
 
 import java.util.Collection;
 import java.util.List;
+
 import org.apache.ibatis.annotations.Param;
 import org.sonar.db.Pagination;
 import org.sonar.db.user.SearchUserMembershipDto;
 
 public interface QProfileEditUsersMapper {
 
-  QProfileEditUsersDto selectByQProfileAndUser(@Param("qProfileUuid") String qProfileUuid, @Param("userUuid") String userUuid);
+  QProfileEditUsersDto selectByQProfileAndUser(@Param("qProfileUuid") String qProfileUuid,
+      @Param("userUuid") String userUuid);
 
   int countByQuery(@Param("query") SearchQualityProfilePermissionQuery query);
 
-  List<SearchUserMembershipDto> selectByQuery(@Param("query") SearchQualityProfilePermissionQuery query, @Param("pagination") Pagination pagination);
+  List<SearchUserMembershipDto> selectByQuery(@Param("query") SearchQualityProfilePermissionQuery query,
+      @Param("pagination") Pagination pagination);
 
-  List<String> selectQProfileUuidsByOrganizationAndUser(@Param("organizationUuid") String organizationUuid, @Param("userUuid") String userUuid);
+  List<String> selectQProfileUuidsByOrganizationAndUser(@Param("organizationUuid") String organizationUuid,
+      @Param("userUuid") String userUuid);
 
   void insert(@Param("dto") QProfileEditUsersDto dto, @Param("now") long now);
 
@@ -43,5 +47,8 @@ public interface QProfileEditUsersMapper {
 
   int deleteByUser(@Param("userUuid") String userUuid);
 
-  void deleteByOrganizationAndUser(@Param("organizationUuid") String organizationUuid, @Param("userUuid") String userUuid);
+  void deleteByOrganizationAndUser(@Param("organizationUuid") String organizationUuid,
+      @Param("userUuid") String userUuid);
+
+  List<QProfileEditUsersDto> selectByUser(@Param("userUuid") String userUuid);
 }

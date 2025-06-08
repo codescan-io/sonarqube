@@ -20,6 +20,7 @@
 package org.sonar.db.qualitygate;
 
 import java.util.List;
+
 import org.apache.ibatis.annotations.Param;
 import org.sonar.db.Pagination;
 import org.sonar.db.user.SearchPermissionQuery;
@@ -27,11 +28,13 @@ import org.sonar.db.user.SearchUserMembershipDto;
 
 public interface QualityGateUserPermissionsMapper {
 
-  QualityGateUserPermissionsDto selectByQualityGateAndUser(@Param("qualityGateUuid") String qualityGateUuid, @Param("userUuid") String userUuid);
+  QualityGateUserPermissionsDto selectByQualityGateAndUser(@Param("qualityGateUuid") String qualityGateUuid,
+      @Param("userUuid") String userUuid);
 
   void insert(@Param("dto") QualityGateUserPermissionsDto dto, @Param("now") long now);
 
-  List<SearchUserMembershipDto> selectByQuery(@Param("query") SearchPermissionQuery query, @Param("pagination") Pagination pagination);
+  List<SearchUserMembershipDto> selectByQuery(@Param("query") SearchPermissionQuery query,
+      @Param("pagination") Pagination pagination);
 
   int countByQuery(@Param("query") SearchPermissionQuery query);
 
@@ -40,5 +43,7 @@ public interface QualityGateUserPermissionsMapper {
   int deleteByUser(@Param("userUuid") String userUuid);
 
   int deleteByQualityGate(@Param("qualityGateUuid") String qualityGateUuid);
+
+  List<QualityGateUserPermissionsDto> selectByUserUuid(@Param("userUuid") String userUuid);
 
 }

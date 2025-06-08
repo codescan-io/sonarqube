@@ -31,8 +31,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+
 import org.apache.ibatis.session.ResultHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +48,6 @@ import org.sonar.db.audit.model.PermissionTemplateNewValue;
 import org.sonar.db.permission.CountPerEntityPermission;
 import org.sonar.db.permission.PermissionQuery;
 import org.sonar.db.user.GroupDto;
-import org.sonar.db.user.GroupMapper;
 
 public class PermissionTemplateDao implements Dao {
 
@@ -249,11 +250,15 @@ public class PermissionTemplateDao implements Dao {
   }
 
   public void deleteUserPermissionsByUserUuid(DbSession dbSession, String userUuid, String userLogin) {
+    List<PermissionTemplateUserDto> deletedPermissions = mapper(dbSession).selectUserPermissionsByUserUuid(userUuid);
     int deletedRows = mapper(dbSession).deleteUserPermissionsByUserUuid(userUuid);
 
     if (deletedRows > 0) {
-      auditPersister.deleteUserFromPermissionTemplate(dbSession, null,
-          new PermissionTemplateNewValue(null, null, null, userUuid, userLogin, null, null));
+      for (PermissionTemplateUserDto permission : deletedPermissions) {
+        PermissionTemplateDto template = mapper(dbSession).selectByUuid(permission.getTemplateUuid());
+        auditPersister.deleteUserFromPermissionTemplate(dbSession, template.getOrganizationUuid(),
+            new PermissionTemplateNewValue(null, null, null, userUuid, userLogin, null, null));
+      }
     }
   }
 
@@ -326,7 +331,7 @@ public class PermissionTemplateDao implements Dao {
     if (deletedRows > 0) {
       auditPersister.deleteGroupFromPermissionTemplate(session, group.getOrganizationUuid(),
           new PermissionTemplateNewValue(null, null, null, null, null,
-                  group.getUuid(), group.getName()));
+              group.getUuid(), group.getName()));
     }
   }
 

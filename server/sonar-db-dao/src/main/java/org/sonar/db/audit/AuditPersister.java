@@ -19,8 +19,6 @@
  */
 package org.sonar.db.audit;
 
-import javax.annotation.Nullable;
-
 import org.sonar.core.extension.PlatformLevel;
 import org.sonar.db.DbSession;
 import org.sonar.db.audit.model.AbstractEditorNewValue;
@@ -53,6 +51,10 @@ public interface AuditPersister {
 
   void addUser(DbSession dbSession, UserNewValue newValue);
 
+  void addUserToOrganization(DbSession dbSession, String organizationUuid, UserNewValue newValue);
+
+  void deleteUserFromOrganization(DbSession dbSession, String organizationUuid, UserNewValue newValue);
+
   void updateUser(DbSession dbSession, UserNewValue newValue);
 
   void updateUserPassword(DbSession dbSession, SecretNewValue newValue);
@@ -65,7 +67,7 @@ public interface AuditPersister {
 
   void addUserToGroup(DbSession dbSession, String organizationUuid, UserGroupNewValue newValue);
 
-  void deleteUserFromGroup(DbSession dbSession, @Nullable String organizationUuid, UserGroupNewValue newValue);
+  void deleteUserFromGroup(DbSession dbSession, String organizationUuid, UserGroupNewValue newValue);
 
   void addProperty(DbSession dbSession, PropertyNewValue newValue, boolean isUserProperty);
 
@@ -89,7 +91,7 @@ public interface AuditPersister {
 
   void addUserPermission(DbSession dbSession, String organizationUuid, UserPermissionNewValue newValue);
 
-  void deleteUserPermission(DbSession dbSession, @Nullable String organizationUuid, UserPermissionNewValue newValue);
+  void deleteUserPermission(DbSession dbSession, String organizationUuid, UserPermissionNewValue newValue);
 
   void addPermissionTemplate(DbSession dbSession, String organizationUuid, PermissionTemplateNewValue newValue);
 
@@ -99,7 +101,7 @@ public interface AuditPersister {
 
   void addUserToPermissionTemplate(DbSession dbSession, String organizationUuid, PermissionTemplateNewValue newValue);
 
-  void deleteUserFromPermissionTemplate(DbSession dbSession, @Nullable String organizationUuid,
+  void deleteUserFromPermissionTemplate(DbSession dbSession, String organizationUuid,
       PermissionTemplateNewValue newValue);
 
   void addGroupToPermissionTemplate(DbSession dbSession, String organizationUuid, PermissionTemplateNewValue newValue);
@@ -113,11 +115,11 @@ public interface AuditPersister {
 
   void addQualityGateEditor(DbSession dbSession, String organizationUuid, AbstractEditorNewValue newValue);
 
-  void deleteQualityGateEditor(DbSession dbSession, @Nullable String organizationUuid, AbstractEditorNewValue newValue);
+  void deleteQualityGateEditor(DbSession dbSession, String organizationUuid, AbstractEditorNewValue newValue);
 
   void addQualityProfileEditor(DbSession dbSession, String organizationUuid, AbstractEditorNewValue newValue);
 
-  void deleteQualityProfileEditor(DbSession dbSession, @Nullable String organizationUuid, AbstractEditorNewValue newValue);
+  void deleteQualityProfileEditor(DbSession dbSession, String organizationUuid, AbstractEditorNewValue newValue);
 
   void addCharacteristicToPermissionTemplate(DbSession dbSession, String organizationUuid,
       PermissionTemplateNewValue newValue);

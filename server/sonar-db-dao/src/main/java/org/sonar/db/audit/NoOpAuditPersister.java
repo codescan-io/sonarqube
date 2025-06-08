@@ -64,6 +64,16 @@ public class NoOpAuditPersister implements AuditPersister {
   }
 
   @Override
+  public void addUserToOrganization(DbSession dbSession, String organizationUuid, UserNewValue newValue) {
+    // no op
+  }
+
+  @Override
+  public void deleteUserFromOrganization(DbSession dbSession, String organizationUuid, UserNewValue newValue) {
+    // no op
+  }
+
+  @Override
   public void updateUser(DbSession dbSession, UserNewValue newValue) {
     // no op
   }

@@ -42,7 +42,8 @@ public class UserGroupDao implements Dao {
     this.uuidFactory = uuidFactory;
   }
 
-  public UserGroupDto insert(DbSession session, UserGroupDto dto, String groupName, String login, String organizationUuid) {
+  public UserGroupDto insert(DbSession session, UserGroupDto dto, String groupName, String login,
+      String organizationUuid) {
     dto.setUuid(uuidFactory.create());
     mapper(session).insert(dto);
     logger.debug("Added User : {} to User Group : {}", login, dto.getGroupUuid());
@@ -75,7 +76,8 @@ public class UserGroupDao implements Dao {
     int deletedRows = mapper(session).deleteByGroupUuid(groupUuid);
     if (deletedRows > 0) {
       GroupDto group = session.getMapper(GroupMapper.class).selectByUuid(groupUuid);
-      auditPersister.deleteUserFromGroup(session, group.getOrganizationUuid(), new UserGroupNewValue(groupUuid, groupName));
+      auditPersister.deleteUserFromGroup(session, group.getOrganizationUuid(),
+          new UserGroupNewValue(groupUuid, groupName));
     }
   }
 
@@ -84,10 +86,22 @@ public class UserGroupDao implements Dao {
   }
 
   public void deleteByUserUuid(DbSession dbSession, UserDto userDto) {
+    // Get all groups that the user belongs to before deletion
+    List<UserGroupDto> userGroups = mapper(dbSession).selectByQuery(
+        new UserGroupQuery(null, null, userDto.getUuid()),
+        Pagination.all());
+
+    // Delete all groups for this user
     int deletedRows = mapper(dbSession).deleteByUserUuid(userDto.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteUserFromGroup(dbSession, null, new UserGroupNewValue(userDto));
+      // Process each group for audit logging
+      userGroups.forEach(ug -> {
+        GroupDto group = dbSession.getMapper(GroupMapper.class).selectByUuid(ug.getGroupUuid());
+        if (group != null) {
+          auditPersister.deleteUserFromGroup(dbSession, group.getOrganizationUuid(), new UserGroupNewValue(userDto));
+        }
+      });
     }
   }
 
