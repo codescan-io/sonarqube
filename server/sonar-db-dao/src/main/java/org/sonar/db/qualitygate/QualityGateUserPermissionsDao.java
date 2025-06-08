@@ -85,10 +85,16 @@ public class QualityGateUserPermissionsDao implements Dao {
   }
 
   public void deleteByUser(DbSession dbSession, UserDto user) {
+    List<QualityGateUserPermissionsDto> deletedPermissions = mapper(dbSession).selectByUserUuid(user.getUuid());
     int deletedRows = mapper(dbSession).deleteByUser(user.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteQualityGateEditor(dbSession, null, new UserEditorNewValue(user));
+      for (QualityGateUserPermissionsDto permission : deletedPermissions) {
+        QualityGateDto qualityGate = dbSession.getMapper(QualityGateMapper.class)
+            .selectByUuid(permission.getQualityGateUuid());
+        auditPersister.deleteQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(),
+            new UserEditorNewValue(user));
+      }
     }
   }
 

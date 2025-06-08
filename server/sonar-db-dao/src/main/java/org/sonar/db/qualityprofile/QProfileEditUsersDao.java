@@ -23,6 +23,8 @@ import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
 
 import java.util.List;
 
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.sonar.api.utils.System2;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
@@ -93,10 +95,27 @@ public class QProfileEditUsersDao implements Dao {
   }
 
   public void deleteByUser(DbSession dbSession, UserDto user) {
+    // Get all quality profiles that the user has edit permissions for
+    List<QProfileEditUsersDto> editors = mapper(dbSession).selectByUser(user.getUuid());
+
+    // Delete all editors for this user
     int deletedRows = mapper(dbSession).deleteByUser(user.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteQualityProfileEditor(dbSession, null, new UserEditorNewValue(user));
+      // Process quality profiles in batches to handle large datasets
+      Set<String> qProfileUuids = editors.stream()
+          .map(QProfileEditUsersDto::getQProfileUuid)
+          .collect(Collectors.toSet());
+
+      executeLargeUpdates(qProfileUuids, partitionedQProfileUuids -> {
+        partitionedQProfileUuids.forEach(qProfileUuid -> {
+          QProfileDto profile = dbSession.getMapper(QualityProfileMapper.class).selectByUuid(qProfileUuid);
+          if (profile != null) {
+            auditPersister.deleteQualityProfileEditor(dbSession, profile.getOrganizationUuid(),
+                new UserEditorNewValue(user));
+          }
+        });
+      });
     }
   }
 
