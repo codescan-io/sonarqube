@@ -132,7 +132,7 @@ public class ComponentDao implements Dao {
   }
 
   /*
-    SELECT BY KEY
+     SELECT BY KEY
    */
 
   /**
@@ -265,8 +265,7 @@ public class ComponentDao implements Dao {
   }
 
   /**
-   * Scroll all <strong>enabled</strong> files of the specified project (same
-   * project_uuid) in no specific order with
+   * Scroll all <strong>enabled</strong> files of the specified project (same project_uuid) in no specific order with
    * 'SOURCE' source and a non null path.
    */
   public void scrollAllFilesForFileMove(DbSession session, String branchUuid, ResultHandler<FileMoveRowDto> handler) {
@@ -346,7 +345,7 @@ public class ComponentDao implements Dao {
   }
 
   /*
-    UTIL
+     UTIL
    */
   private static ComponentMapper mapper(DbSession session) {
     return session.getMapper(ComponentMapper.class);
