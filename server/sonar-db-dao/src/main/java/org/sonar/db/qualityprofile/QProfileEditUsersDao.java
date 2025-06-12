@@ -64,30 +64,28 @@ public class QProfileEditUsersDao implements Dao {
   public void insert(DbSession dbSession, QProfileEditUsersDto dto, String qualityProfileName, String userLogin) {
     mapper(dbSession).insert(dto, system2.now());
     QProfileDto profile = dbSession.getMapper(QualityProfileMapper.class).selectByUuid(dto.getQProfileUuid());
-    auditPersister.addQualityProfileEditor(dbSession, profile.getOrganizationUuid(),
-        new UserEditorNewValue(dto, qualityProfileName, userLogin));
+    auditPersister.addQualityProfileEditor(dbSession, profile.getOrganizationUuid(), new UserEditorNewValue(dto, qualityProfileName, userLogin));
   }
 
   public void deleteByQProfileAndUser(DbSession dbSession, QProfileDto profile, UserDto user) {
     int deletedRows = mapper(dbSession).delete(profile.getKee(), user.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteQualityProfileEditor(dbSession, profile.getOrganizationUuid(),
-          new UserEditorNewValue(profile, user));
+      auditPersister.deleteQualityProfileEditor(dbSession, profile.getOrganizationUuid(), new UserEditorNewValue(profile, user));
     }
   }
 
   public void deleteByQProfiles(DbSession dbSession, List<QProfileDto> qProfiles) {
     executeLargeUpdates(qProfiles,
-    partitionedProfiles -> {
+    partitionedProfiles ->
+    {
       int deletedRows = mapper(dbSession).deleteByQProfiles(partitionedProfiles
           .stream()
           .map(QProfileDto::getKee)
           .toList());
 
       if (deletedRows > 0) {
-        partitionedProfiles.forEach(p -> auditPersister.deleteQualityProfileEditor(dbSession,
-            p.getOrganizationUuid(), new UserEditorNewValue(p)));
+        partitionedProfiles.forEach(p -> auditPersister.deleteQualityProfileEditor(dbSession, p.getOrganizationUuid(), new UserEditorNewValue(p)));
       }
     });
   }
@@ -109,8 +107,7 @@ public class QProfileEditUsersDao implements Dao {
         partitionedQProfileUuids.forEach(qProfileUuid -> {
           QProfileDto profile = dbSession.getMapper(QualityProfileMapper.class).selectByUuid(qProfileUuid);
           if (profile != null) {
-            auditPersister.deleteQualityProfileEditor(dbSession, profile.getOrganizationUuid(),
-                new UserEditorNewValue(user));
+            auditPersister.deleteQualityProfileEditor(dbSession, profile.getOrganizationUuid(), new UserEditorNewValue(user));
           }
         });
       });

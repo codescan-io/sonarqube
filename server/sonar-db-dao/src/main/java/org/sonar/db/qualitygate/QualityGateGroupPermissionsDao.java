@@ -59,8 +59,7 @@ public class QualityGateGroupPermissionsDao implements Dao {
   public void insert(DbSession dbSession, QualityGateGroupPermissionsDto dto, String qualityGateName, String groupName) {
     mapper(dbSession).insert(dto, system2.now());
     QualityGateDto qualityGate = dbSession.getMapper(QualityGateMapper.class).selectByUuid(dto.getQualityGateUuid());
-    auditPersister.addQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(),
-        new GroupEditorNewValue(dto, qualityGateName, groupName));
+    auditPersister.addQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(), new GroupEditorNewValue(dto, qualityGateName, groupName));
   }
 
   public List<SearchGroupMembershipDto> selectByQuery(DbSession dbSession, SearchPermissionQuery query, Pagination pagination) {
@@ -83,8 +82,7 @@ public class QualityGateGroupPermissionsDao implements Dao {
     int deletedRows = mapper(dbSession).delete(qualityGate.getUuid(), group.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(),
-          new GroupEditorNewValue(qualityGate, group));
+      auditPersister.deleteQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(), new GroupEditorNewValue(qualityGate, group));
     }
   }
 
@@ -92,8 +90,7 @@ public class QualityGateGroupPermissionsDao implements Dao {
     int deletedRows = mapper(dbSession).deleteByQualityGate(qualityGate.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(),
-          new GroupEditorNewValue(qualityGate));
+      auditPersister.deleteQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(), new GroupEditorNewValue(qualityGate));
     }
   }
 

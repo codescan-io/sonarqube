@@ -100,8 +100,8 @@ public class PurgeDao implements Dao {
   private static void purgeAnalyses(PurgeCommands commands, String rootUuid) {
     List<String> analysisUuids = commands.selectSnapshotUuids(
       new PurgeSnapshotQuery(rootUuid)
-          .setIslast(false)
-          .setNotPurged(true));
+        .setIslast(false)
+        .setNotPurged(true));
     commands.purgeAnalyses(analysisUuids);
   }
 
@@ -246,8 +246,7 @@ public class PurgeDao implements Dao {
 
     deleteProject(uuid, purgeMapper, purgeCommands);
     ComponentDto componentDto = session.getMapper(ComponentMapper.class).selectByUuid(uuid);
-    auditPersister.deleteComponent(session, componentDto.getOrganizationUuid(),
-        new ComponentNewValue(uuid, name, key, qualifier));
+    auditPersister.deleteComponent(session, componentDto.getOrganizationUuid(), new ComponentNewValue(uuid, name, key, qualifier));
     logProfiling(profiler, start);
   }
 

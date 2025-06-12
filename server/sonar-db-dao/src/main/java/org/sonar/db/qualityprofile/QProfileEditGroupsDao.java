@@ -53,7 +53,7 @@ public class QProfileEditGroupsDao implements Dao {
 
   public boolean exists(DbSession dbSession, QProfileDto profile, Collection<GroupDto> groups) {
     return !executeLargeInputs(groups.stream().map(GroupDto::getUuid).toList(), partition -> mapper(dbSession).selectByQProfileAndGroups(profile.getKee(), partition))
-            .isEmpty();
+      .isEmpty();
   }
 
   public int countByQuery(DbSession dbSession, SearchQualityProfilePermissionQuery query) {
@@ -72,30 +72,28 @@ public class QProfileEditGroupsDao implements Dao {
   public void insert(DbSession dbSession, QProfileEditGroupsDto dto, String qualityProfileName, String groupName) {
     mapper(dbSession).insert(dto, system2.now());
     QProfileDto profile = dbSession.getMapper(QualityProfileMapper.class).selectByUuid(dto.getQProfileUuid());
-    auditPersister.addQualityProfileEditor(dbSession, profile.getOrganizationUuid(),
-        new GroupEditorNewValue(dto, qualityProfileName, groupName));
+    auditPersister.addQualityProfileEditor(dbSession, profile.getOrganizationUuid(), new GroupEditorNewValue(dto, qualityProfileName, groupName));
   }
 
   public void deleteByQProfileAndGroup(DbSession dbSession, QProfileDto profile, GroupDto group) {
     int deletedRows = mapper(dbSession).delete(profile.getKee(), group.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteQualityProfileEditor(dbSession, profile.getOrganizationUuid(),
-          new GroupEditorNewValue(profile, group));
+      auditPersister.deleteQualityProfileEditor(dbSession, profile.getOrganizationUuid(), new GroupEditorNewValue(profile, group));
     }
   }
 
   public void deleteByQProfiles(DbSession dbSession, List<QProfileDto> qProfiles) {
     executeLargeUpdates(qProfiles,
-    partitionedProfiles -> {
+    partitionedProfiles ->
+    {
       int deletedRows = mapper(dbSession).deleteByQProfiles(partitionedProfiles
           .stream()
           .map(QProfileDto::getKee)
           .toList());
 
       if (deletedRows > 0) {
-        partitionedProfiles.forEach(p -> auditPersister.deleteQualityProfileEditor(dbSession,
-            p.getOrganizationUuid(), new GroupEditorNewValue(p)));
+        partitionedProfiles.forEach(p -> auditPersister.deleteQualityProfileEditor(dbSession, p.getOrganizationUuid(), new GroupEditorNewValue(p)));
       }
     });
   }

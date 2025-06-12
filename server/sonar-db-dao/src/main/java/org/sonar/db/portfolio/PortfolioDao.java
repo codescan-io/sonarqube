@@ -189,8 +189,7 @@ public class PortfolioDao implements Dao {
     return mapper(dbSession).selectRootOfReferencersToMainBranch(referenceUuid);
   }
 
-  public List<PortfolioDto> selectRootOfReferencersToAppBranch(DbSession dbSession, String appUuid,
-      String appBranchKey) {
+  public List<PortfolioDto> selectRootOfReferencersToAppBranch(DbSession dbSession, String appUuid, String appBranchKey) {
     return mapper(dbSession).selectRootOfReferencersToAppBranch(appUuid, appBranchKey);
   }
 
@@ -242,7 +241,7 @@ public class PortfolioDao implements Dao {
 
   public PortfolioProjectDto selectPortfolioProjectOrFail(DbSession dbSession, String portfolioUuid, String projectUuid) {
     return Optional.ofNullable(mapper(dbSession).selectPortfolioProject(portfolioUuid, projectUuid))
-        .orElseThrow(() -> new IllegalArgumentException(format("Project '%s' not selected in portfolio '%s'", projectUuid, portfolioUuid)));
+      .orElseThrow(() -> new IllegalArgumentException(format("Project '%s' not selected in portfolio '%s'", projectUuid, portfolioUuid)));
   }
 
   public String addProject(DbSession dbSession, String portfolioUuid, String projectUuid) {

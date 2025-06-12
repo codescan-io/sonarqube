@@ -42,8 +42,7 @@ public class UserGroupDao implements Dao {
     this.uuidFactory = uuidFactory;
   }
 
-  public UserGroupDto insert(DbSession session, UserGroupDto dto, String groupName, String login,
-      String organizationUuid) {
+  public UserGroupDto insert(DbSession session, UserGroupDto dto, String groupName, String login, String organizationUuid) {
     dto.setUuid(uuidFactory.create());
     mapper(session).insert(dto);
     logger.debug("Added User : {} to User Group : {}", login, dto.getGroupUuid());
@@ -88,8 +87,7 @@ public class UserGroupDao implements Dao {
   public void deleteByUserUuid(DbSession dbSession, UserDto userDto) {
     // Get all groups that the user belongs to before deletion
     List<UserGroupDto> userGroups = mapper(dbSession).selectByQuery(
-        new UserGroupQuery(null, null, userDto.getUuid()),
-        Pagination.all());
+        new UserGroupQuery(null, null, userDto.getUuid()), Pagination.all());
 
     // Delete all groups for this user
     int deletedRows = mapper(dbSession).deleteByUserUuid(userDto.getUuid());

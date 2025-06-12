@@ -177,8 +177,7 @@ public class UserPermissionDao implements Dao {
 
     if (deletedRows > 0) {
       auditPersister.deleteUserPermission(dbSession, entity.getOrganizationUuid(),
-          new UserPermissionNewValue(permission, entity.getUuid(), entity.getKey(),
-              entity.getName(), null, entity.getQualifier()));
+          new UserPermissionNewValue(permission, entity.getUuid(), entity.getKey(), entity.getName(), null, entity.getQualifier()));
     }
 
     return deletedRows;
@@ -198,8 +197,7 @@ public class UserPermissionDao implements Dao {
 
     if (deletedRows > 0) {
       for (UserPermissionDto permission : permissions) {
-        auditPersister.deleteUserPermission(dbSession, permission.getOrganizationUuid(),
-            new UserPermissionNewValue(userId, null));
+        auditPersister.deleteUserPermission(dbSession, permission.getOrganizationUuid(), new UserPermissionNewValue(userId, null));
       }
     }
   }
