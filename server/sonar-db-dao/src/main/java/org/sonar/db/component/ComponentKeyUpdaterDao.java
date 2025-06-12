@@ -71,7 +71,7 @@ public class ComponentKeyUpdaterDao implements Dao {
   }
 
   private void runBatchUpdateForAllResources(Collection<ResourceDto> resources, String oldKey, String newKey, ComponentKeyUpdaterMapper mapper,
-      @Nullable BiConsumer<ResourceDto, String> consumer, DbSession dbSession) {
+    @Nullable BiConsumer<ResourceDto, String> consumer, DbSession dbSession) {
     for (ResourceDto resource : resources) {
       String oldResourceKey = resource.getKey();
       String newResourceKey = newKey + oldResourceKey.substring(oldKey.length());
