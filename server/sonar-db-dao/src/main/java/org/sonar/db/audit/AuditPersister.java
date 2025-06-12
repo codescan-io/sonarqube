@@ -101,13 +101,11 @@ public interface AuditPersister {
 
   void addUserToPermissionTemplate(DbSession dbSession, String organizationUuid, PermissionTemplateNewValue newValue);
 
-  void deleteUserFromPermissionTemplate(DbSession dbSession, String organizationUuid,
-      PermissionTemplateNewValue newValue);
+  void deleteUserFromPermissionTemplate(DbSession dbSession, String organizationUuid, PermissionTemplateNewValue newValue);
 
   void addGroupToPermissionTemplate(DbSession dbSession, String organizationUuid, PermissionTemplateNewValue newValue);
 
-  void deleteGroupFromPermissionTemplate(DbSession dbSession, String organizationUuid,
-      PermissionTemplateNewValue newValue);
+  void deleteGroupFromPermissionTemplate(DbSession dbSession, String organizationUuid, PermissionTemplateNewValue newValue);
 
   void addDevOpsPermissionsMapping(DbSession dbSession, DevOpsPermissionsMappingNewValue newValue);
 
@@ -121,11 +119,9 @@ public interface AuditPersister {
 
   void deleteQualityProfileEditor(DbSession dbSession, String organizationUuid, AbstractEditorNewValue newValue);
 
-  void addCharacteristicToPermissionTemplate(DbSession dbSession, String organizationUuid,
-      PermissionTemplateNewValue newValue);
+  void addCharacteristicToPermissionTemplate(DbSession dbSession, String organizationUuid, PermissionTemplateNewValue newValue);
 
-  void updateCharacteristicInPermissionTemplate(DbSession dbSession, String organizationUuid,
-      PermissionTemplateNewValue newValue);
+  void updateCharacteristicInPermissionTemplate(DbSession dbSession, String organizationUuid, PermissionTemplateNewValue newValue);
 
   void addPlugin(DbSession dbSession, PluginNewValue newValue);
 
@@ -163,10 +159,8 @@ public interface AuditPersister {
 
   void updateComponentVisibility(DbSession session, String organizationUuid, ComponentNewValue componentNewValue);
 
-  void componentKeyUpdate(DbSession session, String organizationUuid, ComponentKeyNewValue componentKeyNewValue,
-      String qualifier);
+  void componentKeyUpdate(DbSession session, String organizationUuid, ComponentKeyNewValue componentKeyNewValue, String qualifier);
 
-  void componentKeyBranchUpdate(DbSession session, String organizationUuid, ComponentKeyNewValue componentKeyNewValue,
-      String qualifier);
+  void componentKeyBranchUpdate(DbSession session, String organizationUuid, ComponentKeyNewValue componentKeyNewValue, String qualifier);
 
 }

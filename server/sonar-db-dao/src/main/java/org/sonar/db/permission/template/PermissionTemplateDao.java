@@ -101,8 +101,7 @@ public class PermissionTemplateDao implements Dao {
   }
 
   /**
-   * @return {@code true} if template contains groups that are granted with
-   *         {@code permission}, else {@code false}
+   * @return {@code true} if template contains groups that are granted with {@code permission}, else {@code false}
    */
   public boolean hasGroupsWithPermission(DbSession dbSession, String templateUuid, String permission, @Nullable String groupUuid) {
     return mapper(dbSession).countGroupsWithPermission(templateUuid, permission, groupUuid) > 0;
@@ -129,8 +128,7 @@ public class PermissionTemplateDao implements Dao {
       dto.setUuid(uuidFactory.create());
     }
     mapper(session).insert(dto);
-    auditPersister.addPermissionTemplate(session, dto.getOrganizationUuid(),
-        new PermissionTemplateNewValue(dto.getUuid(), dto.getName()));
+    auditPersister.addPermissionTemplate(session, dto.getOrganizationUuid(), new PermissionTemplateNewValue(dto.getUuid(), dto.getName()));
 
     return dto;
   }
@@ -138,8 +136,7 @@ public class PermissionTemplateDao implements Dao {
   /**
    * Each row returns a #{@link CountPerEntityPermission}
    */
-  public void usersCountByTemplateUuidAndPermission(DbSession dbSession, List<String> templateUuids, ResultHandler<CountByTemplateAndPermissionDto>
-          resultHandler) {
+  public void usersCountByTemplateUuidAndPermission(DbSession dbSession, List<String> templateUuids, ResultHandler<CountByTemplateAndPermissionDto> resultHandler) {
     Map<String, Object> parameters = new HashMap<>(1);
 
     executeLargeInputsWithoutOutput(
@@ -153,8 +150,7 @@ public class PermissionTemplateDao implements Dao {
   /**
    * Each row returns a #{@link CountPerEntityPermission}
    */
-  public void groupsCountByTemplateUuidAndPermission(DbSession dbSession, List<String> templateUuids, ResultHandler<CountByTemplateAndPermissionDto>
-          resultHandler) {
+  public void groupsCountByTemplateUuidAndPermission(DbSession dbSession, List<String> templateUuids, ResultHandler<CountByTemplateAndPermissionDto> resultHandler) {
     Map<String, Object> parameters = new HashMap<>(2);
     parameters.put(ANYONE_GROUP_PARAMETER, ANYONE);
 
@@ -214,7 +210,8 @@ public class PermissionTemplateDao implements Dao {
     session.commit();
   }
 
-  public void deleteUserPermission(DbSession session, String templateUuid, String userUuid, String permission, String templateName, String userLogin) {
+  public void deleteUserPermission(DbSession session, String templateUuid, String userUuid, String permission,
+    String templateName, String userLogin) {
     PermissionTemplateUserDto permissionTemplateUser = new PermissionTemplateUserDto()
       .setTemplateUuid(templateUuid)
       .setPermission(permission)
@@ -249,9 +246,9 @@ public class PermissionTemplateDao implements Dao {
   }
 
   public void insertGroupPermission(DbSession session, String templateUuid, @Nullable String groupUuid, String permission,
-      String templateName, @Nullable String groupName) {
+    String templateName, @Nullable String groupName) {
     logger.debug("Adding Group to Template, permissionType : {}, group : {} and templateUuid : {}", permission,
-           groupName, templateUuid);
+            groupName, templateUuid);
     PermissionTemplateGroupDto permissionTemplateGroup = new PermissionTemplateGroupDto()
       .setUuid(uuidFactory.create())
       .setTemplateUuid(templateUuid)
@@ -277,9 +274,9 @@ public class PermissionTemplateDao implements Dao {
   }
 
   public void deleteGroupPermission(DbSession session, String templateUuid, @Nullable String groupUuid, String permission, String templateName,
-      @Nullable String groupName) {
+    @Nullable String groupName) {
     logger.debug(" Removing Group from Permission Template, permissionType : {}, group : {} and templateUuid : {}",
-           permission, groupName, templateUuid);
+            permission, groupName, templateUuid);
     PermissionTemplateGroupDto permissionTemplateGroup = new PermissionTemplateGroupDto()
       .setTemplateUuid(templateUuid)
       .setPermission(permission)
