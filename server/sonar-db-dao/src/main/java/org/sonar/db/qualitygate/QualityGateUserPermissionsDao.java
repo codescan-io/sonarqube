@@ -20,9 +20,7 @@
 package org.sonar.db.qualitygate;
 
 import java.util.List;
-
 import javax.annotation.Nullable;
-
 import org.sonar.api.utils.System2;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
@@ -54,8 +52,7 @@ public class QualityGateUserPermissionsDao implements Dao {
     return selectByQualityGateAndUser(dbSession, qualityGateUuid, userUuid) != null;
   }
 
-  public QualityGateUserPermissionsDto selectByQualityGateAndUser(DbSession dbSession, String qualityGateUuid,
-      String userUuid) {
+  public QualityGateUserPermissionsDto selectByQualityGateAndUser(DbSession dbSession, String qualityGateUuid, String userUuid) {
     return mapper(dbSession).selectByQualityGateAndUser(qualityGateUuid, userUuid);
   }
 
@@ -66,8 +63,7 @@ public class QualityGateUserPermissionsDao implements Dao {
         new UserEditorNewValue(dto, qualityGateName, userLogin));
   }
 
-  public List<SearchUserMembershipDto> selectByQuery(DbSession dbSession, SearchPermissionQuery query,
-      Pagination pagination) {
+  public List<SearchUserMembershipDto> selectByQuery(DbSession dbSession, SearchPermissionQuery query, Pagination pagination) {
     return mapper(dbSession).selectByQuery(query, pagination);
   }
 

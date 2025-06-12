@@ -52,24 +52,21 @@ public class QProfileEditGroupsDao implements Dao {
   }
 
   public boolean exists(DbSession dbSession, QProfileDto profile, Collection<GroupDto> groups) {
-    return !executeLargeInputs(groups.stream().map(GroupDto::getUuid).toList(),
-        partition -> mapper(dbSession).selectByQProfileAndGroups(profile.getKee(), partition))
-        .isEmpty();
+    return !executeLargeInputs(groups.stream().map(GroupDto::getUuid).toList(), partition -> mapper(dbSession).selectByQProfileAndGroups(profile.getKee(), partition))
+            .isEmpty();
   }
 
   public int countByQuery(DbSession dbSession, SearchQualityProfilePermissionQuery query) {
     return mapper(dbSession).countByQuery(query);
   }
 
-  public List<SearchGroupMembershipDto> selectByQuery(DbSession dbSession, SearchQualityProfilePermissionQuery query,
-      Pagination pagination) {
+  public List<SearchGroupMembershipDto> selectByQuery(DbSession dbSession, SearchQualityProfilePermissionQuery query, Pagination pagination) {
     return mapper(dbSession).selectByQuery(query, pagination);
   }
 
-  public List<String> selectQProfileUuidsByOrganizationAndGroups(DbSession dbSession, OrganizationDto organization,
-      Collection<GroupDto> groups) {
+  public List<String> selectQProfileUuidsByOrganizationAndGroups(DbSession dbSession, OrganizationDto organization, Collection<GroupDto> groups) {
     return DatabaseUtils.executeLargeInputs(groups.stream().map(GroupDto::getUuid).toList(),
-        g -> mapper(dbSession).selectQProfileUuidsByOrganizationAndGroups(organization.getUuid(), g));
+          g -> mapper(dbSession).selectQProfileUuidsByOrganizationAndGroups(organization.getUuid(), g));
   }
 
   public void insert(DbSession dbSession, QProfileEditGroupsDto dto, String qualityProfileName, String groupName) {
@@ -90,17 +87,17 @@ public class QProfileEditGroupsDao implements Dao {
 
   public void deleteByQProfiles(DbSession dbSession, List<QProfileDto> qProfiles) {
     executeLargeUpdates(qProfiles,
-        partitionedProfiles -> {
-          int deletedRows = mapper(dbSession).deleteByQProfiles(partitionedProfiles
-              .stream()
-              .map(QProfileDto::getKee)
-              .toList());
+    partitionedProfiles -> {
+      int deletedRows = mapper(dbSession).deleteByQProfiles(partitionedProfiles
+          .stream()
+          .map(QProfileDto::getKee)
+          .toList());
 
-          if (deletedRows > 0) {
-            partitionedProfiles.forEach(p -> auditPersister.deleteQualityProfileEditor(dbSession,
-                p.getOrganizationUuid(), new GroupEditorNewValue(p)));
-          }
-        });
+      if (deletedRows > 0) {
+        partitionedProfiles.forEach(p -> auditPersister.deleteQualityProfileEditor(dbSession,
+            p.getOrganizationUuid(), new GroupEditorNewValue(p)));
+      }
+    });
   }
 
   public void deleteByGroup(DbSession dbSession, GroupDto group) {

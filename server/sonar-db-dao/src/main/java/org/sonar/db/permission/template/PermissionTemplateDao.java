@@ -68,45 +68,35 @@ public class PermissionTemplateDao implements Dao {
   /**
    * @return a paginated list of user logins.
    */
-  public List<String> selectUserLoginsByQueryAndTemplate(DbSession session, PermissionQuery query,
-      String templateUuid) {
-    return mapper(session).selectUserLoginsByQueryAndTemplate(query, templateUuid,
-        Pagination.forPage(query.getPageIndex()).andSize(query.getPageSize()));
+  public List<String> selectUserLoginsByQueryAndTemplate(DbSession session, PermissionQuery query, String templateUuid) {
+    return mapper(session).selectUserLoginsByQueryAndTemplate(query, templateUuid, Pagination.forPage(query.getPageIndex()).andSize(query.getPageSize()));
   }
 
   public int countUserLoginsByQueryAndTemplate(DbSession session, PermissionQuery query, String templateUuid) {
     return mapper(session).countUserLoginsByQueryAndTemplate(query, templateUuid);
   }
 
-  public List<PermissionTemplateUserDto> selectUserPermissionsByTemplateIdAndUserLogins(DbSession dbSession,
-      String templateUuid, List<String> logins) {
-    return executeLargeInputs(logins,
-        l -> mapper(dbSession).selectUserPermissionsByTemplateUuidAndUserLogins(templateUuid, l));
+  public List<PermissionTemplateUserDto> selectUserPermissionsByTemplateIdAndUserLogins(DbSession dbSession, String templateUuid, List<String> logins) {
+    return executeLargeInputs(logins, l -> mapper(dbSession).selectUserPermissionsByTemplateUuidAndUserLogins(templateUuid, l));
   }
 
   public List<PermissionTemplateUserDto> selectUserPermissionsByTemplateId(DbSession dbSession, String templateUuid) {
     return mapper(dbSession).selectUserPermissionsByTemplateUuidAndUserLogins(templateUuid, Collections.emptyList());
   }
 
-  public List<String> selectGroupNamesByQueryAndTemplate(DbSession session, PermissionQuery query,
-      String templateUuid) {
-    return mapper(session).selectGroupNamesByQueryAndTemplate(templateUuid, query,
-        Pagination.forPage(query.getPageIndex()).andSize(query.getPageSize()));
+  public List<String> selectGroupNamesByQueryAndTemplate(DbSession session, PermissionQuery query, String templateUuid) {
+    return mapper(session).selectGroupNamesByQueryAndTemplate(templateUuid, query, Pagination.forPage(query.getPageIndex()).andSize(query.getPageSize()));
   }
 
-  public int countGroupNamesByQueryAndTemplate(DbSession session, PermissionQuery query, String organizationUuid,
-      String templateUuid) {
+  public int countGroupNamesByQueryAndTemplate(DbSession session, PermissionQuery query, String organizationUuid, String templateUuid) {
     return mapper(session).countGroupNamesByQueryAndTemplate(organizationUuid, query, templateUuid);
   }
 
-  public List<PermissionTemplateGroupDto> selectGroupPermissionsByTemplateIdAndGroupNames(DbSession dbSession,
-      String templateUuid, List<String> groups) {
-    return executeLargeInputs(groups,
-        g -> mapper(dbSession).selectGroupPermissionsByTemplateUuidAndGroupNames(templateUuid, g));
+  public List<PermissionTemplateGroupDto> selectGroupPermissionsByTemplateIdAndGroupNames(DbSession dbSession, String templateUuid, List<String> groups) {
+    return executeLargeInputs(groups, g -> mapper(dbSession).selectGroupPermissionsByTemplateUuidAndGroupNames(templateUuid, g));
   }
 
-  public List<PermissionTemplateGroupDto> selectGroupPermissionsByTemplateUuid(DbSession dbSession,
-      String templateUuid) {
+  public List<PermissionTemplateGroupDto> selectGroupPermissionsByTemplateUuid(DbSession dbSession, String templateUuid) {
     return mapper(dbSession).selectGroupPermissionsByTemplateUuidAndGroupNames(templateUuid, Collections.emptyList());
   }
 
@@ -114,8 +104,7 @@ public class PermissionTemplateDao implements Dao {
    * @return {@code true} if template contains groups that are granted with
    *         {@code permission}, else {@code false}
    */
-  public boolean hasGroupsWithPermission(DbSession dbSession, String templateUuid, String permission,
-      @Nullable String groupUuid) {
+  public boolean hasGroupsWithPermission(DbSession dbSession, String templateUuid, String permission, @Nullable String groupUuid) {
     return mapper(dbSession).countGroupsWithPermission(templateUuid, permission, groupUuid) > 0;
   }
 
@@ -149,36 +138,35 @@ public class PermissionTemplateDao implements Dao {
   /**
    * Each row returns a #{@link CountPerEntityPermission}
    */
-  public void usersCountByTemplateUuidAndPermission(DbSession dbSession, List<String> templateUuids,
-      ResultHandler<CountByTemplateAndPermissionDto> resultHandler) {
+  public void usersCountByTemplateUuidAndPermission(DbSession dbSession, List<String> templateUuids, ResultHandler<CountByTemplateAndPermissionDto>
+          resultHandler) {
     Map<String, Object> parameters = new HashMap<>(1);
 
     executeLargeInputsWithoutOutput(
-        templateUuids,
-        partitionedTemplateUuids -> {
-          parameters.put("templateUuids", partitionedTemplateUuids);
-          mapper(dbSession).usersCountByTemplateUuidAndPermission(parameters, resultHandler);
-        });
+      templateUuids,
+      partitionedTemplateUuids -> {
+        parameters.put("templateUuids", partitionedTemplateUuids);
+        mapper(dbSession).usersCountByTemplateUuidAndPermission(parameters, resultHandler);
+      });
   }
 
   /**
    * Each row returns a #{@link CountPerEntityPermission}
    */
-  public void groupsCountByTemplateUuidAndPermission(DbSession dbSession, List<String> templateUuids,
-      ResultHandler<CountByTemplateAndPermissionDto> resultHandler) {
+  public void groupsCountByTemplateUuidAndPermission(DbSession dbSession, List<String> templateUuids, ResultHandler<CountByTemplateAndPermissionDto>
+          resultHandler) {
     Map<String, Object> parameters = new HashMap<>(2);
     parameters.put(ANYONE_GROUP_PARAMETER, ANYONE);
 
     executeLargeInputsWithoutOutput(
-        templateUuids,
-        partitionedTemplateUuids -> {
-          parameters.put("templateUuids", partitionedTemplateUuids);
-          mapper(dbSession).groupsCountByTemplateUuidAndPermission(parameters, resultHandler);
-        });
+      templateUuids,
+      partitionedTemplateUuids -> {
+        parameters.put("templateUuids", partitionedTemplateUuids);
+        mapper(dbSession).groupsCountByTemplateUuidAndPermission(parameters, resultHandler);
+      });
   }
 
-  public List<PermissionTemplateGroupDto> selectAllGroupPermissionTemplatesByGroupUuid(DbSession dbSession,
-      String groupUuid) {
+  public List<PermissionTemplateGroupDto> selectAllGroupPermissionTemplatesByGroupUuid(DbSession dbSession, String groupUuid) {
     return mapper(dbSession).selectAllGroupPermissionTemplatesByGroupUuid(groupUuid);
   }
 
@@ -207,14 +195,14 @@ public class PermissionTemplateDao implements Dao {
   }
 
   public void insertUserPermission(DbSession session, String templateUuid, String userUuid, String permission,
-      String templateName, String userLogin) {
+    String templateName, String userLogin) {
     PermissionTemplateUserDto permissionTemplateUser = new PermissionTemplateUserDto()
-        .setUuid(uuidFactory.create())
-        .setTemplateUuid(templateUuid)
-        .setUserUuid(userUuid)
-        .setPermission(permission)
-        .setCreatedAt(now())
-        .setUpdatedAt(now());
+      .setUuid(uuidFactory.create())
+      .setTemplateUuid(templateUuid)
+      .setUserUuid(userUuid)
+      .setPermission(permission)
+      .setCreatedAt(now())
+      .setUpdatedAt(now());
 
     mapper(session).insertUserPermission(permissionTemplateUser);
     logger.info("Added user: {} to permission template: {} with permission: {}", userLogin, templateName, permission);
@@ -226,15 +214,13 @@ public class PermissionTemplateDao implements Dao {
     session.commit();
   }
 
-  public void deleteUserPermission(DbSession session, String templateUuid, String userUuid, String permission,
-      String templateName, String userLogin) {
+  public void deleteUserPermission(DbSession session, String templateUuid, String userUuid, String permission, String templateName, String userLogin) {
     PermissionTemplateUserDto permissionTemplateUser = new PermissionTemplateUserDto()
-        .setTemplateUuid(templateUuid)
-        .setPermission(permission)
-        .setUserUuid(userUuid);
+      .setTemplateUuid(templateUuid)
+      .setPermission(permission)
+      .setUserUuid(userUuid);
     int deletedRows = mapper(session).deleteUserPermission(permissionTemplateUser);
-    logger.info("Removed user: {} from permission template: {} with permission: {}", userLogin, templateName,
-        permission);
+    logger.info("Removed user: {} from permission template: {} with permission: {}", userLogin, templateName, permission);
 
     if (deletedRows > 0) {
       PermissionTemplateDto template = mapper(session).selectByUuid(templateUuid);
@@ -262,18 +248,17 @@ public class PermissionTemplateDao implements Dao {
     }
   }
 
-  public void insertGroupPermission(DbSession session, String templateUuid, @Nullable String groupUuid,
-      String permission,
+  public void insertGroupPermission(DbSession session, String templateUuid, @Nullable String groupUuid, String permission,
       String templateName, @Nullable String groupName) {
     logger.debug("Adding Group to Template, permissionType : {}, group : {} and templateUuid : {}", permission,
-        groupName, templateUuid);
+           groupName, templateUuid);
     PermissionTemplateGroupDto permissionTemplateGroup = new PermissionTemplateGroupDto()
-        .setUuid(uuidFactory.create())
-        .setTemplateUuid(templateUuid)
-        .setPermission(permission)
-        .setGroupUuid(groupUuid)
-        .setCreatedAt(now())
-        .setUpdatedAt(now());
+      .setUuid(uuidFactory.create())
+      .setTemplateUuid(templateUuid)
+      .setPermission(permission)
+      .setGroupUuid(groupUuid)
+      .setCreatedAt(now())
+      .setUpdatedAt(now());
     mapper(session).insertGroupPermission(permissionTemplateGroup);
 
     PermissionTemplateDto template = mapper(session).selectByUuid(templateUuid);
@@ -281,8 +266,7 @@ public class PermissionTemplateDao implements Dao {
         new PermissionTemplateNewValue(templateUuid, templateName, permission, null, null, groupUuid, groupName));
   }
 
-  public void insertGroupPermission(DbSession session, PermissionTemplateGroupDto permissionTemplateGroup,
-      String templateName) {
+  public void insertGroupPermission(DbSession session, PermissionTemplateGroupDto permissionTemplateGroup, String templateName) {
     mapper(session).insertGroupPermission(permissionTemplateGroup);
 
     PermissionTemplateDto template = mapper(session).selectByUuid(permissionTemplateGroup.getTemplateUuid());
@@ -292,15 +276,14 @@ public class PermissionTemplateDao implements Dao {
             permissionTemplateGroup.getGroupName()));
   }
 
-  public void deleteGroupPermission(DbSession session, String templateUuid, @Nullable String groupUuid,
-      String permission, String templateName,
+  public void deleteGroupPermission(DbSession session, String templateUuid, @Nullable String groupUuid, String permission, String templateName,
       @Nullable String groupName) {
     logger.debug(" Removing Group from Permission Template, permissionType : {}, group : {} and templateUuid : {}",
-        permission, groupName, templateUuid);
+           permission, groupName, templateUuid);
     PermissionTemplateGroupDto permissionTemplateGroup = new PermissionTemplateGroupDto()
-        .setTemplateUuid(templateUuid)
-        .setPermission(permission)
-        .setGroupUuid(groupUuid);
+      .setTemplateUuid(templateUuid)
+      .setPermission(permission)
+      .setGroupUuid(groupUuid);
     int deletedRows = mapper(session).deleteGroupPermission(permissionTemplateGroup);
 
     if (deletedRows > 0) {
@@ -317,8 +300,7 @@ public class PermissionTemplateDao implements Dao {
     return mapper(dbSession).selectByName(organizationUuid, name.toUpperCase(Locale.ENGLISH));
   }
 
-  public List<String> selectPotentialPermissionsByUserUuidAndTemplateUuid(DbSession dbSession,
-      @Nullable String currentUserUuid, String templateUuid) {
+  public List<String> selectPotentialPermissionsByUserUuidAndTemplateUuid(DbSession dbSession, @Nullable String currentUserUuid, String templateUuid) {
     return mapper(dbSession).selectPotentialPermissionsByUserUuidAndTemplateUuid(currentUserUuid, templateUuid);
   }
 
@@ -330,8 +312,7 @@ public class PermissionTemplateDao implements Dao {
 
     if (deletedRows > 0) {
       auditPersister.deleteGroupFromPermissionTemplate(session, group.getOrganizationUuid(),
-          new PermissionTemplateNewValue(null, null, null, null, null,
-              group.getUuid(), group.getName()));
+          new PermissionTemplateNewValue(null, null, null, null, null, group.getUuid(), group.getName()));
     }
   }
 

@@ -75,8 +75,7 @@ public class UserPermissionDao implements Dao {
   private static List<String> paginate(List<String> results, PermissionQuery query) {
     return results
       .stream()
-      // Pagination is done in Java because it's too complex to use SQL pagination in
-      // Oracle and MsSQL with the distinct
+      // Pagination is done in Java because it's too complex to use SQL pagination in Oracle and MsSQL with the distinct
       .skip(query.getPageOffset())
       .limit(query.getPageSize())
       .toList();
@@ -119,7 +118,7 @@ public class UserPermissionDao implements Dao {
   }
 
   public void insert(DbSession dbSession, UserPermissionDto dto, @Nullable EntityDto entityDto,
-         @Nullable UserId userId, @Nullable PermissionTemplateDto templateDto) {
+    @Nullable UserId userId, @Nullable PermissionTemplateDto templateDto) {
     mapper(dbSession).insert(dto);
 
     String entityName = (entityDto != null) ? entityDto.getName() : null;

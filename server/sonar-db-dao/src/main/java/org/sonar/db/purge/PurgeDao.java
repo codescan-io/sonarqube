@@ -32,9 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-
 import javax.annotation.Nullable;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.utils.DateUtils;
@@ -81,8 +79,7 @@ public class PurgeDao implements Dao {
 
   }
 
-  private static void purgeStaleBranches(PurgeCommands commands, PurgeConfiguration conf, PurgeMapper mapper,
-      String rootUuid) {
+  private static void purgeStaleBranches(PurgeCommands commands, PurgeConfiguration conf, PurgeMapper mapper, String rootUuid) {
     Optional<Date> maxDate = conf.maxLiveDateOfInactiveBranches();
     if (maxDate.isEmpty()) {
       // not available if branch plugin is not installed
@@ -102,9 +99,9 @@ public class PurgeDao implements Dao {
 
   private static void purgeAnalyses(PurgeCommands commands, String rootUuid) {
     List<String> analysisUuids = commands.selectSnapshotUuids(
-        new PurgeSnapshotQuery(rootUuid)
-            .setIslast(false)
-            .setNotPurged(true));
+      new PurgeSnapshotQuery(rootUuid)
+          .setIslast(false)
+          .setNotPurged(true));
     commands.purgeAnalyses(analysisUuids);
   }
 
@@ -119,11 +116,9 @@ public class PurgeDao implements Dao {
     deleteIssues(mapper, issueKeys);
   }
 
-  private static void deleteOldAnticipatedTransitions(PurgeCommands commands, PurgeConfiguration purgeConfiguration,
-      String projectUuid) {
+  private static void deleteOldAnticipatedTransitions(PurgeCommands commands, PurgeConfiguration purgeConfiguration, String projectUuid) {
     LOG.debug("<- Delete Old Anticipated Transitions");
-    commands.deleteAnticipatedTransitions(projectUuid,
-        purgeConfiguration.maxLiveDateOfAnticipatedTransitions().toEpochMilli());
+    commands.deleteAnticipatedTransitions(projectUuid, purgeConfiguration.maxLiveDateOfAnticipatedTransitions().toEpochMilli());
   }
 
   private static void deleteOldClosedIssues(PurgeConfiguration conf, PurgeMapper mapper, PurgeListener listener) {
@@ -169,9 +164,9 @@ public class PurgeDao implements Dao {
   public List<PurgeableAnalysisDto> selectProcessedAnalysisByComponentUuid(String componentUuid, DbSession session) {
     PurgeMapper mapper = mapper(session);
     return mapper.selectProcessedAnalysisByComponentUuid(componentUuid).stream()
-        .filter(new NewCodePeriodAnalysisFilter(mapper, componentUuid))
-        .sorted()
-        .toList();
+      .filter(new NewCodePeriodAnalysisFilter(mapper, componentUuid))
+      .sorted()
+      .toList();
   }
 
   public void purgeCeActivities(DbSession session, PurgeProfiler profiler) {
@@ -187,10 +182,8 @@ public class PurgeDao implements Dao {
   }
 
   /**
-   * When the rootUuid is the main branch of a project, we also want to clean the
-   * old activities and context of other branches.
-   * This is probably to ensure that the cleanup happens regularly on branch that
-   * are not as active as the main branch.
+   * When the rootUuid is the main branch of a project, we also want to clean the old activities and context of other branches.
+   * This is probably to ensure that the cleanup happens regularly on branch that are not as active as the main branch.
    */
   @Nullable
   private static String getEntityUuidToPurge(DbSession session, @Nullable String rootUuid) {
@@ -244,10 +237,10 @@ public class PurgeDao implements Dao {
     long start = System2.INSTANCE.now();
 
     List<String> branchUuids = session.getMapper(BranchMapper.class).selectByProjectUuid(uuid).stream()
-        // Main branch is deleted last
-        .sorted(Comparator.comparing(BranchDto::isMain))
-        .map(BranchDto::getUuid)
-        .toList();
+      // Main branch is deleted last
+      .sorted(Comparator.comparing(BranchDto::isMain))
+      .map(BranchDto::getUuid)
+      .toList();
 
     branchUuids.forEach(id -> deleteBranch(id, purgeCommands));
 
@@ -264,8 +257,7 @@ public class PurgeDao implements Dao {
     }
     long duration = System.currentTimeMillis() - start;
     LOG.debug("");
-    LOG.atDebug().setMessage(" -------- Profiling for project deletion: {} --------")
-        .addArgument(() -> TimeUtils.formatDuration(duration)).log();
+    LOG.atDebug().setMessage(" -------- Profiling for project deletion: {} --------").addArgument(() -> TimeUtils.formatDuration(duration)).log();
     LOG.debug("");
     for (String line : profiler.getProfilingResult(duration)) {
       LOG.debug(line);
@@ -325,12 +317,10 @@ public class PurgeDao implements Dao {
   }
 
   /**
-   * Delete the non root components (ie. sub-view, application or project copy)
-   * from the specified collection of {@link ComponentDto}
+   * Delete the non root components (ie. sub-view, application or project copy) from the specified collection of {@link ComponentDto}
    * and data from their child tables.
    * <p>
-   * This method has no effect when passed an empty collection or only root
-   * components.
+   * This method has no effect when passed an empty collection or only root components.
    * </p>
    */
   public void deleteNonRootComponentsInView(DbSession dbSession, Collection<ComponentDto> components) {
@@ -346,9 +336,9 @@ public class PurgeDao implements Dao {
 
   private static void deleteNonRootComponentsInView(Set<ComponentDto> nonRootComponents, PurgeCommands purgeCommands) {
     List<String> subviewsOrProjectCopies = nonRootComponents.stream()
-        .filter(PurgeDao::isSubview)
-        .map(ComponentDto::uuid)
-        .toList();
+      .filter(PurgeDao::isSubview)
+      .map(ComponentDto::uuid)
+      .toList();
     purgeCommands.deleteByRootAndSubviews(subviewsOrProjectCopies);
     List<String> nonRootComponentUuids = nonRootComponents.stream().map(ComponentDto::uuid).toList();
     purgeCommands.deleteComponentMeasures(nonRootComponentUuids);

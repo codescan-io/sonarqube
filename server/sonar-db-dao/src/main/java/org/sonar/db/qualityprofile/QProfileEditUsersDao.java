@@ -53,13 +53,11 @@ public class QProfileEditUsersDao implements Dao {
     return mapper(dbSession).countByQuery(query);
   }
 
-  public List<SearchUserMembershipDto> selectByQuery(DbSession dbSession, SearchQualityProfilePermissionQuery query,
-      Pagination pagination) {
+  public List<SearchUserMembershipDto> selectByQuery(DbSession dbSession, SearchQualityProfilePermissionQuery query, Pagination pagination) {
     return mapper(dbSession).selectByQuery(query, pagination);
   }
 
-  public List<String> selectQProfileUuidsByOrganizationAndUser(DbSession dbSession, OrganizationDto organization,
-      UserDto userDto) {
+  public List<String> selectQProfileUuidsByOrganizationAndUser(DbSession dbSession, OrganizationDto organization, UserDto userDto) {
     return mapper(dbSession).selectQProfileUuidsByOrganizationAndUser(organization.getUuid(), userDto.getUuid());
   }
 
@@ -81,17 +79,17 @@ public class QProfileEditUsersDao implements Dao {
 
   public void deleteByQProfiles(DbSession dbSession, List<QProfileDto> qProfiles) {
     executeLargeUpdates(qProfiles,
-        partitionedProfiles -> {
-          int deletedRows = mapper(dbSession).deleteByQProfiles(partitionedProfiles
-              .stream()
-              .map(QProfileDto::getKee)
-              .toList());
+    partitionedProfiles -> {
+      int deletedRows = mapper(dbSession).deleteByQProfiles(partitionedProfiles
+          .stream()
+          .map(QProfileDto::getKee)
+          .toList());
 
-          if (deletedRows > 0) {
-            partitionedProfiles.forEach(p -> auditPersister.deleteQualityProfileEditor(dbSession,
-                p.getOrganizationUuid(), new UserEditorNewValue(p)));
-          }
-        });
+      if (deletedRows > 0) {
+        partitionedProfiles.forEach(p -> auditPersister.deleteQualityProfileEditor(dbSession,
+            p.getOrganizationUuid(), new UserEditorNewValue(p)));
+      }
+    });
   }
 
   public void deleteByUser(DbSession dbSession, UserDto user) {

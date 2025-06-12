@@ -213,16 +213,15 @@ public class PortfolioDao implements Dao {
   @CheckForNull
   public ReferenceDto selectReference(DbSession dbSession, String portfolioUuid, String referenceKey) {
     return selectReferenceToApp(dbSession, portfolioUuid, referenceKey)
-        .or(() -> selectReferenceToPortfolio(dbSession, portfolioUuid, referenceKey))
-        .orElse(null);
+      .or(() -> selectReferenceToPortfolio(dbSession, portfolioUuid, referenceKey))
+      .orElse(null);
   }
 
   public Optional<ReferenceDto> selectReferenceToApp(DbSession dbSession, String portfolioUuid, String referenceKey) {
     return Optional.ofNullable(mapper(dbSession).selectReferenceToApplication(portfolioUuid, referenceKey));
   }
 
-  public Optional<ReferenceDto> selectReferenceToPortfolio(DbSession dbSession, String portfolioUuid,
-      String referenceKey) {
+  public Optional<ReferenceDto> selectReferenceToPortfolio(DbSession dbSession, String portfolioUuid, String referenceKey) {
     return Optional.ofNullable(mapper(dbSession).selectReferenceToPortfolio(portfolioUuid, referenceKey));
   }
 
@@ -241,11 +240,9 @@ public class PortfolioDao implements Dao {
     return mapper(dbSession).selectAllPortfolioProjects();
   }
 
-  public PortfolioProjectDto selectPortfolioProjectOrFail(DbSession dbSession, String portfolioUuid,
-      String projectUuid) {
+  public PortfolioProjectDto selectPortfolioProjectOrFail(DbSession dbSession, String portfolioUuid, String projectUuid) {
     return Optional.ofNullable(mapper(dbSession).selectPortfolioProject(portfolioUuid, projectUuid))
-        .orElseThrow(() -> new IllegalArgumentException(
-            format("Project '%s' not selected in portfolio '%s'", projectUuid, portfolioUuid)));
+        .orElseThrow(() -> new IllegalArgumentException(format("Project '%s' not selected in portfolio '%s'", projectUuid, portfolioUuid)));
   }
 
   public String addProject(DbSession dbSession, String portfolioUuid, String projectUuid) {
@@ -282,8 +279,7 @@ public class PortfolioDao implements Dao {
   }
 
   private static ComponentNewValue toComponentNewValue(PortfolioDto portfolio) {
-    return new ComponentNewValue(portfolio.getUuid(), portfolio.isPrivate(), portfolio.getName(), portfolio.getKey(),
-        portfolio.getDescription(), qualifier(portfolio));
+    return new ComponentNewValue(portfolio.getUuid(), portfolio.isPrivate(), portfolio.getName(), portfolio.getKey(), portfolio.getDescription(), qualifier(portfolio));
   }
 
   private static String qualifier(PortfolioDto portfolioDto) {
