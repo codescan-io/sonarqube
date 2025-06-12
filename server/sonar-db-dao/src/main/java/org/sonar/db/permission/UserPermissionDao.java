@@ -53,13 +53,10 @@ public class UserPermissionDao implements Dao {
    * Pagination is NOT applied.
    * No sort is done.
    *
-   * @param query     non-null query including optional filters.
-   * @param userUuids Filter on user ids, including disabled users. Must not be
-   *                  empty and maximum size is
-   *                  {@link DatabaseUtils#PARTITION_SIZE_FOR_ORACLE}.
+   * @param query non-null query including optional filters.
+   * @param userUuids Filter on user ids, including disabled users. Must not be empty and maximum size is {@link DatabaseUtils#PARTITION_SIZE_FOR_ORACLE}.
    */
-  public List<UserPermissionDto> selectUserPermissionsByQuery(DbSession dbSession, PermissionQuery query,
-      Collection<String> userUuids) {
+  public List<UserPermissionDto> selectUserPermissionsByQuery(DbSession dbSession, PermissionQuery query, Collection<String> userUuids) {
     if (userUuids.isEmpty()) {
       return emptyList();
     }
@@ -77,12 +74,12 @@ public class UserPermissionDao implements Dao {
 
   private static List<String> paginate(List<String> results, PermissionQuery query) {
     return results
-        .stream()
-        // Pagination is done in Java because it's too complex to use SQL pagination in
-        // Oracle and MsSQL with the distinct
-        .skip(query.getPageOffset())
-        .limit(query.getPageSize())
-        .toList();
+      .stream()
+      // Pagination is done in Java because it's too complex to use SQL pagination in
+      // Oracle and MsSQL with the distinct
+      .skip(query.getPageOffset())
+      .limit(query.getPageSize())
+      .toList();
   }
 
   public int countUsersByQuery(DbSession dbSession, PermissionQuery query) {
@@ -92,8 +89,7 @@ public class UserPermissionDao implements Dao {
   /**
    * Count the number of users per permission for a given list of entities
    *
-   * @param entityUuids a non-null list of entity uuids to filter on. If empty
-   *                    then an empty list is returned.
+   * @param entityUuids a non-null list of entity uuids to filter on. If empty then an empty list is returned.
    */
   @VisibleForTesting
   List<CountPerEntityPermission> countUsersByEntityPermission(DbSession dbSession, Collection<String> entityUuids) {
@@ -103,8 +99,7 @@ public class UserPermissionDao implements Dao {
   /**
    * Gets all the global permissions granted to user
    *
-   * @return the global permissions. An empty list is returned if user do not
-   *         exist.
+   * @return the global permissions. An empty list is returned if user do not exist.
    */
   public List<String> selectGlobalPermissionsOfUser(DbSession dbSession, String userUuid, String organizationUuid) {
     return mapper(dbSession).selectGlobalPermissionsOfUser(userUuid, organizationUuid);
@@ -113,28 +108,25 @@ public class UserPermissionDao implements Dao {
   /**
    * Gets all the entity permissions granted to user for the specified entity.
    *
-   * @return the entity permissions. An empty list is returned if entity or user
-   *         do not exist.
+   * @return the entity permissions. An empty list is returned if entity or user do not exist.
    */
   public List<String> selectEntityPermissionsOfUser(DbSession dbSession, String userUuid, String entityUuid) {
     return mapper(dbSession).selectEntityPermissionsOfUser(userUuid, entityUuid);
   }
 
-  public Set<UserIdDto> selectUserIdsWithPermissionOnEntityBut(DbSession session, String entityUuid,
-      String permission) {
+  public Set<UserIdDto> selectUserIdsWithPermissionOnEntityBut(DbSession session, String entityUuid, String permission) {
     return mapper(session).selectUserIdsWithPermissionOnEntityBut(entityUuid, permission);
   }
 
   public void insert(DbSession dbSession, UserPermissionDto dto, @Nullable EntityDto entityDto,
-      @Nullable UserId userId, @Nullable PermissionTemplateDto templateDto) {
+         @Nullable UserId userId, @Nullable PermissionTemplateDto templateDto) {
     mapper(dbSession).insert(dto);
 
     String entityName = (entityDto != null) ? entityDto.getName() : null;
     String entityKey = (entityDto != null) ? entityDto.getKey() : null;
     String entityQualifier = (entityDto != null) ? entityDto.getQualifier() : null;
     String organizationUuid = entityDto != null && entityDto.getOrganizationUuid() != null
-        ? entityDto.getOrganizationUuid()
-        : dto.getOrganizationUuid();
+        ? entityDto.getOrganizationUuid() : dto.getOrganizationUuid();
 
     auditPersister.addUserPermission(dbSession, organizationUuid,
         new UserPermissionNewValue(dto, entityKey, entityName, userId, entityQualifier,
