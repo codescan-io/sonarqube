@@ -166,19 +166,17 @@ public class PermissionTemplateDao implements Dao {
     return mapper(dbSession).selectAllGroupPermissionTemplatesByGroupUuid(groupUuid);
   }
 
-  public void deleteByUuid(DbSession session, String templateUuid, String templateName) {
-    logger.debug("Delete Permission Template :: template_uuid : {}, templateName: {}", templateUuid, templateName);
+  public void deleteByUuid(DbSession session, PermissionTemplateDto templateDto) {
+    logger.debug("Delete Permission Template :: template_uuid : {}, templateName: {}", templateDto.getUuid(), templateDto.getName());
     PermissionTemplateMapper mapper = mapper(session);
-    PermissionTemplateDto template = mapper.selectByUuid(templateUuid);
-
-    mapper.deleteUserPermissionsByTemplateUuid(templateUuid);
-    mapper.deleteGroupPermissionsByTemplateUuid(templateUuid);
-    session.getMapper(PermissionTemplateCharacteristicMapper.class).deleteByTemplateUuid(templateUuid);
-    int deletedRows = mapper.deleteByUuid(templateUuid);
+    mapper.deleteUserPermissionsByTemplateUuid(templateDto.getUuid());
+    mapper.deleteGroupPermissionsByTemplateUuid(templateDto.getUuid());
+    session.getMapper(PermissionTemplateCharacteristicMapper.class).deleteByTemplateUuid(templateDto.getUuid());
+    int deletedRows = mapper.deleteByUuid(templateDto.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deletePermissionTemplate(session, template.getOrganizationUuid(),
-          new PermissionTemplateNewValue(templateUuid, templateName));
+      auditPersister.deletePermissionTemplate(session, templateDto.getOrganizationUuid(),
+          new PermissionTemplateNewValue(templateDto.getUuid(), templateDto.getName()));
     }
   }
 
@@ -211,7 +209,7 @@ public class PermissionTemplateDao implements Dao {
   }
 
   public void deleteUserPermission(DbSession session, String templateUuid, String userUuid, String permission,
-    String templateName, String userLogin) {
+    String templateName, String userLogin, String organizationUuid) {
     PermissionTemplateUserDto permissionTemplateUser = new PermissionTemplateUserDto()
       .setTemplateUuid(templateUuid)
       .setPermission(permission)
@@ -220,8 +218,7 @@ public class PermissionTemplateDao implements Dao {
     logger.info("Removed user: {} from permission template: {} with permission: {}", userLogin, templateName, permission);
 
     if (deletedRows > 0) {
-      PermissionTemplateDto template = mapper(session).selectByUuid(templateUuid);
-      auditPersister.deleteUserFromPermissionTemplate(session, template.getOrganizationUuid(),
+      auditPersister.deleteUserFromPermissionTemplate(session, organizationUuid,
           new PermissionTemplateNewValue(templateUuid, templateName, permission, userUuid, userLogin, null, null));
     }
 
@@ -246,7 +243,7 @@ public class PermissionTemplateDao implements Dao {
   }
 
   public void insertGroupPermission(DbSession session, String templateUuid, @Nullable String groupUuid, String permission,
-    String templateName, @Nullable String groupName) {
+    String templateName, @Nullable String groupName, String organizationUuid) {
     logger.debug("Adding Group to Template, permissionType : {}, group : {} and templateUuid : {}", permission,
             groupName, templateUuid);
     PermissionTemplateGroupDto permissionTemplateGroup = new PermissionTemplateGroupDto()
@@ -257,9 +254,7 @@ public class PermissionTemplateDao implements Dao {
       .setCreatedAt(now())
       .setUpdatedAt(now());
     mapper(session).insertGroupPermission(permissionTemplateGroup);
-
-    PermissionTemplateDto template = mapper(session).selectByUuid(templateUuid);
-    auditPersister.addGroupToPermissionTemplate(session, template.getOrganizationUuid(),
+    auditPersister.addGroupToPermissionTemplate(session, organizationUuid,
         new PermissionTemplateNewValue(templateUuid, templateName, permission, null, null, groupUuid, groupName));
   }
 
@@ -274,7 +269,7 @@ public class PermissionTemplateDao implements Dao {
   }
 
   public void deleteGroupPermission(DbSession session, String templateUuid, @Nullable String groupUuid, String permission, String templateName,
-    @Nullable String groupName) {
+    @Nullable String groupName, String organizationUuid) {
     logger.debug(" Removing Group from Permission Template, permissionType : {}, group : {} and templateUuid : {}",
             permission, groupName, templateUuid);
     PermissionTemplateGroupDto permissionTemplateGroup = new PermissionTemplateGroupDto()
@@ -284,8 +279,7 @@ public class PermissionTemplateDao implements Dao {
     int deletedRows = mapper(session).deleteGroupPermission(permissionTemplateGroup);
 
     if (deletedRows > 0) {
-      PermissionTemplateDto template = mapper(session).selectByUuid(templateUuid);
-      auditPersister.deleteGroupFromPermissionTemplate(session, template.getOrganizationUuid(),
+      auditPersister.deleteGroupFromPermissionTemplate(session, organizationUuid,
           new PermissionTemplateNewValue(permissionTemplateGroup.getTemplateUuid(), templateName,
               permissionTemplateGroup.getPermission(), null, null, permissionTemplateGroup.getGroupUuid(), groupName));
     }

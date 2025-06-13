@@ -48,6 +48,7 @@ import org.sonar.db.audit.AuditPersister;
 import org.sonar.db.audit.model.ComponentNewValue;
 
 import com.google.common.collect.Ordering;
+import org.sonar.db.entity.EntityDto;
 
 public class ComponentDao implements Dao {
   private final AuditPersister auditPersister;
@@ -306,9 +307,8 @@ public class ComponentDao implements Dao {
     items.forEach(item -> insert(session, item, isMainBranch));
   }
 
-  public void update(DbSession session, ComponentUpdateDto component, String qualifier) {
-    ComponentDto componentDto = mapper(session).selectByUuid(component.getUuid());
-    auditPersister.updateComponent(session, componentDto.getOrganizationUuid(),
+  public void update(DbSession session, String organizationUuid, ComponentUpdateDto component, String qualifier) {
+    auditPersister.updateComponent(session, organizationUuid,
         new ComponentNewValue(component.getUuid(), component.getBName(),
             component.getBKey(), component.isBEnabled(), component.getBPath(), qualifier));
     mapper(session).update(component);
@@ -330,11 +330,10 @@ public class ComponentDao implements Dao {
     mapper(session).setPrivateForBranchUuid(branchUuid, isPrivate);
   }
 
-  public void setPrivateForBranchUuid(DbSession session, String branchUuid, boolean isPrivate, String qualifier,
-      String componentKey, String componentName) {
+  public void setPrivateForBranchUuid(DbSession session, String branchUuid, boolean isPrivate, EntityDto entity) {
     ComponentDto componentDto = mapper(session).selectByUuid(branchUuid);
-    ComponentNewValue componentNewValue = new ComponentNewValue(branchUuid, componentName, componentKey, isPrivate,
-        qualifier);
+    ComponentNewValue componentNewValue = new ComponentNewValue(branchUuid, entity.getName(), entity.getKey(), isPrivate,
+            entity.getQualifier());
     // TODO we should log change to the visibility in EntityDao, not ComponentDao
     auditPersister.updateComponentVisibility(session, componentDto.getOrganizationUuid(), componentNewValue);
     mapper(session).setPrivateForBranchUuid(branchUuid, isPrivate);

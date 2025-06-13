@@ -56,10 +56,9 @@ public class QualityGateUserPermissionsDao implements Dao {
     return mapper(dbSession).selectByQualityGateAndUser(qualityGateUuid, userUuid);
   }
 
-  public void insert(DbSession dbSession, QualityGateUserPermissionsDto dto, String qualityGateName, String userLogin) {
+  public void insert(DbSession dbSession, QualityGateUserPermissionsDto dto, String qualityGateName, String userLogin, String organizationUuid) {
     mapper(dbSession).insert(dto, system2.now());
-    QualityGateDto qualityGate = dbSession.getMapper(QualityGateMapper.class).selectByUuid(dto.getQualityGateUuid());
-    auditPersister.addQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(),
+    auditPersister.addQualityGateEditor(dbSession, organizationUuid,
         new UserEditorNewValue(dto, qualityGateName, userLogin));
   }
 

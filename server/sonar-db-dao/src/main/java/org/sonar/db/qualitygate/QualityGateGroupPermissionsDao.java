@@ -56,10 +56,9 @@ public class QualityGateGroupPermissionsDao implements Dao {
       .isEmpty();
   }
 
-  public void insert(DbSession dbSession, QualityGateGroupPermissionsDto dto, String qualityGateName, String groupName) {
+  public void insert(DbSession dbSession, QualityGateGroupPermissionsDto dto, String qualityGateName, String groupName, String organizationUuid) {
     mapper(dbSession).insert(dto, system2.now());
-    QualityGateDto qualityGate = dbSession.getMapper(QualityGateMapper.class).selectByUuid(dto.getQualityGateUuid());
-    auditPersister.addQualityGateEditor(dbSession, qualityGate.getOrganizationUuid(), new GroupEditorNewValue(dto, qualityGateName, groupName));
+    auditPersister.addQualityGateEditor(dbSession, organizationUuid, new GroupEditorNewValue(dto, qualityGateName, groupName));
   }
 
   public List<SearchGroupMembershipDto> selectByQuery(DbSession dbSession, SearchPermissionQuery query, Pagination pagination) {
