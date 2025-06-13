@@ -66,13 +66,12 @@ public class QProfileEditGroupsDao implements Dao {
 
   public List<String> selectQProfileUuidsByOrganizationAndGroups(DbSession dbSession, OrganizationDto organization, Collection<GroupDto> groups) {
     return DatabaseUtils.executeLargeInputs(groups.stream().map(GroupDto::getUuid).toList(),
-          g -> mapper(dbSession).selectQProfileUuidsByOrganizationAndGroups(organization.getUuid(), g));
+        g -> mapper(dbSession).selectQProfileUuidsByOrganizationAndGroups(organization.getUuid(), g));
   }
 
-  public void insert(DbSession dbSession, QProfileEditGroupsDto dto, String qualityProfileName, String groupName) {
+  public void insert(DbSession dbSession, QProfileEditGroupsDto dto, String qualityProfileName, String groupName, String organizationUuid) {
     mapper(dbSession).insert(dto, system2.now());
-    QProfileDto profile = dbSession.getMapper(QualityProfileMapper.class).selectByUuid(dto.getQProfileUuid());
-    auditPersister.addQualityProfileEditor(dbSession, profile.getOrganizationUuid(), new GroupEditorNewValue(dto, qualityProfileName, groupName));
+    auditPersister.addQualityProfileEditor(dbSession, organizationUuid, new GroupEditorNewValue(dto, qualityProfileName, groupName));
   }
 
   public void deleteByQProfileAndGroup(DbSession dbSession, QProfileDto profile, GroupDto group) {

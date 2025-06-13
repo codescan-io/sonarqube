@@ -46,25 +46,20 @@ public class PermissionTemplateCharacteristicDao implements Dao {
     return Optional.ofNullable(dto);
   }
 
-  public PermissionTemplateCharacteristicDto insert(DbSession dbSession, PermissionTemplateCharacteristicDto dto, String templateName) {
+  public PermissionTemplateCharacteristicDto insert(DbSession dbSession, PermissionTemplateCharacteristicDto dto, String templateName, String organizationUuid) {
     checkArgument(dto.getCreatedAt() != 0L && dto.getUpdatedAt() != 0L);
     mapper(dbSession).insert(dto);
-
-    PermissionTemplateDto templateDto = dbSession.getMapper(PermissionTemplateMapper.class).selectByUuid(dto.getTemplateUuid());
-    auditPersister.addCharacteristicToPermissionTemplate(dbSession, templateDto.getOrganizationUuid(),
-            new PermissionTemplateNewValue(dto.getTemplateUuid(),
-      dto.getPermission(), templateName, dto.getWithProjectCreator()));
+    auditPersister.addCharacteristicToPermissionTemplate(dbSession, organizationUuid,
+            new PermissionTemplateNewValue(dto.getTemplateUuid(), dto.getPermission(), templateName, dto.getWithProjectCreator()));
 
     return dto;
   }
 
   public PermissionTemplateCharacteristicDto update(DbSession dbSession, PermissionTemplateCharacteristicDto templatePermissionDto,
-    String templateName) {
+    String templateName, String organizationUuid) {
     requireNonNull(templatePermissionDto.getUuid());
     mapper(dbSession).update(templatePermissionDto);
-
-    PermissionTemplateDto templateDto = dbSession.getMapper(PermissionTemplateMapper.class).selectByUuid(templatePermissionDto.getTemplateUuid());
-    auditPersister.updateCharacteristicInPermissionTemplate(dbSession, templateDto.getOrganizationUuid(), new PermissionTemplateNewValue(templatePermissionDto.getTemplateUuid(),
+    auditPersister.updateCharacteristicInPermissionTemplate(dbSession, organizationUuid, new PermissionTemplateNewValue(templatePermissionDto.getTemplateUuid(),
       templatePermissionDto.getPermission(), templateName, templatePermissionDto.getWithProjectCreator()));
 
     return templatePermissionDto;

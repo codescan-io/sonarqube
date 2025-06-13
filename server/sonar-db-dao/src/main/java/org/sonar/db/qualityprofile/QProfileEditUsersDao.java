@@ -61,10 +61,9 @@ public class QProfileEditUsersDao implements Dao {
     return mapper(dbSession).selectQProfileUuidsByOrganizationAndUser(organization.getUuid(), userDto.getUuid());
   }
 
-  public void insert(DbSession dbSession, QProfileEditUsersDto dto, String qualityProfileName, String userLogin) {
+  public void insert(DbSession dbSession, QProfileEditUsersDto dto, String qualityProfileName, String userLogin, String organizationUuid) {
     mapper(dbSession).insert(dto, system2.now());
-    QProfileDto profile = dbSession.getMapper(QualityProfileMapper.class).selectByUuid(dto.getQProfileUuid());
-    auditPersister.addQualityProfileEditor(dbSession, profile.getOrganizationUuid(), new UserEditorNewValue(dto, qualityProfileName, userLogin));
+    auditPersister.addQualityProfileEditor(dbSession, organizationUuid, new UserEditorNewValue(dto, qualityProfileName, userLogin));
   }
 
   public void deleteByQProfileAndUser(DbSession dbSession, QProfileDto profile, UserDto user) {
