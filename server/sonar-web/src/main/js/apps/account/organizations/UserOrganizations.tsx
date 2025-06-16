@@ -39,6 +39,10 @@ interface AlmConnection {
 }
 
 function encrypt(text: string): string {
+  if (text.length <= 5) {
+    return text;
+  }
+
   const first5 = text.slice(0, 5);
   const rest = text.slice(5);
 
@@ -69,7 +73,7 @@ const getAlmConnectionFromLocalStorage = (): AlmConnection | null => {
 
   const decryptedAlmConnection: AlmConnection = {
     ...encryptedAlmConnection,
-    url: decrypt(encryptedAlmConnection.url),
+    url: encryptedAlmConnection.url,
     clientId: decrypt(encryptedAlmConnection.clientId),
     clientSecret: decrypt(encryptedAlmConnection.clientSecret),
   };
