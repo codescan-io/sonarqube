@@ -38,8 +38,25 @@ interface AlmConnection {
   uuid: string;
 }
 
-function decrypt(value: string): string {
-  return value;
+function encrypt(text: string): string {
+  const first5 = text.slice(0, 5);
+  const rest = text.slice(5);
+
+  const randLetters = Array.from({ length: 5 })
+    .map(() => String.fromCharCode(97 + Math.floor(Math.random() * 26)))
+    .join('');
+
+  const randDigits = Array.from({ length: 5 })
+    .map(() => Math.floor(Math.random() * 10).toString())
+    .join('');
+
+  return first5 + randLetters + randDigits + rest;
+}
+
+function decrypt(encryptedText: string): string {
+  const first5 = encryptedText.slice(0, 5);
+  const after = encryptedText.slice(5 + 10);
+  return first5 + after;
 }
 
 const getAlmConnectionFromLocalStorage = (): AlmConnection | null => {
