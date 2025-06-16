@@ -887,11 +887,13 @@ export interface OrganizationBase {
   avatar?: string;
   description?: string;
   url?: string;
+  inviteUsersEnabled: boolean;
 }
 
 export interface OrganizationMember extends UserActive {
   groupCount?: number;
   type: string;
+  isAdmin: boolean;
 }
 
 export interface Notification {
