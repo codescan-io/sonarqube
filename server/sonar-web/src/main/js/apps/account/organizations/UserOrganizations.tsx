@@ -18,68 +18,18 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { ButtonPrimary } from '~design-system';
 import withAppStateContext from '../../../app/components/app-state/withAppStateContext';
 import withCurrentUserContext from '../../../app/components/current-user/withCurrentUserContext';
+import { getAlmConnectionFromLocalStorage } from '../../../app/utils/localStorage';
 import { translate } from '../../../helpers/l10n';
 import { AppState } from '../../../types/appstate';
 import { GlobalSettingKeys } from '../../../types/settings';
 import { Organization } from '../../../types/types';
 import '../projects/account.css';
 import OrganizationsList from './OrganizationsList';
-
-interface AlmConnection {
-  clientId: string;
-  clientSecret: string;
-  organizationKee: string;
-  url: string;
-  uuid: string;
-}
-
-function encrypt(text: string): string {
-  if (text.length <= 5) {
-    return text;
-  }
-
-  const first5 = text.slice(0, 5);
-  const rest = text.slice(5);
-
-  const randLetters = Array.from({ length: 5 })
-    .map(() => String.fromCharCode(97 + Math.floor(Math.random() * 26)))
-    .join('');
-
-  const randDigits = Array.from({ length: 5 })
-    .map(() => Math.floor(Math.random() * 10).toString())
-    .join('');
-
-  return first5 + randLetters + randDigits + rest;
-}
-
-function decrypt(encryptedText: string): string {
-  const first5 = encryptedText.slice(0, 5);
-  const after = encryptedText.slice(5 + 10);
-  return first5 + after;
-}
-
-const getAlmConnectionFromLocalStorage = (): AlmConnection | null => {
-  const stored = localStorage.getItem('almConnectionTemp');
-  if (!stored) {
-    return null;
-  }
-
-  const encryptedAlmConnection = JSON.parse(stored);
-
-  const decryptedAlmConnection: AlmConnection = {
-    ...encryptedAlmConnection,
-    url: encryptedAlmConnection.url,
-    clientId: decrypt(encryptedAlmConnection.clientId),
-    clientSecret: decrypt(encryptedAlmConnection.clientSecret),
-  };
-
-  return decryptedAlmConnection;
-};
 
 interface Props {
   appState: AppState;
@@ -93,11 +43,13 @@ function UserOrganizations(props: Props) {
   } = props;
   const anyoneCanCreate = settings[GlobalSettingKeys.OrganizationsAnyoneCanCreate] === 'true';
   const canCreateOrganizations = anyoneCanCreate || canAdmin || canCustomerAdmin;
+  const [testConnection, setTestConnection] = useState<boolean>(false);
 
   useEffect(() => {
     const rawHash = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : '';
     const params = new URLSearchParams(rawHash);
     if (params.has('error')) {
+      setTestConnection(true);
       const existingConfig = getAlmConnectionFromLocalStorage();
       if (existingConfig) {
         let redirectUrl = `/organizations/${existingConfig.organizationKee}/extension/developer/alm#almId=${encodeURIComponent(existingConfig.uuid || '')}`;
@@ -109,10 +61,16 @@ function UserOrganizations(props: Props) {
         }
         window.location.href = redirectUrl;
       }
+    } else {
+      setTestConnection(false);
     }
   }, []);
 
-  return (
+  return testConnection ? (
+    <div className="global-loading">
+      <i className="global-loading-spinner" />
+    </div>
+  ) : (
     <div className="account-body account-container organization-card-ctnr">
       <Helmet title={translate('my_account.organizations')} />
 
