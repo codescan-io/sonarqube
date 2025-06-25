@@ -372,6 +372,7 @@
     r.status in ('READY', 'DEPRECATED', 'BETA')
     and r.is_external=${_false}
     and r.language=#{language, jdbcType=VARCHAR}
+    and r.organization_uuid is null;
   </sql>
 
   <insert id="insertRuleDescriptionSection" parameterType="Map" useGeneratedKeys="false">
