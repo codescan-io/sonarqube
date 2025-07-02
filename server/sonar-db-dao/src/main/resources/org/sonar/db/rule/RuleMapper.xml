@@ -376,7 +376,7 @@
     r.status in ('READY', 'DEPRECATED', 'BETA')
     and r.is_external=${_false}
     and r.language=#{language, jdbcType=VARCHAR}
-    and (r.organization_uuid IS NULL OR r.organization_uuid = #{organizationUuid,jdbcType=VARCHAR});
+    and (r.organization_uuid IS NULL OR r.organization_uuid = #{organizationUuid,jdbcType=VARCHAR})
   </select>
 
   <sql id="conditionNotExternalRulesByLanguage">
