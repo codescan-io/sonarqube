@@ -42,16 +42,19 @@ import org.sonar.api.utils.Paging;
 import org.sonar.api.utils.System2;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
+import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.user.TokenType;
 import org.sonar.db.user.UserDto;
 import org.sonar.db.user.UserTokenDto;
 import org.sonar.server.es.Facets;
 import org.sonar.server.es.SearchOptions;
+import org.sonar.server.exceptions.ForbiddenException;
 import org.sonar.server.issue.SearchRequest;
 import org.sonar.server.issue.index.IssueIndex;
 import org.sonar.server.issue.index.IssueIndexSyncProgressChecker;
 import org.sonar.server.issue.index.IssueQuery;
 import org.sonar.server.issue.index.IssueQueryFactory;
+import org.sonar.server.issue.index.IssueQueryFactory.MemberType;
 import org.sonar.server.issue.index.IssueScope;
 import org.sonar.server.security.SecurityStandards.SQCategory;
 import org.sonar.server.user.ThreadLocalUserSession;
@@ -84,6 +87,7 @@ import static org.sonar.api.issue.impact.Severity.values;
 import static org.sonar.api.server.ws.WebService.Param.FACETS;
 import static org.sonar.api.utils.Paging.forPageIndex;
 import static org.sonar.server.es.SearchOptions.MAX_PAGE_SIZE;
+import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOptional;
 import static org.sonar.server.issue.index.IssueIndex.FACET_ASSIGNED_TO_ME;
 import static org.sonar.server.issue.index.IssueIndex.FACET_PROJECTS;
 import static org.sonar.server.issue.index.IssueQueryFactory.ISSUE_STATUSES;
@@ -532,6 +536,20 @@ public class SearchAction implements IssuesWsAction {
   @Override
   public final void handle(Request request, Response response) {
     try (DbSession dbSession = dbClient.openSession(false)) {
+
+      if(!userSession.isRoot()){
+        Set<String> standardOrgs = dbClient.organizationMemberDao().selectOrganizationUuidsByUserUuidAndType(
+                dbSession, userSession.getUuid(), MemberType.STANDARD.name());
+        if (request.hasParam(PARAM_ORGANIZATION)) {
+          String organizationKey = request.param(PARAM_ORGANIZATION);
+          OrganizationDto organization = checkFoundWithOptional(
+                  dbClient.organizationDao().selectByKey(dbSession, organizationKey),
+                  "No organization with key '%s'", organizationKey);
+          if (!userSession.isRoot() && !standardOrgs.contains(organization.getUuid())) {
+            throw new ForbiddenException("Platform user cannot access this organization: " + organizationKey);
+          }
+        }
+      }
       SearchRequest searchRequest = toSearchWsRequest(dbSession, request);
       validateAndUpdateSearchRequestForProjectAnalysisToken(searchRequest);
 
@@ -600,6 +618,13 @@ public class SearchAction implements IssuesWsAction {
     collectLoggedInUser(collector);
     collectRequestParams(collector, request);
     Facets facets = new Facets(result, Optional.ofNullable(query.timeZone()).orElse(system2.getDefaultTimeZone().toZoneId()));
+    if(!userSession.isRoot()){
+      Map<String, Long> projectsFacet = facets.get(FACET_PROJECTS);
+      if ( projectsFacet != null && query.organizationUuid() == null) {
+        Set<String> standardProjects = new HashSet<>(query.projectUuids());
+        projectsFacet.keySet().retainAll(standardProjects);
+      }
+    }
     if (!options.getFacets().isEmpty()) {
       // add missing values to facets. For example if assignee "john" and facet on "assignees" are requested, then
       // "john" should always be listed in the facet. If it is not present, then it is added with value zero.
