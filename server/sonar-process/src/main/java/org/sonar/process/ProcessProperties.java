@@ -62,7 +62,7 @@ public class ProcessProperties {
     JDBC_MAX_KEEP_ALIVE_TIME("sonar.jdbc.keepaliveTime", "180000"),
     JDBC_MAX_LIFETIME("sonar.jdbc.maxLifetime", "1800000"),
     JDBC_VALIDATION_TIMEOUT("sonar.jdbc.validationTimeout", "5000"),
-    JDBC_AUTH_METHOD("sonar.db.auth.method", "standard"),
+    JDBC_AUTH_METHOD("sonar.jdbc.auth.method", "standard"),
 
     JDBC_EMBEDDED_PORT("sonar.embeddedDatabase.port"),
 

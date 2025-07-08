@@ -146,8 +146,10 @@ public class DefaultDatabase implements Database {
     dialect = DialectUtils.find(properties.getProperty(SONAR_JDBC_DIALECT), jdbcUrl);
 
     if (DbAuthMethod.IAM.value().equals(settings.getString(JDBC_AUTH_METHOD.getKey()))) {
+      LOG.info("Using IAM DB Authentication");
       dbAuthMethod = DbAuthMethod.IAM;
     } else {
+      LOG.info("Using Standard DB Authentication");
       dbAuthMethod = DbAuthMethod.STANDARD;
     }
   }
