@@ -71,7 +71,7 @@ import static org.sonarqube.ws.MediaTypes.PROTOBUF;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_LANGUAGE;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_QUALITY_PROFILE;
 
-class InheritanceActionIT {
+class   InheritanceActionIT {
 
   @RegisterExtension
   private final DbTester db = DbTester.create();

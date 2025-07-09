@@ -158,6 +158,7 @@ public class InheritanceAction implements QProfileWsAction {
       countOverridingRulesByProfileKey = dao.countActiveRulesByQuery(dbSession, builder.setProfiles(profiles).setInheritance(OVERRIDES).build());
       long totalRuleAvailable = dbClient.ruleDao().countByLanguageInAnOrg(dbSession, language, organization.getUuid());
       profiles.forEach(p -> countInactiveRuleByProfileKey.put(p.getKee(), totalRuleAvailable - Optional.ofNullable(countRulesByProfileKey.get(p.getKee())).orElse(0L)));
+      profiles.forEach(p -> System.out.println(totalRuleAvailable+" "+countRulesByProfileKey.get(p.getKee())+" "+countInactiveRuleByProfileKey.get(p.getKee())));
     }
   }
 }
