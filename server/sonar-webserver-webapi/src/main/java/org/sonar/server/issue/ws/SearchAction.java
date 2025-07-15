@@ -24,7 +24,6 @@ import com.google.common.collect.Lists;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.SearchHit;
@@ -197,6 +196,7 @@ public class SearchAction implements IssuesWsAction {
   private static final String NEW_FACET_ADDED_MESSAGE = "Facet '%s' has been added";
   private static final String NEW_PARAM_ADDED_MESSAGE = "Param '%s' has been added";
   private static final Set<String> FACETS_REQUIRING_PROJECT = newHashSet(PARAM_FILES, PARAM_DIRECTORIES);
+  private static final int MAX_PROJECTS_FOR_ES_ROUTING = 40;
 
   private final UserSession userSession;
   private final IssueIndex issueIndex;
@@ -604,6 +604,11 @@ public class SearchAction implements IssuesWsAction {
     EnumSet<SearchAdditionalField> additionalFields = SearchAdditionalField.getFromRequest(request);
     IssueQuery query = issueQueryFactory.create(request);
 
+    // Disable routing to shards if project size is too large - otherwise we get too_long_http_line_exception
+    if (query.projectUuids() != null && query.projectUuids().size() > MAX_PROJECTS_FOR_ES_ROUTING) {
+      options.setDisableRouting(true);
+    }
+
     Set<String> facetsRequiringProjectParameter = options.getFacets().stream()
       .filter(FACETS_REQUIRING_PROJECT::contains)
       .collect(Collectors.toSet());
@@ -667,10 +672,6 @@ public class SearchAction implements IssuesWsAction {
     List<String> requestedFacets = new ArrayList<>(facets);
     if (!userSession.isLoggedIn()) {
       requestedFacets.remove(PARAM_AUTHOR);
-    }
-
-    if (StringUtils.isBlank(request.getOrganization())) {
-      options.setDisableRouting(true);
     }
 
     options.addFacets(requestedFacets);
