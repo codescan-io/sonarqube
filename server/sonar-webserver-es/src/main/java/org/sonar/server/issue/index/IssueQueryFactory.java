@@ -172,7 +172,7 @@ public class IssueQueryFactory {
         .organizationUuid(convertOrganizationKeyToUuid(dbSession, request.getOrganization()))
         .codeVariants(request.getCodeVariants())
         .cvss(request.getCvss());
-      
+
       List<ComponentDto> allComponents = new ArrayList<>();
       boolean effectiveOnComponentOnly = mergeDeprecatedComponentParameters(dbSession, request, allComponents);
       addComponentParameters(builder, dbSession, effectiveOnComponentOnly, allComponents, request);
@@ -183,7 +183,8 @@ public class IssueQueryFactory {
         List<String> projectsList = dbClient.projectDao()
                 .selectProjectUuidsByOrganizationUuids(dbSession, new ArrayList<>(standardOrgs));
 
-        Set<String> componentProjectUuids = allComponents.stream().map(ComponentDto::branchUuid).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<String> componentBranchUuids = allComponents.stream().map(ComponentDto::branchUuid).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<String> componentProjectUuids = getProjectFromBranchUuids(dbSession, componentBranchUuids);
 
         List<String> filteredProjectUuids = projectsList.stream()
                 .filter(componentProjectUuids::contains)
@@ -191,8 +192,7 @@ public class IssueQueryFactory {
 
         builder.allowedProjectUuids(filteredProjectUuids);
       }
-
-
+      
       setCreatedAfterFromRequest(dbSession, builder, request, allComponents, timeZone);
       String sort = request.getSort();
       if (!isNullOrEmpty(sort)) {
