@@ -172,6 +172,10 @@ public class IssueQueryFactory {
         .organizationUuid(convertOrganizationKeyToUuid(dbSession, request.getOrganization()))
         .codeVariants(request.getCodeVariants())
         .cvss(request.getCvss());
+      
+      List<ComponentDto> allComponents = new ArrayList<>();
+      boolean effectiveOnComponentOnly = mergeDeprecatedComponentParameters(dbSession, request, allComponents);
+      addComponentParameters(builder, dbSession, effectiveOnComponentOnly, allComponents, request);
 
       if (StringUtils.isBlank(request.getOrganization())) {
         Set<String> standardOrgs = dbClient.organizationMemberDao()
@@ -179,12 +183,15 @@ public class IssueQueryFactory {
         List<String> projectsList = dbClient.projectDao()
                 .selectProjectUuidsByOrganizationUuids(dbSession, new ArrayList<>(standardOrgs));
 
-        builder.allowedProjectUuids(projectsList);
+        Set<String> componentProjectUuids = allComponents.stream().map(ComponentDto::branchUuid).filter(Objects::nonNull).collect(Collectors.toSet());
+
+        List<String> filteredProjectUuids = projectsList.stream()
+                .filter(componentProjectUuids::contains)
+                .toList();
+
+        builder.allowedProjectUuids(filteredProjectUuids);
       }
 
-      List<ComponentDto> allComponents = new ArrayList<>();
-      boolean effectiveOnComponentOnly = mergeDeprecatedComponentParameters(dbSession, request, allComponents);
-      addComponentParameters(builder, dbSession, effectiveOnComponentOnly, allComponents, request);
 
       setCreatedAfterFromRequest(dbSession, builder, request, allComponents, timeZone);
       String sort = request.getSort();
@@ -383,9 +390,14 @@ public class IssueQueryFactory {
   @NotNull
   private Set<String> retrieveProjectUuidsFromComponents(DbSession session, List<ComponentDto> branchComponents) {
     Set<String> branchUuids = branchComponents.stream().map(ComponentDto::branchUuid).collect(Collectors.toSet());
+    return getProjectFromBranchUuids(session, branchUuids);
+  }
+
+  @NotNull
+  private Set<String> getProjectFromBranchUuids(DbSession session, Set<String> branchUuids) {
     return dbClient.branchDao().selectByUuids(session, branchUuids).stream()
-      .map(BranchDto::getProjectUuid)
-      .collect(Collectors.toSet());
+            .map(BranchDto::getProjectUuid)
+            .collect(Collectors.toSet());
   }
 
   private void addComponentsBasedOnQualifier(IssueQuery.Builder builder, DbSession dbSession, List<ComponentDto> components,
