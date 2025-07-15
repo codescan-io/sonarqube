@@ -43,6 +43,8 @@ public class SearchOptions {
 
   private int offset = DEFAULT_OFFSET;
   private int limit = DEFAULT_LIMIT;
+  private boolean disableRouting = false;
+
   private final Set<String> facets = new LinkedHashSet<>();
   private final Set<String> fieldsToReturn = new HashSet<>();
 
@@ -59,6 +61,15 @@ public class SearchOptions {
   public SearchOptions setOffset(int offset) {
     checkArgument(offset >= 0, "Offset must be positive");
     this.offset = offset;
+    return this;
+  }
+
+  public boolean isRoutingDisabled() {
+    return disableRouting;
+  }
+
+  public SearchOptions setDisableRouting(boolean disableRouting) {
+    this.disableRouting = disableRouting;
     return this;
   }
 

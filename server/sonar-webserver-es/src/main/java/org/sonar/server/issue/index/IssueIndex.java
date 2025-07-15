@@ -493,7 +493,7 @@ public class IssueIndex {
    */
   private static void configureRouting(IssueQuery query, SearchOptions options, SearchRequest searchRequest) {
     Collection<String> uuids = query.projectUuids();
-    if (!uuids.isEmpty() && options.getFacets().isEmpty()) {
+    if (!uuids.isEmpty() && options.getFacets().isEmpty() && !options.isRoutingDisabled()) {
       searchRequest.routing(uuids.stream().map(AuthorizationDoc::idOf).toArray(String[]::new));
     }
   }

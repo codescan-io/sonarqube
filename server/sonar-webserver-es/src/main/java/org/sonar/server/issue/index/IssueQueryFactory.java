@@ -133,9 +133,6 @@ public class IssueQueryFactory {
         ruleUuids.add("non-existing-uuid");
       }
 
-      Set<String> standardOrgs = dbClient.organizationMemberDao().selectOrganizationUuidsByUserUuidAndType(
-              dbSession, userSession.getUuid(),MemberType.STANDARD.name());
-      List<String> projectsList = dbClient.projectDao().selectProjectUuidsByOrganizationUuids(dbSession, (new ArrayList<String>( standardOrgs)));
       IssueQuery.Builder builder = IssueQuery.builder()
         .issueKeys(issueKeys)
         .severities(request.getSeverities())
@@ -175,7 +172,13 @@ public class IssueQueryFactory {
         .organizationUuid(convertOrganizationKeyToUuid(dbSession, request.getOrganization()))
         .codeVariants(request.getCodeVariants())
         .cvss(request.getCvss());
-      if (request.getOrganization() == null) {
+
+      if (StringUtils.isBlank(request.getOrganization())) {
+        Set<String> standardOrgs = dbClient.organizationMemberDao()
+                .selectOrganizationUuidsByUserUuidAndType(dbSession, userSession.getUuid(), MemberType.STANDARD.name());
+        List<String> projectsList = dbClient.projectDao()
+                .selectProjectUuidsByOrganizationUuids(dbSession, new ArrayList<>(standardOrgs));
+
         builder.allowedProjectUuids(projectsList);
       }
 

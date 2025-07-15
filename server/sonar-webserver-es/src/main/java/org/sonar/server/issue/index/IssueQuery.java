@@ -109,7 +109,7 @@ public class IssueQuery {
 
   private final Collection<String> cvss;
 
-  private  final List<String> allowedProjectUuids;
+  private final List<String> allowedProjectUuids;
 
   private IssueQuery(Builder builder) {
     this.issueKeys = nullableDefaultCollection(builder.issueKeys);

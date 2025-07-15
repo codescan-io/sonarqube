@@ -24,6 +24,7 @@ import com.google.common.collect.Lists;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.SearchHit;
@@ -667,6 +668,11 @@ public class SearchAction implements IssuesWsAction {
     if (!userSession.isLoggedIn()) {
       requestedFacets.remove(PARAM_AUTHOR);
     }
+
+    if (StringUtils.isBlank(request.getOrganization())) {
+      options.setDisableRouting(true);
+    }
+
     options.addFacets(requestedFacets);
     return options;
   }
