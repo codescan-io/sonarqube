@@ -135,7 +135,6 @@ public class IssueQueryFactory {
 
       Set<String> standardOrgs = dbClient.organizationMemberDao().selectOrganizationUuidsByUserUuidAndType(
               dbSession, userSession.getUuid(),MemberType.STANDARD.name());
-      List<String> projectsList = dbClient.projectDao().selectProjectUuidsByOrganizationUuids(dbSession, (new ArrayList<String>( standardOrgs)));
       IssueQuery.Builder builder = IssueQuery.builder()
         .issueKeys(issueKeys)
         .severities(request.getSeverities())
@@ -176,7 +175,7 @@ public class IssueQueryFactory {
         .codeVariants(request.getCodeVariants())
         .cvss(request.getCvss());
       if (request.getOrganization() == null) {
-        builder.allowedProjectUuids(projectsList);
+        builder.allowedOrgUuids(standardOrgs);
       }
 
       List<ComponentDto> allComponents = new ArrayList<>();
