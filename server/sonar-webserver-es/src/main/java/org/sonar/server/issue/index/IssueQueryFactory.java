@@ -174,7 +174,7 @@ public class IssueQueryFactory {
         .organizationUuid(convertOrganizationKeyToUuid(dbSession, request.getOrganization()))
         .codeVariants(request.getCodeVariants())
         .cvss(request.getCvss());
-      if (request.getOrganization() == null) {
+      if (StringUtils.isBlank(request.getOrganization())) {
         builder.allowedOrgUuids(standardOrgs);
       }
 
