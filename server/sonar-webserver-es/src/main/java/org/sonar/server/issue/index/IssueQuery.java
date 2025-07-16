@@ -106,7 +106,8 @@ public class IssueQuery {
   private final Collection<String> codeVariants;
   private final Collection<String> cleanCodeAttributesCategories;
   private final String organizationUuid;
-  private  final List<String> allowedProjectUuids;
+//  private  final List<String> allowedProjectUuids;
+  private final List<String> allowedOrgUuids;
 
   private IssueQuery(Builder builder) {
     this.issueKeys = nullableDefaultCollection(builder.issueKeys);
@@ -160,7 +161,8 @@ public class IssueQuery {
     this.codeVariants = defaultCollection(builder.codeVariants);
     this.cleanCodeAttributesCategories = defaultCollection(builder.cleanCodeAttributesCategories);
     this.organizationUuid = builder.organizationUuid;
-    this.allowedProjectUuids = builder.allowedProjectUuids;
+    this.allowedOrgUuids = builder.allowedOrgUuids;
+
   }
 
   public Collection<String> issueKeys() {
@@ -171,10 +173,13 @@ public class IssueQuery {
     return severities;
   }
 
-  public List<String> allowedProjectUuids() {
-    return allowedProjectUuids;
-  }
+//  public List<String> allowedProjectUuids() {
+//    return allowedProjectUuids;
+//  }
 
+  public List<String> allowedOrgUuids() {
+    return allowedOrgUuids;
+  }
   public Collection<String> impactSeverities() {
     return impactSeverities;
   }
@@ -450,7 +455,8 @@ public class IssueQuery {
     private Collection<String> cleanCodeAttributesCategories;
 
     private String organizationUuid;
-    private List<String> allowedProjectUuids;
+//    private List<String> allowedProjectUuids;
+    private List<String> allowedOrgUuids;
 
     private Builder() {
 
@@ -491,7 +497,12 @@ public class IssueQuery {
       return this;
     }
 
-    public Builder allowedProjectUuids(@Nullable Collection<String> l) {
+//    public Builder allowedProjectUuids(@Nullable Collection<String> l) {
+//      this.projects = l;
+//      return this;
+//    }
+
+    public Builder allowedOrgUuids(@Nullable Collection<String> l) {
       this.projects = l;
       return this;
     }

@@ -175,7 +175,7 @@ public class IssueQueryFactory {
         .organizationUuid(convertOrganizationKeyToUuid(dbSession, request.getOrganization()))
         .codeVariants(request.getCodeVariants());
       if (request.getOrganization() == null) {
-        builder.allowedProjectUuids(projectsList);
+        builder.allowedOrgUuids(standardOrgs);
       }
 
       List<ComponentDto> allComponents = new ArrayList<>();
