@@ -455,7 +455,7 @@ public class IssueQuery {
     private Collection<String> cleanCodeAttributesCategories;
 
     private String organizationUuid;
-//    private List<String> allowedProjectUuids;
+    private List<String> allowedProjectUuids;
     private List<String> allowedOrgUuids;
 
     private Builder() {
@@ -502,8 +502,8 @@ public class IssueQuery {
 //      return this;
 //    }
 
-    public Builder allowedOrgUuids(@Nullable Collection<String> l) {
-      this.projects = l;
+    public Builder allowedOrgUuids(@Nullable List<String> l) {
+      this.allowedOrgUuids = l;
       return this;
     }
 
