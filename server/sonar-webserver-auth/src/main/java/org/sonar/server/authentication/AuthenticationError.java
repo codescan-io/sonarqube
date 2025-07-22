@@ -52,9 +52,10 @@ public final class AuthenticationError {
   }
 
   static void handleAuthenticationError(AuthenticationException e, HttpRequest request, HttpResponse response) {
-    String publicMessage = e.getPublicMessage();
-    if (publicMessage != null && !publicMessage.isEmpty()) {
-      addErrorCookie(request, response, publicMessage);
+    String message = e.getMessage();
+    LOGGER.error("Error message {} Public message {}", message, e.getPublicMessage());
+    if (message != null && !message.isEmpty()) {
+      addErrorCookie(request, response, message);
     }
     redirectToUnauthorized(request, response);
   }
