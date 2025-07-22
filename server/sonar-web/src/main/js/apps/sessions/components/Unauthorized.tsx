@@ -37,8 +37,10 @@ export default function Unauthorized() {
   };
 
   const rawMessage = decodeURIComponent(getCookie('AUTHENTICATION-ERROR') || '');
+  const rawCode = decodeURIComponent(getCookie('AUTHENTICATION-ERROR-CODE') || '');
   console.error("Raw message: " + rawMessage);
-  const translationKey = OAUTH2_ERROR_CODES[rawMessage];
+  console.error("Raw code: " + rawCode);
+  const translationKey = rawCode ? OAUTH2_ERROR_CODES[rawCode] : OAUTH2_ERROR_CODES[rawMessage];
   const message = translationKey ? translate(translationKey) : translate('unauthorized.generic_error');
 
   return (

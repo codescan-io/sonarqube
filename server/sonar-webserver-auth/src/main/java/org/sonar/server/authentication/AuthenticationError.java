@@ -19,6 +19,7 @@
  */
 package org.sonar.server.authentication;
 
+import org.apache.commons.lang3.StringUtils;
 import org.sonar.api.server.http.HttpRequest;
 import org.sonar.api.server.http.HttpResponse;
 import org.slf4j.Logger;
@@ -35,6 +36,7 @@ public final class AuthenticationError {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticationError.class);
   private static final String AUTHENTICATION_ERROR_COOKIE = "AUTHENTICATION-ERROR";
+  private static final String AUTHENTICATION_ERROR_CODE_COOKIE = "AUTHENTICATION-ERROR-CODE";
   private static final int FIVE_MINUTES_IN_SECONDS = 5 * 60;
 
   private AuthenticationError() {
@@ -52,21 +54,30 @@ public final class AuthenticationError {
   }
 
   static void handleAuthenticationError(AuthenticationException e, HttpRequest request, HttpResponse response) {
-    String message = e.getMessage();
-    LOGGER.error("Error message {} Public message {}", message, e.getPublicMessage());
+    String message = e.getPublicMessage();
+    String errorCode = request.getParameter("error");
     if (message != null && !message.isEmpty()) {
-      addErrorCookie(request, response, message);
+      addErrorCookie(request, response, message, errorCode);
     }
     redirectToUnauthorized(request, response);
   }
 
-  public static void addErrorCookie(HttpRequest request, HttpResponse response, String value) {
+  public static void addErrorCookie(HttpRequest request, HttpResponse response, String value, String code) {
     response.addCookie(newCookieBuilder(request)
       .setName(AUTHENTICATION_ERROR_COOKIE)
       .setValue(encodeMessage(value))
       .setHttpOnly(false)
       .setExpiry(FIVE_MINUTES_IN_SECONDS)
       .build());
+
+    if (StringUtils.isNotBlank(code)) {
+      response.addCookie(newCookieBuilder(request)
+              .setName(AUTHENTICATION_ERROR_CODE_COOKIE)
+              .setValue(encodeMessage(code))
+              .setHttpOnly(false)
+              .setExpiry(FIVE_MINUTES_IN_SECONDS)
+              .build());
+    }
   }
 
   private static void redirectToUnauthorized(HttpRequest request, HttpResponse response) {
