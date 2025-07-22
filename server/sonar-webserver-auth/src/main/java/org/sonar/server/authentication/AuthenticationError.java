@@ -19,6 +19,9 @@
  */
 package org.sonar.server.authentication;
 
+import com.google.gson.Gson;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.sonar.api.server.http.HttpRequest;
 import org.sonar.api.server.http.HttpResponse;
@@ -36,7 +39,6 @@ public final class AuthenticationError {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticationError.class);
   private static final String AUTHENTICATION_ERROR_COOKIE = "AUTHENTICATION-ERROR";
-  private static final String AUTHENTICATION_ERROR_CODE_COOKIE = "AUTHENTICATION-ERROR-CODE";
   private static final int FIVE_MINUTES_IN_SECONDS = 5 * 60;
 
   private AuthenticationError() {
@@ -56,28 +58,27 @@ public final class AuthenticationError {
   static void handleAuthenticationError(AuthenticationException e, HttpRequest request, HttpResponse response) {
     String message = e.getPublicMessage();
     String errorCode = request.getParameter("error");
-    if (message != null && !message.isEmpty()) {
+    if (StringUtils.isNotEmpty(message)) {
       addErrorCookie(request, response, message, errorCode);
     }
     redirectToUnauthorized(request, response);
   }
 
-  public static void addErrorCookie(HttpRequest request, HttpResponse response, String value, String code) {
+  public static void addErrorCookie(HttpRequest request, HttpResponse response, String message, String errorCode) {
+    Map<String, String> errorMap = new HashMap<>();
+    if (StringUtils.isNotEmpty(errorCode)) {
+      errorMap.put("error", errorCode);
+    }
+    errorMap.put("error_message", message);
+
+    String value = new Gson().toJson(errorMap);
+
     response.addCookie(newCookieBuilder(request)
       .setName(AUTHENTICATION_ERROR_COOKIE)
       .setValue(encodeMessage(value))
       .setHttpOnly(false)
       .setExpiry(FIVE_MINUTES_IN_SECONDS)
       .build());
-
-    if (StringUtils.isNotBlank(code)) {
-      response.addCookie(newCookieBuilder(request)
-              .setName(AUTHENTICATION_ERROR_CODE_COOKIE)
-              .setValue(encodeMessage(code))
-              .setHttpOnly(false)
-              .setExpiry(FIVE_MINUTES_IN_SECONDS)
-              .build());
-    }
   }
 
   private static void redirectToUnauthorized(HttpRequest request, HttpResponse response) {
