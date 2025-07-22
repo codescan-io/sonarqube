@@ -45,8 +45,6 @@ export default function Unauthorized() {
   }
   const errorMessage = errorObj.error_message;
   const errorCode = errorObj.error;
-  console.error("Error message: " + errorMessage);
-  console.error("Error code: " + errorCode);
   const translationKey = errorCode ? OAUTH2_ERROR_CODES[errorCode] : OAUTH2_ERROR_CODES[errorMessage];
   const message = translationKey ? translate(translationKey) : translate('unauthorized.generic_error');
 
