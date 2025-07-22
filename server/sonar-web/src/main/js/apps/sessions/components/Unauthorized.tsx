@@ -36,11 +36,18 @@ export default function Unauthorized() {
     'invalid_client': 'unauthorized.oauth2.invalid_client'
   };
 
-  const rawMessage = decodeURIComponent(getCookie('AUTHENTICATION-ERROR') || '');
-  const rawCode = decodeURIComponent(getCookie('AUTHENTICATION-ERROR-CODE') || '');
-  console.error("Raw message: " + rawMessage);
-  console.error("Raw code: " + rawCode);
-  const translationKey = rawCode ? OAUTH2_ERROR_CODES[rawCode] : OAUTH2_ERROR_CODES[rawMessage];
+  const rawJson = decodeURIComponent(getCookie('AUTHENTICATION-ERROR') || '');
+  let errorObj;
+  try {
+    errorObj = JSON.parse(rawJson);
+  } catch (e) {
+    errorObj = {error_message: rawJson};
+  }
+  const errorMessage = errorObj.error_message;
+  const errorCode = errorObj.error;
+  console.error("Error message: " + errorMessage);
+  console.error("Error code: " + errorCode);
+  const translationKey = errorCode ? OAUTH2_ERROR_CODES[errorCode] : OAUTH2_ERROR_CODES[errorMessage];
   const message = translationKey ? translate(translationKey) : translate('unauthorized.generic_error');
 
   return (
