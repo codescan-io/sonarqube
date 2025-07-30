@@ -20,6 +20,8 @@
 package org.sonar.ce.task.projectanalysis.step;
 
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.measures.CoreMetrics;
 import org.sonar.ce.task.CeTask;
 import org.sonar.ce.task.projectanalysis.analysis.AnalysisMetadataHolder;
@@ -40,6 +42,7 @@ import org.sonar.server.project.Project;
 
 public class ProjectAnalysisAuditStep implements ComputationStep {
   private static final String CODESCAN_JOB_ID_SONAR_PARAM = "sonar.analysis.buildId";
+  private static final Logger log = LoggerFactory.getLogger(ProjectAnalysisAuditStep.class);
 
   private final BatchReportReader reportReader;
   private final DbClient dbClient;
@@ -67,12 +70,14 @@ public class ProjectAnalysisAuditStep implements ComputationStep {
   @Override
   public void execute(Context context) {
     // Get CodeScan job id
+    log.info("Starting project analysis audit");
     String jobId = null;
     try (CloseableIterator<ContextProperty> it = reportReader.readContextProperties()) {
       while (it.hasNext()) {
         ContextProperty contextProperty = it.next();
         if (CODESCAN_JOB_ID_SONAR_PARAM.equals(contextProperty.getKey())) {
           jobId = contextProperty.getValue();
+          log.info("Found code scan job id: {}", jobId);
           break;
         }
       }
@@ -81,11 +86,18 @@ public class ProjectAnalysisAuditStep implements ComputationStep {
     Project project = analysisMetadataHolder.getProject();
     String projectKey = project.getKey();
     String projectName = project.getName();
+    log.info("Found project: {}", projectKey);
+
     int ncloc = getNCLoc();
+    log.info("NCLoc: {}", ncloc);
+
     try (DbSession dbSession = dbClient.openSession(false)) {
+      log.info("In open client");
       String organizationUuid = ceTask.getOrganizationUuid();
+      log.info("Org: {}", organizationUuid);
       auditPersister.createProjectAnalysis(dbSession, organizationUuid, new ProjectAnalysisNewValue(projectKey, projectName, ncloc, jobId));
       dbSession.commit();
+      log.info("Post commit");
     }
   }
 

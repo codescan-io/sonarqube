@@ -41,6 +41,7 @@ import org.sonar.ce.task.projectanalysis.metric.Metric;
 import org.sonar.ce.task.projectanalysis.metric.Metric.MetricType;
 import org.sonar.ce.task.projectanalysis.metric.MetricRepository;
 import org.sonar.ce.task.step.ComputationStep;
+import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.audit.AuditPersister;
 import org.sonar.db.audit.model.PropertyNewValue;
@@ -61,11 +62,11 @@ public class QualityGateEventsStep implements ComputationStep {
   private final NotificationService notificationService;
   private final AnalysisMetadataHolder analysisMetadataHolder;
   private final AuditPersister auditPersister;
-  private final DbSession dbSession;
+  private final DbClient dbClient;
 
   public QualityGateEventsStep(TreeRootHolder treeRootHolder,
     MetricRepository metricRepository, MeasureRepository measureRepository, EventRepository eventRepository,
-    NotificationService notificationService, AnalysisMetadataHolder analysisMetadataHolder, DbSession dbSession, AuditPersister auditPersister) {
+    NotificationService notificationService, AnalysisMetadataHolder analysisMetadataHolder, DbClient dbClient, AuditPersister auditPersister) {
     this.treeRootHolder = treeRootHolder;
     this.metricRepository = metricRepository;
     this.measureRepository = measureRepository;
@@ -73,7 +74,7 @@ public class QualityGateEventsStep implements ComputationStep {
     this.notificationService = notificationService;
     this.analysisMetadataHolder = analysisMetadataHolder;
     this.auditPersister = auditPersister;
-    this.dbSession = dbSession;
+    this.dbClient = dbClient;
   }
 
   @Override
@@ -111,6 +112,7 @@ public class QualityGateEventsStep implements ComputationStep {
 
     if (baseStatus.getStatus() != rawStatus.getStatus()) {
       // The QualityGate status has changed
+      DbSession dbSession = dbClient.openSession(false);
       createEvent(rawStatus.getStatus().getLabel(), rawStatus.getText());
       auditPersister.createQualityGateChangeEvent(dbSession, analysisMetadataHolder.getOrganization().getUuid(), new PropertyNewValue(QUALITY_GATE_KEY, rawStatus.getStatus().getLabel(), project.getUuid(),
               project.getKey(), project.getName()));
