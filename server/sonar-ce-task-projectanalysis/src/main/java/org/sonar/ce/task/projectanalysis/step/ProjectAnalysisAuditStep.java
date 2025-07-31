@@ -95,6 +95,7 @@ public class ProjectAnalysisAuditStep implements ComputationStep {
       log.info("In open client");
       String organizationUuid = ceTask.getOrganizationUuid();
       log.info("Org: {}", organizationUuid);
+      log.info("AuditPersister: {}", auditPersister.getClass().getSimpleName());
       auditPersister.createProjectAnalysis(dbSession, organizationUuid, new ProjectAnalysisNewValue(projectKey, projectName, ncloc, jobId));
       dbSession.commit();
       log.info("Post commit");
