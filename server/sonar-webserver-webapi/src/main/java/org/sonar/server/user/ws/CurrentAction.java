@@ -26,7 +26,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
@@ -138,6 +137,7 @@ public class CurrentAction implements UsersWsAction {
     if (user.isRoot()) {
       standardOrgs = dbClient.organizationDao()
               .selectByUuids(dbSession, new HashSet<>(dbClient.organizationDao().selectAllUuids(dbSession))).stream()
+              .filter(org -> !org.isArchived())
               .map(
                       OrganizationDto::getKey).toList();
 
