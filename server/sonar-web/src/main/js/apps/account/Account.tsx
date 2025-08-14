@@ -43,6 +43,10 @@ export default function Account() {
 
   const title = translate('my_account.page');
 
+  console.debug('Rendering Account page', {
+    currentUser,
+    portalAnchor,
+  });
   return (
     <div id="account-page">
       {portalAnchor &&
