@@ -51,11 +51,12 @@ export function GlobalNavUser({ currentUser, userOrganizations }: GlobalNavUserP
     const hasOrganizations = userOrganizations.length > 0;
 
     const isCodescan = window.location.hostname.includes('codescan.io') || window.location.hostname.includes('autorabit.com');
+    console.log("Entering initializePendo in global nav User:");
     if (isLoggedIn(currentUser) && hasOrganizations && !pendoInitialized && isCodescan) {
       const script = document.createElement('script');
       const sfAccountId = userOrganizations.find?.(o => o.sfAccountId != null)?.sfAccountId || null;
       const host = window.location.hostname;
-      
+      console.log("sfAccountId:", sfAccountId);
       script.innerHTML =
         "  pendo.initialize({\n" +
         "        visitor: {\n" +
