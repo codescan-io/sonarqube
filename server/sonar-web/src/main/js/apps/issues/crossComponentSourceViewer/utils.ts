@@ -19,10 +19,11 @@
  */
 
 import { sortBy } from 'lodash';
+import { useContext } from 'react';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
+import { CurrentUserContext } from '../../../app/components/current-user/CurrentUserContext';
 import { decorateWithUnderlineFlags } from '../../../helpers/code-viewer';
 import { isDefined } from '../../../helpers/types';
-import { useUsersQueries } from '../../../queries/users';
 import { ReviewHistoryElement, ReviewHistoryType } from '../../../types/security-hotspots';
 import {
   ExpandDirection,
@@ -35,7 +36,6 @@ import {
   SnippetsByComponent,
   SourceLine,
 } from '../../../types/types';
-import { RestUser } from '../../../types/users';
 
 const LINES_ABOVE = 5;
 const LINES_BELOW = 5;
@@ -243,9 +243,18 @@ export function useGetIssueReviewHistory(
   changelog: IssueChangelog[],
 ): ReviewHistoryElement[] {
   const history: ReviewHistoryElement[] = [];
+  const { currentUser } = useContext(CurrentUserContext) as {
+    currentUser?: { avatar?: string; email?: string; login?: string; name?: string };
+  };
 
-  const { data } = useUsersQueries<RestUser>({ q: issue.author ?? '' }, !!issue.author);
-  const author = data?.pages[0]?.users[0] ?? null;
+  let authorIsSelf = null;
+  if (issue.author) {
+    authorIsSelf =
+      issue.author === currentUser?.email ||
+      issue.author === currentUser?.login ||
+      issue.author === currentUser?.name;
+  }
+  const author = authorIsSelf ? currentUser : null;
 
   if (issue.creationDate) {
     history.push({

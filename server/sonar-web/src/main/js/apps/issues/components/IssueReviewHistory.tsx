@@ -96,7 +96,7 @@ export default function IssueReviewHistory(props: Readonly<HotspotReviewHistoryP
               </div>
 
               <Text isSubdued as="div" className="sw-mb-1">
-                {user.name !== undefined && (
+                {user.name && (
                   <div className="sw-flex sw-items-center sw-gap-1">
                     <Avatar hash={user.avatar} name={user.name} size="xs" />
                     <span className="sw-typo-semibold">
