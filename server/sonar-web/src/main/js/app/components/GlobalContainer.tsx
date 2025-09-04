@@ -78,8 +78,7 @@ const PAGES_WITH_SECONDARY_BACKGROUND = [
 ];
 
 export default function GlobalContainer() {
-  // it is important to pass `location` down to `GlobalNav` to trigger render on url change
-  const [isChatEnabled, setIsChatEnabled] = useState(false); // State to track chat widget visibility
+  const [isChatEnabled, setIsChatEnabled] = useState(false); 
   const location = useLocation();
 
   useEffect(() => {
@@ -95,7 +94,7 @@ export default function GlobalContainer() {
     }
 
     fetchChatBotFlag();
-  }, []); // E
+  }, []); 
 
   return (
     <ThemeProvider theme={lightTheme}>
