@@ -43,7 +43,7 @@ export function getRedirectUrlForZoho(): Promise<string> {
 }
 
 // http.ts
-export async function postRequest<
+export async function postChatRequest<
   TRes,
   TBody extends Record<string, unknown> = Record<string, unknown>,
 >(url: string, body: TBody, init?: Omit<RequestInit, 'method' | 'body'>): Promise<TRes> {
