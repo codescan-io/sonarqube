@@ -17,10 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import {Extension, Organization, OrganizationBase, OrganizationMember, Paging} from "../types/types";
+import {Extension, MemberType, Organization, OrganizationBase, OrganizationMember, Paging} from "../types/types";
 import { deleteRequest, post, postJSON, postJSONBody, putJsonBody } from "../helpers/request";
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
+import axios from "axios";
 
 export function checkOrganizationKeyExistence(key: string): Promise<Organization | undefined> {
   return getJSON(`/_codescan/organizations/${key}/exists`).then(
@@ -51,6 +52,10 @@ export function updateOrganization(key: string, changes: OrganizationBase) {
 
 export function deleteOrganization(key: string) {
   return deleteRequest(`/_codescan/organizations/${key}`).catch(throwGlobalError);
+}
+
+export function toggleInviteUsersVisibility(key: string, invite_users_enabled: boolean){
+  return axios.patch(`/_codescan/organizations/${key}/update_invite_users?inviteUsersEnabled=${invite_users_enabled}`).catch(throwGlobalError);
 }
 
 interface GetOrganizationNavigation {
@@ -87,6 +92,7 @@ export function searchMembers(data: {
 export function addMember(data: {
   login: string;
   organization: string;
+  type: MemberType;
 }): Promise<OrganizationMember> {
   return postJSON('/api/organizations/add_member', data).then(r => r.user, throwGlobalError);
 }
@@ -118,4 +124,9 @@ export function setOrganizationMemberSync(data: { enabled: boolean; organization
 
 export function syncMembers(organization: string) {
   return post('/api/organizations/sync_members', { organization }).catch(throwGlobalError);
+}
+
+
+export function setMemberType(organization: String, login: String, type: String ): Promise<void | Response> {
+  return post('/api/organizations/set_member_type', {organization, login, type}).catch(throwGlobalError);
 }

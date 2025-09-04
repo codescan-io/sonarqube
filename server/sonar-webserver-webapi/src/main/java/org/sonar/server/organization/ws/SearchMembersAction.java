@@ -31,7 +31,11 @@ import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOption
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
 
 import com.google.common.collect.Multiset;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
@@ -43,9 +47,11 @@ import org.sonar.api.utils.Paging;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
+import org.sonar.db.organization.OrganizationMemberDto;
 import org.sonar.db.user.UserDto;
 import org.sonar.db.user.UserQuery;
 import org.sonar.server.common.avatar.AvatarResolver;
+import org.sonar.server.organization.ws.MemberUpdater.MemberType;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.Common;
 import org.sonarqube.ws.Organizations.SearchMembersWsResponse;
@@ -89,7 +95,7 @@ public class SearchMembersAction implements OrganizationsWsAction {
     action.createParam(PARAM_ORGANIZATION)
       .setDescription("Organization key")
       .setInternal(true)
-      .setRequired(false);
+      .setRequired(true);
   }
 
   @Override
@@ -101,31 +107,46 @@ public class SearchMembersAction implements OrganizationsWsAction {
       var userQuery = buildUserQuery(request, organization);
       var users = fetchUsersAndSortByLogin(request, dbSession, userQuery);
       int totalUsers = dbClient.userDao().countUsers(dbSession, userQuery);
+      List<OrganizationMemberDto> organizationMemberDtoList = dbClient.organizationMemberDao().selectAllOrganizationMemberDtos(dbSession, organization.getUuid());
 
       Multiset<String> groupCountByLogin = null;
       if (userSession.hasPermission(ADMINISTER, organization)) {
         var orderedLogins = users.stream().map(UserDto::getLogin).toList();
         groupCountByLogin = dbClient.groupMembershipDao().countGroupByLoginsAndOrganization(dbSession, orderedLogins, organization.getUuid());
       }
-
+      Map<UserDto,Boolean> adminPrivilegesMap= new HashMap<>();
+      for(UserDto userDto: users){
+        Set<String> set = dbClient.authorizationDao().selectOrganizationPermissions(dbSession, organization.getUuid(),userDto.getUuid());
+        adminPrivilegesMap.put(userDto, set.contains("admin"));
+      }
       Paging paging = forPageIndex(request.mandatoryParamAsInt(Param.PAGE)).withPageSize(request.mandatoryParamAsInt(Param.PAGE_SIZE)).andTotal(totalUsers);
-      SearchMembersWsResponse wsResponse = buildResponse(users, paging, groupCountByLogin);
+      SearchMembersWsResponse wsResponse = buildResponse(users, paging, groupCountByLogin, organizationMemberDtoList, adminPrivilegesMap);
 
       writeProtobuf(wsResponse, request, response);
     }
   }
 
-  private SearchMembersWsResponse buildResponse(List<UserDto> users, Paging wsPaging, @Nullable Multiset<String> groupCountByLogin) {
+  private SearchMembersWsResponse buildResponse(List<UserDto> users, Paging wsPaging, @Nullable Multiset<String> groupCountByLogin, List<OrganizationMemberDto> organizationMemberDtoList, Map<UserDto, Boolean> adminPrivilegesMap) {
     SearchMembersWsResponse.Builder response = SearchMembersWsResponse.newBuilder();
+
+    Map<String, String> userUuidTypeMap = organizationMemberDtoList.stream()
+            .collect(Collectors.toMap(
+                    OrganizationMemberDto::getUserUuid,  // Key: userUuid
+                    OrganizationMemberDto::getType,      // Value: type
+                    (existing, replacement) -> existing
+            ));
 
     User.Builder wsUser = User.newBuilder();
     users.stream()
       .map(userDto -> {
         String login = userDto.getLogin();
+        String userUuid = userDto.getUuid();
         wsUser
           .clear()
           .setLogin(login)
-          .setUuid(userDto.getUuid());
+          .setUuid(userDto.getUuid())
+          .setType(userUuidTypeMap.getOrDefault(userUuid, MemberType.STANDARD.name()))
+          .setIsAdmin(adminPrivilegesMap.getOrDefault(userDto, false));
         ofNullable(emptyToNull(userDto.getEmail())).ifPresent(text -> wsUser.setAvatar(avatarResolver.create(userDto)));
         ofNullable(userDto.getName()).ifPresent(wsUser::setName);
         ofNullable(groupCountByLogin).ifPresent(count -> wsUser.setGroupCount(groupCountByLogin.count(login)));
@@ -152,6 +173,7 @@ public class SearchMembersAction implements OrganizationsWsAction {
 
     var userQuery = UserQuery.builder();
     userQuery.searchText(textQuery);
+    userQuery.isActive(true);
 
     var selectionMode = SelectionMode.fromParam(request.mandatoryParam(Param.SELECTED));
     if (SelectionMode.DESELECTED.equals(selectionMode)) {

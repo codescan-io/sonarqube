@@ -27,10 +27,17 @@ import * as React from 'react';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import Avatar from '../../components/ui/Avatar';
 import { translate, translateWithParameters } from '../../helpers/l10n';
-import { Group, Organization, OrganizationMember } from '../../types/types';
+import { Group, Organization, OrganizationActions, OrganizationMember } from '../../types/types';
 import ManageMemberGroupsForm from './ManageMemberGroupsForm';
 import RemoveMemberForm from './RemoveMemberForm';
 import {UserGroup} from "../../api/users";
+import { setMemberType } from '../../api/organizations';
+import { addGlobalErrorMessage } from '~design-system';
+
+const USER_TYPES = [
+  { value: "STANDARD", label: "Standard User" },
+  { value: "PLATFORM", label: "Platform Integration User" }
+];
 
 interface Props {
   member: OrganizationMember;
@@ -47,13 +54,14 @@ interface Props {
 interface State {
   removeMemberForm: boolean;
   manageGroupsForm: boolean;
+  type: string;
 }
 
 const AVATAR_SIZE = 36;
 
 export default class MembersListItem extends React.PureComponent<Props, State> {
   mounted = false;
-  state: State = { removeMemberForm: false, manageGroupsForm: false };
+  state: State = { removeMemberForm: false, manageGroupsForm: false, type: this.props.member.type };
 
   componentDidMount() {
     this.mounted = true;
@@ -83,9 +91,27 @@ export default class MembersListItem extends React.PureComponent<Props, State> {
     }
   };
 
+  handleRadioChange = async (type: string, member: OrganizationMember) => {
+    await setMemberType(this.props.organization.kee, member.login, type); // API Call
+    this.setState({ type });
+  };
+
+  isPermissibleToChange = (actions: OrganizationActions, member: OrganizationMember, value: string) => {
+    if (!actions.admin) {
+      return false;
+    }
+    if (member.isAdmin && value === 'PLATFORM') {
+      addGlobalErrorMessage('You are a System Admin. You are required to have a Standard User License.');
+      return false;
+    }
+    return true;
+  }
+
+
   render() {
     const { member, organization, removeMember } = this.props;
     const { actions = {} } = organization;
+    const { type } = this.state;
     return (
       <tr>
         <td className="thin nowrap">
@@ -95,6 +121,22 @@ export default class MembersListItem extends React.PureComponent<Props, State> {
           <strong>{member.name}</strong>
           <span className="note sw-ml-2">{member.login}</span>
         </td>
+        {USER_TYPES.map(({ value, label }) => (
+          <td key={value} className="nowrap text-middle">
+            <input
+              type="radio"
+              name={member.login}
+              value={value}
+              className={`member-type-${member.type}`}
+              checked={type === value}
+              onChange={() => {
+                if (this.isPermissibleToChange(actions, member, value)) {
+                  this.handleRadioChange(value, member);
+                }
+              }}            />
+            <span className='note sw-ml-2'>{label}</span>
+          </td>
+        ))}
         {actions.admin && (
           <td className="text-right text-middle">
             {translateWithParameters(

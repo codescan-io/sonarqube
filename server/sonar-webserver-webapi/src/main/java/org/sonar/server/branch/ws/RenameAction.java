@@ -19,6 +19,12 @@
  */
 package org.sonar.server.branch.ws;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.sonar.server.branch.ws.BranchesWs.addProjectParam;
+import static org.sonar.server.branch.ws.ProjectBranchesParameters.ACTION_RENAME;
+import static org.sonar.server.branch.ws.ProjectBranchesParameters.PARAM_NAME;
+import static org.sonar.server.branch.ws.ProjectBranchesParameters.PARAM_PROJECT;
+
 import java.util.Optional;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
@@ -32,12 +38,6 @@ import org.sonar.db.project.ProjectDto;
 import org.sonar.server.component.ComponentFinder;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.user.UserSession;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static org.sonar.server.branch.ws.BranchesWs.addProjectParam;
-import static org.sonar.server.branch.ws.ProjectBranchesParameters.ACTION_RENAME;
-import static org.sonar.server.branch.ws.ProjectBranchesParameters.PARAM_NAME;
-import static org.sonar.server.branch.ws.ProjectBranchesParameters.PARAM_PROJECT;
 
 public class RenameAction implements BranchWsAction {
   private final ComponentFinder componentFinder;

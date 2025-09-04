@@ -26,6 +26,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
+import org.jetbrains.annotations.Nullable;
 import org.sonar.api.issue.impact.SoftwareQuality;
 import org.sonar.api.rule.RuleStatus;
 import org.sonar.api.rule.Severity;
@@ -45,6 +47,7 @@ import org.sonar.server.security.SecurityStandards;
 import org.sonar.server.security.SecurityStandards.SQCategory;
 import org.sonar.server.user.UserSession;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static org.sonar.api.server.ws.WebService.Param.ASCENDING;
 import static org.sonar.api.server.ws.WebService.Param.SORT;
@@ -59,6 +62,8 @@ import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_AVAILABLE_SINCE;
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_CLEAN_CODE_ATTRIBUTE_CATEGORIES;
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_COMPARE_TO_PROFILE;
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_CWE;
+import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_CVSS;
+
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_IMPACT_SEVERITIES;
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_IMPACT_SOFTWARE_QUALITIES;
 import static org.sonar.server.rule.ws.RulesWsParameters.PARAM_INCLUDE_EXTERNAL;
@@ -134,6 +139,11 @@ public class RuleWsSupport {
       .createParam(PARAM_CWE)
       .setDescription("Comma-separated list of CWE identifiers. Use '" + SecurityStandards.UNKNOWN_STANDARD + "' to select rules not associated to any CWE.")
       .setExampleValue("12,125," + SecurityStandards.UNKNOWN_STANDARD);
+
+    action
+            .createParam(PARAM_CVSS)
+            .setDescription("Comma-separated list of CVSS identifiers")
+            .setExampleValue("0,10");
 
     action.createParam(PARAM_OWASP_TOP_10)
       .setDescription("Comma-separated list of OWASP Top 10 2017 lowercase categories.")
@@ -284,6 +294,24 @@ public class RuleWsSupport {
       return true;
     }
     return userSession.hasMembership(organization);
+  }
+
+  void checkMembershipOnPaidOrganization(OrganizationDto organization) {
+    userSession.checkMembership(organization);
+  }
+
+  void checkMembershipOnPaidOrganization(DbSession dbSession, String organizationUuid) {
+    OrganizationDto organization = dbClient.organizationDao().selectByUuid(dbSession, organizationUuid)
+            .orElseThrow(() -> new IllegalArgumentException("No organization found by uuid: " + organizationUuid));
+    checkMembershipOnPaidOrganization(organization);
+  }
+
+  void checkLoggedInUser() {
+     userSession.checkLoggedIn();
+  }
+
+  String getLoggedInUserUuid() {
+    return checkNotNull(userSession.getUuid());
   }
 
 }
