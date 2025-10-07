@@ -180,6 +180,11 @@ export interface FacetValue<T = string> {
   val: T;
 }
 
+export enum MemberType{
+  STANDARD = 'STANDARD',
+  PLATFORM = 'PLATFORM',
+}
+
 export enum FlowType {
   DATA = 'DATA',
   EXECUTION = 'EXECUTION',
@@ -894,6 +899,16 @@ export interface OrganizationMember extends UserActive {
   groupCount?: number;
   type: string;
   isAdmin: boolean;
+}
+
+export interface ArchivedOrganization {
+  name: string;
+  kee: string;
+  archivedAt: string;
+  expiresIn: string;
+  totalUsers: string;
+  totalProjects: string;
+  actions: { [key: string]: boolean };
 }
 
 export interface Notification {
