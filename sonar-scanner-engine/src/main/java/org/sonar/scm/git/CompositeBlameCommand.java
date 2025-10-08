@@ -239,7 +239,7 @@ public class CompositeBlameCommand extends BlameCommand {
         break;
       }
       linesList.add(new BlameLine()
-        .date(Date.from(fileBlame.getCommitDates()[i]))
+        .date(Date.from(fileBlame.getCommitDates()[i].toInstant()))
         .revision(fileBlame.getCommitHashes()[i])
         .author(fileBlame.getAuthorEmails()[i]));
     }
