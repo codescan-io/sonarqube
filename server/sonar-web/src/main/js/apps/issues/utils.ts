@@ -22,7 +22,6 @@ import { intersection, isArray, uniq } from 'lodash';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricType } from '~sonar-aligned/types/metrics';
 import { RawQuery } from '~sonar-aligned/types/router';
-import { searchMembers } from '../../api/organizations';
 import { getUsers } from '../../api/users';
 import { DEFAULT_ISSUES_QUERY } from '../../components/shared/utils';
 import {
@@ -55,6 +54,7 @@ import {
 import { SecurityStandard } from '../../types/security';
 import { Dict, Flow, FlowType, Issue, Paging } from '../../types/types';
 import { RestUser } from '../../types/users';
+import { searchMembers } from '../../api/organizations';
 
 const OWASP_ASVS_4_0 = 'owaspAsvs-4.0';
 
@@ -71,7 +71,6 @@ export interface Query {
   createdBefore: Date | undefined;
   createdInLast: string;
   cwe: string[];
-  cvss: string[];
   directories: string[];
   files: string[];
   fixedInPullRequest: string;
@@ -119,7 +118,6 @@ export function parseQuery(query: RawQuery, needIssueSync = false): Query {
     createdBefore: parseAsDate(query.createdBefore),
     createdInLast: parseAsString(query.createdInLast),
     cwe: parseAsArray(query.cwe, parseAsString),
-    cvss: parseAsArray(query.cvss, parseAsString),
     directories: parseAsArray(query.directories, parseAsString),
     files: parseAsArray(query.files, parseAsString),
     impactSeverities: parseAsArray<SoftwareImpactSeverity>(query.impactSeverities, parseAsString),
@@ -239,7 +237,6 @@ export function serializeQuery(query: Query): RawQuery {
     createdBefore: serializeDateShort(query.createdBefore),
     createdInLast: serializeString(query.createdInLast),
     cwe: serializeStringArray(query.cwe),
-    cvss: serializeStringArray(query.cvss),
     directories: serializeStringArray(query.directories),
     files: serializeStringArray(query.files),
     fixedInPullRequest: serializeString(query.fixedInPullRequest),
@@ -302,16 +299,14 @@ export const searchAssignees = (
   page = 1,
 ): Promise<{ paging: Paging; results: RestUser[] }> => {
   return organization
-    ? searchMembers({ organization: organization, p: page, ps: 50, q: query }).then(
-        ({ paging, users }) => ({
-          paging,
-          results: users,
-        }),
-      )
+    ? searchMembers({ organization: organization, p: page, ps: 50, q: query }).then(({ paging, users }) => ({
+      paging,
+      results: users
+    }))
     : getUsers<RestUser>({ pageIndex: page, q: query }).then(({ page, users }) => ({
-        paging: page,
-        results: users,
-      }));
+    paging: page,
+    results: users,
+  }));
 };
 
 const LOCALSTORAGE_MY = 'my';
@@ -398,7 +393,6 @@ export function shouldOpenStandardsChildFacet(
   query: Partial<Query>,
   standardType:
     | SecurityStandard.CWE
-    | SecurityStandard.CVSS
     | SecurityStandard.OWASP_TOP10
     | SecurityStandard.OWASP_TOP10_2021
     | SecurityStandard.SONARSOURCE,
@@ -407,9 +401,7 @@ export function shouldOpenStandardsChildFacet(
   return (
     openFacets[STANDARDS] !== false &&
     (openFacets[standardType] ||
-      (standardType !== SecurityStandard.CWE && standardType !== SecurityStandard.CVSS &&
-        filter !== undefined &&
-        filter.length > 0))
+      (standardType !== SecurityStandard.CWE && filter !== undefined && filter.length > 0))
   );
 }
 
@@ -429,16 +421,10 @@ function isFilteredBySecurityIssueTypes(query: Partial<Query>): boolean {
 }
 
 function isOneStandardChildFacetOpen(openFacets: Dict<boolean>, query: Partial<Query>): boolean {
-  return [
-    SecurityStandard.OWASP_TOP10,
-    SecurityStandard.CVSS,
-    SecurityStandard.CWE,
-    SecurityStandard.SONARSOURCE,
-  ].some(
+  return [SecurityStandard.OWASP_TOP10, SecurityStandard.CWE, SecurityStandard.SONARSOURCE].some(
     (
       standardType:
         | SecurityStandard.CWE
-        | SecurityStandard.CVSS
         | SecurityStandard.OWASP_TOP10
         | SecurityStandard.OWASP_TOP10_2021
         | SecurityStandard.SONARSOURCE,

@@ -28,8 +28,6 @@ import { translate } from '../../../helpers/l10n';
 import { LoggedInUser } from '../../../types/users';
 import { Preferences } from './Preferences';
 import UserExternalIdentity from './UserExternalIdentity';
-import { isNonStandardUser } from '../../../app/utils/userAccess';
-
 
 export interface ProfileProps {
   currentUser: LoggedInUser;
@@ -99,13 +97,9 @@ function renderOrganizationGroups() {
         {currentUser.orgGroups.map((orgGroup) => (
           <TableRow key={orgGroup.organizationKey}>
             <ContentCell>
-              {isNonStandardUser(currentUser) ? (
+              <Link to={`/organizations/${orgGroup.organizationKey}/groups`}>
                 <strong>{orgGroup.organizationName}</strong>
-              ) : (
-                <Link to={`/organizations/${orgGroup.organizationKey}/groups`}>
-                  <strong>{orgGroup.organizationName}</strong>
-                </Link>
-              )}
+              </Link>
             </ContentCell>
             <ContentCell>
               <span>{orgGroup.organizationGroups}</span>

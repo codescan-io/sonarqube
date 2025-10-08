@@ -206,13 +206,11 @@ public class SearchMyProjectsAction implements ProjectsWsAction {
 
     ImmutableSet<String> subSetEntityUuids = ImmutableSet.copyOf(entitiesUuid.subList(0, Math.min(entitiesUuid.size(), DatabaseUtils.PARTITION_SIZE_FOR_ORACLE)));
     Pagination pagination = Pagination.forPage(request.page).andSize(request.pageSize);
-    List<ProjectDto> projectDtos = dbClient.projectDao().selectByUuids(dbSession, subSetEntityUuids, pagination)
-            .stream().filter(projectDto -> userSession.hasEntityPermission(UserRole.ADMIN, projectDto.getUuid()))
-            .toList();
+    List<ProjectDto> projectDtos = dbClient.projectDao().selectByUuids(dbSession, subSetEntityUuids, pagination);
 
     List<BranchDto> branchDtos = dbClient.branchDao().selectMainBranchesByProjectUuids(dbSession, projectDtos.stream().map(ProjectDto::getUuid).collect(Collectors.toSet()));
 
-    return new ProjectsResult(projectDtos, branchDtos, projectDtos.size());
+    return new ProjectsResult(projectDtos, branchDtos, subSetEntityUuids.size());
   }
 
   private static class ProjectsResult {

@@ -36,6 +36,7 @@ import org.sonar.core.i18n.I18n;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.entity.EntityDto;
+import org.sonar.db.component.ComponentDto;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.user.UserTokenDto;
 import org.sonar.server.component.index.ComponentIndex;
@@ -50,8 +51,15 @@ import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.Components;
 import org.sonarqube.ws.Components.SearchWsResponse;
 
+import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toMap;
 import static org.sonar.db.component.ComponentQualifiers.APP;
@@ -136,7 +144,6 @@ public class SearchAction implements ComponentsWsAction {
   private SearchWsResponse doHandle(SearchRequest request) {
     try (DbSession dbSession = dbClient.openSession(false)) {
       OrganizationDto organization = getOrganization(dbSession, request);
-      userSession.checkMembership(organization);
       ComponentQuery esQuery = buildEsQuery(organization, request);
       SearchIdResult<String> results = componentIndex.search(esQuery, new SearchOptions().setPage(request.getPage(), request.getPageSize()));
 

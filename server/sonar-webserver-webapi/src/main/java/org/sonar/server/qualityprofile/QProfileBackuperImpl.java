@@ -46,7 +46,6 @@ import org.sonar.db.rule.DeprecatedRuleKeyDto;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.server.common.rule.RuleCreator;
 import org.sonar.server.common.rule.service.NewCustomRule;
-import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.qualityprofile.builtin.QProfileName;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -139,15 +138,13 @@ public class QProfileBackuperImpl implements QProfileBackuper {
   private QProfileRestoreSummary restore(DbSession dbSession, ImportedQProfile qProfile, Function<QProfileName, QProfileDto> profileLoader) {
     QProfileName targetName = new QProfileName(qProfile.getProfileLang(), qProfile.getProfileName());
     QProfileDto targetProfile = profileLoader.apply(targetName);
-    OrganizationDto organizationDto = db.organizationDao().selectByUuid(dbSession, targetProfile.getOrganizationUuid())
-            .orElseThrow(() -> new NotFoundException("Organization not found"));
 
     List<ImportedRule> importedRules = qProfile.getRules();
 
     Map<RuleKey, RuleDto> ruleKeyToDto = getImportedRulesDtos(dbSession, importedRules);
     checkIfRulesFromExternalEngines(ruleKeyToDto.values());
 
-    Map<RuleKey, RuleDto> customRulesDefinitions = createCustomRulesIfNotExist(dbSession, importedRules, ruleKeyToDto, organizationDto);
+    Map<RuleKey, RuleDto> customRulesDefinitions = createCustomRulesIfNotExist(dbSession, importedRules, ruleKeyToDto);
     ruleKeyToDto.putAll(customRulesDefinitions);
 
     List<RuleActivation> ruleActivations = toRuleActivations(importedRules, ruleKeyToDto);
@@ -201,10 +198,10 @@ public class QProfileBackuperImpl implements QProfileBackuper {
     }
   }
 
-  private Map<RuleKey, RuleDto> createCustomRulesIfNotExist(DbSession dbSession, List<ImportedRule> rules, Map<RuleKey, RuleDto> ruleDefinitionsByKey, OrganizationDto organizationDto) {
+  private Map<RuleKey, RuleDto> createCustomRulesIfNotExist(DbSession dbSession, List<ImportedRule> rules, Map<RuleKey, RuleDto> ruleDefinitionsByKey) {
     List<NewCustomRule> customRulesToCreate = rules.stream()
       .filter(r -> ruleDefinitionsByKey.get(r.getRuleKey()) == null && r.isCustomRule())
-      .map(rule -> importedRuleToNewCustomRule(rule, organizationDto.getKey()))
+      .map(QProfileBackuperImpl::importedRuleToNewCustomRule)
       .toList();
 
     if (!customRulesToCreate.isEmpty()) {
@@ -215,9 +212,8 @@ public class QProfileBackuperImpl implements QProfileBackuper {
     return Collections.emptyMap();
   }
 
-  private static NewCustomRule importedRuleToNewCustomRule(ImportedRule r, String organizationKey) {
+  private static NewCustomRule importedRuleToNewCustomRule(ImportedRule r) {
     return NewCustomRule.createForCustomRule(r.getRuleKey(), r.getTemplateKey())
-      .setOrganizationKey(organizationKey)
       .setName(r.getName())
       .setSeverity(r.getSeverity())
       .setImpacts(r.getImpacts().entrySet().stream().map(i -> new NewCustomRule.Impact(i.getKey(), i.getValue())).toList())

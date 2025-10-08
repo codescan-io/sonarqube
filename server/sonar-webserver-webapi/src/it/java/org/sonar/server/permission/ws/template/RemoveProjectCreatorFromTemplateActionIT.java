@@ -79,7 +79,7 @@ public class RemoveProjectCreatorFromTemplateActionIT extends BasePermissionWsIT
         .setWithProjectCreator(false)
         .setCreatedAt(1_000_000_000L)
         .setUpdatedAt(1_000_000_000L),
-      template.getName(), "organization");
+      template.getName());
     db.commit();
     when(system.now()).thenReturn(3_000_000_000L);
 

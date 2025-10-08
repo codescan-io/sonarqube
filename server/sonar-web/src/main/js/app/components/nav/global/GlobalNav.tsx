@@ -27,7 +27,6 @@ import { GlobalNavUser } from './GlobalNavUser';
 import MainSonarQubeBar from './MainSonarQubeBar';
 import { Organization } from "../../../../types/types";
 import GlobalNavPlus from "./GlobalNavPlus";
-import { isNonStandardUser } from '../../../utils/userAccess';
 
 export interface GlobalNavProps {
   currentUser: CurrentUser;
@@ -37,20 +36,19 @@ export interface GlobalNavProps {
 
 export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
-  
   return (
     <MainSonarQubeBar>
       <div className="sw-flex" id="global-navigation">
         <div className="it__global-navbar-menu sw-flex sw-justify-start sw-items-center sw-flex-1">
           <GlobalNavMenu currentUser={currentUser} location={location} />
           <div className="sw-px-8 sw-flex-1">
-          {!isNonStandardUser(currentUser)&& <GlobalSearch />}
+            <GlobalSearch />
           </div>
         </div>
 
         <div className="sw-flex sw-items-center sw-ml-2">
           <EmbedDocsPopupHelper />
-          {isLoggedIn(currentUser) && (!isNonStandardUser(currentUser))  && (
+          {isLoggedIn(currentUser) && (
             <div style={{ height: 36, width: 36 }} className="sw-flex sw-items-center sw-justify-center sw-mr-2">
               <GlobalNavPlus />
             </div>

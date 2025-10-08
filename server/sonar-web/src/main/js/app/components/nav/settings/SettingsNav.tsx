@@ -58,7 +58,6 @@ export class SettingsNav extends React.PureComponent<Props> {
       '/admin/groups',
       '/admin/permissions',
       '/admin/permission_templates',
-      '/admin/organizations_archive',
     ];
     return this.isSomethingActive(urls);
   }
@@ -169,9 +168,6 @@ export class SettingsNav extends React.PureComponent<Props> {
           <>
             <DropdownMenu.ItemLink isMatchingFullPath to="/admin/users">
               {translate('users.page')}
-            </DropdownMenu.ItemLink>
-            <DropdownMenu.ItemLink isMatchingFullPath to="/admin/organizations_archive">
-              {translate('organization.archived.page')}
             </DropdownMenu.ItemLink>
           </>
         }

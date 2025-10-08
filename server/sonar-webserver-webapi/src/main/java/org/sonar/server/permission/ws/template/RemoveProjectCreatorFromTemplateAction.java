@@ -101,15 +101,15 @@ public class RemoveProjectCreatorFromTemplateAction implements PermissionsWsActi
       PermissionTemplateCharacteristicDao dao = dbClient.permissionTemplateCharacteristicDao();
       dao.selectByPermissionAndTemplateId(dbSession, request.getPermission(), template.getUuid())
         .ifPresent(permissionTemplateCharacteristicDto -> updateTemplateCharacteristic(dbSession, permissionTemplateCharacteristicDto,
-          template.getName(), template.getOrganizationUuid()));
+          template.getName()));
     }
   }
 
-  private void updateTemplateCharacteristic(DbSession dbSession, PermissionTemplateCharacteristicDto templatePermission, String templateName, String organizationUuid) {
+  private void updateTemplateCharacteristic(DbSession dbSession, PermissionTemplateCharacteristicDto templatePermission, String templateName) {
     PermissionTemplateCharacteristicDto targetTemplatePermission = templatePermission
       .setUpdatedAt(system.now())
       .setWithProjectCreator(false);
-    dbClient.permissionTemplateCharacteristicDao().update(dbSession, targetTemplatePermission, templateName, organizationUuid);
+    dbClient.permissionTemplateCharacteristicDao().update(dbSession, targetTemplatePermission, templateName);
     dbSession.commit();
   }
 

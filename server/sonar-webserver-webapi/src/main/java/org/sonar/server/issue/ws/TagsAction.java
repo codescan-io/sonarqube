@@ -132,8 +132,7 @@ public class TagsAction implements IssuesWsAction {
   }
 
   private OrganizationDto getOrganization(DbSession dbSession, @Nullable String organizationKey) {
-    return checkFoundWithOptional(dbClient.organizationDao().selectByKey(dbSession, organizationKey)
-            .filter(org -> !org.isArchived()), "No organization with key '%s'", organizationKey);
+    return checkFoundWithOptional(dbClient.organizationDao().selectByKey(dbSession, organizationKey), "No organization with key '%s'", organizationKey);
   }
 
   private Optional<EntityDto> getEntity(DbSession dbSession, @Nullable String entityKey) {

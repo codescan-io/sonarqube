@@ -25,10 +25,9 @@ import { translate } from "../../../helpers/l10n";
 
 interface Props {
   organizations: Organization[];
-  linksDisabled?: boolean;
 }
 
-export default function OrganizationsList({ organizations, linksDisabled }: Props) {
+export default function OrganizationsList({ organizations }: Props) {
   if (organizations.length === 0) {
     return <div>{translate('my_account.organizations.no_results')}</div>;
   }
@@ -38,7 +37,7 @@ export default function OrganizationsList({ organizations, linksDisabled }: Prop
         {sortBy(organizations, organization => organization.name.toLocaleLowerCase()).map(
             organization => (
                 <li key={organization.kee}>
-                  <OrganizationCard linksDisabled={linksDisabled} organization={organization}/>
+                  <OrganizationCard organization={organization}/>
                 </li>
             )
         )}

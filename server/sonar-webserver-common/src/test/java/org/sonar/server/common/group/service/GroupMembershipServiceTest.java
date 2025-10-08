@@ -99,8 +99,7 @@ public class GroupMembershipServiceTest {
     assertThat(userGroupDto.getGroupUuid()).isEqualTo(groupDto.getUuid());
     assertThat(userGroupDto.getUserUuid()).isEqualTo(userDto.getUuid());
 
-    verify(userGroupDao).insert(dbSession, new UserGroupDto().setGroupUuid(GROUP_A).setUserUuid(USER_1), groupDto.getName(),
-            userDto.getLogin(), groupDto.getOrganizationUuid());
+    verify(userGroupDao).insert(dbSession, new UserGroupDto().setGroupUuid(GROUP_A).setUserUuid(USER_1), groupDto.getName(), userDto.getLogin());
     verify(dbSession).commit();
   }
 

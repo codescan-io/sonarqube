@@ -82,6 +82,4 @@ public interface ProjectMapper {
   int countProjectsByAiCodeFixEnablement(@Param("aiCodeFixEnabled") boolean aiCodeFixEnabled);
 
   List<ProjectDto> selectProjectsByOrganizationUuids(@Param("orgUuids") List<String> orgUuids);
-
-  List<String> selectProjectUuidsByOrganizationUuids(@Param("orgUuids") List<String> orgUuids);
 }

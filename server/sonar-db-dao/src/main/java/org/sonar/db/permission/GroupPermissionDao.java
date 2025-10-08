@@ -145,11 +145,7 @@ public class GroupPermissionDao implements Dao {
 
     String componentKey = (entityDto != null) ? entityDto.getKey() : null;
     String qualifier = (entityDto != null) ? entityDto.getQualifier() : null;
-    String organizationUuid = entityDto != null && entityDto.getOrganizationUuid() != null
-            ? entityDto.getOrganizationUuid()
-            : groupPermissionDto.getOrganizationUuid();
-
-    auditPersister.addGroupPermission(dbSession, organizationUuid, new GroupPermissionNewValue(groupPermissionDto, componentKey, qualifier, permissionTemplateDto));
+    auditPersister.addGroupPermission(dbSession, new GroupPermissionNewValue(groupPermissionDto, componentKey, qualifier, permissionTemplateDto));
   }
 
   /**
@@ -159,7 +155,7 @@ public class GroupPermissionDao implements Dao {
     int deletedRecords = mapper(dbSession).deleteByEntityUuid(entityDto.getUuid());
 
     if (deletedRecords > 0) {
-      auditPersister.deleteGroupPermission(dbSession, entityDto.getOrganizationUuid(), new GroupPermissionNewValue(entityDto.getUuid(),
+      auditPersister.deleteGroupPermission(dbSession, new GroupPermissionNewValue(entityDto.getUuid(),
         entityDto.getKey(), entityDto.getName(), null, null, null, entityDto.getQualifier()));
     }
   }
@@ -172,7 +168,7 @@ public class GroupPermissionDao implements Dao {
     int deletedRecords = mapper(dbSession).deleteByEntityUuidAndGroupUuid(entityDto.getUuid(), groupUuid);
 
     if (deletedRecords > 0) {
-      auditPersister.deleteGroupPermission(dbSession, entityDto.getOrganizationUuid(), new GroupPermissionNewValue(entityDto.getUuid(),
+      auditPersister.deleteGroupPermission(dbSession, new GroupPermissionNewValue(entityDto.getUuid(),
         entityDto.getKey(), entityDto.getName(), null, groupUuid, "", entityDto.getQualifier()));
     }
     return deletedRecords;
@@ -182,7 +178,7 @@ public class GroupPermissionDao implements Dao {
     int deletedRecords = mapper(dbSession).deleteByEntityUuidAndGroupUuid(entity.getUuid(), null);
 
     if (deletedRecords > 0) {
-      auditPersister.deleteGroupPermission(dbSession, entity.getOrganizationUuid(), new GroupPermissionNewValue(entity.getUuid(),
+      auditPersister.deleteGroupPermission(dbSession, new GroupPermissionNewValue(entity.getUuid(),
         entity.getKey(), entity.getName(), null, null, null, entity.getQualifier()));
     }
 
@@ -196,7 +192,7 @@ public class GroupPermissionDao implements Dao {
     int deletedRecords = mapper(dbSession).deleteByEntityUuidAndPermission(entity.getUuid(), permission);
 
     if (deletedRecords > 0) {
-      auditPersister.deleteGroupPermission(dbSession, entity.getOrganizationUuid(), new GroupPermissionNewValue(entity.getUuid(),
+      auditPersister.deleteGroupPermission(dbSession, new GroupPermissionNewValue(entity.getUuid(),
         entity.getKey(), entity.getName(), permission, null, null, entity.getQualifier()));
     }
 
@@ -227,7 +223,7 @@ public class GroupPermissionDao implements Dao {
       String qualifier = (entityDto != null) ? entityDto.getQualifier() : null;
       String componentKey = (entityDto != null) ? entityDto.getKey() : null;
       String componentName = (entityDto != null) ? entityDto.getName() : null;
-      auditPersister.deleteGroupPermission(dbSession, organizationUuid, new GroupPermissionNewValue(entityUuid,
+      auditPersister.deleteGroupPermission(dbSession, new GroupPermissionNewValue(entityUuid,
         componentKey, componentName, permission, groupUuid, groupName, qualifier));
     }
   }

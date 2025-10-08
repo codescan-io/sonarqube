@@ -153,11 +153,7 @@ public class BulkDeleteAction implements ProjectsWsAction {
     userSession.checkLoggedIn();
     try (DbSession dbSession = dbClient.openSession(false)) {
       OrganizationDto organization = wsSupport.getOrganization(dbSession, searchRequest.getOrganization());
-      if (organization.isArchived()) {
-        userSession.checkIsSystemAdministrator();
-      } else {
-        userSession.checkPermission(OrganizationPermission.ADMINISTER, organization);
-      }
+      userSession.checkPermission(OrganizationPermission.ADMINISTER, organization);
       checkAtLeastOneParameterIsPresent(searchRequest);
       checkIfAnalyzedBeforeIsFutureDate(searchRequest);
 

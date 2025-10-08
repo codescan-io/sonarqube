@@ -19,6 +19,7 @@
  */
 package org.sonar.server.user;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -88,7 +89,7 @@ public abstract class AbstractUserSession implements UserSession {
 
   @Override
   public final boolean hasPermission(OrganizationPermission permission, String organizationUuid) {
-    return hasPermissionImpl(permission, organizationUuid);
+    return isRoot() || hasPermissionImpl(permission, organizationUuid);
   }
 
   protected boolean hasPermissionImpl(OrganizationPermission permission, String organizationUuid) {
@@ -99,19 +100,19 @@ public abstract class AbstractUserSession implements UserSession {
   public boolean hasComponentPermission(String permission, ComponentDto component) {
     Optional<String> projectUuid1 = componentUuidToEntityUuid(component.uuid());
 
-    return projectUuid1
+    return isRoot() || projectUuid1
       .map(projectUuid -> hasEntityUuidPermission(permission, projectUuid))
       .orElse(false);
   }
 
   @Override
   public final boolean hasEntityPermission(String permission, EntityDto entity) {
-    return hasEntityUuidPermission(permission, entity.getAuthUuid());
+    return isRoot() || hasEntityUuidPermission(permission, entity.getAuthUuid());
   }
 
   @Override
   public final boolean hasEntityPermission(String permission, String entityUuid) {
-    return hasEntityUuidPermission(permission, entityUuid);
+    return isRoot() || hasEntityUuidPermission(permission, entityUuid);
   }
 
   @Override
@@ -133,7 +134,7 @@ public abstract class AbstractUserSession implements UserSession {
   @Override
   public boolean hasComponentUuidPermission(String permission, String componentUuid) {
     Optional<String> entityUuid = componentUuidToEntityUuid(componentUuid);
-    return entityUuid
+    return isRoot() || entityUuid
       .map(s -> hasEntityUuidPermission(permission, s))
       .orElse(false);
   }
@@ -148,11 +149,17 @@ public abstract class AbstractUserSession implements UserSession {
 
   @Override
   public final List<ComponentDto> keepAuthorizedComponents(String permission, Collection<ComponentDto> components) {
+    if (isRoot()) {
+      return new ArrayList<>(components);
+    }
     return doKeepAuthorizedComponents(permission, components);
   }
 
   @Override
   public final <T extends EntityDto> List<T> keepAuthorizedEntities(String permission, Collection<T> projects) {
+    if (isRoot()) {
+      return new ArrayList<>(projects);
+    }
     return doKeepAuthorizedEntities(permission, projects);
   }
 
@@ -207,7 +214,7 @@ public abstract class AbstractUserSession implements UserSession {
 
   @Override
   public UserSession checkEntityPermission(String projectPermission, EntityDto entity) {
-    if (hasEntityPermission(projectPermission, entity)) {
+    if (isRoot() || hasEntityPermission(projectPermission, entity)) {
       return this;
     }
 
@@ -270,12 +277,12 @@ public abstract class AbstractUserSession implements UserSession {
 
   @Override
   public final boolean hasMembership(OrganizationDto organizationDto) {
-    return hasMembershipImpl(organizationDto);
+    return isRoot() || hasMembershipImpl(organizationDto);
   }
 
   @Override
   public final boolean hasMembership(String organizationKey) {
-    return hasMembershipImpl(organizationKey);
+    return isRoot() || hasMembershipImpl(organizationKey);
   }
 
   @Override

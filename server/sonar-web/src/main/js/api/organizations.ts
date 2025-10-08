@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import {Extension, MemberType, Organization, OrganizationBase, OrganizationMember, ArchivedOrganization, Paging} from "../types/types";
-import { archiveRequest, deleteRequest, post, postJSON, postJSONBody, putJsonBody } from "../helpers/request";
+import {Extension, Organization, OrganizationBase, OrganizationMember, Paging} from "../types/types";
+import { deleteRequest, post, postJSON, postJSONBody, putJsonBody } from "../helpers/request";
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import axios from "axios";
@@ -52,18 +52,6 @@ export function updateOrganization(key: string, changes: OrganizationBase) {
 
 export function deleteOrganization(key: string) {
   return deleteRequest(`/_codescan/organizations/${key}`).catch(throwGlobalError);
-}
-
-export function archiveOrganization(key: string) {
-  return archiveRequest(`/_codescan/organizations/archive/${key}`).catch(throwGlobalError);
-}
-
-export function getArchivedOrganizations(): Promise<ArchivedOrganization[]> {
-  return getJSON('/_codescan/organizations/archivedOrganizations');
-}
-
-export function restoreArchivedOrganization(key: string) {
-  return putJsonBody(`/_codescan/organizations/unarchive/${key}`).catch(throwGlobalError);
 }
 
 export function toggleInviteUsersVisibility(key: string, invite_users_enabled: boolean){
@@ -104,7 +92,6 @@ export function searchMembers(data: {
 export function addMember(data: {
   login: string;
   organization: string;
-  type: MemberType;
 }): Promise<OrganizationMember> {
   return postJSON('/api/organizations/add_member', data).then(r => r.user, throwGlobalError);
 }

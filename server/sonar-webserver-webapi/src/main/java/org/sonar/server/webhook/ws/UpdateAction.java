@@ -124,14 +124,14 @@ public class UpdateAction implements WebhooksWsAction {
         OrganizationDto organization = dbClient.organizationDao().selectByUuid(dbSession, organizationUuid)
             .orElseThrow(() -> new NotFoundException("No organization found with uuid: " + organizationUuid));
         webhookSupport.checkPermission(organization);
-        updateWebhook(dbSession, webhookDto, name, url, secret, null, null, organizationUuid);
+        updateWebhook(dbSession, webhookDto, name, url, secret, null, null);
       }
 
       String projectUuid = webhookDto.getProjectUuid();
       if (projectUuid != null) {
         ProjectDto projectDto = componentFinder.getProjectByUuid(dbSession, projectUuid);
         webhookSupport.checkPermission(projectDto);
-        updateWebhook(dbSession, webhookDto, name, url, secret, projectDto.getKey(), projectDto.getName(), projectDto.getOrganizationUuid());
+        updateWebhook(dbSession, webhookDto, name, url, secret, projectDto.getKey(), projectDto.getName());
       }
 
       dbSession.commit();
@@ -148,11 +148,10 @@ public class UpdateAction implements WebhooksWsAction {
   }
 
   private void updateWebhook(DbSession dbSession, WebhookDto dto, String name, String url, @Nullable String secret,
-    @Nullable String projectKey, @Nullable String projectName, @Nullable String organizationUuid) {
+    @Nullable String projectKey, @Nullable String projectName) {
     dto
       .setName(name)
-      .setUrl(url)
-      .setOrganizationUuid(organizationUuid);
+      .setUrl(url);
     setSecret(dto, secret);
     dbClient.webhookDao().update(dbSession, dto, projectKey, projectName);
   }

@@ -111,7 +111,7 @@ public class AddUserAction implements QProfileWsAction {
         .setUuid(uuidFactory.create())
         .setUserUuid(user.getUuid())
         .setQProfileUuid(profile.getKee()),
-      profile.getName(), user.getLogin(), profile.getOrganizationUuid());
+      profile.getName(), user.getLogin());
     dbSession.commit();
   }
 

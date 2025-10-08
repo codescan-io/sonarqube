@@ -65,7 +65,6 @@ export function mockQuery(overrides: Partial<Query> = {}): Query {
     createdBefore: undefined,
     createdInLast: '',
     cwe: [],
-    cvss:[],
     directories: [],
     files: [],
     fixedInPullRequest: '',

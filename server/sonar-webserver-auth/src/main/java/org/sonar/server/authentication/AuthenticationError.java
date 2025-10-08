@@ -19,10 +19,6 @@
  */
 package org.sonar.server.authentication;
 
-import com.google.gson.Gson;
-import java.util.HashMap;
-import java.util.Map;
-import org.apache.commons.lang3.StringUtils;
 import org.sonar.api.server.http.HttpRequest;
 import org.sonar.api.server.http.HttpResponse;
 import org.slf4j.Logger;
@@ -56,23 +52,14 @@ public final class AuthenticationError {
   }
 
   static void handleAuthenticationError(AuthenticationException e, HttpRequest request, HttpResponse response) {
-    String message = e.getPublicMessage();
-    String errorCode = request.getParameter("error");
-    if (StringUtils.isNotEmpty(message)) {
-      addErrorCookie(request, response, message, errorCode);
+    String publicMessage = e.getPublicMessage();
+    if (publicMessage != null && !publicMessage.isEmpty()) {
+      addErrorCookie(request, response, publicMessage);
     }
     redirectToUnauthorized(request, response);
   }
 
-  public static void addErrorCookie(HttpRequest request, HttpResponse response, String message, String errorCode) {
-    Map<String, String> errorMap = new HashMap<>();
-    if (StringUtils.isNotEmpty(errorCode)) {
-      errorMap.put("error", errorCode);
-    }
-    errorMap.put("error_message", message);
-
-    String value = new Gson().toJson(errorMap);
-
+  public static void addErrorCookie(HttpRequest request, HttpResponse response, String value) {
     response.addCookie(newCookieBuilder(request)
       .setName(AUTHENTICATION_ERROR_COOKIE)
       .setValue(encodeMessage(value))

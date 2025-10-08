@@ -19,8 +19,6 @@
  */
 package org.sonar.db.qualityprofile;
 
-import java.util.Objects;
-
 public class QProfileEditUsersDto {
 
   private String uuid;
@@ -54,16 +52,4 @@ public class QProfileEditUsersDto {
     return this;
   }
 
-  @Override
-  public final boolean equals(Object o) {
-    if (!(o instanceof QProfileEditUsersDto that)) {
-      return false;
-    }
-    return userUuid.equals(that.userUuid) && qProfileUuid.equals(that.qProfileUuid);
-  }
-
-  @Override
-  public int hashCode() {
-      return Objects.hash(uuid);
-  }
 }

@@ -37,8 +37,6 @@ public class DeactivateRulesRequest {
   private String availableSince;
   private String compareToProfile;
   private List<String> cwe;
-    private List<String> cvss;
-
   private List<String> inheritance;
   private String isTemplate;
   private List<String> languages;
@@ -149,15 +147,6 @@ public class DeactivateRulesRequest {
 
   public List<String> getCwe() {
     return cwe;
-  }
-
-    public DeactivateRulesRequest setCvss(List<String> cvss) {
-    this.cvss = cvss;
-    return this;
-  }
-
-  public List<String> getCvss() {
-    return cvss;
   }
 
   /**

@@ -21,14 +21,13 @@
 import { Heading, Spinner } from '@sonarsource/echoes-react';
 import { difference, without } from 'lodash';
 import { useEffect, useState } from 'react';
-import { addGlobalErrorMessage, MultiSelector, Tags } from '~design-system';
+import { MultiSelector, Tags } from '~design-system';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { searchProjectTags, setApplicationTags, setProjectTags } from '../../../../api/components';
 import Tooltip from '../../../../components/controls/Tooltip';
 import { PopupPlacement } from '../../../../components/ui/popups';
 import { translate } from '../../../../helpers/l10n';
 import { Component } from '../../../../types/types';
-import { almTagsList } from '../../utils';
 
 interface Props {
   component: Component;
@@ -114,25 +113,17 @@ function MetaTagsSelector({ selectedTags, setProjectTags }: MetaTagsSelectorProp
       q: query,
       ps: Math.min(selectedTags.length - 1 + LIST_SIZE, MAX_LIST_SIZE),
     }).then(
-      ({ tags }) => setSearchResult(tags.filter((item) => !almTagsList.includes(item))),
+      ({ tags }) => setSearchResult(tags),
       () => {},
     );
   };
 
   const onSelect = (tag: string) => {
-    if (!almTagsList.find((t) => t === tag)) {
-      setProjectTags([...selectedTags, tag]);
-    } else {
-      addGlobalErrorMessage('Integration type tag cannot be added to the project.');
-    }
+    setProjectTags([...selectedTags, tag]);
   };
 
   const onUnselect = (tag: string) => {
-    if (!almTagsList.find((t) => t === tag)) {
-      setProjectTags(without(selectedTags, tag));
-    } else {
-      addGlobalErrorMessage('Integration type tags cannot be removed from projects.');
-    }
+    setProjectTags(without(selectedTags, tag));
   };
 
   return (
@@ -146,7 +137,7 @@ function MetaTagsSelector({ selectedTags, setProjectTags }: MetaTagsSelectorProp
         onSelect={onSelect}
         onUnselect={onUnselect}
         selectedElements={selectedTags}
-        elements={availableTags.filter((item) => !almTagsList.includes(item))}
+        elements={availableTags}
       />
     </div>
   );

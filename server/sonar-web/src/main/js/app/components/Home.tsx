@@ -26,7 +26,6 @@ import withAppStateContext from './app-state/withAppStateContext';
 import withCurrentUserContext from './current-user/withCurrentUserContext';
 
 import "../styles/components/home.css";
-import { isNonStandardUser } from '../utils/userAccess';
 
 
 interface Props {
@@ -61,10 +60,7 @@ class Home extends React.PureComponent<Props, State> {
         await setHomePage(type);
         await skipOnboarding();
 
-        if (isNonStandardUser(this.props.currentUser))
-            window.location.href = '/account';
-        else
-            window.location.href = window.location.href.replace("home", url);
+        window.location.href = window.location.href.replace("home",url);
     }
 
     handlePolicyClick = async() => { 

@@ -62,7 +62,6 @@ interface Props {
 
 interface State {
   filterByCWE?: string;
-  filterByCVSS?: string;
   filterByCategory?: { category: string; standard: SecurityStandard };
   filterByFile?: string;
   filters: HotspotFilters;
@@ -102,7 +101,6 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
 
       standards: {
         [SecurityStandard.CWE]: {},
-        [SecurityStandard.CVSS]: {},
         [SecurityStandard.OWASP_ASVS_4_0]: {},
         [SecurityStandard.OWASP_TOP10_2021]: {},
         [SecurityStandard.OWASP_TOP10]: {},
@@ -348,13 +346,10 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
   fetchFilteredSecurityHotspots({
     filterByCategory,
     filterByCWE,
-    filterByCVSS,
     filterByFile,
     page,
   }: {
     filterByCWE: string | undefined;
-
-    filterByCVSS: string | undefined;
 
     filterByCategory:
       | {
@@ -379,10 +374,6 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
 
     if (filterByCWE) {
       hotspotFilters[SecurityStandard.CWE] = filterByCWE;
-    }
-
-    if (filterByCVSS) {
-      hotspotFilters[SecurityStandard.CVSS] = filterByCVSS;
     }
 
     if (filterByFile) {
@@ -427,11 +418,9 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
 
     const filterByCWE: string | undefined = location.query.cwe;
 
-    const filterByCVSS: string | undefined = location.query.cvss;
-
     const filterByFile: string | undefined = location.query.files;
 
-    this.setState({ filterByCategory, filterByCWE, filterByCVSS, filterByFile, hotspotKeys });
+    this.setState({ filterByCategory, filterByCWE, filterByFile, hotspotKeys });
 
     if (hotspotKeys && hotspotKeys.length > 0) {
       return getSecurityHotspotList(
@@ -444,11 +433,10 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
       );
     }
 
-    if (filterByCategory || filterByCWE || filterByCVSS || filterByFile) {
+    if (filterByCategory || filterByCWE || filterByFile) {
       return this.fetchFilteredSecurityHotspots({
         filterByCategory,
         filterByCWE,
-        filterByCVSS,
         filterByFile,
         page,
       });
@@ -605,7 +593,6 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
     const {
       filterByCategory,
       filterByCWE,
-      filterByCVSS,
       filterByFile,
       filters,
       hotspotKeys,
@@ -626,7 +613,6 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
         component={component}
         filterByCategory={filterByCategory}
         filterByCWE={filterByCWE}
-        filterByCVSS={filterByCVSS}
         filterByFile={filterByFile}
         filters={filters}
         hotspots={hotspots}
@@ -635,7 +621,7 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
         isStaticListOfHotspots={Boolean(
           (hotspotKeys && hotspotKeys.length > 0) ||
             filterByCategory ||
-            filterByCWE || filterByCVSS ||
+            filterByCWE ||
             filterByFile,
         )}
         loading={loading}

@@ -20,12 +20,8 @@
 package org.sonar.db.webhook;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-
 import javax.annotation.Nullable;
-
-import org.jetbrains.annotations.NotNull;
 import org.sonar.api.utils.System2;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
@@ -33,7 +29,6 @@ import org.sonar.db.audit.AuditPersister;
 import org.sonar.db.audit.model.SecretNewValue;
 import org.sonar.db.audit.model.WebhookNewValue;
 import org.sonar.db.organization.OrganizationDto;
-import org.sonar.db.project.ProjectDao;
 import org.sonar.db.project.ProjectDto;
 
 public class WebhookDao implements Dao {
@@ -62,27 +57,24 @@ public class WebhookDao implements Dao {
     return mapper(dbSession).selectForProjectUuidOrderedByName(projectDto.getUuid());
   }
 
-  public void insert(DbSession dbSession, WebhookDto dto, @Nullable String projectKey, @Nullable String projectName, @NotNull String organizationUuid) {
+  public void insert(DbSession dbSession, WebhookDto dto, @Nullable String projectKey, @Nullable String projectName) {
     mapper(dbSession).insert(dto.setCreatedAt(system2.now()).setUpdatedAt(system2.now()));
-    auditPersister.addWebhook(dbSession, organizationUuid, new WebhookNewValue(dto, projectKey, projectName));
+    auditPersister.addWebhook(dbSession, new WebhookNewValue(dto, projectKey, projectName));
   }
 
   public void update(DbSession dbSession, WebhookDto dto, @Nullable String projectKey, @Nullable String projectName) {
     mapper(dbSession).update(dto.setUpdatedAt(system2.now()));
-    Objects.requireNonNull(dto.getOrganizationUuid());
-
     if (dto.getSecret() != null) {
-      auditPersister.updateWebhookSecret(dbSession, dto.getOrganizationUuid(), new SecretNewValue("webhook_name", dto.getName()));
+      auditPersister.updateWebhookSecret(dbSession, new SecretNewValue("webhook_name", dto.getName()));
     }
-    auditPersister.updateWebhook(dbSession, dto.getOrganizationUuid(), new WebhookNewValue(dto, projectKey, projectName));
+    auditPersister.updateWebhook(dbSession, new WebhookNewValue(dto, projectKey, projectName));
   }
 
-  public void delete(DbSession dbSession, WebhookDto dto) {
-    int deletedRows = mapper(dbSession).delete(dto.getUuid());
-    Objects.requireNonNull(dto.getOrganizationUuid());
+  public void delete(DbSession dbSession, String uuid, String webhookName) {
+    int deletedRows = mapper(dbSession).delete(uuid);
 
     if (deletedRows > 0) {
-      auditPersister.deleteWebhook(dbSession, dto.getOrganizationUuid(), new WebhookNewValue(dto.getUuid(), dto.getName()));
+      auditPersister.deleteWebhook(dbSession, new WebhookNewValue(uuid, webhookName));
     }
   }
 
@@ -90,7 +82,7 @@ public class WebhookDao implements Dao {
     int deletedRows = mapper(dbSession).deleteForProjectUuid(projectDto.getUuid());
 
     if (deletedRows > 0) {
-      auditPersister.deleteWebhook(dbSession, projectDto.getOrganizationUuid(), new WebhookNewValue(projectDto));
+      auditPersister.deleteWebhook(dbSession, new WebhookNewValue(projectDto));
     }
   }
 

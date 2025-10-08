@@ -72,7 +72,6 @@ export interface Props<S> {
   showStatBar?: boolean;
   stats: Dict<number> | undefined;
   values: string[];
-  ShowSearch?: string;
 }
 
 interface State<S> {
@@ -87,7 +86,6 @@ interface State<S> {
 }
 
 export class ListStyleFacet<S> extends React.Component<Props<S>, State<S>> {
-  
   mounted = false;
 
   static defaultProps = {
@@ -306,7 +304,7 @@ export class ListStyleFacet<S> extends React.Component<Props<S>, State<S>> {
         );
 
     const limitedList = this.state.showFullList
-      ? sortedItems.slice(0, maxItems)
+      ? sortedItems
       : sortedItems.slice(0, maxInitialItems);
 
     // make sure all selected items are displayed
@@ -370,7 +368,7 @@ export class ListStyleFacet<S> extends React.Component<Props<S>, State<S>> {
             showLessAriaLabel ?? translateWithParameters('show_less_filter_x', facetHeader)
           }
           showMore={this.showFullList}
-          total={ sortedItems.length < maxItems ? sortedItems.length : maxItems}
+          total={sortedItems.length}
         />
 
         {mightHaveMoreResults && this.state.showFullList && (
@@ -504,7 +502,7 @@ export class ListStyleFacet<S> extends React.Component<Props<S>, State<S>> {
       >
         {!disabled && (
           <span className="it__search-navigator-facet-list">
-            {this.props.ShowSearch===undefined && this.renderSearch()}
+            {this.renderSearch()}
 
             <output role={query ? 'status' : ''}>
               {showList ? this.renderList() : this.renderSearchResults()}

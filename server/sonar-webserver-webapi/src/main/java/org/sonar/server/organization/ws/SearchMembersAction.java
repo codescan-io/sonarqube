@@ -173,7 +173,6 @@ public class SearchMembersAction implements OrganizationsWsAction {
 
     var userQuery = UserQuery.builder();
     userQuery.searchText(textQuery);
-    userQuery.isActive(true);
 
     var selectionMode = SelectionMode.fromParam(request.mandatoryParam(Param.SELECTED));
     if (SelectionMode.DESELECTED.equals(selectionMode)) {

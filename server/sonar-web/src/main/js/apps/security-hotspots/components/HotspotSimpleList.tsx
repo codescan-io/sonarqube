@@ -33,7 +33,6 @@ import HotspotListItem from './HotspotListItem';
 
 export interface HotspotSimpleListProps {
   filterByCWE?: string;
-  filterByCVSS?: string;
   filterByCategory?: {
     category: string;
     standard: SecurityStandard;
@@ -54,7 +53,6 @@ export default function HotspotSimpleList(props: HotspotSimpleListProps) {
   const {
     filterByCategory,
     filterByCWE,
-    filterByCVSS,
     filterByFile,
     hotspots,
     hotspotsTotal,
@@ -71,9 +69,6 @@ export default function HotspotSimpleList(props: HotspotSimpleListProps) {
 
   const cweLabel =
     filterByCWE && SECURITY_STANDARD_RENDERER[SecurityStandard.CWE](standards, filterByCWE);
-
-  const cvssLabel =
-    filterByCVSS && SECURITY_STANDARD_RENDERER[SecurityStandard.CVSS](standards, filterByCVSS);
 
   return (
     <StyledContainer>
@@ -94,8 +89,6 @@ export default function HotspotSimpleList(props: HotspotSimpleListProps) {
                     {categoryLabel}
                     {categoryLabel && cweLabel && <hr />}
                     {cweLabel}
-                    {categoryLabel && cvssLabel && <hr />}
-                    {cvssLabel}
                   </>
                 )}
               </div>

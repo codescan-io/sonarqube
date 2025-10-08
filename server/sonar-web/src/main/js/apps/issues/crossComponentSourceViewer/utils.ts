@@ -30,7 +30,6 @@ import {
   Issue,
   IssueChangelog,
   LineMap,
-  Organization,
   Snippet,
   SnippetGroup,
   SnippetsByComponent,
@@ -242,18 +241,10 @@ export function inSnippet(line: number, snippet: SourceLine[]) {
 export function useGetIssueReviewHistory(
   issue: Issue,
   changelog: IssueChangelog[],
-  organization?: Organization,
 ): ReviewHistoryElement[] {
   const history: ReviewHistoryElement[] = [];
 
-  const shouldFetchUser = !!issue.organization && !!issue.author && organization?.actions?.admin;
-
-  // Fetch author.
-  const { data } = useUsersQueries<RestUser>(
-    { q: issue.author ?? '', organization: issue.organization ?? '' },
-    shouldFetchUser,
-  );
-
+  const { data } = useUsersQueries<RestUser>({ q: issue.author ?? '' }, !!issue.author);
   const author = data?.pages[0]?.users[0] ?? null;
 
   if (issue.creationDate) {

@@ -32,12 +32,7 @@ import {
 import { Dict, FacetValue, IssueChangelog, SnippetsByComponent, SourceLine } from '../types/types';
 
 export function searchIssues(query: RequestData): Promise<RawIssuesResponse> {
-  return getJSON('/api/issues/search', query).catch(error => {
-    if (error?.status === 403 ) {
-      window.location.href = '/account'; 
-    }
-    throwGlobalError;
-  });
+  return getJSON('/api/issues/search', query).catch(throwGlobalError);
 }
 
 export function listIssues(query: RequestData): Promise<ListIssuesResponse> {

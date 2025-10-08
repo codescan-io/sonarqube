@@ -108,7 +108,7 @@ public class QualityGateDbTester {
         .setGroupUuid(group.getUuid())
         .setQualityGateUuid(qualityGateDto.getUuid()),
       qualityGateDto.getName(),
-      group.getName(), qualityGateDto.getOrganizationUuid()
+      group.getName()
     );
     db.commit();
   }
@@ -119,7 +119,7 @@ public class QualityGateDbTester {
         .setUserUuid(user.getUuid())
         .setQualityGateUuid(qualityGateDto.getUuid()),
       qualityGateDto.getName(),
-      user.getLogin(), qualityGateDto.getOrganizationUuid());
+      user.getLogin());
     db.commit();
   }
 }

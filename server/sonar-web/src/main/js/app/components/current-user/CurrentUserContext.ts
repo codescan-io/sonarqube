@@ -31,7 +31,6 @@ export interface CurrentUserContextInterface {
   updateDismissedNotices: (key: NoticeType, value: boolean) => void;
   userOrganizations: Organization[];
   updateUserOrganizations: (organizations: Organization[]) => void;
-  setIsNotStandardOrg?: (flag: boolean) => void;
 }
 
 export const CurrentUserContext = React.createContext<CurrentUserContextInterface>({
@@ -41,7 +40,6 @@ export const CurrentUserContext = React.createContext<CurrentUserContextInterfac
   },
   updateCurrentUserHomepage: noop,
   updateDismissedNotices: noop,
-  setIsNotStandardOrg: noop
 });
 
 export function useCurrentUser() {

@@ -41,6 +41,4 @@ public interface QualityGateUserPermissionsMapper {
 
   int deleteByQualityGate(@Param("qualityGateUuid") String qualityGateUuid);
 
-  List<QualityGateUserPermissionsDto> selectByUserUuid(@Param("userUuid") String userUuid);
-
 }
