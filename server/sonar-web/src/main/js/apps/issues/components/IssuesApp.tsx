@@ -452,8 +452,7 @@ export class App extends React.PureComponent<Props, State> {
       return { ...response, issues: parsedIssues } as FetchIssuesPromise;
     }
 
-// inside fetchIssuesHelper
-// start from your existing base that already includes additionalFields & timeZone
+
 const base = {
   ...query,
   additionalFields: '_all', // if you already had these, keep as-is
@@ -462,7 +461,6 @@ const base = {
 
 const qs = this.props.location.query as RawQuery;
 
-// resolve project key from props/URL/state (same fallbacks you added)
 const projectKey =
   this.props.component?.key ??
   (qs.components as string | undefined) ??
@@ -472,15 +470,13 @@ const projectKey =
   (qs.componentKey as string | undefined) ??
   this.state.openIssue?.project;
 
-// PR from URL (reliable on this page)
 const prKey = (qs.pullRequest as string | undefined) ?? undefined;
 
-// add branch/PR params from branchLike
 const scope = getBranchLikeQuery(this.props.branchLike) as Record<string, string | undefined>;
 
 const scopedQuery: any = {
   ...base,
-  ...scope,                               // adds branch OR pullRequest if known
+  ...scope,                               // Adds branch OR pullRequest if known
   ...(projectKey ? { components: projectKey } : {}),
   ...(prKey ? { pullRequest: prKey } : {}),
 };
@@ -488,10 +484,6 @@ const scopedQuery: any = {
 if (scopedQuery.pullRequest) delete scopedQuery.branch;
 
 const response = await searchIssues(scopedQuery);
-
-
-
-
 
     const parsedIssues = response.issues.map((issue) =>
       parseIssueFromResponse(issue, response.components, response.users, response.rules),
