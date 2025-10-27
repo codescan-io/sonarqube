@@ -54,7 +54,6 @@ export default function IssueMessage(props: IssueMessageProps) {
       return getComponentIssuesUrl(component.key, urlQuery);
     }
     else {
-      console.log("issue at code url "+getOrgIssuesUrl(urlQuery,issue.organization))
       return getOrgIssuesUrl(urlQuery, issue.organization);
     }
   }
@@ -74,8 +73,6 @@ export default function IssueMessage(props: IssueMessageProps) {
   };
 
   const issueUrl = orgIssueUrl();
-  console.log("issue urlll "+issueUrl)
-  // After you have `issueUrl` (string or To), coerce to a To object and add ?id=<projectKey>
 const projectKey = component?.key ?? issue.project;
 
 const baseTo = issueUrl as any;
@@ -83,12 +80,9 @@ const base: { pathname?: string; search?: string; hash?: string } =
   typeof baseTo === 'string' ? { pathname: baseTo } : baseTo;
 
 const sp = new URLSearchParams(base.search ?? '');
-if (projectKey) sp.set('id', projectKey);          // 👈 ensure project key is present
-// keep existing params (open, PR, etc.) as you already build them…
+if (projectKey) sp.set('id', projectKey);          // Ensure project key is present
 
 const issueUrlWithProject = { ...base, search: `?${sp.toString()}` } as const;
-console.log("issueUrlWithProject "+JSON.stringify(issueUrlWithProject))
-
 
   return (
     <>
