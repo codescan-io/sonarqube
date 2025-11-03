@@ -88,7 +88,8 @@ public class IssueWsModule extends Module {
       AnticipatedTransitionParser.class,
       AnticipatedTransitionHandler.class,
       AnticipatedTransitionsActionValidator.class,
-      AnticipatedTransitionsAction.class
+      AnticipatedTransitionsAction.class,
+      IssueContextAction.class
     );
   }
 }
