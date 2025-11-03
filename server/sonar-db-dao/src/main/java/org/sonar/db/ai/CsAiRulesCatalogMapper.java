@@ -25,12 +25,6 @@ package org.sonar.db.ai;
 import org.apache.ibatis.annotations.Param;
 
 public interface CsAiRulesCatalogMapper {
-  CsAiRuleCatalogDto selectByRuleKey(@Param("ruleKey") String ruleKey);
+
+    CsAiRuleCatalogDto selectByRuleKey(@Param("ruleKey") String ruleKey);
 }
-
-
-
-
-
-
-
