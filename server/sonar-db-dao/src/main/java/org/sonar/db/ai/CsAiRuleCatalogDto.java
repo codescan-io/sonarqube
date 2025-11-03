@@ -20,41 +20,35 @@
 package org.sonar.db.ai;
 
 public class CsAiRuleCatalogDto {
-  private String ruleKey;
-  private String description;
-  private String contextSeverity;
 
-  public String getRuleKey() {
-    return ruleKey;
-  }
+    private String ruleKey;
+    private String description;
+    private String contextSeverity;
 
-  public CsAiRuleCatalogDto setRuleKey(String ruleKey) {
-    this.ruleKey = ruleKey;
-    return this;
-  }
+    public String getRuleKey() {
+        return ruleKey;
+    }
 
-  public String getDescription() {
-    return description;
-  }
+    public CsAiRuleCatalogDto setRuleKey(String ruleKey) {
+        this.ruleKey = ruleKey;
+        return this;
+    }
 
-  public CsAiRuleCatalogDto setDescription(String description) {
-    this.description = description;
-    return this;
-  }
+    public String getDescription() {
+        return description;
+    }
 
-  public String getContextSeverity() {
-    return contextSeverity;
-  }
+    public CsAiRuleCatalogDto setDescription(String description) {
+        this.description = description;
+        return this;
+    }
 
-  public CsAiRuleCatalogDto setContextSeverity(String contextSeverity) {
-    this.contextSeverity = contextSeverity;
-    return this;
-  }
+    public String getContextSeverity() {
+        return contextSeverity;
+    }
+
+    public CsAiRuleCatalogDto setContextSeverity(String contextSeverity) {
+        this.contextSeverity = contextSeverity;
+        return this;
+    }
 }
-
-
-
-
-
-
-
