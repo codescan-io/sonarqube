@@ -164,6 +164,8 @@ import org.sonar.db.rule.RuleChangeMapper;
 import org.sonar.db.rule.RuleMapper;
 import org.sonar.db.rule.RuleParamDto;
 import org.sonar.db.rule.RuleRepositoryMapper;
+import org.sonar.db.ai.CsAiRuleCatalogDto;
+import org.sonar.db.ai.CsAiRulesCatalogMapper;
 import org.sonar.db.scannercache.ScannerAnalysisCacheMapper;
 import org.sonar.db.schemamigration.SchemaMigrationDto;
 import org.sonar.db.schemamigration.SchemaMigrationMapper;
@@ -282,10 +284,12 @@ public class MyBatis {
     confBuilder.loadAlias("UserTokenCount", UserTokenCount.class);
     confBuilder.loadAlias("UuidWithBranchUuid", UuidWithBranchUuidDto.class);
     confBuilder.loadAlias("ViewsSnapshot", ViewsSnapshotDto.class);
+    confBuilder.loadAlias("CsAiRuleCatalog", CsAiRuleCatalogDto.class);
     confExtensions.forEach(ext -> ext.loadAliases(confBuilder::loadAlias));
 
     // keep them sorted alphabetically
     Class<?>[] mappers = {
+      CsAiRulesCatalogMapper.class,
       ActiveRuleMapper.class,
       AlmPatMapper.class,
       AlmSettingMapper.class,
