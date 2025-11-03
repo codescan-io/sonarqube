@@ -72,10 +72,12 @@ public class IssueContextAction implements IssuesWsAction {
         action.createParam("rule").setDescription("Optional rule key. If not provided, taken from the issue")
                 .setRequired(false).setExampleValue("java:S100");
 
-        action.createParam("Component Key").setDescription("Optional component key. If not provided, taken from the issue")
+        action.createParam("Component Key")
+                .setDescription("Optional component key. If not provided, taken from the issue")
                 .setRequired(false).setExampleValue("abc/sample.cls");
 
-        action.createParam("Context Severity").setDescription("Optional severity of context. If not provided, taken from the issue")
+        action.createParam("Context Severity")
+                .setDescription("Optional severity of context. If not provided, taken from the issue")
                 .setRequired(false).setExampleValue("MEDIUM");
     }
 
@@ -127,12 +129,13 @@ public class IssueContextAction implements IssuesWsAction {
         return line != null && line > 0 ? line : 1;
     }
 
-    private SnippetRange determineSnippetRange(DbSession dbSession, ComponentDto file, int centerLine, String contextSeverity) {
+    private SnippetRange determineSnippetRange(DbSession dbSession, ComponentDto file, int centerLine,
+            String contextSeverity) {
         if ("MEDIUM".equalsIgnoreCase(contextSeverity) || "HIGH".equalsIgnoreCase(contextSeverity)) {
             List<String> contents = loadFileContents(dbSession, file);
             int[] range = "HIGH".equalsIgnoreCase(contextSeverity)
-                ? findEnclosingClassRange(centerLine, contents)
-                : findEnclosingMethodRange(centerLine, contents);
+                    ? findEnclosingClassRange(centerLine, contents)
+                    : findEnclosingMethodRange(centerLine, contents);
             return new SnippetRange(Math.max(1, range[0]), Math.max(range[0], range[1]));
         }
         return new SnippetRange(Math.max(1, centerLine - 5), centerLine + 5);
@@ -185,9 +188,11 @@ public class IssueContextAction implements IssuesWsAction {
     }
 
     private record RuleCatalogInfo(String description, String contextSeverity) {
+
     }
 
     private record SnippetRange(int from, int to) {
+
     }
 
     private int[] findEnclosingMethodRange(int centerLine, List<String> lines) {
