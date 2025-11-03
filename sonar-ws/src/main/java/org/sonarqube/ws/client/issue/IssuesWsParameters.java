@@ -42,6 +42,7 @@ public class IssuesWsParameters {
   public static final String ACTION_PULL = "pull";
   public static final String ACTION_PULL_TAINT = "pull_taint";
   public static final String ACTION_ANTICIPATED_TRANSITIONS = "anticipated_transitions";
+  public static final String ACTION_CONTEXT = "context";
 
   public static final String PARAM_ISSUE = "issue";
   public static final String PARAM_IMPACT = "impact";
