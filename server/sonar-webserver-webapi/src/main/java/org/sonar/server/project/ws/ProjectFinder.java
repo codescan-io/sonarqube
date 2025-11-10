@@ -25,6 +25,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.server.ServerSide;
 import org.sonar.api.web.UserRole;
 import org.sonar.db.DbClient;
@@ -43,6 +46,30 @@ import static java.util.stream.Collectors.toSet;
 @ServerSide
 public class ProjectFinder {
 
+  private static final Logger logger = LoggerFactory.getLogger(ProjectFinder.class);
+
+  static class PocketWatch {
+    private final Logger logger;
+    private final long startTime;
+
+    PocketWatch(Logger logger) {
+      this.logger = logger;
+      this.startTime = System.currentTimeMillis();
+    }
+
+    long elapsedTime() {
+      return System.currentTimeMillis() - startTime;
+    }
+
+    void logStartTime() {
+      logger.info("Start time");
+    }
+
+    void logElapsedTime(String message) {
+      logger.info("{} - elapsed time: {} ms", message, elapsedTime());
+    }
+  }
+
   private final DbClient dbClient;
   private final UserSession userSession;
 
@@ -52,27 +79,42 @@ public class ProjectFinder {
   }
 
   public SearchResult search(DbSession dbSession, @Nullable String searchQuery) {
+    var pocketWatch = new PocketWatch(logger);
+    pocketWatch.logStartTime();
     List<ProjectDto> allProjects = dbClient.projectDao().selectProjects(dbSession);
+    pocketWatch.logElapsedTime("Query 1. Fetched all projects from DB");
 
     Set<String> projectsUserHasAccessTo = userSession.keepAuthorizedEntities(UserRole.SCAN, allProjects)
       .stream()
       .map(ProjectDto::getKey)
       .collect(toSet());
+    pocketWatch.logElapsedTime("Query 2. Computed projects user has access to");
 
     applyQueryAndPermissionFilter(searchQuery, allProjects, projectsUserHasAccessTo);
+    pocketWatch.logElapsedTime("Query 3. Applied query and permission filter");
     List<ProjectDto> projectsWithOrgLevelPermissions = searchProjectsWithOrgLevelPermissions(dbSession);
+    pocketWatch.logElapsedTime("Query 4. Fetched projects with org-level permissions");
     if (!projectsWithOrgLevelPermissions.isEmpty()) {
-      List<ProjectDto> uniqueProjects = projectsWithOrgLevelPermissions
-              .stream()
-              .filter(p -> !allProjects.contains(p))
-              .toList();
+//      Set<String> allProjectUuids = allProjects.stream()
+//              .map(ProjectDto::getUuid)
+//              .collect(toSet());
+//      List<ProjectDto> uniqueProjects = projectsWithOrgLevelPermissions
+//              .stream()
+//              .filter(p -> !allProjectUuids.contains(p.getUuid()))
+//              .toList();
+        List<ProjectDto> uniqueProjects = projectsWithOrgLevelPermissions
+                .stream()
+                .filter(p -> !allProjects.contains(p))
+                .toList();
       if (!uniqueProjects.isEmpty()) {
         allProjects.addAll(uniqueProjects);
       }
     }
+    pocketWatch.logElapsedTime("Query 5. Merged projects with org-level permissions");
     List<Project> resultProjects = allProjects.stream()
             .sorted(comparing(ProjectDto::getName, nullsFirst(String.CASE_INSENSITIVE_ORDER)))
             .map(p -> new Project(p.getKey(), p.getName())).collect(Collectors.toList());
+    pocketWatch.logElapsedTime("Query 6. Mapped to WS model");
     return new SearchResult(resultProjects);
   }
 
