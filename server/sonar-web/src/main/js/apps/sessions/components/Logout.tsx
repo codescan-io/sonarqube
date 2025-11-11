@@ -26,6 +26,7 @@ import { translate } from '../../../helpers/l10n';
 import { getBaseUrl } from '../../../helpers/system';
 
 export default function Logout() {
+ clearChatSession();
   React.useEffect(() => {
     logOut()
       .then(() => {
@@ -45,3 +46,12 @@ export default function Logout() {
     </CenteredLayout>
   );
 }
+
+// utils/chatStorage.ts
+export function clearChatSession() {
+   console.log("Chat messages cleared from sessionStorage on logout.");
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('chatMessages');  // clears chat only
+  }
+}
+

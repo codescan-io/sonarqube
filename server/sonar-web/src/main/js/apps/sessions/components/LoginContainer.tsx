@@ -100,7 +100,6 @@ export class LoginContainer extends React.PureComponent<Props, State> {
     }
 
   handleSuccessfulLogin = () => {
-    sessionStorage.removeItem("chatMessages");
     window.location.replace(getReturnUrl(this.props.location));
   };
 
