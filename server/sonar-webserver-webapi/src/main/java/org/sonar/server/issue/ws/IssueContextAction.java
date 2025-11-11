@@ -20,7 +20,10 @@
 package org.sonar.server.issue.ws;
 
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.ACTION_CONTEXT;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_COMPONENT_KEY;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_CONTEXT_SEVERITY;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_RULE;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,14 +72,14 @@ public class IssueContextAction implements IssuesWsAction {
         action.createParam(PARAM_ISSUE).setDescription("Issue key").setRequired(true)
                 .setExampleValue("AU-Tpxb--iU5OvuD2FLy");
 
-        action.createParam("rule").setDescription("Optional rule key. If not provided, taken from the issue")
+        action.createParam(PARAM_RULE).setDescription("Optional rule key. If not provided, taken from the issue")
                 .setRequired(false).setExampleValue("java:S100");
 
-        action.createParam("Component Key")
+        action.createParam(PARAM_COMPONENT_KEY)
                 .setDescription("Optional component key. If not provided, taken from the issue")
                 .setRequired(false).setExampleValue("abc/sample.cls");
 
-        action.createParam("Context Severity")
+        action.createParam(PARAM_CONTEXT_SEVERITY)
                 .setDescription("Optional severity of context. If not provided, taken from the issue")
                 .setRequired(false).setExampleValue("MEDIUM");
     }
