@@ -62,7 +62,7 @@ public class ComponentIndexSearchTest {
     ProjectData project = db.components().insertPrivateProject(p -> p.setName("Project Shiny name"));
     index(ignoredProject.getProjectDto(), project.getProjectDto());
 
-    SearchIdResult<String> result = underTest.search(ComponentQuery.builder().setQuery("shiny").build(), new SearchOptions());
+    SearchIdResult<String> result = underTest.searchV2(ComponentQuery.builder().setQuery("shiny").build(), new SearchOptions());
 
     assertThat(result.getUuids()).containsExactlyInAnyOrder(project.projectUuid());
   }
@@ -74,7 +74,7 @@ public class ComponentIndexSearchTest {
     db.components().insertPrivateProject(p -> p.setKey("another-shiny-project")).getMainBranchComponent();
     index(ignoredProject.getProjectDto(), project.getProjectDto());
 
-    SearchIdResult<String> result = underTest.search(ComponentQuery.builder().setQuery("shiny-project").build(), new SearchOptions());
+    SearchIdResult<String> result = underTest.searchV2(ComponentQuery.builder().setQuery("shiny-project").build(), new SearchOptions());
 
     assertThat(result.getUuids()).containsExactlyInAnyOrder(project.projectUuid());
   }
@@ -86,7 +86,7 @@ public class ComponentIndexSearchTest {
     index(project.getProjectDto());
     index(db.components().getPortfolioDto(portfolio));
 
-    SearchIdResult<String> result = underTest.search(ComponentQuery.builder().setQualifiers(singleton(ComponentQualifiers.PROJECT)).build(), new SearchOptions());
+    SearchIdResult<String> result = underTest.searchV2(ComponentQuery.builder().setQualifiers(singleton(ComponentQualifiers.PROJECT)).build(), new SearchOptions());
 
     assertThat(result.getUuids()).containsExactlyInAnyOrder(project.projectUuid());
   }
@@ -98,7 +98,7 @@ public class ComponentIndexSearchTest {
     ProjectData project1 = db.components().insertPrivateProject(p -> p.setName("Project 1"));
     index(project1.getProjectDto(), project2.getProjectDto(), project3.getProjectDto());
 
-    SearchIdResult<String> result = underTest.search(ComponentQuery.builder().build(), new SearchOptions());
+    SearchIdResult<String> result = underTest.searchV2(ComponentQuery.builder().build(), new SearchOptions());
 
     assertThat(result.getUuids()).containsExactly(project1.projectUuid(),
       project2.projectUuid(),
@@ -110,10 +110,10 @@ public class ComponentIndexSearchTest {
     List<ProjectData> projects = IntStream.range(0, 9)
       .mapToObj(i -> db.components().insertPrivateProject(p -> p.setName("project " + i)))
       .toList();
-    ProjectDto[] projectDtos = projects.stream().map(p -> p.getProjectDto()).toArray(ProjectDto[]::new);
+    ProjectDto[] projectDtos = projects.stream().map(ProjectData::getProjectDto).toArray(ProjectDto[]::new);
     index(projectDtos);
 
-    SearchIdResult<String> result = underTest.search(ComponentQuery.builder().build(), new SearchOptions().setPage(2, 3));
+    SearchIdResult<String> result = underTest.searchV2(ComponentQuery.builder().build(), new SearchOptions().setPage(2, 3));
 
     assertThat(result.getUuids()).containsExactlyInAnyOrder(projects.get(3).projectUuid(),
       projects.get(4).projectUuid(),
@@ -129,7 +129,7 @@ public class ComponentIndexSearchTest {
     authorizationIndexerTester.allowOnlyAnyone(project1);
     authorizationIndexerTester.allowOnlyAnyone(project2);
 
-    SearchIdResult<String> result = underTest.search(ComponentQuery.builder().build(), new SearchOptions());
+    SearchIdResult<String> result = underTest.searchV2(ComponentQuery.builder().build(), new SearchOptions());
 
     assertThat(result.getUuids()).containsExactlyInAnyOrder(project1.getUuid(), project2.getUuid())
       .doesNotContain(unauthorizedProject.getUuid());

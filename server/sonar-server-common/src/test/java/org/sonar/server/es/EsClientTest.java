@@ -37,7 +37,6 @@ import org.apache.http.HttpHost;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -52,111 +51,114 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class EsClientTest {
-  private static final String EXAMPLE_CLUSTER_STATS_JSON = "{" +
-    "  \"status\": \"yellow\"," +
-    "  \"nodes\": {" +
-    "    \"count\": {" +
-    "      \"total\": 3" +
-    "    }" +
-    "  }" +
-    "}";
+  private static final String EXAMPLE_CLUSTER_STATS_JSON = """
+    {
+      "status": "yellow",
+      "nodes": {
+        "count": {
+          "total": 3
+        }
+      }
+    }""";
 
-  private static final String EXAMPLE_INDICES_STATS_JSON = "{" +
-    "  \"indices\": {" +
-    "    \"index-1\": {" +
-    "      \"primaries\": {" +
-    "        \"docs\": {" +
-    "          \"count\": 1234" +
-    "        }," +
-    "        \"store\": {" +
-    "          \"size_in_bytes\": 56789" +
-    "        }" +
-    "      }," +
-    "      \"shards\": {" +
-    "        \"shard-1\": {}," +
-    "        \"shard-2\": {}" +
-    "      }" +
-    "    }," +
-    "    \"index-2\": {" +
-    "      \"primaries\": {" +
-    "        \"docs\": {" +
-    "          \"count\": 42" +
-    "        }," +
-    "        \"store\": {" +
-    "          \"size_in_bytes\": 123" +
-    "        }" +
-    "      }," +
-    "      \"shards\": {" +
-    "        \"shard-1\": {}," +
-    "        \"shard-2\": {}" +
-    "      }" +
-    "    }" +
-    "  }" +
-    "}";
+  private static final String EXAMPLE_INDICES_STATS_JSON = """
+    {
+      "indices": {
+        "index-1": {
+          "primaries": {
+            "docs": {
+              "count": 1234
+            },
+            "store": {
+              "size_in_bytes": 56789
+            }
+          },
+          "shards": {
+            "shard-1": {},
+            "shard-2": {}
+          }
+        },
+        "index-2": {
+          "primaries": {
+            "docs": {
+              "count": 42
+            },
+            "store": {
+              "size_in_bytes": 123
+            }
+          },
+          "shards": {
+            "shard-1": {},
+            "shard-2": {}
+          }
+        }
+      }
+    }""";
 
-  private final static String EXAMPLE_NODE_STATS_JSON = "{" +
-    "  \"nodes\": {" +
-    "    \"YnKPZcbGRamRQGxjErLWoQ\": {" +
-    "      \"name\": \"sonarqube\"," +
-    "      \"host\": \"127.0.0.1\"," +
-    "      \"indices\": {" +
-    "        \"docs\": {" +
-    "          \"count\": 13557" +
-    "        }," +
-    "        \"store\": {" +
-    "          \"size_in_bytes\": 8670970" +
-    "        }," +
-    "        \"query_cache\": {" +
-    "          \"memory_size_in_bytes\": 0" +
-    "        }," +
-    "        \"fielddata\": {" +
-    "          \"memory_size_in_bytes\": 4880" +
-    "        }," +
-    "        \"translog\": {" +
-    "          \"size_in_bytes\": 8274137" +
-    "        }," +
-    "        \"request_cache\": {" +
-    "          \"memory_size_in_bytes\": 0" +
-    "        }" +
-    "      }," +
-    "      \"process\": {" +
-    "        \"open_file_descriptors\": 296," +
-    "        \"max_file_descriptors\": 10240," +
-    "        \"cpu\": {" +
-    "          \"percent\": 7" +
-    "        }" +
-    "      }," +
-    "      \"jvm\": {" +
-    "        \"mem\": {" +
-    "          \"heap_used_in_bytes\": 158487160," +
-    "          \"heap_used_percent\": 30," +
-    "          \"heap_max_in_bytes\": 518979584," +
-    "          \"non_heap_used_in_bytes\": 109066592" +
-    "        }," +
-    "        \"threads\": {" +
-    "          \"count\": 70" +
-    "        }" +
-    "      }," +
-    "      \"fs\": {" +
-    "        \"total\": {" +
-    "          \"total_in_bytes\": 250685575168," +
-    "          \"free_in_bytes\": 142843138048," +
-    "          \"available_in_bytes\": 136144027648" +
-    "        }" +
-    "      }," +
-    "      \"breakers\": {" +
-    "        \"request\": {" +
-    "          \"limit_size_in_bytes\": 311387750," +
-    "          \"estimated_size_in_bytes\": 0" +
-    "        }," +
-    "        \"fielddata\": {" +
-    "          \"limit_size_in_bytes\": 207591833," +
-    "          \"estimated_size_in_bytes\": 4880" +
-    "        }" +
-    "      }" +
-    "    }" +
-    "  }" +
-    "}";
+  private static final String EXAMPLE_NODE_STATS_JSON = """
+    {
+      "nodes": {
+        "YnKPZcbGRamRQGxjErLWoQ": {
+          "name": "sonarqube",
+          "host": "127.0.0.1",
+          "indices": {
+            "docs": {
+              "count": 13557
+            },
+            "store": {
+              "size_in_bytes": 8670970
+            },
+            "query_cache": {
+              "memory_size_in_bytes": 0
+            },
+            "fielddata": {
+              "memory_size_in_bytes": 4880
+            },
+            "translog": {
+              "size_in_bytes": 8274137
+            },
+            "request_cache": {
+              "memory_size_in_bytes": 0
+            }
+          },
+          "process": {
+            "open_file_descriptors": 296,
+            "max_file_descriptors": 10240,
+            "cpu": {
+              "percent": 7
+            }
+          },
+          "jvm": {
+            "mem": {
+              "heap_used_in_bytes": 158487160,
+              "heap_used_percent": 30,
+              "heap_max_in_bytes": 518979584,
+              "non_heap_used_in_bytes": 109066592
+            },
+            "threads": {
+              "count": 70
+            }
+          },
+          "fs": {
+            "total": {
+              "total_in_bytes": 250685575168,
+              "free_in_bytes": 142843138048,
+              "available_in_bytes": 136144027648
+            }
+          },
+          "breakers": {
+            "request": {
+              "limit_size_in_bytes": 311387750,
+              "estimated_size_in_bytes": 0
+            },
+            "fielddata": {
+              "limit_size_in_bytes": 207591833,
+              "estimated_size_in_bytes": 4880
+            }
+          }
+        }
+      }
+    }""";
 
   @Rule
   public MockWebServer mockWebServer = new MockWebServer();
@@ -164,9 +166,8 @@ public class EsClientTest {
   public TemporaryFolder temp = new TemporaryFolder();
 
   RestClient restClient = mock(RestClient.class);
-  RestHighLevelClient client = new EsClient.MinimalRestHighLevelClient(restClient);
 
-  EsClient underTest = new EsClient(client);
+  EsClient underTest = new EsClient(restClient);
 
   @Test
   public void should_close_client() throws IOException {
@@ -264,12 +265,13 @@ public class EsClientTest {
       .setBody(EXAMPLE_CLUSTER_STATS_JSON)
       .setHeader("Content-Type", "application/json"));
 
-    String password = "test-password";
-    EsClient underTest = new EsClient(password, null, null, new HttpHost(mockWebServer.getHostName(), mockWebServer.getPort()));
+    String password = "test-elasticsearch-password";
+    String expectedAuth = java.util.Base64.getEncoder().encodeToString(("elastic:" + password).getBytes());
+    EsClient esClient = new EsClient(password, null, null, new HttpHost(mockWebServer.getHostName(), mockWebServer.getPort()));
 
-    assertThat(underTest.clusterStats()).isNotNull();
+    assertThat(esClient.clusterStats()).isNotNull();
 
-    assertThat(mockWebServer.takeRequest().getHeader("Authorization")).isEqualTo("Basic ZWxhc3RpYzp0ZXN0LXBhc3N3b3Jk");
+    assertThat(mockWebServer.takeRequest().getHeader("Authorization")).isEqualTo("Basic " + expectedAuth);
   }
 
   @Test
@@ -280,15 +282,15 @@ public class EsClientTest {
       .setHeader("Content-Type", "application/json"));
 
     Path keyStorePath = temp.newFile("keystore.p12").toPath();
-    String password = "password";
+    String password = "test-keystore-password";
 
     HandshakeCertificates certificate = createCertificate(mockWebServer.getHostName(), keyStorePath, password);
     mockWebServer.useHttps(certificate.sslSocketFactory(), false);
 
-    EsClient underTest = new EsClient(null, keyStorePath.toString(), password,
+    EsClient esClient = new EsClient(null, keyStorePath.toString(), password,
       new HttpHost(mockWebServer.getHostName(), mockWebServer.getPort(), "https"));
 
-    assertThat(underTest.clusterStats()).isNotNull();
+    assertThat(esClient.clusterStats()).isNotNull();
   }
 
   static HandshakeCertificates createCertificate(String hostName, Path keyStorePath, String password) throws GeneralSecurityException, IOException {

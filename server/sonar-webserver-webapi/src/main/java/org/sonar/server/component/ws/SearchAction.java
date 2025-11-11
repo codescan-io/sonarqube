@@ -63,7 +63,8 @@ import static org.sonar.server.es.SearchOptions.MAX_PAGE_SIZE;
 import static org.sonar.server.ws.WsParameterBuilder.createQualifiersParameter;
 import static org.sonar.server.ws.WsParameterBuilder.QualifierParameterContext.newQualifierParameterContext;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
-import static org.sonarqube.ws.client.component.ComponentsWsParameters.*;
+import static org.sonarqube.ws.client.component.ComponentsWsParameters.ACTION_SEARCH;
+import static org.sonarqube.ws.client.component.ComponentsWsParameters.PARAM_QUALIFIERS;
 
 public class SearchAction implements ComponentsWsAction {
   private static final ImmutableSet<String> VALID_QUALIFIERS = ImmutableSet.<String>builder()
@@ -138,7 +139,7 @@ public class SearchAction implements ComponentsWsAction {
       OrganizationDto organization = getOrganization(dbSession, request);
       userSession.checkMembership(organization);
       ComponentQuery esQuery = buildEsQuery(organization, request);
-      SearchIdResult<String> results = componentIndex.search(esQuery, new SearchOptions().setPage(request.getPage(), request.getPageSize()));
+      SearchIdResult<String> results = componentIndex.searchV2(esQuery, new SearchOptions().setPage(request.getPage(), request.getPageSize()));
 
       List<EntityDto> components = dbClient.entityDao().selectByUuids(dbSession, results.getUuids());
 

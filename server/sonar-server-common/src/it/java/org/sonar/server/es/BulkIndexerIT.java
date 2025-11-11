@@ -19,16 +19,12 @@
  */
 package org.sonar.server.es;
 
-import java.io.IOException;
+import co.elastic.clients.elasticsearch.indices.GetIndicesSettingsResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.Rule;
@@ -203,13 +199,9 @@ public class BulkIndexerIT {
   }
 
   private int replicas() {
-    try {
-      GetSettingsResponse settingsResp = es.client().nativeClient().indices()
-          .getSettings(new GetSettingsRequest().indices(INDEX), RequestOptions.DEFAULT);
-      return Integer.parseInt(settingsResp.getSetting(INDEX, IndexMetadata.SETTING_NUMBER_OF_REPLICAS));
-    } catch (IOException e) {
-      throw new IllegalStateException("Could not get index settings", e);
-    }
+    GetIndicesSettingsResponse settingsResp =
+      es.client().getSettingsV2(req -> req.index(INDEX));
+    return Integer.parseInt(settingsResp.get(INDEX).settings().index().numberOfReplicas());
   }
 
   private IndexRequest newIndexRequest(int intField) {
