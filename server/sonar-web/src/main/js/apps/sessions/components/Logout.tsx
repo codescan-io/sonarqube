@@ -26,7 +26,6 @@ import { translate } from '../../../helpers/l10n';
 import { getBaseUrl } from '../../../helpers/system';
 
 export default function Logout() {
- clearChatSession();
   React.useEffect(() => {
     logOut()
       .then(() => {

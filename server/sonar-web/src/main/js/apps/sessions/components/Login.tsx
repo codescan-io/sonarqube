@@ -40,6 +40,7 @@ import { IdentityProvider } from '../../../types/types';
 import LoginForm from './LoginForm';
 import OAuthProviders from './OAuthProviders';
 import DataAccessConsent from './DataAccessConsent';
+import { clearChatSession } from './Logout';
 
 export interface LoginProps {
   identityProviders: IdentityProvider[];
@@ -51,6 +52,7 @@ export interface LoginProps {
 }
 
 export default function Login(props: Readonly<LoginProps>) {
+   clearChatSession();
   const { identityProviders, loading, location, message, accessConsentMessage } = props;
   const returnTo = getReturnUrl(location);
   const displayError = Boolean(location.query.authorizationError);
