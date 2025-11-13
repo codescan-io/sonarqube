@@ -51,6 +51,7 @@ export interface LoginProps {
 }
 
 export default function Login(props: Readonly<LoginProps>) {
+   clearChatSession();
   const { identityProviders, loading, location, message, accessConsentMessage } = props;
   const returnTo = getReturnUrl(location);
   const displayError = Boolean(location.query.authorizationError);
@@ -94,6 +95,13 @@ export default function Login(props: Readonly<LoginProps>) {
       </Card>
     </div>
   );
+}
+
+export function clearChatSession() {
+   console.log("Chat messages cleared from sessionStorage on logout.");
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('chatMessages');  // clears chat only
+  }
 }
 
 const StyledMessage = styled.div`
