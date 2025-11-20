@@ -169,7 +169,6 @@ message Issue {
   optional string cveId = 45;
   // Codescan customization:
   optional Sort sort = 50;
-  optional string issueMarkedBy = 51;
 }
 
 message Sort {
