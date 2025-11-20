@@ -179,6 +179,7 @@ public class SearchResponseFormat {
   private void addMandatoryFieldsToIssueBuilder(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data, Map<String, Object[]> issueMap, boolean showAuthor) {
     issueBuilder.setKey(dto.getKey());
     issueBuilder.setType(Common.RuleType.forNumber(dto.getType()));
+    boolean aiCodeFixEnabled = data.getRulesByUuid().get(dto.getRuleUuid()).getAiCodeFixEnabled();
 
     CleanCodeAttribute cleanCodeAttribute = dto.getEffectiveCleanCodeAttribute();
     if (cleanCodeAttribute != null) {
@@ -196,6 +197,7 @@ public class SearchResponseFormat {
     ComponentDto component = data.getComponentByUuid(dto.getComponentUuid());
     issueBuilder.setOrganization(data.getOrganizationKey(component.getOrganizationUuid()));
     issueBuilder.setComponent(component.getKey());
+    issueBuilder.setAiCodeFixEnabled(aiCodeFixEnabled);
     setBranchOrPr(component, issueBuilder, data);
     ComponentDto branch = data.getComponentByUuid(dto.getProjectUuid());
     if (branch != null) {
@@ -351,6 +353,7 @@ public class SearchResponseFormat {
     if (lang != null) {
       builder.setLangName(lang.getName());
     }
+    builder.setAiCodeFixEnabled(rule.getAiCodeFixEnabled());
     return builder;
   }
 
