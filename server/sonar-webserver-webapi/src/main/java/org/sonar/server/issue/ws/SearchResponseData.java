@@ -60,6 +60,7 @@ public class SearchResponseData {
   private final Set<String> userOrganizationUuids = new HashSet<>();
   private final Map<String, BranchDto> branchesByUuid = new HashMap<>();
   private final Map<String, ProjectDto> projectsByUuid = new HashMap<>();
+  private final Map<String, RuleDto> rulesByUuid = new HashMap<>();
 
   public SearchResponseData() {
     this.issues = List.of();
@@ -98,6 +99,15 @@ public class SearchResponseData {
 
   public List<RuleDto> getRules() {
     return rules;
+  }
+
+  public Map<String, RuleDto> getRulesByUuid() {
+    if (rulesByUuid.isEmpty()) {
+      for (RuleDto rule : rules) {
+        rulesByUuid.put(rule.getUuid(), rule);
+      }
+    }
+    return rulesByUuid;
   }
 
   public String getOrganizationKey(String organizationUuid) {
