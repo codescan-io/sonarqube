@@ -20,16 +20,19 @@
 
 import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
-import { FormField, InputTextArea, Modal, Note, SelectionCard } from '~design-system';
+import { useState } from 'react';
+import { DatePicker, FormField, InputTextArea, Modal, Note, SelectionCard } from '~design-system';
 import FormattingTips from '../../../../components/common/FormattingTips';
 import { translate } from '../../../../helpers/l10n';
 import { HotspotStatusOption } from '../../../../types/security-hotspots';
 
 export interface StatusSelectionRendererProps {
   comment?: string;
+  expiryDate?: string;
   loading: boolean;
   onCancel: () => void;
   onCommentChange: (comment: string) => void;
+  onExpiryDateChange: (date?: string) => void;
   onStatusChange: (statusOption: HotspotStatusOption) => void;
   onSubmit: () => Promise<void>;
   status: HotspotStatusOption;
@@ -37,7 +40,8 @@ export interface StatusSelectionRendererProps {
 }
 
 export default function StatusSelectionRenderer(props: StatusSelectionRendererProps) {
-  const { comment, loading, status, submitDisabled } = props;
+  const { comment, expiryDate, loading, status, submitDisabled } = props;
+  const [date, setDate] = useState<Date | undefined>(expiryDate ? new Date(expiryDate) : undefined);
 
   const renderOption = (statusOption: HotspotStatusOption) => {
     return (
@@ -52,6 +56,33 @@ export default function StatusSelectionRenderer(props: StatusSelectionRendererPr
         <Note className="sw-mt-1 sw-mr-12">
           {translate('hotspots.status_option', statusOption, 'description')}
         </Note>
+        {statusOption === HotspotStatusOption.EXCEPTION &&
+        <div style={{ marginTop: '40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+<DatePicker
+      clearButtonLabel="Clear"
+  minDate={(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);        // today + 1
+        return d;
+      })()}
+      maxDate={new Date(2050, 11, 31)}  // Maximum date
+      placeholder="No Expiry"
+      name="myDate"
+      value={date}  // Pass Date or undefined, not a string
+      onChange={(d: Date) => { setDate(d); props.onExpiryDateChange(d?.toISOString().split('T')[0]); }}
+    />
+
+    {date && (
+      <div style={{ marginLeft: '16px' }}>
+        {`Expires in ${Math.ceil(
+          (date.getTime() - Date.now()) /
+            (1000 * 60 * 60 * 24)
+        )} days`}
+      </div>
+    )}
+
+
+        </div>}
       </SelectionCard>
     );
   };
@@ -70,7 +101,7 @@ export default function StatusSelectionRenderer(props: StatusSelectionRendererPr
           {renderOption(HotspotStatusOption.ACKNOWLEDGED)}
           {renderOption(HotspotStatusOption.EXCEPTION)}
           {renderOption(HotspotStatusOption.FIXED)}
-          {renderOption(HotspotStatusOption.SAFE)}
+          {renderOption(HotspotStatusOption.SAFE)}  
           <FormField
             htmlFor="comment-textarea"
             label={translate('hotspots.status.add_comment_optional')}

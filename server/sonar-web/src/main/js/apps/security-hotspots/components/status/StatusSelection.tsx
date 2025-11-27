@@ -43,6 +43,7 @@ export default function StatusSelection(props: Props) {
   const [loading, setLoading] = React.useState(false);
   const [status, setStatus] = React.useState(initialStatus);
   const [comment, setComment] = React.useState('');
+  const [expiryDate, setExpiryDate] = React.useState<string | undefined>(undefined);
 
   const submitDisabled = status === initialStatus;
 
@@ -55,6 +56,7 @@ export default function StatusSelection(props: Props) {
         await setSecurityHotspotStatus(hotspot.key, {
           ...getStatusAndResolutionFromStatusOption(status),
           comment: comment || undefined,
+          hotspotExpiryDate: expiryDate,
         });
         await props.onStatusOptionChange(status);
 
@@ -68,11 +70,13 @@ export default function StatusSelection(props: Props) {
   return (
     <StatusSelectionRenderer
       comment={comment}
+      expiryDate={expiryDate}
       loading={loading}
       onCommentChange={(comment) => setComment(comment)}
       onStatusChange={(status) => {
         setStatus(status);
       }}
+      onExpiryDateChange={setExpiryDate}
       onSubmit={handleSubmit}
       onCancel={props.onClose}
       status={status}

@@ -108,7 +108,7 @@ public class IssueQuery {
   private final String organizationUuid;
 
   private final Collection<String> cvss;
-
+    private final long hotspotExpiryDate;
   private  final Collection<String> allowedOrgUuids;
 
   private IssueQuery(Builder builder) {
@@ -164,6 +164,7 @@ public class IssueQuery {
     this.cleanCodeAttributesCategories = defaultCollection(builder.cleanCodeAttributesCategories);
     this.organizationUuid = builder.organizationUuid;
     this.cvss = defaultCollection(builder.cvss);
+    this.hotspotExpiryDate = builder.hotspotExpiryDate;
  
     this.allowedOrgUuids = builder.allowedOrgUuids;
   }
@@ -298,6 +299,10 @@ public class IssueQuery {
 
   public Collection<String> cvss() {
     return cvss;
+  }
+
+  public long hotspotExpiryDate() {
+    return hotspotExpiryDate;
   }
 
   public Collection<String> sonarsourceSecurity() {
@@ -461,7 +466,7 @@ public class IssueQuery {
 
     private String organizationUuid;
     private Collection<String> allowedOrgUuids;
-    
+    private long hotspotExpiryDate ;
     private Builder() {
 
     }

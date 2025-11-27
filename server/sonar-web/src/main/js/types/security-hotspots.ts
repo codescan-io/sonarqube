@@ -104,6 +104,7 @@ export interface Hotspot {
   textRange?: TextRange;
   updateDate: string;
   users: UserBase[];
+  hotspotExpiryDate?:string;
 }
 
 export interface HotspotComponent {
@@ -153,6 +154,7 @@ export interface ReviewHistoryElement {
   user: Pick<UserBase, 'active' | 'avatar' | 'name'>;
 }
 
+
 export enum ReviewHistoryType {
   Creation,
   Diff,
@@ -169,6 +171,7 @@ export interface HotspotSetStatusRequest {
   comment?: string;
   resolution?: HotspotResolution;
   status: HotspotStatus;
+  hotspotExpiryDate?: string;
 }
 
 export interface HotspotAssignRequest {

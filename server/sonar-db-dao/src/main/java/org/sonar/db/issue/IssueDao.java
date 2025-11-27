@@ -189,4 +189,9 @@ public class IssueDao implements Dao {
     return mapper(dbSession).selectIssueKeysByQuery(issueListQuery, pagination);
   }
 
+  public void updateHotspotExceptionExpiryDate(DbSession dbSession, String issueKey, Long expiryDate) {
+    System.out.println("Updating hotspot exception expiry date for issueKey: " + issueKey + " to expiryDate: " + expiryDate);
+    mapper(dbSession).updateHotspotExceptionExpiryDate(issueKey, expiryDate);
+  }
+
 }
