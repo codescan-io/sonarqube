@@ -45,6 +45,7 @@ import org.sonar.server.source.SourceService;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.ai.CsAiRuleCatalogDto;
 import org.sonar.db.ai.CsAiRulesCatalogMapper;
+import org.sonar.db.component.BranchDto;
 
 public class IssueContextAction implements IssuesWsAction {
 
@@ -91,16 +92,24 @@ public class IssueContextAction implements IssuesWsAction {
 
         try (DbSession dbSession = dbClient.openSession(false); JsonWriter json = response.newJsonWriter()) {
             IssueDto issue = issueFinder.getByKey(dbSession, issueKey);
-            ComponentDto file = componentFinder.getByKey(dbSession, issue.getComponentKey());
-            userSession.checkComponentPermission(UserRole.CODEVIEWER, file);
+            ComponentDto componentDto = componentFinder.getByKey(dbSession, issue.getComponentKey());
+            userSession.checkComponentPermission(UserRole.CODEVIEWER, componentDto);
 
-            String ruleKey = getRuleKey(request, issue);
-            RuleCatalogInfo catalogInfo = lookupRuleCatalog(dbSession, ruleKey);
+            RuleCatalogInfo catalogInfo = lookupRuleCatalog(dbSession, issue.getRuleRepo(), issue.getRule());
             int centerLine = getCenterLine(issue);
-            SnippetRange snippetRange = determineSnippetRange(dbSession, file, centerLine, catalogInfo.contextSeverity);
-            String snippet = extractSnippet(dbSession, file, snippetRange);
+            SnippetRange snippetRange = determineSnippetRange(dbSession, componentDto, centerLine,
+                    catalogInfo.contextSeverity);
+            String snippet = extractSnippet(dbSession, componentDto, snippetRange);
+            String ruleKey = getRuleKey(request, issue);
 
-            writeResponse(json, issueKey, ruleKey, issue.getComponentKey(), centerLine, catalogInfo, snippet);
+            // Resolve branch name
+            String branchName = null;
+            BranchDto branchDto = dbClient.branchDao().selectByUuid(dbSession, issue.getProjectUuid()).orElse(null);
+            if (branchDto != null) {
+                branchName = branchDto.isMain() ? "main" : branchDto.getBranchKey();
+            }
+
+            writeResponse(json, issue, ruleKey, catalogInfo, snippet, branchName, snippetRange);
         }
     }
 
@@ -115,14 +124,14 @@ public class IssueContextAction implements IssuesWsAction {
         return null;
     }
 
-    private RuleCatalogInfo lookupRuleCatalog(DbSession dbSession, String ruleKey) {
+    private RuleCatalogInfo lookupRuleCatalog(DbSession dbSession, String language, String ruleKey) {
         if (ruleKey == null) {
-            return new RuleCatalogInfo(null, null);
+            return new RuleCatalogInfo("", "");
         }
         CsAiRulesCatalogMapper mapper = dbSession.getMapper(CsAiRulesCatalogMapper.class);
-        CsAiRuleCatalogDto dto = mapper.selectByRuleKey(ruleKey);
+        CsAiRuleCatalogDto dto = mapper.selectByRuleKey(language, ruleKey);
         if (dto == null) {
-            return new RuleCatalogInfo(null, null);
+            return new RuleCatalogInfo("", "");
         }
         return new RuleCatalogInfo(dto.getDescription(), dto.getContextSeverity());
     }
@@ -158,6 +167,7 @@ public class IssueContextAction implements IssuesWsAction {
     private String extractSnippet(DbSession dbSession, ComponentDto file, SnippetRange range) {
         Optional<Iterable<Line>> optLines = sourceService.getLines(dbSession, file.uuid(), range.from, range.to);
         StringBuilder snippetBuilder = new StringBuilder();
+        int counter = 1;
         if (optLines.isPresent()) {
             boolean first = true;
             for (Line l : optLines.get()) {
@@ -165,29 +175,62 @@ public class IssueContextAction implements IssuesWsAction {
                     snippetBuilder.append('\n');
                 }
                 first = false;
-                snippetBuilder.append(l.getSource());
+                snippetBuilder.append("line ").append(counter++).append(" - ").append(l.getSource());
             }
         }
         return snippetBuilder.toString();
     }
 
-    private void writeResponse(JsonWriter json, String issueKey, String ruleKey, String componentKey,
-            int centerLine, RuleCatalogInfo catalogInfo, String snippet) {
+    private void writeResponse(JsonWriter json, IssueDto issueDto, String ruleKey, RuleCatalogInfo catalogInfo,
+            String snippet, String branchName, SnippetRange snippetRange) {
+        // Derive projectKey and sourceFolder from componentKey
+        DerivedComponentInfo componentInfo = deriveFromComponentKey(issueDto.getComponentKey());
+        int centerLine = getCenterLine(issueDto);
+
         json.beginObject();
-        json.prop("issueKey", issueKey);
-        if (ruleKey != null) {
-            json.prop("ruleKey", ruleKey);
-        }
-        json.prop("componentKey", componentKey);
-        json.prop("line", centerLine);
+        json.prop("repo_full_name", issueDto.getComponentKey());
+        json.prop("branch", branchName);
+        json.prop("ruleKey", ruleKey);
+        json.prop("issueKey", issueDto.getKey());
+        json.prop("target_file", componentInfo.sourceFolder);
+        json.prop("violation_lines", centerLine - snippetRange.from + "");
+        json.prop("guard_policy", "loose");
+        json.prop("sourceSnippetStartLine", snippetRange.from);
+        json.prop("sourceSnippetEndLine", snippetRange.to);
+        json.prop("snippetViolationLine", (long) centerLine - snippetRange.from);
+        json.prop("projectKey", componentInfo.projectKey);
         if (catalogInfo.description != null) {
             json.prop("ruleDescription", catalogInfo.description);
         }
         if (catalogInfo.contextSeverity != null) {
             json.prop("contextSeverity", catalogInfo.contextSeverity);
         }
-        json.prop("snippet", snippet);
+        json.prop("automation_mode", false);
+        json.prop("codesnippet", snippet);
         json.endObject();
+    }
+
+    private DerivedComponentInfo deriveFromComponentKey(String componentKey) {
+        if (componentKey == null) {
+            return new DerivedComponentInfo(null, null);
+        }
+        int sep = componentKey.indexOf(':');
+        String proj = sep > 0 ? componentKey.substring(0, sep) : "";
+        String path = sep > 0 && sep + 1 < componentKey.length() ? componentKey.substring(sep + 1) : null;
+        String folder = "";
+        if (path != null) {
+            int slashIdx = path.lastIndexOf('/');
+            if (slashIdx > 0) {
+                folder = path.substring(0, slashIdx);
+            } else {
+                folder = "";
+            }
+        }
+        return new DerivedComponentInfo(proj, folder);
+    }
+
+    private record DerivedComponentInfo(String projectKey, String sourceFolder) {
+
     }
 
     private record RuleCatalogInfo(String description, String contextSeverity) {

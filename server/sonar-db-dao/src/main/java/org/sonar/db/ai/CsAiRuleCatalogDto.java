@@ -22,6 +22,7 @@ package org.sonar.db.ai;
 public class CsAiRuleCatalogDto {
 
     private String ruleKey;
+    private String language;
     private String description;
     private String contextSeverity;
 
@@ -31,6 +32,15 @@ public class CsAiRuleCatalogDto {
 
     public CsAiRuleCatalogDto setRuleKey(String ruleKey) {
         this.ruleKey = ruleKey;
+        return this;
+    }
+
+    public String getLanguage() {
+        return language;
+    }
+
+    public CsAiRuleCatalogDto setLanguage(String language) {
+        this.language = language;
         return this;
     }
 

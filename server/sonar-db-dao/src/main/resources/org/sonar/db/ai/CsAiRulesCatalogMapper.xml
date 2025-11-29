@@ -4,14 +4,15 @@
 
   <resultMap id="RuleCatalogResult" type="org.sonar.db.ai.CsAiRuleCatalogDto">
     <result column="rule_key" property="ruleKey"/>
+    <result column="language" property="language"/>
     <result column="description" property="description"/>
     <result column="context_severity" property="contextSeverity"/>
   </resultMap>
 
   <select id="selectByRuleKey" parameterType="string" resultMap="RuleCatalogResult">
-    select rule_key, description, context_severity
+    select rule_key, language, description, context_severity
     from cs_ai_rules_catalog
-    where rule_key = #{ruleKey}
+    where rule_key = #{ruleKey} and language = #{language}
   </select>
 
 </mapper>
