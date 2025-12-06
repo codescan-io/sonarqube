@@ -17,14 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-/*
- * SonarQube
- */
-package org.sonar.db.ai;
 
-import org.apache.ibatis.annotations.Param;
+import { SourceLine } from '../../types/types';
 
-public interface CsAiRulesCatalogMapper {
-
-    CsAiRuleCatalogDto selectByRuleKey(@Param("language") String language, @Param("ruleKey") String ruleKey);
+export interface DiffSourceLine extends SourceLine {
+  isRemoved?: boolean;
+  isAdded?: boolean;
+  originalLineNumber?: number; // Line number in original file (for removed/unchanged lines)
+  modifiedLineNumber?: number; // Line number in modified file (for added/unchanged lines)
+  uniqueId: string; // Added for unique identification
 }
+
+export interface SnippetRange {
+  start: number;
+  end: number;
+}
+

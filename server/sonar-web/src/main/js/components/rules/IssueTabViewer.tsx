@@ -47,6 +47,7 @@ interface IssueTabViewerProps extends CurrentUserContextInterface {
   currentUser: CurrentUser;
   cveId?: string;
   extendedDescription?: string;
+  fixDiffContent?: React.ReactNode;
   issue: Issue;
   location: Location;
   onIssueChange: (issue: Issue) => void;
@@ -73,6 +74,7 @@ export interface Tab {
 
 export enum TabKeys {
   Code = 'code',
+  FixDiff = 'fix_diff',
   WhyIsThisAnIssue = 'why',
   HowToFixIt = 'how_to_fix',
   AssessTheIssue = 'assess_the_problem',
@@ -194,6 +196,7 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
   computeTabs = (displayEducationalPrinciplesNotification: boolean) => {
     const {
       codeTabContent,
+      fixDiffContent,
       ruleDetails: { descriptionSections, educationPrinciples, lang: ruleLanguage, type: ruleType },
       ruleDescriptionContextKey,
       extendedDescription,
@@ -303,6 +306,15 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
         counter: displayEducationalPrinciplesNotification ? 1 : undefined,
       },
     ];
+
+    if (fixDiffContent !== undefined) {
+      tabs.unshift({
+        value: TabKeys.FixDiff,
+        key: TabKeys.FixDiff,
+        label: translate('issue.tabs', TabKeys.FixDiff),
+        content: fixDiffContent,
+      });
+    }
 
     if (codeTabContent !== undefined) {
       tabs.unshift({

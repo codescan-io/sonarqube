@@ -35,10 +35,12 @@ export type IssueContextResponse = {
   componentKey?: string;
   contextSeverity?: 'LOW' | 'MEDIUM' | 'HIGH';
   issueKey: string;
-  line: number;
+  snippetViolationLine: number;
+  codesnippet?: string;
+  sourceSnippetEndLine?: number;
+  sourceSnippetStartLine?: number;
   ruleDescription?: string;
   ruleKey?: string;
-  snippet: string;
 };
 
 export function searchIssues(query: RequestData): Promise<RawIssuesResponse> {

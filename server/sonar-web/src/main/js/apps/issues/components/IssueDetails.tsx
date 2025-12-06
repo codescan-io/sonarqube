@@ -32,6 +32,7 @@ import {
 } from '~design-system';
 import ScreenPositionHelper from '../../../components/common/ScreenPositionHelper';
 import { AiCodeFixTab } from '../../../components/rules/AiCodeFixTab';
+import FixDiffTab from '../../../components/rules/FixDiffTab';
 import IssueTabViewer from '../../../components/rules/IssueTabViewer';
 import { fillBranchLike } from '../../../helpers/branch-like';
 import { translate } from '../../../helpers/l10n';
@@ -84,6 +85,7 @@ export default function IssueDetails({
   const { canBrowseAllChildProjects, qualifier = ComponentQualifier.Project } = component ?? {};
   const { data: ruleData, isLoading: isLoadingRule } = useRuleDetailsQuery({ key: openIssue.rule, organization: openIssue.organization});
   const openRuleDetails = ruleData?.rule;
+  const issueBranchLike = fillBranchLike(openIssue.branch, openIssue.pullRequest);
 
   const intl = useIntl();
 
@@ -171,7 +173,7 @@ export default function IssueDetails({
                           }
                           codeTabContent={
                             <IssuesSourceViewer
-                              branchLike={fillBranchLike(openIssue.branch, openIssue.pullRequest)}
+                              branchLike={issueBranchLike}
                               issues={issues}
                               locationsNavigator={locationsNavigator}
                               onIssueSelect={handleOpenIssue}
@@ -183,11 +185,12 @@ export default function IssueDetails({
                           }
                           suggestionTabContent={
                             <AiCodeFixTab
-                              branchLike={fillBranchLike(openIssue.branch, openIssue.pullRequest)}
+                              branchLike={issueBranchLike}
                               issue={openIssue}
                               language={openRuleDetails.lang}
                             />
                           }
+                          fixDiffContent={<FixDiffTab branchLike={issueBranchLike} issue={openIssue} />}
                           extendedDescription={openRuleDetails.htmlNote}
                           issue={openIssue}
                           onIssueChange={handleIssueChange}
