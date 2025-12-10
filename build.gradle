@@ -391,7 +391,7 @@ subprojects {
       dependency 'org.littleshoot:littleproxy:1.1.2'
       dependency 'net.sf.trove4j:core:3.1.0'
       dependency 'org.awaitility:awaitility:4.2.2'
-      dependency 'org.apache.commons:commons-collections4:4.4   '
+      dependency 'org.apache.commons:commons-collections4:4.4'
       dependency 'org.apache.commons:commons-csv:1.12.0'
       dependency 'org.apache.commons:commons-lang3:3.18.0'
       dependency 'org.apache.commons:commons-email:1.6.0'
@@ -436,6 +436,7 @@ subprojects {
         exclude 'org.apache.logging.log4j:log4j-core'
         exclude 'org.elasticsearch:jna'
         exclude 'com.fasterxml.jackson.core:jackson-core'
+        exclude 'org.lz4:lz4-java'
       }
       dependency 'com.fasterxml.jackson.core:jackson-core:2.20.0'
       dependency "org.elasticsearch.plugin:transport-netty4-client:${elasticSearchClientVersion}"

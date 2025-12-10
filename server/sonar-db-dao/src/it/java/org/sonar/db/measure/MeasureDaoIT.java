@@ -24,8 +24,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.lang.RandomStringUtils;
-import org.apache.commons.lang.math.RandomUtils;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.RandomUtils;
 import org.apache.ibatis.session.ResultHandler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -666,7 +666,7 @@ class MeasureDaoIT {
 
   private MeasureDto newMeasureForMetrics(ComponentDto componentDto, MetricDto... metrics) {
     return db.measures().insertMeasure(componentDto,
-      m -> Arrays.stream(metrics).forEach(metric -> m.addValue(metric.getKey(), RandomUtils.nextInt(50))));
+      m -> Arrays.stream(metrics).forEach(metric -> m.addValue(metric.getKey(), RandomUtils.secure().randomInt(0, 50))));
   }
 
   private void verifyTableSize(int expectedSize) {
@@ -680,6 +680,6 @@ class MeasureDaoIT {
   }
 
   private static double getDoubleValue() {
-    return RandomUtils.nextInt(100);
+    return RandomUtils.secure().randomInt(0, 100);
   }
 }
