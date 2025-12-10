@@ -526,6 +526,13 @@ subprojects {
     resolutionStrategy {
       force 'com.fasterxml.jackson.core:jackson-core:2.20.0'
       force 'org.eclipse.jgit:org.eclipse.jgit:7.3.0.202506031305-r'
+      force 'at.yawk.lz4:lz4-java:1.10.1'
+    }
+
+    resolutionStrategy.capabilitiesResolution {
+        withCapability('org.lz4:lz4-java') {
+            select('at.yawk.lz4:lz4-java:1.10.1')
+        }
     }
   }
 
