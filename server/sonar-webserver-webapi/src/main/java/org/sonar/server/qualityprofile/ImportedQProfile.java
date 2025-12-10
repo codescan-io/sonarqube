@@ -19,7 +19,7 @@
  */
 package org.sonar.server.qualityprofile;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sonarqube.ws.WsUtils;
 
 import java.util.List;

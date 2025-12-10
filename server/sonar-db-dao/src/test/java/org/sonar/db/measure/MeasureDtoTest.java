@@ -23,12 +23,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
-import org.apache.commons.lang.math.RandomUtils;
+import org.apache.commons.lang3.RandomUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import static org.apache.commons.lang.RandomStringUtils.randomAlphabetic;
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class MeasureDtoTest {
@@ -36,7 +36,7 @@ class MeasureDtoTest {
   @Test
   void getDouble_returns_double_value() {
     String metricKey = randomAlphabetic(7);
-    double value = RandomUtils.nextDouble();
+    double value = RandomUtils.secure().randomDouble();
     MeasureDto measureDto = new MeasureDto().addValue(metricKey, value);
     assertThat(measureDto.getDouble(metricKey)).isEqualTo(value);
   }
@@ -44,7 +44,7 @@ class MeasureDtoTest {
   @Test
   void getInt_returns_int_value() {
     String metricKey = randomAlphabetic(7);
-    int value = RandomUtils.nextInt();
+    int value = RandomUtils.secure().randomInt();
     MeasureDto measureDto = new MeasureDto().addValue(metricKey, value);
     assertThat(measureDto.getInt(metricKey)).isEqualTo(value);
   }
@@ -52,7 +52,7 @@ class MeasureDtoTest {
   @Test
   void getLong_returns_long_value() {
     String metricKey = randomAlphabetic(7);
-    long value = RandomUtils.nextInt();
+    long value = RandomUtils.secure().randomInt();
     MeasureDto measureDto = new MeasureDto().addValue(metricKey, value);
     assertThat(measureDto.getLong(metricKey)).isEqualTo(value);
   }
