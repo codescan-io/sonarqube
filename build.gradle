@@ -393,7 +393,7 @@ subprojects {
       dependency 'org.awaitility:awaitility:4.2.2'
       dependency 'org.apache.commons:commons-collections4:4.4'
       dependency 'org.apache.commons:commons-csv:1.12.0'
-      dependency 'org.apache.commons:commons-lang3:3.18.0'
+      dependency 'org.apache.commons:commons-lang3:3.20.0'
       dependency 'org.apache.commons:commons-email:1.6.0'
       dependency 'org.apache.commons:commons-text:1.12.0'
       dependency 'org.apache.mina:mina-core:2.2.3'
@@ -479,10 +479,10 @@ subprojects {
       dependency 'org.reflections:reflections:0.10.2'
       dependency 'org.simpleframework:simple:5.1.6'
       dependency 'org.sonarsource.git.blame:git-files-blame:1.1.0.1835'
-      dependency('org.sonarsource.orchestrator:sonar-orchestrator-junit4:4.9.0.1920') {
+      dependency('org.sonarsource.orchestrator:sonar-orchestrator-junit4:6.0.3.3907') {
         exclude 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
       }
-      dependency('org.sonarsource.orchestrator:sonar-orchestrator-junit5:4.9.0.1920') {
+      dependency('org.sonarsource.orchestrator:sonar-orchestrator-junit5:6.0.3.3907') {
         exclude 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
       }
       dependency 'com.sonarsource.pdfreport:security-report-pdf-generation:2.0.0.165'
