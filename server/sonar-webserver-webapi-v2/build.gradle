@@ -6,7 +6,7 @@ sonarqube {
 
 dependencies {
     // AWS SDK v2 BOM for consistent versioning
-    implementation platform('software.amazon.awssdk:bom:2.40.2')
+    implementation platform('software.amazon.awssdk:bom:2.35.11')
     implementation platform('io.netty:netty-bom:4.2.9.Final')
 
     // Add the S3 module (and optionally auth/regions if needed)
