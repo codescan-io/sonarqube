@@ -261,7 +261,9 @@ public class BulkChangeAction implements IssuesWsAction {
 //
 //    System.out.println("Project UUIDs involved in bulk change: " + projectUuids);
 //    System.out.println("Loaded Project DTOs: " + projectDtosForBranches);
-
+    if(projectDtosForBranches.isEmpty()) {
+      projectDtosForBranches=projectDtosForPR;
+    }
     // Check ISSUE_ADMIN permission ONCE per project
     for (ProjectDto projectDtoOfEach : projectDtosForBranches) {
       userSession.checkEntityPermission(UserRole.ISSUE_ADMIN, projectDtoOfEach);
