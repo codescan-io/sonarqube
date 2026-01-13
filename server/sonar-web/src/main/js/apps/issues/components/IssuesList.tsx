@@ -65,6 +65,7 @@ export default class IssuesList extends React.PureComponent<Props, State> {
     return (
       <li key={key}>
         <ComponentBreadcrumbs component={component} issue={issues[0]} />
+        <h1>Hello</h1>
         <ul>
           {issues.map((issue) => (
             <IssueItem

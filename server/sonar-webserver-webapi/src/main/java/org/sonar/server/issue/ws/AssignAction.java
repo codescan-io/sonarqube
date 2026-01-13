@@ -25,6 +25,8 @@ import java.util.Date;
 import java.util.Optional;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.issue.impact.Severity;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
@@ -55,6 +57,7 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE;
 
 public class AssignAction implements IssuesWsAction {
   private static final String ASSIGN_TO_ME_VALUE = "_me";
+  private static final Logger LOG = LoggerFactory.getLogger(AssignAction.class);
 
   private final System2 system2;
   private final UserSession userSession;
@@ -120,11 +123,15 @@ public class AssignAction implements IssuesWsAction {
       userSession.checkEntityPermission(UserRole.ISSUE_ADMIN, projectDto);
       DefaultIssue issue = issueDto.toDefaultIssue();
       UserDto user = getUser(dbSession, login);
+
       if (user != null && !hasProjectPermission(dbSession, user.getUuid(), projectDto.getUuid())) {
         throw new IllegalArgumentException(
                 format("User '%s' does not have permission to be assigned issues in project '%s'", user.getLogin(),
                         projectDto.getKey()));
       }
+
+      LOG.info("Project uuid and haspermissions for user {} : {} , {}", user != null ? user.getLogin() : "null", projectDto.getUuid(),
+              hasProjectPermission(dbSession, user != null ? user.getUuid() : "", projectDto.getUuid()));
       IssueChangeContext context = issueChangeContextByUserBuilder(new Date(system2.now()), userSession.getUuid()).build();
       if (issueFieldsSetter.assign(issue, user, context)) {
         return issueUpdater.saveIssueAndPreloadSearchResponseData(dbSession, issueDto, issue, context);
