@@ -102,11 +102,11 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 @Import(CommonWebConfig.class)
 public class PlatformLevel4WebConfig {
 
-  @Bean
-  public LivenessChecker livenessChecker(DbConnectionNodeCheck dbConnectionNodeCheck, WebServerStatusNodeCheck webServerStatusNodeCheck, CeStatusNodeCheck ceStatusNodeCheck,
-    @Nullable EsStatusNodeCheck esStatusNodeCheck) {
-    return new LivenessCheckerImpl(dbConnectionNodeCheck, webServerStatusNodeCheck, ceStatusNodeCheck, esStatusNodeCheck);
-  }
+//  @Bean
+//  public LivenessChecker livenessChecker(DbConnectionNodeCheck dbConnectionNodeCheck, WebServerStatusNodeCheck webServerStatusNodeCheck, CeStatusNodeCheck ceStatusNodeCheck,
+//    @Nullable EsStatusNodeCheck esStatusNodeCheck) {
+//    return new LivenessCheckerImpl(dbConnectionNodeCheck, webServerStatusNodeCheck, ceStatusNodeCheck, esStatusNodeCheck);
+//  }
 
   @Bean
   public LivenessController livenessController(LivenessChecker livenessChecker, UserSession userSession, SystemPasscode systemPasscode) {

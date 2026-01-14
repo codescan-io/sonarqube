@@ -24,7 +24,7 @@ import com.google.common.base.Preconditions;
 import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import org.jetbrains.annotations.NotNull;
 import org.sonar.api.issue.Issue;
 import org.sonar.api.rules.CleanCodeAttribute;

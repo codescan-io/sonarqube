@@ -21,8 +21,8 @@ package org.sonar.server.authentication;
 
 import java.io.IOException;
 import java.util.Optional;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.jetbrains.annotations.NotNull;
 import org.sonar.api.platform.Server;
 import org.sonar.api.server.ServerSide;
@@ -32,8 +32,8 @@ import org.sonar.api.server.http.HttpRequest;
 import org.sonar.api.server.http.HttpResponse;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.authentication.event.AuthenticationEvent;
-import org.sonar.server.http.JavaxHttpRequest;
-import org.sonar.server.http.JavaxHttpResponse;
+import org.sonar.server.http.JakartaHttpRequest;
+import org.sonar.server.http.JakartaHttpResponse;
 import org.sonar.server.user.ThreadLocalUserSession;
 import org.sonar.server.user.UserSessionFactory;
 
@@ -109,12 +109,12 @@ public class OAuth2ContextFactory {
 
     @Override
     public HttpServletRequest getRequest() {
-      return ((JavaxHttpRequest) request).getDelegate();
+      return ((JakartaHttpRequest) request).getDelegate();
     }
 
     @Override
     public HttpServletResponse getResponse() {
-      return ((JavaxHttpResponse) response).getDelegate();
+      return ((JakartaHttpResponse) response).getDelegate();
     }
 
     @Override

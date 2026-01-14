@@ -21,7 +21,7 @@ package org.sonar.server.v2.api.group.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import javax.annotation.Nullable;
-import javax.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotEmpty;
 
 public record GroupsSearchRestRequest(
   @NotEmpty

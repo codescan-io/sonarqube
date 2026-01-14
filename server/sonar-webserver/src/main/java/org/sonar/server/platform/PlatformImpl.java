@@ -19,13 +19,13 @@
  */
 package org.sonar.server.platform;
 
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletRegistration;
+import java.util.Properties;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Properties;
 import javax.annotation.Nullable;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletRegistration;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 import org.sonar.api.utils.log.Profiler;
