@@ -22,13 +22,13 @@ package org.sonar.server.platform.web;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -41,8 +41,8 @@ import org.sonar.api.testfixtures.log.LogTester;
 import org.sonar.api.web.HttpFilter;
 import org.sonar.api.web.ServletFilter;
 import org.sonar.api.web.ServletFilter.UrlPattern;
-import org.sonar.server.http.JavaxHttpRequest;
-import org.sonar.server.http.JavaxHttpResponse;
+import org.sonar.server.http.JakartaHttpRequest;
+import org.sonar.server.http.JakartaHttpResponse;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -130,8 +130,8 @@ public class MasterServletFilterTest {
     when(request.getRequestURI()).thenReturn(scimPath);
     when(request.getContextPath()).thenReturn("");
 
-    HttpRequest httpRequest = mock(JavaxHttpRequest.class);
-    HttpResponse httpResponse = mock(JavaxHttpResponse.class);
+    HttpRequest httpRequest = mock(JakartaHttpRequest.class);
+    HttpResponse httpResponse = mock(JakartaHttpResponse.class);
     when(httpRequest.getRequestURI()).thenReturn(scimPath);
     when(httpRequest.getContextPath()).thenReturn("");
 

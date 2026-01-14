@@ -20,7 +20,7 @@
 package org.sonar.server.v2.api.membership.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import javax.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotEmpty;
 
 public record GroupMembershipCreateRestRequest(
 
