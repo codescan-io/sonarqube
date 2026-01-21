@@ -42,6 +42,7 @@ import GlobalNav from './nav/global/GlobalNav';
 import StartupModal from './StartupModal';
 import SystemAnnouncement from './SystemAnnouncement';
 import { UpdateNotification } from './update-notification/UpdateNotification';
+import { loadSeverityLabelsToCache } from '../../helpers/severityMasking';
 
 /*
  * These pages need a white background (aka 'secondary', rather than the default 'primary')
@@ -81,6 +82,13 @@ const PAGES_WITH_SECONDARY_BACKGROUND = [
 export default function GlobalContainer() {
   const [isChatEnabled, setIsChatEnabled] = useState(false); 
   const location = useLocation();
+
+  useEffect(() => {
+      async function load() {
+        await loadSeverityLabelsToCache();
+      }
+      load();
+  }, []);
 
   useEffect(() => {
     async function fetchChatBotFlag() {
