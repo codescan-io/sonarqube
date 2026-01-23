@@ -48,6 +48,9 @@ import org.sonar.markdown.Markdown;
 import org.sonar.server.common.text.MacroInterpreter;
 import org.sonar.server.rule.RuleDescriptionFormatter;
 import org.sonar.server.rule.ws.RulesResponseFormatter.SearchResult;
+import org.sonar.server.security.CvssBreakdownParser;
+import org.sonar.server.security.CvssBreakdownParser.CvssBreakdownData;
+import org.sonar.server.security.CvssBreakdownParser.CvssMetricData;
 import org.sonarqube.ws.Common;
 import org.sonarqube.ws.Common.RuleScope;
 import org.sonarqube.ws.Rules;
@@ -154,6 +157,7 @@ public class RuleMapper {
     }
     setEducationPrinciples(ruleResponse, ruleDto, fieldsToReturn);
     setCleanCodeAttributes(ruleResponse, ruleDto, fieldsToReturn);
+    setCvssBreakdown(ruleResponse, ruleDto, fieldsToReturn);
 
     return ruleResponse;
   }
@@ -229,6 +233,121 @@ public class RuleMapper {
       ruleResponse.setCleanCodeAttribute(Common.CleanCodeAttribute.valueOf(cleanCodeAttribute.name()));
       ruleResponse.setCleanCodeAttributeCategory(Common.CleanCodeAttributeCategory.valueOf(cleanCodeAttribute.getAttributeCategory().name()));
     }
+  }
+
+  private static void setCvssBreakdown(Rules.Rule.Builder ruleResponse, RuleDto ruleDto, Set<String> fieldsToReturn) {
+    // Note: CVSS breakdown data can be stored in rule's security standards field as JSON
+    // or embedded in comma-separated format. This method attempts to parse it.
+    String securityStandardsField = ruleDto.getSecurityStandardsField();
+    if (securityStandardsField == null || securityStandardsField.trim().isEmpty()) {
+      return;
+    }
+
+    String jsonToParse = null;
+    
+    // Check if the entire field is JSON (starts with {)
+    if (securityStandardsField.trim().startsWith("{")) {
+      jsonToParse = securityStandardsField;
+    } else {
+      // Check if there's a CVSS breakdown JSON embedded in comma-separated format
+      // Look for pattern like "cvss-breakdown:{...}" or extract JSON from the string
+      String cvssBreakdownPrefix = "cvss-breakdown:";
+      int startIdx = securityStandardsField.indexOf(cvssBreakdownPrefix);
+      if (startIdx >= 0) {
+        int jsonStart = startIdx + cvssBreakdownPrefix.length();
+        // Find the matching closing brace
+        int braceCount = 0;
+        int jsonEnd = jsonStart;
+        for (int i = jsonStart; i < securityStandardsField.length(); i++) {
+          char c = securityStandardsField.charAt(i);
+          if (c == '{') braceCount++;
+          if (c == '}') {
+            braceCount--;
+            if (braceCount == 0) {
+              jsonEnd = i + 1;
+              break;
+            }
+          }
+        }
+        if (jsonEnd > jsonStart) {
+          jsonToParse = securityStandardsField.substring(jsonStart, jsonEnd);
+        }
+      }
+    }
+    
+    if (jsonToParse == null) {
+      return;
+    }
+
+    CvssBreakdownData breakdownData = CvssBreakdownParser.parseFromSecurityStandards(jsonToParse);
+    if (breakdownData == null || !breakdownData.hasData()) {
+      return;
+    }
+
+    Rules.CvssBreakdown.Builder breakdownBuilder = Rules.CvssBreakdown.newBuilder();
+
+    // Set scores
+    Rules.CvssScoreSummary.Builder scoresBuilder = Rules.CvssScoreSummary.newBuilder();
+    if (breakdownData.getBaseScore() != null) {
+      scoresBuilder.setBase(breakdownData.getBaseScore());
+    }
+    if (breakdownData.getTemporalScore() != null) {
+      scoresBuilder.setTemporal(breakdownData.getTemporalScore());
+    }
+    if (breakdownData.getEnvironmentalScore() != null) {
+      scoresBuilder.setEnvironmental(breakdownData.getEnvironmentalScore());
+    }
+    if (breakdownData.getOverallScore() != null) {
+      scoresBuilder.setOverall(breakdownData.getOverallScore());
+    }
+    breakdownBuilder.setScores(scoresBuilder.build());
+
+    // Set base metrics
+    if (breakdownData.getBaseMetrics() != null && !breakdownData.getBaseMetrics().isEmpty()) {
+      Rules.CvssMetrics.Builder baseMetricsBuilder = Rules.CvssMetrics.newBuilder();
+      for (CvssMetricData metric : breakdownData.getBaseMetrics()) {
+        Rules.CvssMetric.Builder metricBuilder = Rules.CvssMetric.newBuilder()
+          .setName(metric.getName())
+          .setValue(metric.getValue());
+        if (metric.getJustification() != null) {
+          metricBuilder.setJustification(metric.getJustification());
+        }
+        baseMetricsBuilder.addMetrics(metricBuilder.build());
+      }
+      breakdownBuilder.setBase(baseMetricsBuilder.build());
+    }
+
+    // Set temporal metrics
+    if (breakdownData.getTemporalMetrics() != null && !breakdownData.getTemporalMetrics().isEmpty()) {
+      Rules.CvssMetrics.Builder temporalMetricsBuilder = Rules.CvssMetrics.newBuilder();
+      for (CvssMetricData metric : breakdownData.getTemporalMetrics()) {
+        Rules.CvssMetric.Builder metricBuilder = Rules.CvssMetric.newBuilder()
+          .setName(metric.getName())
+          .setValue(metric.getValue());
+        if (metric.getJustification() != null) {
+          metricBuilder.setJustification(metric.getJustification());
+        }
+        temporalMetricsBuilder.addMetrics(metricBuilder.build());
+      }
+      breakdownBuilder.setTemporal(temporalMetricsBuilder.build());
+    }
+
+    // Set environmental metrics
+    if (breakdownData.getEnvironmentalMetrics() != null && !breakdownData.getEnvironmentalMetrics().isEmpty()) {
+      Rules.CvssMetrics.Builder environmentalMetricsBuilder = Rules.CvssMetrics.newBuilder();
+      for (CvssMetricData metric : breakdownData.getEnvironmentalMetrics()) {
+        Rules.CvssMetric.Builder metricBuilder = Rules.CvssMetric.newBuilder()
+          .setName(metric.getName())
+          .setValue(metric.getValue());
+        if (metric.getJustification() != null) {
+          metricBuilder.setJustification(metric.getJustification());
+        }
+        environmentalMetricsBuilder.addMetrics(metricBuilder.build());
+      }
+      breakdownBuilder.setEnvironmental(environmentalMetricsBuilder.build());
+    }
+
+    ruleResponse.setCvssBreakdown(breakdownBuilder.build());
   }
 
   private static void setDeprecatedKeys(Rules.Rule.Builder ruleResponse, RuleDto ruleDto, Set<String> fieldsToReturn,

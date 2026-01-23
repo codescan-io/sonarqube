@@ -98,14 +98,14 @@ class EmbeddedTomcat {
 
   void terminate() {
     try {
-      if (tomcat.getServer().getState().isAvailable()) {
-        try {
-          tomcat.stop();
-          tomcat.destroy();
-        } catch (Exception e) {
-          LOGGER.warn("Failed to stop web server", e);
-        }
-      }
+//      if (tomcat.getServer().getState().isAvailable()) {
+//        try {
+//          tomcat.stop();
+//          tomcat.destroy();
+//        } catch (Exception e) {
+//          LOGGER.warn("Failed to stop web server", e);
+//        }
+//      }
       deleteQuietly(tomcatBasedir());
     } finally {
       stopLatch.countDown();

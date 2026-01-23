@@ -404,6 +404,11 @@ public class RuleDto {
     return deserializeSecurityStandardsString(securityStandardsField);
   }
 
+  @CheckForNull
+  public String getSecurityStandardsField() {
+    return securityStandardsField;
+  }
+
   public int getType() {
     return type;
   }
