@@ -20,8 +20,10 @@
 
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
-import { Modal, SafeHTMLInjection, HtmlFormatter } from '~design-system';
+import { Modal } from '~design-system';
+import { translate } from '../../../helpers/l10n';
 import { Button, ButtonVariety } from '@sonarsource/echoes-react';
+import { SafeHTMLInjection, SanitizeLevel, CenteredLayout, HtmlFormatter} from '~design-system';
 import { noop } from 'lodash';
 
 export interface DataAccessConsentProps {
