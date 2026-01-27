@@ -18,54 +18,86 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
-import { Modal } from '~design-system';
-import { translate } from '../../../helpers/l10n';
+import { Modal, SafeHTMLInjection, HtmlFormatter } from '~design-system';
 import { Button, ButtonVariety } from '@sonarsource/echoes-react';
-import { SafeHTMLInjection, SanitizeLevel, CenteredLayout, HtmlFormatter } from '~design-system';
 import { noop } from 'lodash';
 
 export interface DataAccessConsentProps {
   message: string;
+  disableSessionStorage?: boolean; 
+  storageKey?: string; 
+  primaryButtonText?: string; 
+  requireCheckbox?: boolean; 
+  checkboxText?: string; 
 }
 
-function hasUserAlreadyAcknowledged() {
-  if (sessionStorage.getItem("us-data-protection-acknowledged") != undefined
-      && sessionStorage.getItem("us-data-protection-acknowledged").length > 0) {
-    return sessionStorage.getItem("us-data-protection-acknowledged");
-  }
-  return  false;
+function hasUserAlreadyAcknowledged(storageKey: string) {
+  const v = sessionStorage.getItem(storageKey);
+  return v !== undefined && v !== null && v.length > 0;
 }
 
-export default function DataAccessConsent({
+export default function DataAccessConsent(props: Readonly<DataAccessConsentProps>) {
+  const {
     message,
-  }: Readonly<DataAccessConsentProps>) {
-  const [isOpen, setIsOpen] = React.useState(!hasUserAlreadyAcknowledged());
+    disableSessionStorage = false,
+    storageKey = 'us-data-protection-acknowledged',
+    primaryButtonText,
+    requireCheckbox = false,
+    checkboxText,
+  } = props;
+
+  const [checked, setChecked] = React.useState(false);
+
+  const [isOpen, setIsOpen] = React.useState(() => {
+    if (disableSessionStorage) return true;
+    return !hasUserAlreadyAcknowledged(storageKey);
+  });
 
   const acceptConsent = () => {
-    sessionStorage.setItem("us-data-protection-acknowledged", "true");
+    if (!disableSessionStorage) {
+      sessionStorage.setItem(storageKey, 'true');
+    }
     setIsOpen(false);
   };
 
+  if (!isOpen) return null;
+
+  const isPrimaryDisabled = requireCheckbox ? !checked : false;
+
   return (
-    <>
-      {isOpen && (
-          <Modal onClose={noop} closeOnOverlayClick={false} >
-            <Modal.Body>
-              <HtmlFormatter>
-                <SafeHTMLInjection htmlAsString={message}/>
-              </HtmlFormatter>
-            </Modal.Body>
-            <Modal.Footer
-              primaryButton={
-                <Button onClick={acceptConsent} variety={ButtonVariety.Primary}>
-                  <FormattedMessage id="login.us_data_protection_consent.button_primary" />
-                </Button>
-              }
-              secondaryButton={null}
+    <Modal onClose={noop} closeOnOverlayClick={false}>
+      <Modal.Body>
+        <HtmlFormatter>
+          <SafeHTMLInjection htmlAsString={message} />
+        </HtmlFormatter>
+
+        {requireCheckbox && (
+          <label className="sw-flex sw-gap-2 sw-items-start sw-mt-4">
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(e) => setChecked(e.currentTarget.checked)}
+              style={{ marginTop: 3 }}
             />
-          </Modal>
-      )}
-    </>
+            <span className="sw-text-sm">
+              <strong>{checkboxText}</strong>
+            </span>
+          </label>
+        )}
+      </Modal.Body>
+
+      <Modal.Footer
+        primaryButton={
+          <Button onClick={acceptConsent} variety={ButtonVariety.Primary} isDisabled={isPrimaryDisabled}>
+            {primaryButtonText ? primaryButtonText : (
+              <FormattedMessage id="login.us_data_protection_consent.button_primary" />
+            )}
+          </Button>
+        }
+        secondaryButton={null}
+      />
+    </Modal>
   );
 }
