@@ -43,8 +43,7 @@ import GlobalNav from './nav/global/GlobalNav';
 import StartupModal from './StartupModal';
 import SystemAnnouncement from './SystemAnnouncement';
 import { UpdateNotification } from './update-notification/UpdateNotification';
-import BranchStatusContextProvider from './branch-status/BranchStatusContextProvider';
-import MsaGate from './MsaGate';
+import MsaGate from '../../apps/sessions/components/MsaGate';
 import { getValue } from '../../api/settings';
 
 /*
@@ -86,12 +85,11 @@ export default function GlobalContainer() {
   const [isChatEnabled, setIsChatEnabled] = useState(false);
   const location = useLocation();
   const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
-   const [msaEnabled, setMsaEnabled] = React.useState(false);
+  const [msaEnabled, setMsaEnabled] = React.useState(false);
 
   React.useEffect(() => {
     getValue({ key: MSA_TOGGLE_KEY })
       .then((setting) => {
-        // setting?.value can be string like "true"/"false" depending on API
         setMsaEnabled(setting?.value === 'true');
       })
       .catch(() => setMsaEnabled(false));
@@ -114,6 +112,7 @@ export default function GlobalContainer() {
   }, []);
 
   return (
+
     <ThemeProvider theme={lightTheme}>
       <SuggestionsProvider>
         <A11yProvider>

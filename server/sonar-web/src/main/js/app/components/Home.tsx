@@ -28,6 +28,9 @@ import withCurrentUserContext from './current-user/withCurrentUserContext';
 import "../styles/components/home.css";
 import { isNonStandardUser } from '../utils/userAccess';
 
+import { getValue } from '../../api/settings';
+import MsaGate from '../../apps/sessions/components/MsaGate';
+const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
 
 interface Props {
   appState: AppState;
@@ -43,11 +46,16 @@ interface State {
 class Home extends React.PureComponent<Props, State> {
     mounted = false;
     state : State = {
-        loading:false
+        loading:false,
+        msaEnabled: false,
+        msaDismissed: false,
     }
 
     componentDidMount() {
         this.mounted = true;
+        getValue({ key: MSA_TOGGLE_KEY })
+        .then((setting) => this.setState({ msaEnabled: setting?.value === 'true' }))
+        .catch(() => this.setState({ msaEnabled: false }));
     }
 
     componentWillUnmount() {
@@ -79,8 +87,14 @@ class Home extends React.PureComponent<Props, State> {
     }
 
     render() {
-        const {loading} = this.state;
+        const {loading,msaEnabled,msaDismissed} = this.state;
+        const isFirstLogin = !this.props.currentUser.onboarded;
+        const shouldShowMsa = msaEnabled && isFirstLogin && !msaDismissed;
         return (
+          <MsaGate
+                  enabled={shouldShowMsa}
+                  onDismiss={() => this.setState({ msaDismissed: true })}
+                >
             <div className="landing">
                 <div className="home">
                     <img className="light-emblem" src='/images/grc/CodeScanShieldEmblem.svg' alt="" />
@@ -105,6 +119,7 @@ class Home extends React.PureComponent<Props, State> {
                     }
                 </div>
             </div>
+            </MsaGate>
         );
     }
 }
