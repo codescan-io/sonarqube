@@ -19,29 +19,9 @@
  */
 package org.sonar.db.measure;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import org.apache.commons.lang.RandomStringUtils;
-import org.apache.commons.lang.math.RandomUtils;
-import org.apache.ibatis.session.ResultHandler;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
-import org.sonar.api.measures.CoreMetrics;
-import org.sonar.db.component.ComponentQualifiers;
-import org.sonar.api.utils.System2;
-import org.sonar.db.DbSession;
-import org.sonar.db.DbTester;
-import org.sonar.db.component.BranchDto;
-import org.sonar.db.component.ComponentDto;
-import org.sonar.db.component.ProjectData;
-import org.sonar.db.metric.MetricDto;
-
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static org.apache.commons.lang.RandomStringUtils.randomAlphabetic;
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.groups.Tuple.tuple;
@@ -53,6 +33,25 @@ import static org.sonar.db.component.ComponentTesting.newFileDto;
 import static org.sonar.db.component.ComponentTesting.newPrivateProjectDto;
 import static org.sonar.db.measure.MeasureTesting.newMeasure;
 import static org.sonar.db.qualityprofile.QualityProfileTesting.newQualityProfileDto;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import org.apache.commons.lang3.RandomUtils;
+import org.apache.ibatis.session.ResultHandler;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonar.api.measures.CoreMetrics;
+import org.sonar.api.utils.System2;
+import org.sonar.db.DbSession;
+import org.sonar.db.DbTester;
+import org.sonar.db.component.BranchDto;
+import org.sonar.db.component.ComponentDto;
+import org.sonar.db.component.ComponentQualifiers;
+import org.sonar.db.component.ProjectData;
+import org.sonar.db.metric.MetricDto;
 
 class MeasureDaoIT {
 
@@ -427,7 +426,7 @@ class MeasureDaoIT {
 
     ComponentDto branch = db.components().insertPrivateProject().getMainBranchComponent();
 
-    ComponentDto dir = db.components().insertComponent(newDirectory(branch, RandomStringUtils.randomAlphabetic(15)));
+    ComponentDto dir = db.components().insertComponent(newDirectory(branch, randomAlphabetic(15)));
     MeasureDto measureOnDirectory = newMeasureForMetrics(dir, metric1, metric2);
 
     ComponentDto file1 = db.components().insertComponent(newFileDto(dir));
@@ -666,7 +665,7 @@ class MeasureDaoIT {
 
   private MeasureDto newMeasureForMetrics(ComponentDto componentDto, MetricDto... metrics) {
     return db.measures().insertMeasure(componentDto,
-      m -> Arrays.stream(metrics).forEach(metric -> m.addValue(metric.getKey(), RandomUtils.nextInt(50))));
+      m -> Arrays.stream(metrics).forEach(metric -> m.addValue(metric.getKey(), RandomUtils.secure().randomInt(0, 50))));
   }
 
   private void verifyTableSize(int expectedSize) {
@@ -680,6 +679,6 @@ class MeasureDaoIT {
   }
 
   private static double getDoubleValue() {
-    return RandomUtils.nextInt(100);
+    return RandomUtils.secure().randomInt(0, 100);
   }
 }
