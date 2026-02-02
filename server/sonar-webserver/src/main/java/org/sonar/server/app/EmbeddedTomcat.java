@@ -97,7 +97,7 @@ class EmbeddedTomcat {
   }
 
   void terminate() {
-    try {
+    /*try {
       if (tomcat.getServer().getState().isAvailable()) {
         try {
           tomcat.stop();
@@ -109,7 +109,7 @@ class EmbeddedTomcat {
       deleteQuietly(tomcatBasedir());
     } finally {
       stopLatch.countDown();
-    }
+    }*/
   }
 
   void awaitTermination() {
