@@ -36,6 +36,7 @@ import { Issue, RuleDetails } from '../../types/types';
 import { CurrentUser, NoticeType } from '../../types/users';
 import ScreenPositionHelper from '../common/ScreenPositionHelper';
 import withLocation from '../hoc/withLocation';
+import CvssBreakdown from './CvssBreakdown';
 import MoreInfoRuleDescription from './MoreInfoRuleDescription';
 import RuleDescription from './RuleDescription';
 import { TabSelectorContext } from './TabSelectorContext';
@@ -79,6 +80,7 @@ export enum TabKeys {
   CodeFix = 'code_fix',
   Activity = 'activity',
   MoreInfo = 'more_info',
+  CvssBreakdown = 'cvss_breakdown',
 }
 
 const DEBOUNCE_FOR_SCROLL = 250;
@@ -194,7 +196,13 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
   computeTabs = (displayEducationalPrinciplesNotification: boolean) => {
     const {
       codeTabContent,
-      ruleDetails: { descriptionSections, educationPrinciples, lang: ruleLanguage, type: ruleType },
+      ruleDetails: {
+        descriptionSections,
+        educationPrinciples,
+        lang: ruleLanguage,
+        type: ruleType,
+        cvssBreakdown,
+      },
       ruleDescriptionContextKey,
       extendedDescription,
       activityTabContent,
@@ -269,6 +277,16 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
           />
         ),
       },
+      ...(cvssBreakdown
+        ? [
+            {
+              value: TabKeys.CvssBreakdown,
+              key: TabKeys.CvssBreakdown,
+              label: translate('coding_rules.description_section.title', TabKeys.CvssBreakdown),
+              content: <CvssBreakdown cvssBreakdown={cvssBreakdown} />,
+            },
+          ]
+        : []),
       ...(aiSuggestionAvailable
         ? [
             {
