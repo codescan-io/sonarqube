@@ -18,6 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import * as React from 'react';
 import { ThemeProvider } from '@emotion/react';
 import styled from '@emotion/styled';
 import { useEffect, useState } from 'react';
@@ -42,6 +43,8 @@ import GlobalNav from './nav/global/GlobalNav';
 import StartupModal from './StartupModal';
 import SystemAnnouncement from './SystemAnnouncement';
 import { UpdateNotification } from './update-notification/UpdateNotification';
+import MsaGate from '../../apps/sessions/components/MsaGate';
+import { getValue } from '../../api/settings';
 
 /*
  * These pages need a white background (aka 'secondary', rather than the default 'primary')
@@ -79,8 +82,18 @@ const PAGES_WITH_SECONDARY_BACKGROUND = [
 ];
 
 export default function GlobalContainer() {
-  const [isChatEnabled, setIsChatEnabled] = useState(false); 
+  const [isChatEnabled, setIsChatEnabled] = useState(false);
   const location = useLocation();
+  const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
+  const [msaEnabled, setMsaEnabled] = React.useState(false);
+  React.useEffect(() => {
+    getValue({ key: MSA_TOGGLE_KEY })
+      .then((setting) => {
+        setMsaEnabled(setting?.value === 'true');
+      })
+      .catch(() => setMsaEnabled(false));
+  }, []);
+
 
   useEffect(() => {
     async function fetchChatBotFlag() {
@@ -95,9 +108,10 @@ export default function GlobalContainer() {
     }
 
     fetchChatBotFlag();
-  }, []); 
+  }, []);
 
   return (
+
     <ThemeProvider theme={lightTheme}>
       <SuggestionsProvider>
         <A11yProvider>
@@ -109,6 +123,7 @@ export default function GlobalContainer() {
               className="sw-box-border sw-flex-[1_0_auto]"
               id="container"
             >
+             <MsaGate enabled={msaEnabled}>
               <BranchStatusContextProvider>
                 <Workspace>
                   <IndexationContextProvider>
@@ -133,6 +148,7 @@ export default function GlobalContainer() {
                   </IndexationContextProvider>
                 </Workspace>
               </BranchStatusContextProvider>
+             </MsaGate>
             </GlobalBackground>
             <GlobalFooterCodescan />
           </GlobalContainerWrapper>
@@ -154,3 +170,4 @@ const GlobalBackground = styled.div<{ secondary: boolean }>`
   background-color: ${({ secondary }) =>
     themeColor(secondary ? 'backgroundSecondary' : 'backgroundPrimary')};
 `;
+
