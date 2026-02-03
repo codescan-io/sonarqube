@@ -123,7 +123,7 @@ export default function GlobalContainer() {
               className="sw-box-border sw-flex-[1_0_auto]"
               id="container"
             >
-                  <MsaGate enabled={msaEnabled}>
+             <MsaGate enabled={msaEnabled}>
               <BranchStatusContextProvider>
                 <Workspace>
                   <IndexationContextProvider>
@@ -148,12 +148,11 @@ export default function GlobalContainer() {
                   </IndexationContextProvider>
                 </Workspace>
               </BranchStatusContextProvider>
-                  </MsaGate>
+             </MsaGate>
             </GlobalBackground>
             <GlobalFooterCodescan />
           </GlobalContainerWrapper>
           <StartupModal />
-
         </A11yProvider>
       </SuggestionsProvider>
     </ThemeProvider>
