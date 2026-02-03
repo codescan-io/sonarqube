@@ -16,7 +16,6 @@ export default function MsaGate({
 
 if(open){
   return (
-    <>{children}
       <MsaPopup
         isOpen={open}
         onClose={() => setOpen(false)}
@@ -36,7 +35,6 @@ if(open){
         checkboxText="I have read and agree to the MSA and confirm that I am authorized to accept on behalf of my organization."
         primaryButtonText="Accept and Continue"
       />
-      </>
   );
 }
  return <>{children}</>;

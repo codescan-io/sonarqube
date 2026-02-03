@@ -14,7 +14,7 @@ export interface MsaPopupProps {
   primaryButtonText?: string;
 }
 
-export default function MsaPopup({
+export default function MsaPopUp({
   message,
   isOpen,
   onClose,
@@ -40,7 +40,6 @@ export default function MsaPopup({
             <SafeHTMLInjection htmlAsString={message} />
           </HtmlFormatter>
         </MsaContentStyle>
-
         {requireCheckbox && (
           <label className="sw-flex sw-gap-2 sw-items-start sw-mt-4">
             <input
@@ -63,7 +62,7 @@ export default function MsaPopup({
             variety={ButtonVariety.Primary}
             isDisabled={isPrimaryDisabled}
           >
-            {primaryButtonText ? primaryButtonText : (
+                {primaryButtonText ? primaryButtonText : (
               <FormattedMessage id="login.us_data_protection_consent.button_primary" />
             )}
           </Button>
