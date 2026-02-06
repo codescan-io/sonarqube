@@ -45,6 +45,7 @@ import SystemAnnouncement from './SystemAnnouncement';
 import { UpdateNotification } from './update-notification/UpdateNotification';
 import MsaGate from '../../apps/sessions/components/MsaGate';
 import { getValue } from '../../api/settings';
+import { getJSON } from '~sonar-aligned/helpers/request';
 
 /*
  * These pages need a white background (aka 'secondary', rather than the default 'primary')
@@ -86,6 +87,7 @@ export default function GlobalContainer() {
   const [isChatEnabled, setIsChatEnabled] = useState(false);
   const location = useLocation();
   const [msaEnabled, setMsaEnabled] = React.useState(false);
+  const [verify,setMsaVerify]=React.useState(false);
   React.useEffect(() => {
     async function initializeData() {
         try {
@@ -94,8 +96,16 @@ export default function GlobalContainer() {
         } catch {
           setMsaEnabled(false);
         }
+
+       try {
+         const value = await getJSON('/_codescan/eula/verify');
+         setMsaVerify(value);
+       } catch {
+         setMsaVerify(false);
+       }
     }
-      initializeData();
+
+  initializeData();
   }, []);
 
   useEffect(() => {
@@ -125,7 +135,7 @@ export default function GlobalContainer() {
               className="sw-box-border sw-flex-[1_0_auto]"
               id="container"
             >
-             <MsaGate enabled={msaEnabled} >
+             <MsaGate enabled={msaEnabled && !verify} >
               <BranchStatusContextProvider>
                 <Workspace>
                   <IndexationContextProvider>

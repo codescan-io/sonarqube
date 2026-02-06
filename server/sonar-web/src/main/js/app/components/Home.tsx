@@ -31,6 +31,7 @@ import { isNonStandardUser } from '../utils/userAccess';
 import { getValue } from '../../api/settings';
 import MsaGate from '../../apps/sessions/components/MsaGate';
 const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
+import { getJSON } from '~sonar-aligned/helpers/request';
 
 interface Props {
   appState: AppState;
@@ -41,6 +42,9 @@ interface Props {
 
 interface State {
     loading:boolean;
+    msaEnabled: boolean;
+    msaDismissed: boolean;
+    msaVerify: boolean;
 }
 
 class Home extends React.PureComponent<Props, State> {
@@ -49,14 +53,27 @@ class Home extends React.PureComponent<Props, State> {
         loading:false,
         msaEnabled: false,
         msaDismissed: false,
+        msaVerify: false,
     }
+   componentDidMount() {
+      this.mounted = true;
+      getValue({ key: MSA_TOGGLE_KEY })
+      .then((setting) => this.setState({ msaEnabled: setting?.value === 'true' }))
+      .catch(() => this.setState({ msaEnabled: false }));
 
-    componentDidMount() {
-        this.mounted = true;
-        getValue({ key: MSA_TOGGLE_KEY })
-        .then((setting) => this.setState({ msaEnabled: setting?.value === 'true' }))
-        .catch(() => this.setState({ msaEnabled: false }));
-    }
+      getJSON('/_codescan/eula/verify')
+      .then((value) => {
+        if (this.mounted) {
+          this.setState({ msaVerify: Boolean(value) });
+        }
+      })
+      .catch((error) => {
+        console.error('MSA verify failed:', error);
+         if (this.mounted) {
+           this.setState({ msaVerify: false });
+         }
+      })
+  }
 
     componentWillUnmount() {
         this.mounted = false;
@@ -87,9 +104,9 @@ class Home extends React.PureComponent<Props, State> {
     }
 
     render() {
-        const {loading,msaEnabled,msaDismissed} = this.state;
+        const {loading,msaEnabled,msaDismissed,msaVerify} = this.state;
         const isFirstLogin = !this.props.currentUser.onboarded;
-        const shouldShowMsa = msaEnabled && isFirstLogin && !msaDismissed;
+        const shouldShowMsa = msaEnabled && isFirstLogin && !msaDismissed && msaVerify===false;
         return (
           <MsaGate
                   enabled={shouldShowMsa}
