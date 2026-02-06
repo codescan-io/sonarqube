@@ -80,20 +80,23 @@ const PAGES_WITH_SECONDARY_BACKGROUND = [
   '/admin/projects_management',
   '/account/projects',
 ];
+const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
 
 export default function GlobalContainer() {
   const [isChatEnabled, setIsChatEnabled] = useState(false);
   const location = useLocation();
-  const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
   const [msaEnabled, setMsaEnabled] = React.useState(false);
   React.useEffect(() => {
-    getValue({ key: MSA_TOGGLE_KEY })
-      .then((setting) => {
-        setMsaEnabled(setting?.value === 'true');
-      })
-      .catch(() => setMsaEnabled(false));
+    async function initializeData() {
+        try {
+          const setting = await getValue({ key: MSA_TOGGLE_KEY });
+          setMsaEnabled(setting?.value === 'true');
+        } catch {
+          setMsaEnabled(false);
+        }
+    }
+      initializeData();
   }, []);
-
 
   useEffect(() => {
     async function fetchChatBotFlag() {
@@ -111,7 +114,6 @@ export default function GlobalContainer() {
   }, []);
 
   return (
-
     <ThemeProvider theme={lightTheme}>
       <SuggestionsProvider>
         <A11yProvider>
@@ -123,7 +125,7 @@ export default function GlobalContainer() {
               className="sw-box-border sw-flex-[1_0_auto]"
               id="container"
             >
-             <MsaGate enabled={msaEnabled}>
+             <MsaGate enabled={msaEnabled} >
               <BranchStatusContextProvider>
                 <Workspace>
                   <IndexationContextProvider>
