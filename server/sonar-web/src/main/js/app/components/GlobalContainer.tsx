@@ -44,7 +44,7 @@ import StartupModal from './StartupModal';
 import SystemAnnouncement from './SystemAnnouncement';
 import { UpdateNotification } from './update-notification/UpdateNotification';
 import MsaGate from '../../apps/sessions/components/MsaGate';
-import { getValue } from '../../api/settings';
+import { getMsaPopUpFlag } from '../../api/settings';
 
 /*
  * These pages need a white background (aka 'secondary', rather than the default 'primary')
@@ -80,22 +80,23 @@ const PAGES_WITH_SECONDARY_BACKGROUND = [
   '/admin/projects_management',
   '/account/projects',
 ];
-const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
 
 export default function GlobalContainer() {
   const [isChatEnabled, setIsChatEnabled] = useState(false);
   const location = useLocation();
   const [msaEnabled, setMsaEnabled] = React.useState(false);
   React.useEffect(() => {
-    async function initializeData() {
+    async function fetchMsaPopUpFlag() {
         try {
-          const setting = await getValue({ key: MSA_TOGGLE_KEY });
-          setMsaEnabled(setting?.value === 'true');
+          const isMsaEnabled=await getMsaPopUpFlag();
+          const getMsaEnabledValue=
+          isMsaEnabled.settings.find((s) => s.key=== 'codescan.cloud.msaConsent.displayMessage').value==='true';
+          setMsaEnabled(getMsaEnabledValue);
         } catch {
           setMsaEnabled(false);
         }
     }
-      initializeData();
+     fetchMsaPopUpFlag();
   }, []);
 
   useEffect(() => {

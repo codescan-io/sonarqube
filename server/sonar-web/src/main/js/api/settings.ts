@@ -128,3 +128,9 @@ export async function getChatBotFlag(): Promise<{ message: boolean }> {
     throwGlobalError,
   );
 }
+
+export async function getMsaPopUpFlag(): Promise<{ message: boolean }> {
+  return getJSON('/api/settings/values?keys=codescan.cloud.msaConsent.displayMessage')
+  .catch(throwGlobalError,
+    );
+}
