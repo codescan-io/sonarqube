@@ -46,6 +46,7 @@ import { UpdateNotification } from './update-notification/UpdateNotification';
 import MsaGate from '../../apps/sessions/components/MsaGate';
 import { getValue } from '../../api/settings';
 import { getJSON } from '~sonar-aligned/helpers/request';
+import { loadSeverityLabelsToCache } from '../../helpers/severityMasking';
 
 /*
  * These pages need a white background (aka 'secondary', rather than the default 'primary')
@@ -110,6 +111,13 @@ export default function GlobalContainer() {
     }
 
   initializeData();
+  }, []);
+
+  useEffect(() => {
+      async function load() {
+        await loadSeverityLabelsToCache();
+      }
+      load();
   }, []);
 
   useEffect(() => {
