@@ -88,6 +88,7 @@ export default function GlobalContainer() {
   const location = useLocation();
   const [msaEnabled, setMsaEnabled] = React.useState(false);
   const [verify,setMsaVerify]=React.useState(false);
+  const [msaLoading, setMsaLoading] = React.useState(true);
   React.useEffect(() => {
     async function initializeData() {
         try {
@@ -103,6 +104,9 @@ export default function GlobalContainer() {
        } catch {
          setMsaVerify(false);
        }
+      finally {
+             setMsaLoading(false);
+      }
     }
 
   initializeData();
@@ -135,7 +139,7 @@ export default function GlobalContainer() {
               className="sw-box-border sw-flex-[1_0_auto]"
               id="container"
             >
-             <MsaGate enabled={msaEnabled && !verify} >
+             <MsaGate enabled={!msaLoading && msaEnabled && !verify} >
               <BranchStatusContextProvider>
                 <Workspace>
                   <IndexationContextProvider>
