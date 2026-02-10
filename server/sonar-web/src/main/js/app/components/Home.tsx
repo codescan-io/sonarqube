@@ -57,27 +57,34 @@ class Home extends React.PureComponent<Props, State> {
         msaVerify: false,
         msaLoading:true,
     }
-   componentDidMount() {
+   async componentDidMount() {
       this.mounted = true;
-      getValue({ key: MSA_TOGGLE_KEY })
-      .then((setting) => this.setState({ msaEnabled: setting?.value === 'true' }))
-      .catch(() => this.setState({ msaEnabled: false }));
+      try {
+        const setting = await getValue({ key: MSA_TOGGLE_KEY });
+        if (this.mounted) {
+          this.setState({ msaEnabled: setting?.value === 'true' });
+        }
+      } catch {
+        if (this.mounted) {
+          this.setState({ msaEnabled: false });
+        }
+      }
 
-      getJSON('/_codescan/eula/verify')
-      .then((value) => {
+      try {
+        const value = await getJSON('/_codescan/eula/verify');
         if (this.mounted) {
           this.setState({ msaVerify: Boolean(value) });
         }
-      })
-      .catch((error) => {
-        console.error('MSA verify failed:', error);
-         if (this.mounted) {
-           this.setState({ msaVerify: false });
-         }
-      })
-
-      this.setState({msaLoading:false});
-
+      } catch (error) {
+        if (this.mounted) {
+          this.setState({ msaVerify: false });
+        }
+      }
+      finally {
+        if (this.mounted) {
+          this.setState({ msaLoading: false });
+        }
+      }
   }
 
     componentWillUnmount() {
