@@ -109,7 +109,7 @@ class Home extends React.PureComponent<Props, State> {
     }
 
     render() {
-        const {loading,msaEnabled,msaDismissed,msaVerify} = this.state;
+        const {loading,msaEnabled,msaDismissed,msaVerify,msaLoading} = this.state;
         const isFirstLogin = !this.props.currentUser.onboarded;
         const shouldShowMsa = !msaLoading && msaEnabled && isFirstLogin && !msaDismissed && msaVerify===false;
         return (
