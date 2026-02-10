@@ -45,6 +45,7 @@ interface State {
     msaEnabled: boolean;
     msaDismissed: boolean;
     msaVerify: boolean;
+    msaLoading:boolean;
 }
 
 class Home extends React.PureComponent<Props, State> {
@@ -54,6 +55,7 @@ class Home extends React.PureComponent<Props, State> {
         msaEnabled: false,
         msaDismissed: false,
         msaVerify: false,
+        msaLoading:true,
     }
    componentDidMount() {
       this.mounted = true;
@@ -73,6 +75,9 @@ class Home extends React.PureComponent<Props, State> {
            this.setState({ msaVerify: false });
          }
       })
+
+      this.setState({msaLoading:false});
+
   }
 
     componentWillUnmount() {
@@ -106,7 +111,7 @@ class Home extends React.PureComponent<Props, State> {
     render() {
         const {loading,msaEnabled,msaDismissed,msaVerify} = this.state;
         const isFirstLogin = !this.props.currentUser.onboarded;
-        const shouldShowMsa = msaEnabled && isFirstLogin && !msaDismissed && msaVerify===false;
+        const shouldShowMsa = !msaLoading && msaEnabled && isFirstLogin && !msaDismissed && msaVerify===false;
         return (
           <MsaGate
                   enabled={shouldShowMsa}
