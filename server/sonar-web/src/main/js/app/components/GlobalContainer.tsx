@@ -47,6 +47,7 @@ import MsaGate from '../../apps/sessions/components/MsaGate';
 import { getValue } from '../../api/settings';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import { getMsaPopUpFlag } from '../../api/settings';
+import { getEulaVerification } from '../../api/eula';
 
 /*
  * These pages need a white background (aka 'secondary', rather than the default 'primary')
@@ -101,7 +102,7 @@ export default function GlobalContainer() {
         }
 
        try {
-         const value = await getJSON('/_codescan/eula/verify');
+         const value = await getEulaVerification();
          setMsaVerify(value);
        } catch {
          setMsaVerify(false);
