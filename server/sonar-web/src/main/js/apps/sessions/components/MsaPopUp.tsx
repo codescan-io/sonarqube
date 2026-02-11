@@ -4,8 +4,7 @@ import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import { FormattedMessage } from 'react-intl';
 import { noop } from 'lodash';
 import styled from '@emotion/styled';
-import { postJSON } from '../../../helpers/request';
-import { throwGlobalError } from '~sonar-aligned/helpers/error';
+import { acceptEulaVersion } from '../../../api/eula';
 
 export interface MsaPopupProps {
   message: string;
@@ -14,8 +13,6 @@ export interface MsaPopupProps {
   requireCheckbox?: boolean;
   checkboxText?: string;
   primaryButtonText?: string;
-  endpoint?: string;
-  payload?: Record<string, unknown>;
 }
 
 export default function MsaPopUp({
@@ -24,9 +21,7 @@ export default function MsaPopUp({
   onClose,
   requireCheckbox = false,
   checkboxText,
-  primaryButtonText,
-  endpoint = '/_codescan/eula/accept',
-  payload = {},
+  primaryButtonText
 }: Readonly<MsaPopupProps>) {
   const [checked, setChecked] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -47,14 +42,9 @@ export default function MsaPopUp({
     setSubmitting(true);
 
     try {
-      await postJSON(endpoint, payload);
+      await acceptEulaVersion();
     } catch (e) {
-      // postJSON rejects with a fetch Response (from checkStatus)
-      if (e instanceof Response) {
-        await throwGlobalError(e);
-      } else {
-        await throwGlobalError(e as any);
-      }
+      console.error("Error accepting the eula version ", e);
     } finally {
       onClose();
     }
