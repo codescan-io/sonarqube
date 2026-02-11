@@ -32,6 +32,7 @@ import { getValue } from '../../api/settings';
 import MsaGate from '../../apps/sessions/components/MsaGate';
 const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
 import { getJSON } from '~sonar-aligned/helpers/request';
+import { getEulaVerification } from '../../api/eula';
 
 interface Props {
   appState: AppState;
@@ -71,7 +72,7 @@ class Home extends React.PureComponent<Props, State> {
       }
 
       try {
-        const value = await getJSON('/_codescan/eula/verify');
+        const value = await getEulaVerification();
         if (this.mounted) {
           this.setState({ msaVerify: Boolean(value) });
         }
