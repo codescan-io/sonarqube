@@ -25,6 +25,7 @@ import { noop } from 'lodash';
 import styled from '@emotion/styled';
 import { postJSON } from '../../../helpers/request';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
+import "./MsaPopUp.css"
 
 export interface MsaPopupProps {
   message: string;
@@ -82,11 +83,11 @@ export default function MsaPopUp({
   return (
     <Modal onClose={noop} closeOnOverlayClick={false}>
       <Modal.Body>
-        <MsaContentStyle>
+        <div className="msaPopup-elements-styles">
           <HtmlFormatter>
             <SafeHTMLInjection htmlAsString={message} />
           </HtmlFormatter>
-        </MsaContentStyle>
+        </div>
         {requireCheckbox && (
           <label className="sw-flex sw-gap-2 sw-items-start sw-mt-4">
             <input
@@ -120,24 +121,3 @@ export default function MsaPopUp({
     </Modal>
   );
 }
-
-const MsaContentStyle = styled.div`
-  font-family: Overpass, sans-serif;
-
-  h1 {
-    font-weight: 300;
-    font-size: 1.5rem;
-    line-height: 2rem;
-    margin: 0 0 0.75rem 0;
-  }
-
-  p {
-    margin: 0;
-    color: ${themeColor('pageContent')};
-    line-height: 1.25rem;
-  }
-
-  a {
-    color: #2563eb;
-  }
-`;
