@@ -20,7 +20,6 @@
 
 import { omitBy } from 'lodash';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
-import { getJSON } from '~sonar-aligned/helpers/request';
 import { BranchParameters } from '~sonar-aligned/types/branch-like';
 import { isCategoryDefinition } from '../apps/settings/utils';
 import { post, postJSON, RequestData } from '../helpers/request';
