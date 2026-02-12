@@ -30,6 +30,7 @@ import {
   SettingValue,
   SettingValueResponse,
 } from '../types/settings';
+import { getJSON } from '~sonar-aligned/helpers/request';
 
 export function getDefinitions(component?: string): Promise<ExtendedSettingDefinition[]> {
   return getJSON('/api/settings/list_definitions', { component }).then(
@@ -128,7 +129,9 @@ export async function getChatBotFlag(): Promise<{ message: boolean }> {
   );
 }
 
-export async function getMsaPopUpFlag(): Promise<{ message: boolean }> {
+export async function getMsaPopUpFlag(): Promise<{
+  settings: any; message: boolean 
+}> {
   return getJSON('/api/settings/values?keys=codescan.cloud.msaConsent.displayMessage')
   .catch(throwGlobalError,
     );
