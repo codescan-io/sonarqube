@@ -31,7 +31,6 @@ import { isNonStandardUser } from '../utils/userAccess';
 import { getValue } from '../../api/settings';
 import MsaGate from '../../apps/sessions/components/MsaGate';
 const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
-import { getJSON } from '~sonar-aligned/helpers/request';
 import { getEulaVerification } from '../../api/eula';
 
 interface Props {
