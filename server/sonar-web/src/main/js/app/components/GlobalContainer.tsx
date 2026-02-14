@@ -97,16 +97,17 @@ export default function GlobalContainer() {
           const getMsaEnabledValue=
           isMsaEnabled.settings.find((s) => s.key=== 'codescan.cloud.msaConsent.displayMessage').value==='true';
           setMsaEnabled(getMsaEnabledValue);
+          if(getMsaEnabledValue){
+            try {
+                     const value = await getEulaVerification();
+                     setMsaVerify(value);
+            } catch {
+                     setMsaVerify(false);
+            }
+          }
         } catch {
           setMsaEnabled(false);
         }
-
-       try {
-         const value = await getEulaVerification();
-         setMsaVerify(value);
-       } catch {
-         setMsaVerify(false);
-       }
       finally {
              setMsaLoading(false);
       }

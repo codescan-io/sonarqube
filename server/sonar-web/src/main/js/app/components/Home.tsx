@@ -63,21 +63,23 @@ class Home extends React.PureComponent<Props, State> {
         const setting = await getValue({ key: MSA_TOGGLE_KEY });
         if (this.mounted) {
           this.setState({ msaEnabled: setting?.value === 'true' });
-        }
-      } catch {
-        if (this.mounted) {
-          this.setState({ msaEnabled: false });
+          if(setting){
+            try {
+              const value = await getEulaVerification();
+              if (this.mounted) {
+                      this.setState({ msaVerify: Boolean(value) });
+            }
+          }catch (error) {
+              if (this.mounted) {
+                      this.setState({ msaVerify: false });
+              }
+            }
+
         }
       }
-
-      try {
-        const value = await getEulaVerification();
+     }catch {
         if (this.mounted) {
-          this.setState({ msaVerify: Boolean(value) });
-        }
-      } catch (error) {
-        if (this.mounted) {
-          this.setState({ msaVerify: false });
+          this.setState({ msaEnabled: false });
         }
       }
       finally {
