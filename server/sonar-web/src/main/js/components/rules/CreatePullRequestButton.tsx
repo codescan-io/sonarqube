@@ -18,16 +18,44 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import * as React from 'react';
+import { createCodefixPr } from '../../api/codefix';
 import { CreatePRButton, CreatePRIcon, CreatePRText } from './fixDiffStyles';
 
-export function CreatePullRequestButton() {
-  const handleCreatePR = () => {
-    // TODO: Implement create PR functionality
-    console.log('Create Pull Request clicked');
-  };
+interface CreatePullRequestButtonProps {
+  jobId?: string;
+}
+
+export function CreatePullRequestButton({ jobId }: Readonly<CreatePullRequestButtonProps>) {
+  const [isActive, setIsActive] = React.useState(false);
+  const [isDisabled, setIsDisabled] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const handleCreatePR = React.useCallback(() => {
+    if (!jobId || isDisabled) return;
+    setIsSubmitting(true);
+    createCodefixPr(jobId)
+      .then(() => {
+        setIsActive(true);
+        setIsDisabled(true);
+      })
+      .catch(() => {
+        // Error already handled by request layer; keep button clickable for retry
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
+  }, [jobId, isDisabled]);
+
+  const disabled = !jobId || isDisabled || isSubmitting;
 
   return (
-    <CreatePRButton onClick={handleCreatePR}>
+    <CreatePRButton
+      type="button"
+      onClick={handleCreatePR}
+      disabled={disabled}
+      $active={isActive}
+    >
       <CreatePRIcon>
         <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
           <g filter="url(#filter0_d_569_126)">

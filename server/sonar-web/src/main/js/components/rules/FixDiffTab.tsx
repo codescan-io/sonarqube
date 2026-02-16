@@ -21,7 +21,7 @@
 import { useQuery } from '@tanstack/react-query';
 import * as React from 'react';
 import { FlagMessage, Spinner } from '~design-system';
-import { requestFixDiff } from '../../api/fix-diff';
+import { getCodefixFixedFile } from '../../api/codefix';
 import { getIssueContext } from '../../api/issues';
 import { getBranchLikeDisplayName } from '../../helpers/branch-like';
 import { translate } from '../../helpers/l10n';
@@ -32,7 +32,6 @@ import { Issue, SourceViewerFile } from '../../types/types';
 import { FixDiffHeader } from './FixDiffHeader';
 import { FixDiffTable } from './FixDiffTable';
 import { DiffSourceLine } from './fixDiffTypes';
-import { determineSnippetLineCount, mergeSnippetIntoSource } from './fixDiffUtils';
 import { useFixDiffSnippetRange } from './useFixDiffSnippetRange';
 import { useFixDiffSourceLines } from './useFixDiffSourceLines';
 
@@ -45,8 +44,6 @@ const EXPAND_BY_LINES = 50;
 
 export default function FixDiffTab({ branchLike, issue }: Readonly<FixDiffTabProps>) {
   const branchParams = React.useMemo(() => getBranchLikeQuery(branchLike), [branchLike]);
-  const branchKey = 'branch' in branchParams ? (branchParams.branch ?? '') : '';
-  const pullRequestKey = 'pullRequest' in branchParams ? (branchParams.pullRequest ?? '') : '';
 
   const {
     data: originalSource,
@@ -60,43 +57,16 @@ export default function FixDiffTab({ branchLike, issue }: Readonly<FixDiffTabPro
     enabled: Boolean(issue.component),
   });
 
-  const fixDiffQuery = useQuery({
-    queryKey: [
-      'fix-diff',
-      issue.key,
-      branchKey,
-      pullRequestKey,
-      originalSource?.length ?? 0,
-      issueContextQuery.data?.sourceSnippetStartLine ??
-        issueContextQuery.data?.snippetViolationLine ??
-        0,
-      issueContextQuery.data?.sourceSnippetEndLine ?? 0,
-    ],
-    queryFn: () =>
-      requestFixDiff({
-        componentKey: issue.component,
-        issueContext: issueContextQuery.data!,
-        issueKey: issue.key,
-        originalSource: originalSource!,
-      }),
-    enabled: Boolean(originalSource && issueContextQuery.data),
+  const fixedFileQuery = useQuery({
+    queryKey: ['codefix-fixed-file', issue.key],
+    queryFn: () => getCodefixFixedFile(issue.key),
+    enabled: Boolean(issue.key),
   });
 
   const issueContext = issueContextQuery.data;
-  const fixSnippet = fixDiffQuery.data?.details?.file_changes?.file_changes?.[0]?.content;
-
-  const mergedSource = React.useMemo(() => {
-    if (!originalSource || !issueContext || !fixSnippet) {
-      return undefined;
-    }
-
-    const snippetStart = issueContext.sourceSnippetStartLine ?? issueContext.snippetViolationLine;
-    const snippetEnd =
-      issueContext.sourceSnippetEndLine ??
-      snippetStart + determineSnippetLineCount(issueContext.codesnippet) - 1;
-
-    return mergeSnippetIntoSource(originalSource, fixSnippet, snippetStart, snippetEnd);
-  }, [originalSource, issueContext, fixSnippet]);
+  const fixedFileData = fixedFileQuery.data;
+  const mergedSource = fixedFileData?.fixedFileContent;
+  const jobId = fixedFileData?.jobId;
 
   const hasChanges = React.useMemo(() => {
     if (!originalSource || !mergedSource) return false;
@@ -210,7 +180,7 @@ export default function FixDiffTab({ branchLike, issue }: Readonly<FixDiffTabPro
   const filePath = issue.componentLongName || issue.component || '';
   const branchDisplayName = branchLike ? getBranchLikeDisplayName(branchLike) : 'MainAnalysis';
 
-  if (isSourceLoading || issueContextQuery.isLoading || fixDiffQuery.isLoading) {
+  if (isSourceLoading || issueContextQuery.isLoading || fixedFileQuery.isLoading) {
     return (
       <div className="sw-flex sw-justify-center sw-py-8">
         <Spinner ariaLabel={translate('code_viewer.loading')} />
@@ -218,7 +188,7 @@ export default function FixDiffTab({ branchLike, issue }: Readonly<FixDiffTabPro
     );
   }
 
-  if (isSourceError || issueContextQuery.isError || fixDiffQuery.isError) {
+  if (isSourceError || issueContextQuery.isError || fixedFileQuery.isError) {
     return (
       <FlagMessage variant="warning">
         {translate('issues.code_fix.not_able_to_generate_fix')}
@@ -238,6 +208,7 @@ export default function FixDiffTab({ branchLike, issue }: Readonly<FixDiffTabPro
         projectKey={issue.projectKey}
         projectName={issue.projectName}
         branchLike={branchLike}
+        jobId={jobId}
       />
       <FixDiffTable
         branchLike={branchLike}

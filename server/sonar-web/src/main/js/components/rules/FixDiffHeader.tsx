@@ -46,6 +46,7 @@ interface FixDiffHeaderProps {
   projectKey: string;
   projectName: string;
   branchLike?: BranchLike;
+  jobId?: string;
 }
 
 export function FixDiffHeader({
@@ -54,6 +55,7 @@ export function FixDiffHeader({
   projectKey,
   projectName,
   branchLike,
+  jobId,
 }: Readonly<FixDiffHeaderProps>) {
   return (
     <StyledFixDiffHeader>
@@ -97,7 +99,7 @@ export function FixDiffHeader({
           <ChevronDownIcon className="sw-ml-1" />
         </BranchSelectButton>
       </BranchSelect>
-      <CreatePullRequestButton />
+      <CreatePullRequestButton jobId={jobId} />
     </StyledFixDiffHeader>
   );
 }

@@ -169,7 +169,7 @@ export const DiffCodeContent = styled.div`
 `;
 
 // Create Pull Request Button styles
-export const CreatePRButton = styled.button`
+export const CreatePRButton = styled.button<{ $active?: boolean }>`
   display: flex;
   width: 182px;
   height: 36px;
@@ -178,16 +178,17 @@ export const CreatePRButton = styled.button`
   align-items: center;
   gap: 6px;
   border-radius: 8px;
-  background: #5d6cd0;
+  background: ${({ $active }) => ($active ? 'var(--color-azure-82, #C5CDDF)' : '#5d6cd0')};
   border: none;
-  cursor: pointer;
+  cursor: ${({ disabled }) => (disabled ? 'not-allowed' : 'pointer')};
+  opacity: ${({ disabled }) => (disabled ? 0.8 : 1)};
   transition: opacity 0.2s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     opacity: 0.9;
   }
 
-  &:active {
+  &:active:not(:disabled) {
     opacity: 0.8;
   }
 `;
