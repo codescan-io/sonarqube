@@ -271,9 +271,9 @@ public class SearchResponseFormat {
     if (STATUS_CLOSED.equals(dto.getStatus())) {
       String res = dto.getResolution();
       if (RESOLUTION_FIXED.equals(res)) {
-        issueBuilder.setIssueStatus("CLOSED (FIXED)");
+        issueBuilder.setIssueStatus("CLOSED");
       }else{
-        issueBuilder.setIssueStatus("CLOSED (REMOVED)");
+        issueBuilder.setIssueStatus("REMOVED");
       }
     }else{
         ofNullable(dto.getIssueStatus()).map(IssueStatus::name).ifPresent(issueBuilder::setIssueStatus);
