@@ -272,12 +272,12 @@ public class SearchResponseFormat {
       String res = dto.getResolution();
       if (RESOLUTION_FIXED.equals(res)) {
         issueBuilder.setIssueStatus("CLOSED (FIXED)");
-      } else {
+      }else{
         issueBuilder.setIssueStatus("CLOSED (REMOVED)");
       }
-      } else {
+    }else{
         ofNullable(dto.getIssueStatus()).map(IssueStatus::name).ifPresent(issueBuilder::setIssueStatus);
-      }
+    }
   }
 
   private static void addAdditionalFieldsToIssueBuilder(Collection<SearchAdditionalField> fields, SearchResponseData data, IssueDto dto,
