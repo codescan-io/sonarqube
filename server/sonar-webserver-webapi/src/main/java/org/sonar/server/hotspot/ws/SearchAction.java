@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.SearchHit;
 import org.jetbrains.annotations.NotNull;
+import org.sonar.core.issue.FieldDiffs;
 import org.sonar.db.component.ComponentQualifiers;
 import org.sonar.api.rules.RuleType;
 import org.sonar.api.server.ws.Change;
@@ -51,10 +53,12 @@ import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.component.SnapshotDto;
+import org.sonar.db.issue.IssueChangeDto;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.db.protobuf.DbIssues;
 import org.sonar.db.user.TokenType;
+import org.sonar.db.user.UserDto;
 import org.sonar.db.user.UserTokenDto;
 import org.sonar.server.component.ComponentFinder;
 import org.sonar.server.component.ComponentFinder.ProjectAndBranch;
@@ -77,6 +81,7 @@ import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.lang.String.format;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
+import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
 import static org.sonar.api.issue.Issue.RESOLUTION_ACKNOWLEDGED;
 import static org.sonar.api.issue.Issue.RESOLUTION_EXCEPTION;
@@ -117,6 +122,9 @@ public class SearchAction implements HotspotsWsAction {
   private static final String PARAM_OWASP_TOP_10_2021 = "owaspTop10-2021";
   private static final String PARAM_STIG_ASD_V5R3 = "stig-ASD_V5R3";
   private static final String PARAM_CASA = "casa";
+  private static final String FIELD_STATUS = "status";
+  private static final String FIELD_RESOLUTION = "resolution";
+  private static final String REMOVED_USER_PREFIX = "sq-removed-";
   /**
    * @deprecated SansTop25 report is outdated, it has been completely deprecated in version 10.0 and will be removed from version 11.0
    */
@@ -183,9 +191,33 @@ public class SearchAction implements HotspotsWsAction {
     try (DbSession dbSession = dbClient.openSession(false)) {
       checkIfNeedIssueSync(dbSession, wsRequest);
       Optional<ProjectAndBranch> project = getAndValidateProjectOrApplication(dbSession, wsRequest);
-      SearchResponseData searchResponseData = searchHotspots(wsRequest, dbSession, project.orElse(null));
+      Collector collector = new Collector();
+      SearchResponseData searchResponseData =  searchHotspots(collector,wsRequest, dbSession, project.orElse(null));
+      loadStatusMarkedBy(dbSession, searchResponseData);
       loadComponents(dbSession, searchResponseData);
+      loadComments( collector, dbSession, searchResponseData );
       writeProtobuf(formatResponse(searchResponseData), request, response);
+    }
+  }
+
+  private boolean canEditOrDelete(IssueChangeDto dto) {
+     return userSession.isLoggedIn() && requireNonNull(userSession.getUuid(), "User uuid should not be null").equals(
+              dto.getUserUuid());
+  }
+
+  private void loadComments( Collector collector,DbSession dbSession, SearchResponseData result){
+     List<IssueChangeDto> comments = dbClient.issueChangeDao()
+              .selectByTypeAndIssueKeys(dbSession, collector.getIssueKeys(), IssueChangeDto.TYPE_COMMENT);
+     result.setComments(comments);
+     comments.stream().filter(c -> c.getUserUuid() != null)
+              .forEach(comment -> loadComment(collector, result, comment));
+     result.addUsers(dbClient.userDao().selectByUuids(dbSession, collector.getUserUuids()));
+  }
+
+  private void loadComment(Collector collector, SearchResponseData result, IssueChangeDto comment) {
+    collector.addUserUuids(singletonList(comment.getUserUuid()));
+    if (canEditOrDelete(comment)) {
+       result.addUpdatableComment(comment.getKey());
     }
   }
 
@@ -385,13 +417,13 @@ public class SearchAction implements HotspotsWsAction {
     });
   }
 
-  private SearchResponseData searchHotspots(WsRequest wsRequest, DbSession dbSession, @Nullable ProjectAndBranch projectorApp) {
+  private SearchResponseData searchHotspots(Collector collector, WsRequest wsRequest, DbSession dbSession, @Nullable ProjectAndBranch projectorApp) {
     SearchResponse result = doIndexSearch(wsRequest, dbSession, projectorApp);
     result.getHits();
     List<String> issueKeys = Arrays.stream(result.getHits().getHits())
       .map(SearchHit::getId)
       .toList();
-
+    collector.setIssueKeys(issueKeys);
     List<IssueDto> hotspots = toIssueDtos(dbSession, issueKeys);
 
     Paging paging = forPageIndex(wsRequest.getPage()).withPageSize(wsRequest.getIndex()).andTotal((int) getTotalHits(result).value);
@@ -579,6 +611,109 @@ public class SearchAction implements HotspotsWsAction {
       searchResponseData.addBranches(branchDtos);
     }
   }
+
+    private void loadStatusMarkedBy(DbSession dbSession, SearchResponseData data) {
+        List<IssueDto> hotspots = data.getHotspots();
+        if (hotspots.isEmpty()) {
+            return;
+        }
+
+        Map<String, IssueDto> issueByKey = hotspots.stream()
+                .collect(Collectors.toMap(IssueDto::getKey, h -> h));
+
+        List<String> issueKeys = hotspots.stream().map(IssueDto::getKey).toList();
+
+        List<IssueChangeDto> changes = dbClient.issueChangeDao().selectByIssueKeys(dbSession, issueKeys);
+        if (changes.isEmpty()) {
+            return;
+        }
+
+        Map<String, IssueChangeDto> bestByIssueKey = new HashMap<>();
+
+        for (IssueChangeDto change : changes) {
+            if (!IssueChangeDto.TYPE_FIELD_CHANGE.equals(change.getChangeType())) {
+                continue;
+            }
+            if (change.getUserUuid() == null) {
+                continue;
+            }
+
+            IssueDto issue = issueByKey.get(change.getIssueKey());
+            if (issue == null) {
+                continue;
+            }
+
+            String currentStatus = issue.getStatus();
+            String currentResolution = issue.getResolution();
+
+            FieldDiffs diffs;
+            try {
+                diffs = change.toFieldDiffs();
+            } catch (Exception e) {
+                continue;
+            }
+
+            if (!matchesCurrentReviewState(diffs, currentStatus, currentResolution)) {
+                continue;
+            }
+
+            IssueChangeDto prev = bestByIssueKey.get(change.getIssueKey());
+            if (prev == null || change.getIssueChangeCreationDate() > prev.getIssueChangeCreationDate()) {
+                bestByIssueKey.put(change.getIssueKey(), change);
+            }
+        }
+
+        if (bestByIssueKey.isEmpty()) {
+            return;
+        }
+
+        List<String> userUuids = bestByIssueKey.values().stream()
+                .map(IssueChangeDto::getUserUuid)
+                .distinct()
+                .toList();
+
+        Map<String, String> nameByUuid = dbClient.userDao()
+                .selectByUuids(dbSession, userUuids).stream()
+                .collect(Collectors.toMap(
+                        UserDto::getUuid,
+                        u -> {
+                            String name = u.getName();
+                            if (name != null && name.startsWith(REMOVED_USER_PREFIX) && !u.isActive()) {
+                                return "";
+                            }
+                            return (name != null && !name.trim().isEmpty()) ? name : "";
+                        },
+                        (a, b) -> a
+                ));
+        Map<String, String> statusMarkedBy = new HashMap<>();
+        for (Map.Entry<String, IssueChangeDto> e : bestByIssueKey.entrySet()) {
+            String issueKey = e.getKey();
+            String userUuid = e.getValue().getUserUuid();
+            statusMarkedBy.put(issueKey, nameByUuid.getOrDefault(userUuid, ""));
+        }
+
+        data.addStatusMarkedBy(statusMarkedBy);
+    }
+
+    private boolean matchesCurrentReviewState(FieldDiffs diffs, String currentStatus, String currentResolution) {
+        if (currentStatus == null) {
+            return false;
+        }
+
+        if (STATUS_REVIEWED.equals(currentStatus) && currentResolution != null) {
+            FieldDiffs.Diff<?> resolutionDiff = diffs.get(FIELD_RESOLUTION);
+            if (resolutionDiff != null && resolutionDiff.newValue() != null) {
+                return currentResolution.equals(resolutionDiff.newValue().toString());
+            }
+            FieldDiffs.Diff<?> statusDiff = diffs.get(FIELD_STATUS);
+            return statusDiff != null && statusDiff.newValue() != null && STATUS_REVIEWED.equals(
+                    statusDiff.newValue().toString());
+        }
+
+        FieldDiffs.Diff<?> statusDiff = diffs.get(FIELD_STATUS);
+        return statusDiff != null && statusDiff.newValue() != null && currentStatus.equals(
+                statusDiff.newValue().toString());
+    }
 
   private static Set<String> getHotspotLocationComponentUuids(IssueDto hotspot) {
     Set<String> locationComponentUuids = new HashSet<>();
@@ -786,5 +921,40 @@ public class SearchAction implements HotspotsWsAction {
     public Set<String> getFiles() {
       return files;
     }
+  }
+
+  /**
+   * Collects the keys of all the data to be loaded (comments, users )
+   */
+  public static class Collector {
+
+      private List<String> issueKeys;
+      private final Set<String> userUuids = new HashSet<>();
+
+      public Collector() {
+
+      }
+
+      void setIssueKeys(List<String> issueKeys) {
+          this.issueKeys = issueKeys;
+      }
+
+      void addUserUuids(@Nullable Collection<String> userUuids) {
+          if (userUuids != null) {
+              this.userUuids.addAll(userUuids);
+          }
+      }
+
+      Set<String> getUserUuids() {
+          return userUuids;
+      }
+
+      public Collector(List<String> issueKeys) {
+          this.issueKeys = issueKeys;
+      }
+
+      public List<String> getIssueKeys() {
+          return issueKeys;
+      }
   }
 }
