@@ -45,8 +45,8 @@ import SystemAnnouncement from './SystemAnnouncement';
 import { UpdateNotification } from './update-notification/UpdateNotification';
 import MsaGate from '../../apps/sessions/components/MsaGate';
 import { getEulaVerification } from '../../api/eula';
-import { isMsaConsentPopupEnabled } from '../../helpers/eula-constants';
-import { getMsaPopUpFlag } from '../../api/settings';
+import { getValue } from '../../api/settings';
+import { GlobalSettingKeys } from '../../types/settings';
 
 /*
  * These pages need a white background (aka 'secondary', rather than the default 'primary')
@@ -92,8 +92,8 @@ export default function GlobalContainer() {
   React.useEffect(() => {
     async function fetchMsaPopUpFlag() {
         try {
-          const isMsaEnabled=await getMsaPopUpFlag();
-          const getMsaEnabledValue=isMsaConsentPopupEnabled(isMsaEnabled);
+          const isMsaEnabled=await getValue({ key: GlobalSettingKeys.CodescanMsaConsentDisplayMessage });
+          const getMsaEnabledValue=isMsaEnabled?.value==='true';
           setMsaEnabled(getMsaEnabledValue);
           if(getMsaEnabledValue){
             try {

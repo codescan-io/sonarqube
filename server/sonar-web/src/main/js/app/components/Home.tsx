@@ -33,7 +33,7 @@ import MsaGate from '../../apps/sessions/components/MsaGate';
 const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
 import { getEulaVerification } from '../../api/eula';
 import { isMsaConsentPopupEnabled } from '../../helpers/eula-constants';
-import { getMsaPopUpFlag } from '../../api/settings';
+import { GlobalSettingKeys } from '../../types/settings';
 
 interface Props {
   appState: AppState;
@@ -63,8 +63,8 @@ class Home extends React.PureComponent<Props, State> {
      this.mounted = true;
 
      try {
-       const resp = await getMsaPopUpFlag();
-       const msaEnabled = isMsaConsentPopupEnabled(resp);
+       const resp = await getValue({ key: GlobalSettingKeys.CodescanMsaConsentDisplayMessage });
+       const msaEnabled = resp?.value==='true';
 
        if (this.mounted) {
          this.setState({ msaEnabled });
