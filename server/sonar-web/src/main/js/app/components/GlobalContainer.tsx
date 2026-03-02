@@ -44,10 +44,9 @@ import StartupModal from './StartupModal';
 import SystemAnnouncement from './SystemAnnouncement';
 import { UpdateNotification } from './update-notification/UpdateNotification';
 import MsaGate from '../../apps/sessions/components/MsaGate';
-import { getValue } from '../../api/settings';
-import { getJSON } from '~sonar-aligned/helpers/request';
-import { getMsaPopUpFlag } from '../../api/settings';
 import { getEulaVerification } from '../../api/eula';
+import { isMsaConsentPopupEnabled } from '../../helpers/eula-constants';
+import { getMsaPopUpFlag } from '../../api/settings';
 
 /*
  * These pages need a white background (aka 'secondary', rather than the default 'primary')
@@ -94,8 +93,7 @@ export default function GlobalContainer() {
     async function fetchMsaPopUpFlag() {
         try {
           const isMsaEnabled=await getMsaPopUpFlag();
-          const getMsaEnabledValue=
-          isMsaEnabled.settings.find((s) => s.key=== 'codescan.cloud.msaConsent.displayMessage').value==='true';
+          const getMsaEnabledValue=isMsaConsentPopupEnabled(isMsaEnabled);
           setMsaEnabled(getMsaEnabledValue);
           if(getMsaEnabledValue){
             try {

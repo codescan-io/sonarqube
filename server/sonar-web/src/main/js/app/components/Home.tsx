@@ -32,6 +32,8 @@ import { getValue } from '../../api/settings';
 import MsaGate from '../../apps/sessions/components/MsaGate';
 const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
 import { getEulaVerification } from '../../api/eula';
+import { isMsaConsentPopupEnabled } from '../../helpers/eula-constants';
+import { getMsaPopUpFlag } from '../../api/settings';
 
 interface Props {
   appState: AppState;
@@ -58,36 +60,32 @@ class Home extends React.PureComponent<Props, State> {
         msaLoading:true,
     }
    async componentDidMount() {
-      this.mounted = true;
-      try {
-        const setting = await getValue({ key: MSA_TOGGLE_KEY });
-        if (this.mounted) {
-          this.setState({ msaEnabled: setting?.value === 'true' });
-          if(setting){
-            try {
-              const value = await getEulaVerification();
-              if (this.mounted) {
-                      this.setState({ msaVerify: Boolean(value) });
-            }
-          }catch (error) {
-              if (this.mounted) {
-                      this.setState({ msaVerify: false });
-              }
-            }
+     this.mounted = true;
 
-        }
-      }
-     }catch {
-        if (this.mounted) {
-          this.setState({ msaEnabled: false });
-        }
-      }
-      finally {
-        if (this.mounted) {
-          this.setState({ msaLoading: false });
-        }
-      }
-  }
+     try {
+       const resp = await getMsaPopUpFlag();
+       const msaEnabled = isMsaConsentPopupEnabled(resp);
+
+       if (this.mounted) {
+         this.setState({ msaEnabled });
+       }
+
+       if (msaEnabled) {
+         const value = await getEulaVerification();
+         if (this.mounted) {
+           this.setState({ msaVerify: Boolean(value) });
+         }
+       }
+     } catch {
+       if (this.mounted) {
+         this.setState({ msaEnabled: false, msaVerify: false });
+       }
+     } finally {
+       if (this.mounted) {
+         this.setState({ msaLoading: false });
+       }
+     }
+   }
 
     componentWillUnmount() {
         this.mounted = false;
