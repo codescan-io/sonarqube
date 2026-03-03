@@ -74,7 +74,7 @@ public class ChangeStatusAction implements HotspotsWsAction {
   private final IssueFieldsSetter issueFieldsSetter;
   private final IssueUpdater issueUpdater;
   private final HotspotChangeEventService hotspotChangeEventService;
-  private static final String PARAM_EXPIRY_DATE = "hotspotExceptionExpiryDate";
+  private static final String PARAM_EXPIRY_DATE = "issueResolutionExpiryDate";
 
   public ChangeStatusAction(DbClient dbClient, HotspotWsSupport hotspotWsSupport, TransitionService transitionService,
       IssueFieldsSetter issueFieldsSetter, IssueUpdater issueUpdater,
@@ -114,7 +114,7 @@ public class ChangeStatusAction implements HotspotsWsAction {
     action.createParam(PARAM_COMMENT)
         .setDescription("Comment text.")
         .setExampleValue("This is safe because user input is validated by the calling code");
-    action.createParam("hotspotExceptionExpiryDate")
+    action.createParam("issueResolutionExpiryDate")
         .setDescription("Expiry date for hotspot Exception(YYYY-MM-DD)")
         .setExampleValue("2025-01-20")
         .setRequired(false);
