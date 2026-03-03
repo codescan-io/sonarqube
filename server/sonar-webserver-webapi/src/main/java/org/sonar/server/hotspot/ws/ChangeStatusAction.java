@@ -236,20 +236,20 @@ public class ChangeStatusAction implements HotspotsWsAction {
     if (expiryTimestamp != null) {
       issueDao.updateHotspotExceptionExpiryDate(session, issueDto.getKey(), expiryTimestamp);
 
-      issueDto.setHotspotExceptionExpiresAt(expiryTimestamp);
+      issueDto.setIssueResolutionExpiresAt(expiryTimestamp);
       issueDto.setUpdatedAt(System.currentTimeMillis());
 
-      defaultIssue.setHotspotExceptionExpiresAt(expiryTimestamp);
+      defaultIssue.setIssueResolutionExpiresAt(expiryTimestamp);
       defaultIssue.setChanged(true);
 
       expiryUpdated = true;
     } else {
       issueDao.updateHotspotExceptionExpiryDate(session, issueDto.getKey(), null);
 
-      issueDto.setHotspotExceptionExpiresAt(null);
+      issueDto.setIssueResolutionExpiresAt(null);
       issueDto.setUpdatedAt(System.currentTimeMillis());
 
-      defaultIssue.setHotspotExceptionExpiresAt(null);
+      defaultIssue.setIssueResolutionExpiresAt(null);
       defaultIssue.setChanged(true);
 
       expiryUpdated = true;
