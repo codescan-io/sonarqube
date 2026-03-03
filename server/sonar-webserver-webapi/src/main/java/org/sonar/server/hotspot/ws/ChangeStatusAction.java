@@ -221,7 +221,7 @@ public class ChangeStatusAction implements HotspotsWsAction {
 
     // If resolution is NOT EXCEPTION → always clear from DB and do NOT run any expiry logic
     if (!RESOLUTION_EXCEPTION.equals(defaultIssue.resolution())) {
-      issueDao.updateHotspotExceptionExpiryDate(session, issueDto.getKey(), null);
+      issueDao.updateIssueResolutionExpiryDate(session, issueDto.getKey(), null);
 
       issueDto.setUpdatedAt(System.currentTimeMillis());
       issueDao.update(session, issueDto);
@@ -234,7 +234,7 @@ public class ChangeStatusAction implements HotspotsWsAction {
 
     // Expiry set or update
     if (expiryTimestamp != null) {
-      issueDao.updateHotspotExceptionExpiryDate(session, issueDto.getKey(), expiryTimestamp);
+      issueDao.updateIssueResolutionExpiryDate(session, issueDto.getKey(), expiryTimestamp);
 
       issueDto.setIssueResolutionExpiresAt(expiryTimestamp);
       issueDto.setUpdatedAt(System.currentTimeMillis());
@@ -244,7 +244,7 @@ public class ChangeStatusAction implements HotspotsWsAction {
 
       expiryUpdated = true;
     } else {
-      issueDao.updateHotspotExceptionExpiryDate(session, issueDto.getKey(), null);
+      issueDao.updateIssueResolutionExpiryDate(session, issueDto.getKey(), null);
 
       issueDto.setIssueResolutionExpiresAt(null);
       issueDto.setUpdatedAt(System.currentTimeMillis());
