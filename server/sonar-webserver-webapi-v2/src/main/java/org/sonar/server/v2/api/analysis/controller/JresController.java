@@ -21,7 +21,6 @@ package org.sonar.server.v2.api.analysis.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import java.io.FileNotFoundException;
 import java.util.List;
 import org.sonar.server.v2.api.analysis.response.JreInfoRestResponse;
 import org.springframework.core.io.InputStreamResource;
