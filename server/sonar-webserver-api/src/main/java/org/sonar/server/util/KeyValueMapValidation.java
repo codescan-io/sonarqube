@@ -19,7 +19,7 @@
  */
 package org.sonar.server.util;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sonar.api.PropertyType;
 import javax.annotation.Nullable;
 import java.util.List;
