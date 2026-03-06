@@ -48,6 +48,7 @@ export enum GlobalSettingKeys {
   CodescanWhiteLabelProduct = 'codescan.cloud.whiteLabelProduct',
   CodescanSupportSalesforceOrdId = 'codescan.cloud.support.salesforce.orgid',
   CodescanSupport = 'codescan.cloud.support',
+  CodescanMsaConsentDisplayMessage = 'codescan.cloud.msaConsent.displayMessage',
 }
 
 export type SettingDefinitionAndValue = {
