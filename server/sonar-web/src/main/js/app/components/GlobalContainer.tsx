@@ -18,6 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import * as React from 'react';
 import { ThemeProvider } from '@emotion/react';
 import styled from '@emotion/styled';
 import { useEffect, useState } from 'react';
@@ -42,6 +43,10 @@ import GlobalNav from './nav/global/GlobalNav';
 import StartupModal from './StartupModal';
 import SystemAnnouncement from './SystemAnnouncement';
 import { UpdateNotification } from './update-notification/UpdateNotification';
+import MsaGate from '../../apps/sessions/components/MsaGate';
+import { getEulaVerification } from '../../api/eula';
+import { getValue } from '../../api/settings';
+import { GlobalSettingKeys } from '../../types/settings';
 import { loadSeverityLabelsToCache } from '../../helpers/severityMasking';
 
 /*
@@ -80,8 +85,34 @@ const PAGES_WITH_SECONDARY_BACKGROUND = [
 ];
 
 export default function GlobalContainer() {
-  const [isChatEnabled, setIsChatEnabled] = useState(false); 
+  const [isChatEnabled, setIsChatEnabled] = useState(false);
   const location = useLocation();
+  const [msaEnabled, setMsaEnabled] = React.useState(false);
+  const [verify,setMsaVerify]=React.useState(false);
+  const [msaLoading, setMsaLoading] = React.useState(true);
+  React.useEffect(() => {
+    async function fetchMsaPopUpFlag() {
+        try {
+          const isMsaEnabled=await getValue({ key: GlobalSettingKeys.CodescanMsaConsentDisplayMessage });
+          const getMsaEnabledValue=isMsaEnabled?.value==='true';
+          setMsaEnabled(getMsaEnabledValue);
+          if(getMsaEnabledValue){
+            try {
+                     const value = await getEulaVerification();
+                     setMsaVerify(value);
+            } catch {
+                     setMsaVerify(false);
+            }
+          }
+        } catch {
+          setMsaEnabled(false);
+        }
+      finally {
+             setMsaLoading(false);
+      }
+    }
+     fetchMsaPopUpFlag();
+  }, []);
 
   useEffect(() => {
       async function load() {
@@ -103,7 +134,7 @@ export default function GlobalContainer() {
     }
 
     fetchChatBotFlag();
-  }, []); 
+  }, []);
 
   return (
     <ThemeProvider theme={lightTheme}>
@@ -117,6 +148,7 @@ export default function GlobalContainer() {
               className="sw-box-border sw-flex-[1_0_auto]"
               id="container"
             >
+             <MsaGate enabled={!msaLoading && msaEnabled && !verify} >
               <BranchStatusContextProvider>
                 <Workspace>
                   <IndexationContextProvider>
@@ -141,6 +173,7 @@ export default function GlobalContainer() {
                   </IndexationContextProvider>
                 </Workspace>
               </BranchStatusContextProvider>
+             </MsaGate>
             </GlobalBackground>
             <GlobalFooterCodescan />
           </GlobalContainerWrapper>
@@ -162,3 +195,4 @@ const GlobalBackground = styled.div<{ secondary: boolean }>`
   background-color: ${({ secondary }) =>
     themeColor(secondary ? 'backgroundSecondary' : 'backgroundPrimary')};
 `;
+

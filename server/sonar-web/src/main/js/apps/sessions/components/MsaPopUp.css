@@ -17,8 +17,23 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-export const GITHUB_ALM_TAG = 'github';
-export const GITLAB_ALM_TAG = 'gitlab';
-export const GIT_ALM_TAG = 'git';
-export const BITBUCKET_ALM_TAG = 'bitbucket';
-export const SALESFORCE_ALM_TAG = 'salesforce';
+.msaPopup-elements-styles {
+  font-family: Overpass, sans-serif;
+}
+
+.msaPopup-elements-styles  h1 {
+  font-weight: 300;
+  font-size: 1.5rem;
+  line-height: 2rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.msaPopup-elements-styles  p {
+  margin: 0;
+  line-height: 1.25rem;
+  color: var(--ds-text-page-content, #222);
+}
+
+.msaPopup-elements-styles  a {
+  color: #2563eb;
+}

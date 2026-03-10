@@ -19,6 +19,17 @@
  */
 package org.sonar.server.es;
 
+import static org.sonar.process.ProcessProperties.Property.CLUSTER_ES_HTTP_KEYSTORE;
+import static org.sonar.process.ProcessProperties.Property.CLUSTER_ES_HTTP_KEYSTORE_PASSWORD;
+import static org.sonar.process.ProcessProperties.Property.CLUSTER_NAME;
+import static org.sonar.process.ProcessProperties.Property.CLUSTER_SEARCH_HOSTS;
+import static org.sonar.process.ProcessProperties.Property.CLUSTER_SEARCH_PASSWORD;
+import static org.sonar.process.ProcessProperties.Property.SEARCH_HOST;
+import static org.sonar.process.ProcessProperties.Property.SEARCH_PORT;
+import static org.sonar.process.ProcessProperties.Property.SONAR_ELASTIC_CLOUD_ENABLED;
+import static org.sonar.process.ProcessProperties.Property.SONAR_ELASTIC_CLOUD_ENDPOINT;
+import static org.sonar.process.ProcessProperties.Property.SONAR_ELASTIC_CLOUD_PASSWORD;
+
 import com.google.common.net.HostAndPort;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -27,31 +38,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
 import org.elasticsearch.common.settings.Settings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.ce.ComputeEngineSide;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.server.ServerSide;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.sonar.process.cluster.NodeType;
 import org.springframework.context.annotation.Bean;
-
-import static org.sonar.process.ProcessProperties.Property.CLUSTER_ENABLED;
-import static org.sonar.process.ProcessProperties.Property.CLUSTER_ES_HTTP_KEYSTORE;
-import static org.sonar.process.ProcessProperties.Property.CLUSTER_ES_HTTP_KEYSTORE_PASSWORD;
-import static org.sonar.process.ProcessProperties.Property.CLUSTER_NAME;
-import static org.sonar.process.ProcessProperties.Property.CLUSTER_NODE_TYPE;
-import static org.sonar.process.ProcessProperties.Property.CLUSTER_SEARCH_HOSTS;
-import static org.sonar.process.ProcessProperties.Property.CLUSTER_SEARCH_PASSWORD;
-import static org.sonar.process.ProcessProperties.Property.SEARCH_HOST;
-import static org.sonar.process.ProcessProperties.Property.SEARCH_PORT;
-import static org.sonar.process.ProcessProperties.Property.SONAR_ELASTIC_CLOUD_ENABLED;
-import static org.sonar.process.ProcessProperties.Property.SONAR_ELASTIC_CLOUD_ENDPOINT;
-import static org.sonar.process.ProcessProperties.Property.SONAR_ELASTIC_CLOUD_PASSWORD;
-import static org.sonar.process.cluster.NodeType.SEARCH;
 
 @ComputeEngineSide
 @ServerSide
