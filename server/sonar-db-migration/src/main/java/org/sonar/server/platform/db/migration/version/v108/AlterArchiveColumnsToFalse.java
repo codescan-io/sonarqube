@@ -17,8 +17,22 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-export const GITHUB_ALM_TAG = 'github';
-export const GITLAB_ALM_TAG = 'gitlab';
-export const GIT_ALM_TAG = 'git';
-export const BITBUCKET_ALM_TAG = 'bitbucket';
-export const SALESFORCE_ALM_TAG = 'salesforce';
+package org.sonar.server.platform.db.migration.version.v108;
+
+import java.sql.SQLException;
+import org.sonar.db.Database;
+import org.sonar.server.platform.db.migration.step.DdlChange;
+
+public class AlterArchiveColumnsToFalse extends DdlChange {
+
+  private static final String ARCHIVED_SET_DEFAULT_FALSE = "ALTER TABLE organizations ALTER COLUMN is_archived SET DEFAULT false";
+
+  public AlterArchiveColumnsToFalse(Database db) {
+    super(db);
+  }
+
+  @Override
+  public void execute(Context context) throws SQLException {
+    context.execute(ARCHIVED_SET_DEFAULT_FALSE);
+  }
+}
