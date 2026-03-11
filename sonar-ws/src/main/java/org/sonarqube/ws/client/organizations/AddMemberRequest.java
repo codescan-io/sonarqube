@@ -32,7 +32,7 @@ public class AddMemberRequest {
 
   private String login;
   private String organization;
-  private String memberType;
+  private String type;
 
   /**
    * This is a mandatory parameter.
@@ -60,13 +60,13 @@ public class AddMemberRequest {
     return organization;
   }
 
-    public AddMemberRequest setType(String memberType) {
-        this.memberType = memberType;
+    public AddMemberRequest setType(String type) {
+        this.type = type;
         return this;
     }
 
     public String getType() {
-        return memberType;
+        return type;
     }
 
 }
