@@ -193,14 +193,4 @@ public class IssueDao implements Dao {
     mapper(dbSession).updateIssueResolutionExpiryDate(issueKey, expiryDate);
   }
 
-  public void bulkClearHotspotExceptionExpiryDate(DbSession dbSession, List<String> keys) {
-    if (!keys.isEmpty()) {
-      mapper(dbSession).bulkClearIssueResolutionExpiryDate(keys);
-    }
-  }
-
-  public List<String> selectExpiredHotspotKeys(DbSession dbSession, long currentTime) {
-    return mapper(dbSession).selectExpiredHotspotKeys(currentTime);
-  }
-
 }
