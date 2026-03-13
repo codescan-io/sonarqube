@@ -32,7 +32,7 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import javax.annotation.PostConstruct;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.server.exceptions.NotFoundException;
@@ -43,7 +43,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import static java.lang.String.join;
-import static org.apache.commons.lang.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 
 public class JresHandlerImpl implements JresHandler {
 
