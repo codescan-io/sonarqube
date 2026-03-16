@@ -153,6 +153,7 @@ export const RESOLUTIONS = [
   IssueResolution.Fixed,
   IssueResolution.Removed,
   IssueResolution.WontFix,
+  IssueResolution.Exception
 ];
 
 export const SOURCE_SCOPES = [
