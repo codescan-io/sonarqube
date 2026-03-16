@@ -77,6 +77,7 @@ export const ISSUE_STATUSES = [
   IssueStatus.FalsePositive,
   IssueStatus.Confirmed,
   IssueStatus.Fixed,
+  IssueStatus.Exception
 ];
 
 export const ISSUE_TYPES: IssueType[] = [

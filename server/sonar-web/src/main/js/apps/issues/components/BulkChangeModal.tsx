@@ -34,7 +34,7 @@ import {
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { bulkChangeIssues, searchIssueTags } from '../../../api/issues';
 import FormattingTips from '../../../components/common/FormattingTips';
-import { isTransitionHidden, transitionRequiresComment } from '../../../components/issue/helpers';
+import { isTransitionHidden, transitionRequiresComment, transitionRequiresMandatoryComment } from '../../../components/issue/helpers';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { withBranchStatusRefresh } from '../../../queries/branch';
 import { IssueTransition } from '../../../types/issues';
@@ -174,7 +174,9 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       transition,
       type,
     } = this.state;
-
+    if (transition && transitionRequiresMandatoryComment(transition) && !comment?.trim()) {
+      return;
+    }
     const query = pickBy(
       {
         add_tags: addTags?.join(),
@@ -217,7 +219,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
   }
 
   canSubmit = () => {
-    const { addTags, assignee, removeTags, severity, transition, type } = this.state;
+    const { addTags, assignee, removeTags, severity, transition, type, comment } = this.state;
 
     return Boolean(
       (addTags && addTags.length > 0) ||
@@ -225,7 +227,8 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
         assignee !== undefined ||
         severity ||
         transition ||
-        type,
+        type ||
+        comment,
     );
   };
 

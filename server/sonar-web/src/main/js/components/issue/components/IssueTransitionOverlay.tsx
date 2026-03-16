@@ -31,7 +31,7 @@ import {
 import { translate } from '../../../helpers/l10n';
 import { IssueActions, IssueTransition } from '../../../types/issues';
 import { Issue } from '../../../types/types';
-import { isTransitionDeprecated, isTransitionHidden, transitionRequiresComment } from '../helpers';
+import { isTransitionDeprecated, isTransitionHidden, transitionRequiresComment, transitionRequiresMandatoryComment } from '../helpers';
 import { IssueTransitionItem } from './IssueTransitionItem';
 import './IssueTransitionOverlay.css';
 
@@ -61,6 +61,9 @@ export function IssueTransitionOverlay(props: Readonly<Props>) {
 
   function handleResolve() {
     if (selectedTransition) {
+      if (transitionRequiresMandatoryComment(selectedTransition) && !comment.trim()) {
+            return;
+      }
       onSetTransition(selectedTransition, comment);
     }
   }
@@ -117,7 +120,7 @@ export function IssueTransitionOverlay(props: Readonly<Props>) {
             />
             <Spinner loading={loading} className="sw-float-right sw-m-2">
               <div className="sw-mt-2 sw-flex sw-gap-3 sw-justify-end">
-                <ButtonPrimary onClick={handleResolve}>{translate('resolve')}</ButtonPrimary>
+                <ButtonPrimary onClick={handleResolve} disabled={transitionRequiresMandatoryComment(selectedTransition) && !comment.trim()}> {translate('resolve')}</ButtonPrimary>
                 <ButtonSecondary onClick={onClose}>{translate('cancel')}</ButtonSecondary>
               </div>
             </Spinner>
