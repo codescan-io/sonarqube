@@ -77,6 +77,8 @@ class ChangedIssueImpl implements QGChangeEventListener.ChangedIssue {
         return QGChangeEventListener.Status.RESOLVED_WF;
       case Issue.RESOLUTION_FIXED:
         return QGChangeEventListener.Status.RESOLVED_FIXED;
+      case Issue.RESOLUTION_EXCEPTION:
+        return QGChangeEventListener.Status.RESOLVED_EXCEPTION;
       default:
         throw new IllegalStateException("Unexpected resolution for a resolved issue: " + resolution);
     }

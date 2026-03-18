@@ -71,11 +71,12 @@ public interface QGChangeEventListener {
     RESOLVED_FP,
     RESOLVED_WF,
     RESOLVED_FIXED,
+    RESOLVED_EXCEPTION,
     TO_REVIEW,
     IN_REVIEW,
     REVIEWED;
 
-    protected static final Set<Status> CLOSED_STATUSES = EnumSet.of(CONFIRMED, RESOLVED_FIXED, RESOLVED_FP, RESOLVED_WF);
+    protected static final Set<Status> CLOSED_STATUSES = EnumSet.of(CONFIRMED, RESOLVED_FIXED, RESOLVED_FP, RESOLVED_WF, RESOLVED_EXCEPTION);
   }
 
 }

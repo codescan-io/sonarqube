@@ -571,6 +571,7 @@ export default class IssuesServiceMock {
         IssueTransition.Resolve,
         IssueTransition.FalsePositive,
         IssueTransition.WontFix,
+        IssueTransition.Exception,
       ],
       [IssueStatus.Confirmed]: [
         IssueTransition.Accept,
@@ -578,9 +579,11 @@ export default class IssuesServiceMock {
         IssueTransition.UnConfirm,
         IssueTransition.FalsePositive,
         IssueTransition.WontFix,
+        IssueTransition.Exception,
       ],
       [IssueStatus.FalsePositive]: [IssueTransition.Reopen],
       [IssueStatus.Accepted]: [IssueTransition.Reopen],
+      [IssueStatus.Exception]: [IssueTransition.Reopen],
       [IssueStatus.Fixed]: [IssueTransition.Reopen],
     };
 

@@ -160,6 +160,26 @@ public class IssueWorkflow implements Startable {
         .requiredProjectPermission(UserRole.ISSUE_ADMIN)
         .build())
 
+        // resolve as exception
+      .transition(Transition.builder(DefaultTransitions.EXCEPTION)
+        .from(STATUS_OPEN).to(STATUS_RESOLVED)
+        .conditions(IsNotHotspot.INSTANCE)
+        .functions(new SetResolution(RESOLUTION_EXCEPTION))
+        .requiredProjectPermission(UserRole.ISSUE_ADMIN)
+        .build())
+      .transition(Transition.builder(DefaultTransitions.EXCEPTION)
+        .from(STATUS_REOPENED).to(STATUS_RESOLVED)
+        .conditions(IsNotHotspot.INSTANCE)
+        .functions(new SetResolution(RESOLUTION_EXCEPTION))
+        .requiredProjectPermission(UserRole.ISSUE_ADMIN)
+        .build())
+      .transition(Transition.builder(DefaultTransitions.EXCEPTION)
+        .from(STATUS_CONFIRMED).to(STATUS_RESOLVED)
+        .conditions(IsNotHotspot.INSTANCE)
+        .functions(new SetResolution(RESOLUTION_EXCEPTION))
+        .requiredProjectPermission(UserRole.ISSUE_ADMIN)
+        .build())
+
       // resolve as won't fix, deprecated
       .transition(Transition.builder(DefaultTransitions.WONT_FIX)
         .from(STATUS_OPEN).to(STATUS_RESOLVED)
