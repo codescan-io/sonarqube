@@ -219,7 +219,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
   }
 
   canSubmit = () => {
-    const { addTags, assignee, removeTags, severity, transition, type, comment } = this.state;
+    const { addTags, assignee, removeTags, severity, transition, type } = this.state;
 
     return Boolean(
       (addTags && addTags.length > 0) ||
@@ -227,8 +227,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
         assignee !== undefined ||
         severity ||
         transition ||
-        type ||
-        comment,
+        type,
     );
   };
 

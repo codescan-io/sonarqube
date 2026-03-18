@@ -120,7 +120,14 @@ export function IssueTransitionOverlay(props: Readonly<Props>) {
             />
             <Spinner loading={loading} className="sw-float-right sw-m-2">
               <div className="sw-mt-2 sw-flex sw-gap-3 sw-justify-end">
-                <ButtonPrimary onClick={handleResolve} disabled={transitionRequiresMandatoryComment(selectedTransition) && !comment.trim()}> {translate('resolve')}</ButtonPrimary>
+                <ButtonPrimary
+                  onClick={handleResolve}
+                  disabled={transitionRequiresMandatoryComment(selectedTransition) && !comment.trim()}
+                >
+                  {transitionRequiresMandatoryComment(selectedTransition)
+                    ? translate('Change status')
+                    : translate('resolve')}
+                </ButtonPrimary>
                 <ButtonSecondary onClick={onClose}>{translate('cancel')}</ButtonSecondary>
               </div>
             </Spinner>
