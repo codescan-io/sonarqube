@@ -53,7 +53,8 @@ public class OrganizationsService extends BaseService {
     return call(
       new PostRequest(path("add_member"))
         .setParam("login", request.getLogin())
-        .setParam("organization", request.getOrganization()),
+        .setParam("organization", request.getOrganization())
+        .setParam("type",request.getType()),
       AddMemberWsResponse.parser());
   }
 
