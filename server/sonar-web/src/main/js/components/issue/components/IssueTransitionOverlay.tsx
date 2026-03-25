@@ -125,7 +125,7 @@ export function IssueTransitionOverlay(props: Readonly<Props>) {
                   disabled={transitionRequiresMandatoryComment(selectedTransition) && !comment.trim()}
                 >
                   {transitionRequiresMandatoryComment(selectedTransition)
-                    ? translate('Change status')
+                    ? translate('issue.change_status')
                     : translate('resolve')}
                 </ButtonPrimary>
                 <ButtonSecondary onClick={onClose}>{translate('cancel')}</ButtonSecondary>
