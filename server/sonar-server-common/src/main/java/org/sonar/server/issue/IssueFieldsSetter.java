@@ -38,10 +38,7 @@ import org.sonar.api.rules.RuleType;
 import org.sonar.api.server.ServerSide;
 import org.sonar.api.server.rule.RuleTagFormat;
 import org.sonar.api.utils.Duration;
-import org.sonar.core.issue.DefaultImpact;
-import org.sonar.core.issue.DefaultIssue;
-import org.sonar.core.issue.DefaultIssueComment;
-import org.sonar.core.issue.IssueChangeContext;
+import org.sonar.core.issue.*;
 import org.sonar.core.rule.ImpactSeverityMapper;
 import org.sonar.db.protobuf.DbIssues;
 import org.sonar.db.user.UserDto;
@@ -395,6 +392,12 @@ public class IssueFieldsSetter {
 
   public void addComment(DefaultIssue issue, String text, IssueChangeContext context) {
     issue.addComment(DefaultIssueComment.create(issue.key(), context.userUuid(), text));
+    issue.setUpdateDate(context.date());
+    issue.setChanged(true);
+  }
+
+  public void addExceptionReason(DefaultIssue issue, String exceptionReason, IssueChangeContext context) {
+    issue.addExceptionReason(DefaultIssueExceptionReason.create(issue.key(), context.userUuid(), exceptionReason));
     issue.setUpdateDate(context.date());
     issue.setChanged(true);
   }

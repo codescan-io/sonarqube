@@ -20,7 +20,7 @@
 
 import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
-import { FormField, InputTextArea, Modal } from '~design-system';
+import { FormField, InputTextArea, LightPrimary, Modal } from '~design-system';
 import FormattingTips from '../../../components/common/FormattingTips';
 import { translate } from '../../../helpers/l10n';
 
@@ -28,6 +28,7 @@ export interface HotspotCommentPopupProps {
   onCancel: () => void;
   onSubmit: (comment: string) => void;
   value?: string;
+  headerTitle?: string;
 }
 
 export default function HotspotCommentModal(props: HotspotCommentPopupProps) {
@@ -35,12 +36,24 @@ export default function HotspotCommentModal(props: HotspotCommentPopupProps) {
 
   return (
     <Modal
-      headerTitle={translate(
-        props.value !== undefined ? 'issue.comment.edit' : 'hotspots.status.add_comment',
-      )}
+      headerTitle={
+        props.headerTitle ??
+        translate(props.value !== undefined ? 'issue.comment.edit' : 'hotspots.status.add_comment')
+      }
       onClose={props.onCancel}
       body={
-        <FormField htmlFor="security-hotspot-comment" label={translate('hotspots.comment.field')}>
+        <FormField
+          htmlFor="security-hotspot-comment"
+          label={
+            props.headerTitle ? (
+              <LightPrimary className="sw-typo-semibold">
+                {`${translate('hotspots.status.exception_reason')}:`}
+              </LightPrimary>
+            ) : (
+              translate('hotspots.comment.field')
+            )
+          }
+        >
           <InputTextArea
             className="sw-mb-2 sw-resize-y"
             id="security-hotspot-comment"
