@@ -75,8 +75,9 @@ export const ISSUE_STATUSES = [
   IssueStatus.Open,
   IssueStatus.Accepted,
   IssueStatus.FalsePositive,
+  IssueStatus.Exception,
   IssueStatus.Confirmed,
-  IssueStatus.Fixed,
+  IssueStatus.Fixed
 ];
 
 export const ISSUE_TYPES: IssueType[] = [
@@ -152,6 +153,7 @@ export const RESOLUTIONS = [
   IssueResolution.Fixed,
   IssueResolution.Removed,
   IssueResolution.WontFix,
+  IssueResolution.Exception
 ];
 
 export const SOURCE_SCOPES = [
