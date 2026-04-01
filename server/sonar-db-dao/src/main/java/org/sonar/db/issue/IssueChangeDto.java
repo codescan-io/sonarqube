@@ -27,6 +27,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.sonar.api.utils.System2;
 import org.sonar.core.issue.DefaultIssueComment;
+import org.sonar.core.issue.DefaultIssueExceptionReason;
 import org.sonar.core.issue.FieldDiffs;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -39,6 +40,7 @@ public final class IssueChangeDto implements Serializable {
 
   public static final String TYPE_FIELD_CHANGE = "diff";
   public static final String TYPE_COMMENT = "comment";
+  public static final String TYPE_EXCEPTION_REASON = "exception_reason";
 
   private String uuid;
   private String kee;
@@ -72,6 +74,18 @@ public final class IssueChangeDto implements Serializable {
     dto.setChangeData(comment.markdownText());
     dto.setUserUuid(comment.userUuid());
     Date createdAt = requireNonNull(comment.createdAt(), "Comment created at must not be null");
+    dto.setIssueChangeCreationDate(createdAt.getTime());
+    dto.setProjectUuid(projectUuid);
+    return dto;
+  }
+
+  public static IssueChangeDto of(DefaultIssueExceptionReason exceptionReason, String projectUuid) {
+    IssueChangeDto dto = newDto(exceptionReason.issueKey());
+    dto.setKey(exceptionReason.key());
+    dto.setChangeType(IssueChangeDto.TYPE_EXCEPTION_REASON);
+    dto.setChangeData(exceptionReason.markdownText());
+    dto.setUserUuid(exceptionReason.userUuid());
+    Date createdAt = requireNonNull(exceptionReason.createdAt(), "Exception reason created at must not be null");
     dto.setIssueChangeCreationDate(createdAt.getTime());
     dto.setProjectUuid(projectUuid);
     return dto;
@@ -189,6 +203,17 @@ public final class IssueChangeDto implements Serializable {
 
   public DefaultIssueComment toComment() {
     return new DefaultIssueComment()
+      .setMarkdownText(changeData)
+      .setKey(kee)
+      .setCreatedAt(new Date(getIssueChangeCreationDate()))
+      .setUpdatedAt(updatedAt == null ? null : new Date(updatedAt))
+      .setUserUuid(userUuid)
+      .setIssueKey(issueKey)
+      .setNew(false);
+  }
+
+  public DefaultIssueExceptionReason toExceptionReason() {
+    return new DefaultIssueExceptionReason()
       .setMarkdownText(changeData)
       .setKey(kee)
       .setCreatedAt(new Date(getIssueChangeCreationDate()))

@@ -54,16 +54,20 @@ export default function StatusSelection(props: Props) {
 
 
   const originalComment = "";
+  const originalExceptionReason = "";
 
   const [loading, setLoading] = React.useState(false);
   const [status, setStatus] = React.useState(initialStatus);
   const [comment, setComment] = React.useState('');
+  const [exceptionReason, setExceptionReason] = React.useState('');
   const [expiryDate, setExpiryDate] = React.useState<string | undefined>(originalExpiryDate);
 
   const submitDisabled =
-    status === initialStatus &&
+    (status === initialStatus &&
     comment === originalComment &&
-    expiryDate === originalExpiryDate;
+    exceptionReason === originalExceptionReason &&
+    expiryDate === originalExpiryDate) ||
+    (status === HotspotStatusOption.EXCEPTION && !exceptionReason);
 
   const handleSubmit = async () => {
     if (!submitDisabled) {
@@ -73,6 +77,7 @@ export default function StatusSelection(props: Props) {
           ...getStatusAndResolutionFromStatusOption(status),
           comment: comment || undefined,
           issueResolutionExpiryDate: expiryDate || "",
+          exceptionReason: exceptionReason || undefined,
         });
         await props.onStatusOptionChange(status);
         props.onClose();
@@ -85,11 +90,17 @@ export default function StatusSelection(props: Props) {
   return (
     <StatusSelectionRenderer
       comment={comment}
+      exceptionReason={exceptionReason}
       expiryDate={expiryDate}
       loading={loading}
       onCommentChange={(comment) => setComment(comment)}
+      onExceptionReasonChange={(reason) => setExceptionReason(reason)}
       onStatusChange={(status) => {
         setStatus(status);
+        // Clear exception reason when status changes away from EXCEPTION
+        if (status !== HotspotStatusOption.EXCEPTION) {
+          setExceptionReason('');
+        }
       }}
       onExpiryDateChange={setExpiryDate}
       onSubmit={handleSubmit}

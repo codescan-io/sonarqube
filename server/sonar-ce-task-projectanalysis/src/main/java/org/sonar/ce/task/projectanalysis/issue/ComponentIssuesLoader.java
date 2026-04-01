@@ -227,6 +227,9 @@ public class ComponentIssuesLoader {
         case IssueChangeDto.TYPE_COMMENT:
           i.addComment(c.toComment());
           break;
+        case IssueChangeDto.TYPE_EXCEPTION_REASON:
+          i.addExceptionReason(c.toExceptionReason());
+          break;
         default:
           throw new IllegalStateException("Unknown change type: " + c.getChangeType());
       }
