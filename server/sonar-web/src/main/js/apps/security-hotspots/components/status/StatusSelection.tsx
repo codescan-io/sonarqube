@@ -64,10 +64,10 @@ export default function StatusSelection(props: Props) {
 
   const submitDisabled =
     (status === initialStatus &&
-    comment === originalComment &&
+      comment === originalComment &&
     exceptionReason === originalExceptionReason &&
     expiryDate === originalExpiryDate) ||
-    (status === HotspotStatusOption.EXCEPTION && !exceptionReason);
+    (status === HotspotStatusOption.EXCEPTION && exceptionReason.trim().length < 5);
 
   const handleSubmit = async () => {
     if (!submitDisabled) {
