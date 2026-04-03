@@ -92,4 +92,6 @@ public interface IssueMapper {
   void bulkClearIssueResolutionExpiryDate(@Param("keys") List<String> keys);
 
   List<String> selectExpiredHotspotKeys(@Param("currentTime") long currentTime);
+
+  List<String> selectExpiredStandardIssueExceptionKeys(@Param("currentTime") long currentTime);
 }

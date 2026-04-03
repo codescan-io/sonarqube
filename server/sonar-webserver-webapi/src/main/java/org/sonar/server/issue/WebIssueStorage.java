@@ -84,7 +84,7 @@ public class WebIssueStorage extends IssueStorage {
     List<DefaultIssue> issuesToUpdate = firstNonNull(issuesNewOrUpdated.get(false), emptyList());
 
     Collection<IssueDto> inserted = insert(dbSession, issuesToInsert, now);
-    Collection<IssueDto> updated = update(issuesToUpdate, now);
+    Collection<IssueDto> updated = update(dbSession, issuesToUpdate, now);
 
     doAfterSave(dbSession, Stream.concat(inserted.stream(), updated.stream())
       .collect(Collectors.toSet()));
@@ -143,18 +143,16 @@ public class WebIssueStorage extends IssueStorage {
   /**
    * @return the keys of the updated issues
    */
-  private Collection<IssueDto> update(List<DefaultIssue> issuesToUpdate, long now) {
+  private Collection<IssueDto> update(DbSession dbSession, List<DefaultIssue> issuesToUpdate, long now) {
     Collection<IssueDto> updated = new ArrayList<>();
-    if (!issuesToUpdate.isEmpty()) {
-      try (DbSession dbSession = dbClient.openSession(false)) {
-        IssueChangeMapper issueChangeMapper = dbSession.getMapper(IssueChangeMapper.class);
-        for (DefaultIssue issue : issuesToUpdate) {
-          IssueDto issueDto = doUpdate(dbSession, now, issue);
-          updated.add(issueDto);
-          insertChanges(issueChangeMapper, issue, uuidFactory);
-        }
-        dbSession.commit();
-      }
+    if (issuesToUpdate.isEmpty()) {
+      return updated;
+    }
+    IssueChangeMapper issueChangeMapper = dbSession.getMapper(IssueChangeMapper.class);
+    for (DefaultIssue issue : issuesToUpdate) {
+      IssueDto issueDto = doUpdate(dbSession, now, issue);
+      updated.add(issueDto);
+      insertChanges(issueChangeMapper, issue, uuidFactory);
     }
     return updated;
   }

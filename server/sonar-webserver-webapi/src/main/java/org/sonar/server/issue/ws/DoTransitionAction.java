@@ -22,6 +22,11 @@ package org.sonar.server.issue.ws;
 import com.google.common.io.Resources;
 import java.util.Date;
 import java.util.Map;
+import java.util.OptionalInt;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.issue.DefaultTransitions;
 import org.sonar.api.issue.impact.Severity;
 import org.sonar.api.server.ws.Change;
@@ -36,6 +41,7 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.issue.IssueDto;
+import org.sonar.db.property.PropertyDto;
 import org.sonar.server.issue.IssueFinder;
 import org.sonar.server.issue.TransitionService;
 import org.sonar.server.pushapi.issues.IssueChangeEventService;
@@ -46,6 +52,7 @@ import static org.sonar.api.issue.DefaultTransitions.OPEN_AS_VULNERABILITY;
 import static org.sonar.api.issue.DefaultTransitions.RESET_AS_TO_REVIEW;
 import static org.sonar.api.issue.DefaultTransitions.RESOLVE_AS_REVIEWED;
 import static org.sonar.api.issue.DefaultTransitions.SET_AS_IN_REVIEW;
+import static org.sonar.api.issue.Issue.RESOLUTION_EXCEPTION;
 import static org.sonar.core.issue.IssueChangeContext.issueChangeContextByUserBuilder;
 import static org.sonar.db.component.BranchType.BRANCH;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.ACTION_DO_TRANSITION;
@@ -53,6 +60,25 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_TRANSITION;
 
 public class DoTransitionAction implements IssuesWsAction {
+
+  private static final Logger LOG = LoggerFactory.getLogger(DoTransitionAction.class);
+
+  /**
+   * Last-resort default when DB and {@link Configuration} yield no positive value. Must match
+   * {@code io.codescan.cloud.DeveloperPlugin#DEFAULT_AUTO_ASSIGN_EXPIRY_DAYS}.
+   */
+  private static final int FALLBACK_AUTO_ASSIGN_EXPIRY_DAYS = 10;
+
+  /**
+   * Global setting keys for exception expiry (DB {@code properties} / {@link org.sonar.api.config.Configuration}).
+   * Must stay identical to {@code io.codescan.cloud.DeveloperPlugin#KEY_AUTO_ASSIGN_EXPIRY_*} in codescanng — the web API
+   * module cannot depend on that plugin JAR, so the strings are defined here only.
+   */
+  private static final String AUTO_ASSIGN_EXPIRY_BLOCKER = "codescan.cloud.autoAssignExpiry.blocker";
+  private static final String AUTO_ASSIGN_EXPIRY_CRITICAL = "codescan.cloud.autoAssignExpiry.critical";
+  private static final String AUTO_ASSIGN_EXPIRY_MAJOR = "codescan.cloud.autoAssignExpiry.major";
+  private static final String AUTO_ASSIGN_EXPIRY_MINOR = "codescan.cloud.autoAssignExpiry.minor";
+  private static final String AUTO_ASSIGN_EXPIRY_INFO = "codescan.cloud.autoAssignExpiry.info";
 
   private final DbClient dbClient;
   private final UserSession userSession;
@@ -62,10 +88,11 @@ public class DoTransitionAction implements IssuesWsAction {
   private final TransitionService transitionService;
   private final OperationResponseWriter responseWriter;
   private final System2 system2;
+  private final Configuration configuration;
 
   public DoTransitionAction(DbClient dbClient, UserSession userSession, IssueChangeEventService issueChangeEventService,
     IssueFinder issueFinder, IssueUpdater issueUpdater, TransitionService transitionService,
-    OperationResponseWriter responseWriter, System2 system2) {
+    OperationResponseWriter responseWriter, System2 system2, Configuration configuration) {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.issueChangeEventService = issueChangeEventService;
@@ -74,6 +101,7 @@ public class DoTransitionAction implements IssuesWsAction {
     this.transitionService = transitionService;
     this.responseWriter = responseWriter;
     this.system2 = system2;
+    this.configuration = configuration;
   }
 
   @Override
@@ -132,6 +160,7 @@ public class DoTransitionAction implements IssuesWsAction {
     IssueChangeContext context = issueChangeContextByUserBuilder(new Date(system2.now()), userSession.getUuid()).withRefreshMeasures().build();
     transitionService.checkTransitionPermission(transitionKey, defaultIssue);
     if (transitionService.doTransition(defaultIssue, context, transitionKey)) {
+      defaultIssue.setIssueResolutionExpiresAt(calculateExceptionExpiryTimestamp(session, issueDto, defaultIssue, transitionKey));
       BranchDto branch = issueUpdater.getBranch(session, defaultIssue);
       SearchResponseData response = issueUpdater.saveIssueAndPreloadSearchResponseData(session, issueDto, defaultIssue, context, branch);
 
@@ -142,5 +171,84 @@ public class DoTransitionAction implements IssuesWsAction {
       return response;
     }
     return new SearchResponseData(issueDto);
+  }
+
+  private Long calculateExceptionExpiryTimestamp(DbSession session, IssueDto issueDto, DefaultIssue defaultIssue, String transitionKey) {
+    // Only set expiry for EXCEPTION resolution
+    if (!RESOLUTION_EXCEPTION.equals(defaultIssue.resolution())) {
+      return null;
+    }
+
+    // Set new expiry timestamp only when transitioning TO exception
+    if (DefaultTransitions.EXCEPTION.equals(transitionKey)) {
+      int expiryDays = getExpiryDaysBySeverity(session, issueDto.getSeverity());
+      return system2.now() + TimeUnit.DAYS.toMillis(expiryDays);
+    }
+
+    // Preserve existing expiry for other transitions that keep EXCEPTION resolution
+    return issueDto.getIssueResolutionExpiresAt();
+  }
+
+  private int getExpiryDaysBySeverity(DbSession session, String severity) {
+    String propertyKey = mapSeverityToPropertyKey(severity);
+    return resolveAutoAssignExpiryDays(session, propertyKey);
+  }
+
+  private String mapSeverityToPropertyKey(String severity) {
+    if (severity == null) {
+      return AUTO_ASSIGN_EXPIRY_MAJOR;
+    }
+    return switch (severity) {
+      case "BLOCKER" -> AUTO_ASSIGN_EXPIRY_BLOCKER;
+      case "CRITICAL" -> AUTO_ASSIGN_EXPIRY_CRITICAL;
+      case "MAJOR" -> AUTO_ASSIGN_EXPIRY_MAJOR;
+      case "MINOR" -> AUTO_ASSIGN_EXPIRY_MINOR;
+      case "INFO" -> AUTO_ASSIGN_EXPIRY_INFO;
+      default -> AUTO_ASSIGN_EXPIRY_MAJOR;
+    };
+  }
+
+  private int resolveAutoAssignExpiryDays(DbSession session, String propertyKey) {
+    // 1. Try database property for specific severity
+    PropertyDto property = dbClient.propertiesDao().selectGlobalProperty(session, propertyKey);
+    if (property != null && property.getValue() != null) {
+      OptionalInt fromDb = parsePositiveDays(property.getValue());
+      if (fromDb.isPresent()) {
+        return fromDb.getAsInt();
+      }
+    }
+
+    // 2. Try configuration for specific severity (plugin defaults)
+    OptionalInt fromConfig = parsePositiveDays(configuration.get(propertyKey).orElse(null));
+    if (fromConfig.isPresent()) {
+      return fromConfig.getAsInt();
+    }
+
+    // 3. Fallback to MAJOR severity configuration
+    if (!AUTO_ASSIGN_EXPIRY_MAJOR.equals(propertyKey)) {
+      OptionalInt fromMajor = parsePositiveDays(configuration.get(AUTO_ASSIGN_EXPIRY_MAJOR).orElse(null));
+      if (fromMajor.isPresent()) {
+        return fromMajor.getAsInt();
+      }
+    }
+
+    // 4. Degrade gracefully (misconfigured instance should still allow exception transitions)
+    LOG.warn(
+      "No positive auto-assign expiry days for {} — using fallback {} days. "
+        + "Set global properties or install the CodeScan Developer plugin (keys codescan.cloud.autoAssignExpiry.*).",
+      propertyKey, FALLBACK_AUTO_ASSIGN_EXPIRY_DAYS);
+    return FALLBACK_AUTO_ASSIGN_EXPIRY_DAYS;
+  }
+
+  private static OptionalInt parsePositiveDays(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return OptionalInt.empty();
+    }
+    try {
+      int days = Integer.parseInt(raw.trim());
+      return days > 0 ? OptionalInt.of(days) : OptionalInt.empty();
+    } catch (NumberFormatException e) {
+      return OptionalInt.empty();
+    }
   }
 }

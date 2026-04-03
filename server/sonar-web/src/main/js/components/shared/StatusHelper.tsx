@@ -18,6 +18,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import {
+  formatExceptionExpiryCountdown,
+  isIssueExceptionExpiryActive,
+  isIssueExceptionResolution,
+  parseIssueResolutionExpiresAtMillis,
+} from '../../helpers/issues';
+import { useExceptionExpiryClock } from '../../helpers/useExceptionExpiryClock';
 import { translate } from '../../helpers/l10n';
 import { IssueStatus } from '../../types/issues';
 import IssueStatusIcon from '../icon-mappers/IssueStatusIcon';
@@ -25,13 +32,28 @@ import IssueStatusIcon from '../icon-mappers/IssueStatusIcon';
 interface Props {
   className?: string;
   issueStatus: IssueStatus;
+  resolution?: string;
+  issueResolutionExpiresAt?: number | string;
 }
 
 export default function StatusHelper(props: Props) {
+  const expiryMs = parseIssueResolutionExpiresAtMillis({
+    issueResolutionExpiresAt: props.issueResolutionExpiresAt,
+  });
+  const isException = isIssueExceptionResolution({
+    issueStatus: props.issueStatus,
+    resolution: props.resolution,
+  });
+  const needsExpiryClock = isException && expiryMs !== undefined;
+  const nowMs = useExceptionExpiryClock(needsExpiryClock);
+  const showExceptionExpiry =
+    needsExpiryClock && isIssueExceptionExpiryActive(expiryMs, nowMs);
+
   return (
     <span className={props.className}>
       <IssueStatusIcon className="sw-mr-1" issueStatus={props.issueStatus} />
       {translate('issue.issue_status', props.issueStatus)}
+      {showExceptionExpiry && ` (${formatExceptionExpiryCountdown(expiryMs, nowMs)})`}
     </span>
   );
 }

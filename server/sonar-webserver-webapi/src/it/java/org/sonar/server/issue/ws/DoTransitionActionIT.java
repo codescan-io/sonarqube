@@ -24,6 +24,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.sonar.api.config.Configuration;
+import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.impl.utils.TestSystem2;
 import org.sonar.api.rules.RuleType;
 import org.sonar.api.server.ws.Request;
@@ -106,8 +108,18 @@ public class DoTransitionActionIT {
     mock(NotificationManager.class), issueChangePostProcessor, issuesChangesSerializer);
   private ArgumentCaptor<SearchResponseData> preloadedSearchResponseDataCaptor = ArgumentCaptor.forClass(SearchResponseData.class);
 
+  /**
+   * Simulates production {@link org.sonar.api.config.Configuration} after CodeScan Developer plugin registers
+   * PropertyDefinition defaults (see {@code io.codescan.cloud.DeveloperPlugin#DEFAULT_AUTO_ASSIGN_EXPIRY_DAYS}): one key is
+   * enough because {@link DoTransitionAction} falls back to MAJOR when a severity-specific key is unset, then to a hardcoded
+   * fallback if nothing is configured.
+   */
+  private final Configuration configuration = new MapSettings()
+    .setProperty("codescan.cloud.autoAssignExpiry.major", "10")
+    .asConfig();
+
   private WsAction underTest = new DoTransitionAction(dbClient, userSession, issueChangeEventService,
-    new IssueFinder(dbClient, userSession), issueUpdater, transitionService, responseWriter, system2);
+    new IssueFinder(dbClient, userSession), issueUpdater, transitionService, responseWriter, system2, configuration);
   private WsActionTester tester = new WsActionTester(underTest);
 
   @Before

@@ -56,6 +56,9 @@ public class WebApiEndpoints {
   public static final String HOTSPOTS_DOMAIN = "/hotspots";
   public static final String HOTSPOT_EXPIRE_ENDPOINT = HOTSPOTS_DOMAIN + "/expire";
 
+  public static final String ISSUES_DOMAIN = "/issues";
+  public static final String ISSUE_EXCEPTION_EXPIRE_ENDPOINT = ISSUES_DOMAIN + "/expire-expired-exception-issues";
+
   private WebApiEndpoints() {
   }
 }

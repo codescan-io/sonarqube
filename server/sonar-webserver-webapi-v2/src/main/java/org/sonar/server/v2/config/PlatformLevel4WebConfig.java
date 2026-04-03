@@ -21,6 +21,7 @@ package org.sonar.server.v2.config;
 
 import javax.annotation.Nullable;
 import org.sonar.api.platform.Server;
+import org.sonar.api.utils.System2;
 import org.sonar.api.resources.Languages;
 import org.sonar.db.Database;
 import org.sonar.db.DbClient;
@@ -91,6 +92,9 @@ import org.sonar.server.v2.api.system.controller.LivenessController;
 import org.sonar.server.v2.api.hotspot.controller.DefaultHotspotController;
 import org.sonar.server.v2.api.hotspot.controller.HotspotController;
 import org.sonar.server.v2.api.hotspot.service.HotspotService;
+import org.sonar.server.v2.api.issue.controller.DefaultIssueExceptionExpiryController;
+import org.sonar.server.v2.api.issue.controller.IssueExceptionExpiryController;
+import org.sonar.server.v2.api.issue.service.StandardIssueExceptionExpiryService;
 import org.sonar.server.v2.api.user.controller.DefaultUserController;
 import org.sonar.server.v2.api.user.controller.UserController;
 import org.sonar.server.v2.api.user.converter.UsersSearchRestResponseGenerator;
@@ -257,5 +261,28 @@ public class PlatformLevel4WebConfig {
     return new DefaultHotspotController(
             userSession,
             hotspotService);
+  }
+
+  @Bean
+  public StandardIssueExceptionExpiryService standardIssueExceptionExpiryService(
+    DbClient dbClient,
+    UserSession userSession,
+    TransitionService transitionService,
+    WebIssueStorage issueStorage,
+    IssueChangePostProcessor issueChangePostProcessor,
+    System2 system2) {
+    return new StandardIssueExceptionExpiryService(
+      dbClient,
+      userSession,
+      transitionService,
+      issueStorage,
+      issueChangePostProcessor,
+      system2);
+  }
+
+  @Bean
+  public IssueExceptionExpiryController issueExceptionExpiryController(UserSession userSession,
+    StandardIssueExceptionExpiryService standardIssueExceptionExpiryService) {
+    return new DefaultIssueExceptionExpiryController(userSession, standardIssueExceptionExpiryService);
   }
 }

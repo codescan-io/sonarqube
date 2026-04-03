@@ -22,10 +22,11 @@ import { flatten, sortBy } from 'lodash';
 import { BugIcon, CodeSmellIcon, SecurityHotspotIcon, VulnerabilityIcon } from '~design-system';
 import { MetricKey } from '~sonar-aligned/types/metrics';
 import { SoftwareQuality } from '../types/clean-code-taxonomy';
-import { IssueType, RawIssue } from '../types/issues';
+import { IssueStatus, IssueType, RawIssue } from '../types/issues';
 import { Dict, Flow, FlowLocation, FlowType, Issue, TextRange } from '../types/types';
 import { UserBase } from '../types/users';
 import { ISSUE_TYPES } from './constants';
+import { translate, translateWithParameters } from './l10n';
 
 interface Rule {}
 
@@ -146,14 +147,85 @@ function orderLocations(locations: FlowLocation[]) {
   );
 }
 
+/** Values below this are treated as Unix seconds; DB/API use epoch milliseconds. */
+const EPOCH_MS_MIN = 10_000_000_000;
+
+/** Epoch millis for {@code issues.issue_resolution_expires_at} from API (camelCase or snake_case). */
+export function parseIssueResolutionExpiresAtMillis(issue: {
+  issueResolutionExpiresAt?: number | string;
+  issue_resolution_expires_at?: number | string;
+}): number | undefined {
+  const raw = issue.issueResolutionExpiresAt ?? issue.issue_resolution_expires_at;
+  if (raw === undefined || raw === null) {
+    return undefined;
+  }
+  let n = typeof raw === 'number' ? raw : Number(String(raw).trim());
+  if (Number.isNaN(n) || n <= 0) {
+    return undefined;
+  }
+  if (n < EPOCH_MS_MIN) {
+    n *= 1000;
+  }
+  return n;
+}
+
+export function isIssueExceptionResolution(issue: {
+  issueStatus?: IssueStatus;
+  resolution?: string;
+}): boolean {
+  return issue.issueStatus === IssueStatus.Exception || issue.resolution === 'EXCEPTION';
+}
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+function startOfLocalDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/**
+ * Whole calendar days from the start of "today" (local) to the start of the expiry day (local).
+ * Matches user expectation of "N days left" vs {@code issue_resolution_expires_at} wall time.
+ */
+export function wholeLocalCalendarDaysRemaining(expiryMillis: number, nowMillis: number): number {
+  return Math.floor(
+    (startOfLocalDay(new Date(expiryMillis)) - startOfLocalDay(new Date(nowMillis))) / MS_PER_DAY,
+  );
+}
+
+/** True while {@code issue_resolution_expires_at} (epoch ms) is still in the future. */
+export function isIssueExceptionExpiryActive(expiryMillis: number, nowMillis: number = Date.now()): boolean {
+  return expiryMillis > nowMillis;
+}
+
+/**
+ * Remaining calendar days until exception expiry using stored {@code issue_resolution_expires_at}
+ * and the current system clock (see {@link wholeLocalCalendarDaysRemaining}).
+ */
+export function formatExceptionExpiryCountdown(expiryMillis: number, nowMillis: number = Date.now()): string {
+  if (expiryMillis <= nowMillis) {
+    return '';
+  }
+  const calendarDaysLeft = wholeLocalCalendarDaysRemaining(expiryMillis, nowMillis);
+  if (calendarDaysLeft === 1) {
+    return translate('issue.exception_expiry.expires_in_one');
+  }
+  if (calendarDaysLeft > 1) {
+    return translateWithParameters('issue.exception_expiry.expires_in_many', calendarDaysLeft);
+  }
+  // calendarDaysLeft is 0 - expires today (within 24h)
+  return translate('issue.exception_expiry.expires_today');
+}
+
 export function parseIssueFromResponse(
   issue: RawIssue,
   components?: Component[],
   users?: UserBase[],
   rules?: Rule[],
 ): Issue {
+  const normalizedExpiryMs = parseIssueResolutionExpiresAtMillis(issue);
   return {
     ...issue,
+    ...(normalizedExpiryMs !== undefined ? { issueResolutionExpiresAt: normalizedExpiryMs } : {}),
     ...injectRelational(issue, components, 'component', 'key'),
     ...injectRelational(issue, components, 'project', 'key'),
     ...injectRelational(issue, rules, 'rule', 'key'),

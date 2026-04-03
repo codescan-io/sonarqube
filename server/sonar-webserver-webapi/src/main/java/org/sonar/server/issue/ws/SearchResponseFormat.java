@@ -240,6 +240,7 @@ public class SearchResponseFormat {
     ofNullable(dto.getIssueCreationDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setCreationDate);
     ofNullable(dto.getIssueUpdateDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setUpdateDate);
     ofNullable(dto.getIssueCloseDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setCloseDate);
+    ofNullable(dto.getIssueResolutionExpiresAt()).ifPresent(issueBuilder::setIssueResolutionExpiresAt);
     ofNullable(data.getStatusChangedByIssueKey(dto.getKey()))
       .map(data::getUserByUuid)
       .filter(userDto -> userDto.getName() != null && !userDto.getName().isBlank())

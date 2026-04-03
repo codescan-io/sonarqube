@@ -22,6 +22,10 @@ import { Tooltip } from '@sonarsource/echoes-react';
 import { LightLabel, Note, SeparatorCircleIcon } from '~design-system';
 import DateFromNow from '../../../components/intl/DateFromNow';
 import IssuePrioritized from '../../../components/issue/components/IssuePrioritized';
+import { formatExceptionExpiryCountdown, isIssueExceptionExpiryActive, isIssueExceptionResolution,
+    parseIssueResolutionExpiresAtMillis,
+} from '../../../helpers/issues';
+import { useExceptionExpiryClock } from '../../../helpers/useExceptionExpiryClock';
 import { translate } from '../../../helpers/l10n';
 import { Issue } from '../../../types/types';
 
@@ -30,6 +34,13 @@ interface Props {
 }
 
 export default function IssueHeaderMeta({ issue }: Readonly<Props>) {
+  const exceptionExpiryMs = parseIssueResolutionExpiresAtMillis(issue);
+  const needsExpiryClock =
+    isIssueExceptionResolution(issue) && exceptionExpiryMs !== undefined;
+  const nowMs = useExceptionExpiryClock(needsExpiryClock);
+  const showExceptionExpiry =
+    needsExpiryClock && isIssueExceptionExpiryActive(exceptionExpiryMs, nowMs);
+
   return (
     <Note className="sw-flex sw-flex-wrap sw-items-center sw-gap-2 sw-text-xs">
       {typeof issue.line === 'number' && (
@@ -47,6 +58,17 @@ export default function IssueHeaderMeta({ issue }: Readonly<Props>) {
           <div className="sw-flex sw-gap-1">
             <span>{translate('issue.effort')}</span>
             <span className="sw-font-semibold">{issue.effort}</span>
+          </div>
+          <SeparatorCircleIcon />
+        </>
+      )}
+
+      {showExceptionExpiry && (
+        <>
+          <div className="sw-flex sw-gap-1">
+            <span className="sw-font-semibold">
+              {formatExceptionExpiryCountdown(exceptionExpiryMs, nowMs)}
+            </span>
           </div>
           <SeparatorCircleIcon />
         </>

@@ -235,7 +235,8 @@
     issue_type=#{type,jdbcType=INTEGER},
     code_variants=#{codeVariantsString,jdbcType=VARCHAR},
     clean_code_attribute=#{effectiveCleanCodeAttribute,jdbcType=VARCHAR},
-    prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN}
+    prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN},
+    issue_resolution_expires_at=#{issueResolutionExpiresAt,jdbcType=BIGINT}
     where kee = #{kee}
   </update>
 
@@ -268,7 +269,8 @@
     issue_type=#{type,jdbcType=INTEGER},
     code_variants=#{codeVariantsString,jdbcType=VARCHAR},
     clean_code_attribute=#{effectiveCleanCodeAttribute,jdbcType=VARCHAR},
-    prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN}
+    prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN},
+    issue_resolution_expires_at=#{issueResolutionExpiresAt,jdbcType=BIGINT}
     where kee = #{kee} and updated_at &lt;= #{selectedAt}
   </update>
 
@@ -852,6 +854,17 @@
     FROM issues i
     WHERE i.issue_type = 4
       AND i.status = 'REVIEWED'
+      AND i.resolution = 'EXCEPTION'
+      AND i.issue_resolution_expires_at IS NOT NULL
+      AND i.issue_resolution_expires_at &lt;= #{currentTime, jdbcType=BIGINT}
+    ORDER BY i.issue_resolution_expires_at
+  </select>
+
+  <select id="selectExpiredStandardIssueExceptionKeys" resultType="String">
+    SELECT i.kee
+    FROM issues i
+    WHERE i.issue_type &lt;&gt; 4
+      AND i.status = 'RESOLVED'
       AND i.resolution = 'EXCEPTION'
       AND i.issue_resolution_expires_at IS NOT NULL
       AND i.issue_resolution_expires_at &lt;= #{currentTime, jdbcType=BIGINT}

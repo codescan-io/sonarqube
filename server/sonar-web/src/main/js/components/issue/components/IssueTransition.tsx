@@ -37,7 +37,7 @@ import { IssueTransitionOverlay } from './IssueTransitionOverlay';
 
 interface Props {
   isOpen: boolean;
-  issue: Pick<Issue, 'key' | 'resolution' | 'issueStatus' | 'transitions' | 'type' | 'actions'>;
+  issue: Pick<Issue, 'key' | 'resolution' | 'issueStatus' | 'transitions' | 'type' | 'actions' | 'issueResolutionExpiresAt'>;
   onChange: (issue: Issue) => void;
   togglePopup: (popup: string, show?: boolean) => void;
 }
@@ -101,7 +101,12 @@ export default function IssueTransition(props: Readonly<Props>) {
             isDiscreet
             className="it__issue-transition sw-px-1"
             label={
-              <StatusHelper className="sw-flex sw-items-center" issueStatus={issue.issueStatus} />
+              <StatusHelper
+                className="sw-flex sw-items-center"
+                issueStatus={issue.issueStatus}
+                resolution={issue.resolution}
+                issueResolutionExpiresAt={issue.issueResolutionExpiresAt}
+              />
             }
             ariaLabel={translateWithParameters(
               'issue.transition.status_x_click_to_change',
@@ -113,7 +118,13 @@ export default function IssueTransition(props: Readonly<Props>) {
     );
   }
 
-  return <StatusHelper issueStatus={issue.issueStatus} />;
+  return (
+    <StatusHelper
+      issueStatus={issue.issueStatus}
+      resolution={issue.resolution}
+      issueResolutionExpiresAt={issue.issueResolutionExpiresAt}
+    />
+  );
 }
 
 const StyledDropdown = styled(Dropdown)`

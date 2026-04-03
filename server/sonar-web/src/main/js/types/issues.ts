@@ -159,6 +159,7 @@ export interface RawIssue {
   textRange?: TextRange;
   transitions: IssueTransition[];
   type: IssueType;
+  issueResolutionExpiresAt?: number | string;
 }
 
 export interface IssueResponse {

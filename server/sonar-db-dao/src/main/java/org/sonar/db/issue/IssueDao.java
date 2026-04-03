@@ -203,4 +203,8 @@ public class IssueDao implements Dao {
     return mapper(dbSession).selectExpiredHotspotKeys(currentTime);
   }
 
+  public List<String> selectExpiredStandardIssueExceptionKeys(DbSession dbSession, long currentTime) {
+    return mapper(dbSession).selectExpiredStandardIssueExceptionKeys(currentTime);
+  }
+
 }
