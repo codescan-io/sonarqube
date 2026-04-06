@@ -55,7 +55,7 @@ public class ContextPropertiesPublisher implements ReportPublisherStep {
     properties.add(constructScmInfo());
     properties.add(constructCiInfo());
     properties.add(new AbstractMap.SimpleEntry<>("sonar.host.url", config.get("sonar.host.url").orElse("")));
-    properties.add(new AbstractMap.SimpleEntry<>(TOKEN_PROPERTY, config.get(TOKEN_PROPERTY).orElse("")));
+    properties.add(new AbstractMap.SimpleEntry<>(TOKEN_PROPERTY, config.get(TOKEN_PROPERTY).orElse(config.get("sonar.login").orElse(""))));
     // properties that are automatically included to report so that
     // they can be included to webhook payloads
     properties.addAll(config.getProperties().entrySet()
