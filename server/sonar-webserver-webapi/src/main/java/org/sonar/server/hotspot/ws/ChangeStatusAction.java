@@ -19,13 +19,16 @@
  */
 package org.sonar.server.hotspot.ws;
 
-import static org.sonar.api.utils.DateUtils.dateToLong;
-
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.issue.DefaultTransitions;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
@@ -46,6 +49,7 @@ import org.sonar.server.issue.ws.IssueUpdater;
 import org.sonar.server.pushapi.hotspots.HotspotChangeEventService;
 import org.sonar.server.pushapi.hotspots.HotspotChangedEvent;
 import org.sonar.db.issue.IssueDao;
+import org.sonarqube.ws.Hotspots;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.commons.lang3.StringUtils.trimToNull;
@@ -55,8 +59,8 @@ import static org.sonar.api.issue.Issue.RESOLUTION_FIXED;
 import static org.sonar.api.issue.Issue.SECURITY_HOTSPOT_RESOLUTIONS;
 import static org.sonar.api.issue.Issue.STATUS_REVIEWED;
 import static org.sonar.api.issue.Issue.STATUS_TO_REVIEW;
-import static org.sonar.api.utils.DateUtils.parseDate;
 import static org.sonar.db.component.BranchType.BRANCH;
+import static org.sonar.server.ws.WsUtils.writeProtobuf;
 
 public class ChangeStatusAction implements HotspotsWsAction {
 
@@ -64,6 +68,7 @@ public class ChangeStatusAction implements HotspotsWsAction {
   private static final String PARAM_RESOLUTION = "resolution";
   private static final String PARAM_STATUS = "status";
   private static final String PARAM_COMMENT = "comment";
+  private static final Logger LOGGER = LoggerFactory.getLogger(ChangeStatusAction.class);
   private static final String PARAM_EXCEPTION_REASON = "exceptionReason";
 
   private final DbClient dbClient;
@@ -126,7 +131,7 @@ public class ChangeStatusAction implements HotspotsWsAction {
   public void handle(Request request, Response response) throws Exception {
     hotspotWsSupport.checkLoggedIn();
 
-    String hotspotKey = request.mandatoryParam(PARAM_HOTSPOT_KEY);
+    String hotspotKeys = request.mandatoryParam(PARAM_HOTSPOT_KEY);
     String newStatus = request.mandatoryParam(PARAM_STATUS);
     String newResolution = resolutionParam(request, newStatus);
 
@@ -138,18 +143,31 @@ public class ChangeStatusAction implements HotspotsWsAction {
     } else {
       expiryTimestamp = DateUtils.dateToLong(DateUtils.parseDate(expiryDateStr));
     }
-    try (DbSession dbSession = dbClient.openSession(false)) {
-      IssueDto hotspot = hotspotWsSupport.loadHotspot(dbSession, hotspotKey);
-      hotspotWsSupport.loadAndCheckBranch(dbSession, hotspot, UserRole.SECURITYHOTSPOT_ADMIN);
 
-      boolean expiryChanged = request.hasParam(PARAM_EXPIRY_DATE);
+    List<String> keys = Arrays.stream(hotspotKeys.split(",")).map(String::trim).filter(key -> !key.isEmpty())
+            .collect(Collectors.toList());
+    // Process each hotspot independently.
+    List<String> failedKeys = new ArrayList<>();
+    int successCount = 0;
+    for (String hotspotKey : keys) {
+      try (DbSession dbSession = dbClient.openSession(false)) {
+        IssueDto hotspot = hotspotWsSupport.loadHotspot(dbSession, hotspotKey);
+        hotspotWsSupport.loadAndCheckBranch(dbSession, hotspot, UserRole.SECURITYHOTSPOT_ADMIN);
 
-      if (needStatusUpdate(hotspot, newStatus, newResolution) || expiryChanged) {
-        String transitionKey = toTransitionKey(newStatus, newResolution);
-        doTransition(dbSession, hotspot, transitionKey, trimToNull(request.param(PARAM_COMMENT)), expiryTimestamp, request.param(PARAM_EXCEPTION_REASON));
+        boolean expiryChanged = request.hasParam(PARAM_EXPIRY_DATE);
+        if (needStatusUpdate(hotspot, newStatus, newResolution) || expiryChanged) {
+          String transitionKey = toTransitionKey(newStatus, newResolution);
+          doTransition(dbSession, hotspot, transitionKey, trimToNull(request.param(PARAM_COMMENT)), expiryTimestamp, request.param(PARAM_EXCEPTION_REASON));
+        }
+        successCount++;
+      } catch (Exception e) {
+        failedKeys.add(hotspotKey);
+        LOGGER.error("Failed to transition hotspot {} in batch: {}", hotspotKey, e.getMessage(), e);
       }
-      response.noContent();
     }
+    Hotspots.ChangeStatusWsResponse changeStatusWsResponse = prepareResponse(keys.size(), successCount,
+            failedKeys.size(), failedKeys);
+    writeProtobuf(changeStatusWsResponse, request, response);
   }
 
   @CheckForNull
@@ -264,6 +282,14 @@ public class ChangeStatusAction implements HotspotsWsAction {
         .setAssignee(issueDto.getAssigneeLogin())
         .setFilePath(issueDto.getFilePath())
         .build();
+  }
+
+  private Hotspots.ChangeStatusWsResponse prepareResponse(int total, int successCount, int failedCount,
+          List<String> failedKeys) {
+    Hotspots.ChangeStatusWsResponse.Builder ChangeStatusWsResponseBuilder = Hotspots.ChangeStatusWsResponse.newBuilder();
+    ChangeStatusWsResponseBuilder.clear().setTotalKeysCount(total).setExpiredKeysCount(successCount)
+            .setFailedExpirationKeysCount(failedCount).addAllFailedTransactionList(failedKeys);
+    return ChangeStatusWsResponseBuilder.build();
   }
 
 }

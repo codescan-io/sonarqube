@@ -56,6 +56,7 @@ export enum IssueResolution {
   Fixed = 'FIXED',
   Removed = 'REMOVED',
   WontFix = 'WONTFIX',
+  Exception = 'EXCEPTION'
 }
 
 export enum IssueDeprecatedStatus {
@@ -72,6 +73,7 @@ export enum IssueStatus {
   Confirmed = 'CONFIRMED',
   Accepted = 'ACCEPTED',
   FalsePositive = 'FALSE_POSITIVE',
+  Exception = 'EXCEPTION',
 }
 
 export enum IssueActions {
@@ -90,6 +92,7 @@ export enum IssueTransition {
   FalsePositive = 'falsepositive',
   WontFix = 'wontfix',
   Reopen = 'reopen',
+  Exception = 'exception',
 }
 
 interface Comment {

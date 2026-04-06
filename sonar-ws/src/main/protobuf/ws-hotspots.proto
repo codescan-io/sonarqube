@@ -137,3 +137,11 @@ message TextRange {
   optional int32 endLineOffset = 4;
   optional string hash = 5;
 }
+
+// Response of GET api/hotspots/show
+message ChangeStatusWsResponse {
+  optional int32 totalKeysCount = 1;
+  optional int32 expiredKeysCount = 2;
+  optional int32 failedExpirationKeysCount = 3;
+  repeated string failedTransactionList = 4;;
+}
