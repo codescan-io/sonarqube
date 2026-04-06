@@ -69,6 +69,12 @@ export default function StatusDescription(props: StatusDescriptionProps) {
           {translate('hotspots.status_option', statusOption, 'description')}
         </LightLabel>
       </Description>
+      {statusOption === HotspotStatusOption.EXCEPTION && hotspot.exceptionReason && (
+        <div className="sw-mt-4">
+          <LightPrimary className="sw-typo-semibold">{`${translate('hotspots.status.exception_reason')}:`}</LightPrimary>
+          <div className="sw-mt-1 sw-typo-default">{hotspot.exceptionReason}</div>
+        </div>
+      )}
     </div>
   );
 }

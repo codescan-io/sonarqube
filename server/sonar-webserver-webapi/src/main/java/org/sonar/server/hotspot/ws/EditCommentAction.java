@@ -97,8 +97,11 @@ public class EditCommentAction implements HotspotsWsAction {
   }
 
   private IssueChangeDto getHotspotComment(String commentKey, DbSession dbSession) {
-    return dbClient.issueChangeDao().selectCommentByKey(dbSession, commentKey)
+    IssueChangeDto change = dbClient.issueChangeDao().selectByKey(dbSession, commentKey)
       .orElseThrow(() -> new NotFoundException(format("Comment with key '%s' does not exist", commentKey)));
+    checkArgument(IssueChangeDto.TYPE_COMMENT.equals(change.getChangeType()) || IssueChangeDto.TYPE_EXCEPTION_REASON.equals(change.getChangeType()),
+      format("Change with key '%s' is not a comment or exception reason", commentKey));
+    return change;
   }
 
   private void validate(DbSession dbSession, IssueChangeDto issueChangeDto) {

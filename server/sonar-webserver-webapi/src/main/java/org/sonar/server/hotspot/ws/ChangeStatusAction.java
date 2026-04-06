@@ -69,6 +69,7 @@ public class ChangeStatusAction implements HotspotsWsAction {
   private static final String PARAM_STATUS = "status";
   private static final String PARAM_COMMENT = "comment";
   private static final Logger LOGGER = LoggerFactory.getLogger(ChangeStatusAction.class);
+  private static final String PARAM_EXCEPTION_REASON = "exceptionReason";
 
   private final DbClient dbClient;
   private final HotspotWsSupport hotspotWsSupport;
@@ -120,6 +121,10 @@ public class ChangeStatusAction implements HotspotsWsAction {
         .setDescription("Expiry date for hotspot Exception(YYYY-MM-DD)")
         .setExampleValue("2025-01-20")
         .setRequired(false);
+    action.createParam(PARAM_EXCEPTION_REASON)
+            .setDescription("Reason for the Exception")
+            .setExampleValue("This is safe because user input is validated by the calling code")
+            .setRequired(false);
   }
 
   @Override
@@ -152,7 +157,7 @@ public class ChangeStatusAction implements HotspotsWsAction {
         boolean expiryChanged = request.hasParam(PARAM_EXPIRY_DATE);
         if (needStatusUpdate(hotspot, newStatus, newResolution) || expiryChanged) {
           String transitionKey = toTransitionKey(newStatus, newResolution);
-          doTransition(dbSession, hotspot, transitionKey, trimToNull(request.param(PARAM_COMMENT)), expiryTimestamp);
+          doTransition(dbSession, hotspot, transitionKey, trimToNull(request.param(PARAM_COMMENT)), expiryTimestamp, request.param(PARAM_EXCEPTION_REASON));
         }
         successCount++;
       } catch (Exception e) {
@@ -174,6 +179,14 @@ public class ChangeStatusAction implements HotspotsWsAction {
     checkArgument(STATUS_TO_REVIEW.equals(newStatus) || resolution != null,
         "Parameter '%s' must be specified when Parameter '%s' has value '%s'",
         PARAM_RESOLUTION, PARAM_STATUS, STATUS_REVIEWED);
+
+    // Exception reason is mandatory when resolution is EXCEPTION
+    if (RESOLUTION_EXCEPTION.equals(resolution)) {
+      String exceptionReason = trimToNull(request.param(PARAM_EXCEPTION_REASON));
+      checkArgument(exceptionReason != null,
+          "Parameter '%s' must be specified when Parameter '%s' has value '%s'",
+          PARAM_EXCEPTION_REASON, PARAM_RESOLUTION, RESOLUTION_EXCEPTION);
+    }
 
     return resolution;
   }
@@ -203,14 +216,19 @@ public class ChangeStatusAction implements HotspotsWsAction {
   }
 
   private void doTransition(DbSession session, IssueDto issueDto, String transitionKey,
-          @Nullable String comment, @Nullable Long expiryTimestamp) {
+          @Nullable String comment, @Nullable Long expiryTimestamp, @Nullable String exceptionReason) {
 
     DefaultIssue defaultIssue = issueDto.toDefaultIssue();
     IssueChangeContext context = hotspotWsSupport.newIssueChangeContextWithMeasureRefresh();
     transitionService.checkTransitionPermission(transitionKey, defaultIssue);
 
     if (transitionService.doTransition(defaultIssue, context, transitionKey)) {
-      if (comment != null) {
+      String trimmedExceptionReason = trimToNull(exceptionReason);
+      if (defaultIssue.resolution() != null && defaultIssue.resolution().equals(RESOLUTION_EXCEPTION)) {
+        if (trimmedExceptionReason != null) {
+          issueFieldsSetter.addExceptionReason(defaultIssue, trimmedExceptionReason, context);
+        }
+      } else if (comment != null) {
         issueFieldsSetter.addComment(defaultIssue, comment, context);
       }
     }
