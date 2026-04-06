@@ -44,6 +44,9 @@ import org.sonar.server.common.rule.service.RuleService;
 import org.sonar.server.common.text.MacroInterpreter;
 import org.sonar.server.common.user.service.UserService;
 import org.sonar.server.health.HealthChecker;
+import org.sonar.server.issue.IssueChangePostProcessor;
+import org.sonar.server.issue.TransitionService;
+import org.sonar.server.issue.WebIssueStorage;
 import org.sonar.server.notification.NotificationManager;
 import org.sonar.server.platform.NodeInformation;
 import org.sonar.server.platform.ServerFileSystem;
@@ -234,30 +237,6 @@ public class PlatformLevel4WebConfig {
   public ModeController modeController(UserSession userSession, org.sonar.api.config.Configuration configuration, DbClient dbClient,
     SettingsChangeNotifier settingsChangeNotifier, NotificationManager notificationManager, QualityGateConditionsValidator qualityGateConditionsValidator) {
     return new DefaultModeController(userSession, dbClient, configuration, settingsChangeNotifier, notificationManager, qualityGateConditionsValidator);
-  }
-
-  @Bean
-  public HotspotService hotspotService(
-          DbClient dbClient,
-          UserSession userSession,
-          TransitionService transitionService,
-          WebIssueStorage issueStorage,
-          IssueChangePostProcessor issueChangePostProcessor) {
-    return new HotspotService(
-            dbClient,
-            userSession,
-            transitionService,
-            issueStorage,
-            issueChangePostProcessor);
-  }
-
-  @Bean
-  public HotspotController hotspotController(
-          UserSession userSession,
-          HotspotService hotspotService) {
-    return new DefaultHotspotController(
-            userSession,
-            hotspotService);
   }
 
   @Bean
