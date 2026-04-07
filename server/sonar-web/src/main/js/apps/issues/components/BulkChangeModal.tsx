@@ -432,7 +432,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
         onClose={this.props.onClose}
         primaryButton={
           <ButtonPrimary
-            disabled={!canSubmit || submitting || issues.length === 0 ||
+            disabled={!canSubmit || submitting || issues.length === 0 || !this.state.transition ||
               (transitionRequiresMandatoryComment(this.state.transition) && !this.state.comment?.trim())}
             form="bulk-change-form"
             id="bulk-change-submit"
