@@ -58,6 +58,17 @@ public class TrackerTargetBranchInputFactory {
     return new TargetLazyInput(component.getType(), targetBranchComponentUuid);
   }
 
+  /**
+   * Creates a lazy {@link Input} for the target branch component that loads only RESOLVED issues.
+   * Use this instead of {@link #createForTargetBranch(Component)} when pull request tracking
+   * only needs to match against resolved issues (i.e., when {@code filterIssuesByChangedLines} is enabled),
+   * to avoid loading the full non-closed issue set for files with large numbers of issues.
+   */
+  public Input<DefaultIssue> createResolvedForTargetBranch(Component component) {
+    String targetBranchComponentUuid = getTargetBranchComponentUuid(component);
+    return new ResolvedTargetLazyInput(component.getType(), targetBranchComponentUuid);
+  }
+
   private String getTargetBranchComponentUuid(Component component) {
     Optional<String> targetBranchOriginalComponentKey = getOriginalComponentKey(component);
 
@@ -76,7 +87,7 @@ public class TrackerTargetBranchInputFactory {
 
   private class TargetLazyInput extends LazyInput<DefaultIssue> {
     private final Component.Type type;
-    private final String targetBranchComponentUuid;
+    final String targetBranchComponentUuid;
 
     private TargetLazyInput(Component.Type type, @Nullable String targetBranchComponentUuid) {
       this.type = type;
@@ -104,6 +115,21 @@ public class TrackerTargetBranchInputFactory {
         return Collections.emptyList();
       }
       return componentIssuesLoader.loadOpenIssuesWithChanges(targetBranchComponentUuid);
+    }
+  }
+
+  private class ResolvedTargetLazyInput extends TargetLazyInput {
+
+    private ResolvedTargetLazyInput(Component.Type type, @Nullable String targetBranchComponentUuid) {
+      super(type, targetBranchComponentUuid);
+    }
+
+    @Override
+    protected List<DefaultIssue> loadIssues() {
+      if (targetBranchComponentUuid == null) {
+        return Collections.emptyList();
+      }
+      return componentIssuesLoader.loadResolvedIssuesWithChanges(targetBranchComponentUuid);
     }
   }
 

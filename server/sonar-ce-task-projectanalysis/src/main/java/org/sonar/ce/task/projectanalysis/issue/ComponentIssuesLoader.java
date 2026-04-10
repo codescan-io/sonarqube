@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -48,7 +49,6 @@ import org.sonar.db.issue.IssueMapper;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableList;
-import static java.util.stream.Collectors.groupingBy;
 import static org.sonar.api.issue.Issue.STATUS_CLOSED;
 import static org.sonar.server.issue.IssueFieldsSetter.FROM_BRANCH;
 import static org.sonar.server.issue.IssueFieldsSetter.STATUS;
@@ -57,6 +57,7 @@ public class ComponentIssuesLoader {
   private static final int DEFAULT_CLOSED_ISSUES_MAX_AGE = 30;
   static final int NUMBER_STATUS_AND_BRANCH_CHANGES_TO_KEEP = 15;
   private static final String PROPERTY_CLOSED_ISSUE_MAX_AGE = "sonar.issuetracking.closedissues.maxage";
+  private static final int ISSUE_KEYS_BATCH_SIZE = 1000;
 
   private final DbClient dbClient;
   private final RuleRepository ruleRepository;
@@ -92,13 +93,48 @@ public class ComponentIssuesLoader {
   }
 
   /**
+   * Loads only issues with status RESOLVED for the given component UUID, along with their change history.
+   * This is significantly cheaper than {@link #loadOpenIssuesWithChanges(String)} for files
+   * with large numbers of non-closed issues where only resolved issues are needed (e.g., pull request
+   * target branch tracking when filtering by changed lines).
+   */
+  public List<DefaultIssue> loadResolvedIssuesWithChanges(String componentUuid) {
+    try (DbSession dbSession = dbClient.openSession(false)) {
+      List<DefaultIssue> result = loadResolvedIssues(componentUuid, dbSession);
+      return loadChanges(dbSession, result);
+    }
+  }
+
+  private List<DefaultIssue> loadResolvedIssues(String componentUuid, DbSession dbSession) {
+    List<DefaultIssue> result = new ArrayList<>();
+    dbSession.getMapper(IssueMapper.class).scrollResolvedByComponentUuid(componentUuid, resultContext -> {
+      DefaultIssue issue = (resultContext.getResultObject()).toDefaultIssue();
+      Rule rule = ruleRepository.getByKey(issue.ruleKey());
+      if ((!rule.isExternal() && !isActive(issue.ruleKey())) || rule.getStatus() == RuleStatus.REMOVED) {
+        issue.setOnDisabledRule(true);
+        issue.setBeingClosed(true);
+      }
+      issue.setSelectedAt(System.currentTimeMillis());
+      result.add(issue);
+    });
+    return unmodifiableList(result);
+  }
+
+  /**
    * Loads all comments and changes EXCEPT old changes involving a status change or a move between branches.
+   * Issue keys are queried in batches of {@value #ISSUE_KEYS_BATCH_SIZE} to avoid PostgreSQL query plan
+   * degradation with large IN clauses.
    */
   public List<DefaultIssue> loadChanges(DbSession dbSession, Collection<DefaultIssue> issues) {
-    Map<String, List<IssueChangeDto>> changeDtoByIssueKey = dbClient.issueChangeDao()
-      .selectByIssueKeys(dbSession, issues.stream().map(DefaultIssue::key).toList())
-      .stream()
-      .collect(groupingBy(IssueChangeDto::getIssueKey));
+    List<String> issueKeys = issues.stream().map(DefaultIssue::key).toList();
+    Map<String, List<IssueChangeDto>> changeDtoByIssueKey = new HashMap<>();
+    for (int i = 0; i < issueKeys.size(); i += ISSUE_KEYS_BATCH_SIZE) {
+      List<String> batch = issueKeys.subList(i, Math.min(i + ISSUE_KEYS_BATCH_SIZE, issueKeys.size()));
+      dbClient.issueChangeDao().selectByIssueKeys(dbSession, batch)
+        .forEach(dto -> changeDtoByIssueKey
+          .computeIfAbsent(dto.getIssueKey(), k -> new ArrayList<>())
+          .add(dto));
+    }
 
     issues.forEach(i -> setFilteredChanges(changeDtoByIssueKey, i));
     return new ArrayList<>(issues);

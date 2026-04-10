@@ -68,6 +68,13 @@ public interface IssueMapper {
 
   void scrollNonClosedByComponentUuid(@Param("componentUuid") String componentUuid, ResultHandler<IssueDto> handler);
 
+  /**
+   * Streams all issues with status RESOLVED for the given component UUID.
+   * Used by pull request tracking to efficiently load only resolved issues
+   * from the target branch without loading the full non-closed issue set.
+   */
+  void scrollResolvedByComponentUuid(@Param("componentUuid") String componentUuid, ResultHandler<IssueDto> handler);
+
   void scrollClosedByComponentUuid(@Param("componentUuid") String componentUuid, @Param("closeDateAfter") long closeDateAfter, ResultHandler<IssueDto> handler);
 
   Cursor<IndexedIssueDto> scrollIssuesForIndexation(@Nullable @Param("branchUuid") String branchUuid, @Nullable @Param("issueKeys") Collection<String> issueKeys);

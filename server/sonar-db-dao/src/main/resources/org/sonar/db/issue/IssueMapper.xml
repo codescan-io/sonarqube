@@ -309,6 +309,26 @@
       i.kee
   </select>
 
+  <select id="scrollResolvedByComponentUuid" parameterType="String" resultMap="issueResultMap" fetchSize="${_scrollFetchSize}"
+          resultSetType="FORWARD_ONLY" resultOrdered="true">
+    select
+    <include refid="issueColumns"/>
+    from issues i
+    inner join rules r on r.uuid=i.rule_uuid
+    inner join components p on p.uuid=i.component_uuid
+    inner join components root on root.uuid=i.project_uuid
+    left join new_code_reference_issues n on i.kee = n.issue_key
+    left outer join issues_impacts ii on i.kee = ii.issue_key
+    left outer join rules_default_impacts rdi on r.uuid = rdi.rule_uuid
+    left join issues_dependency dep on i.kee = dep.issue_uuid
+    left join cves cve on dep.cve_uuid = cve.uuid
+    where
+    i.component_uuid = #{componentUuid,jdbcType=VARCHAR} and
+    i.status = 'RESOLVED'
+    order by
+      i.kee
+  </select>
+
   <select id="scrollClosedByComponentUuid" resultMap="issueResultMap" fetchSize="${_scrollFetchSize}" resultSetType="FORWARD_ONLY" resultOrdered="true">
     select
       <include refid="issueColumns"/>,
