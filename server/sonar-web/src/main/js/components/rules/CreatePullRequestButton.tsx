@@ -18,6 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import { useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
 import { CreatePRButton, CreatePRIcon, CreatePRText } from './FixDiffStyles';
 import { CreatePullRequestModal } from './CreatePullRequestModal';
@@ -25,14 +26,27 @@ import { CreatePullRequestModal } from './CreatePullRequestModal';
 interface CreatePullRequestButtonProps {
   jobId?: string;
   issueKey?: string;
+  pullRequestAlreadyCreated?: boolean;
 }
 
-export function CreatePullRequestButton({ jobId, issueKey }: Readonly<CreatePullRequestButtonProps>) {
+export function CreatePullRequestButton({
+  jobId,
+  issueKey,
+  pullRequestAlreadyCreated,
+}: Readonly<CreatePullRequestButtonProps>) {
+  const queryClient = useQueryClient();
   const [isActive, setIsActive] = React.useState(false);
-  const [isDisabled, setIsDisabled] = React.useState(false);
   const [modalOpen, setModalOpen] = React.useState(false);
 
-  const disabled = !jobId || !issueKey || isDisabled;
+  const handleModalClose = React.useCallback(() => {
+    setModalOpen(false);
+    if (jobId && issueKey) {
+      queryClient.invalidateQueries({ queryKey: ['codefix-get-pr-status', jobId] });
+      queryClient.invalidateQueries({ queryKey: ['codefix-fixed-file', issueKey] });
+    }
+  }, [jobId, issueKey, queryClient]);
+
+  const disabled = !jobId || !issueKey || Boolean(pullRequestAlreadyCreated);
 
   return (
     <>
@@ -40,7 +54,7 @@ export function CreatePullRequestButton({ jobId, issueKey }: Readonly<CreatePull
         type="button"
         onClick={() => setModalOpen(true)}
         disabled={disabled}
-        $active={isActive}
+        $active={isActive || Boolean(pullRequestAlreadyCreated)}
       >
         <CreatePRIcon>
           <img src="/images/pull-request-icon.svg" className="" alt="pull-request-icon" />
@@ -51,10 +65,9 @@ export function CreatePullRequestButton({ jobId, issueKey }: Readonly<CreatePull
         <CreatePullRequestModal
           issueKey={issueKey}
           jobId={jobId}
-          onClose={() => setModalOpen(false)}
+          onClose={handleModalClose}
           onSuccess={() => {
             setIsActive(true);
-            setIsDisabled(true);
           }}
         />
       )}

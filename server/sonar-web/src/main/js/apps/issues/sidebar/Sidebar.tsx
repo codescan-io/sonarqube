@@ -101,14 +101,18 @@ export function Sidebar(props: Readonly<Props>) {
   const { data: isStandardMode } = useStandardExperienceModeQuery();
   const [aiEnabled, setAiEnabled] = React.useState(false);
   React.useEffect(() => {
-        async function checkAiEnabled() {
-          const projectKey = props.component.key || "";
-          const enabled = await isAiAssistantEnabled(projectKey);
-          setAiEnabled(enabled);
-        }
+    async function checkAiEnabled() {
+      // Project-scoped issues: use project component key. Org/portfolio/app views: use organization key so the facet appears.
+      const settingsComponentKey =
+        component && isProject(component.qualifier)
+          ? component.key
+          : organization?.key ?? component?.key ?? '';
+      const enabled = await isAiAssistantEnabled(settingsComponentKey);
+      setAiEnabled(enabled);
+    }
 
-        checkAiEnabled();
-      }, [props.component.key]);
+    void checkAiEnabled();
+  }, [component?.key, component?.qualifier, organization?.key]);
   const renderComponentFacets = () => {
     const hasFileOrDirectory =
       !isApplication(component?.qualifier) && !isPortfolioLike(component?.qualifier);

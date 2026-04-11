@@ -27,12 +27,14 @@ import { translate } from '../../helpers/l10n';
 import { useRawSourceQuery } from '../../queries/sources';
 import { getBranchLikeQuery } from '../../sonar-aligned/helpers/branch-like';
 import { BranchLike } from '../../types/branch-like';
+import { IssueCodefixStatus } from '../../types/issues';
 import { Issue, SourceViewerFile } from '../../types/types';
 import { FixDiffHeader } from './FixDiffHeader';
 import { FixDiffTable } from './FixDiffTable';
 import { DiffSourceLine } from './FixDiffTypes';
 import { UseFixDiffSnippetRange } from './UseFixDiffSnippetRange';
 import { UseFixDiffSourceLines } from './UseFixDiffSourceLines';
+import { CodefixPrStatusBanner, useCodefixPrStatusQuery } from './PrStatusNotification';
 
 interface FixDiffTabProps {
   branchLike?: BranchLike;
@@ -63,6 +65,14 @@ export function FixDiffTab({ branchLike, issue }: Readonly<FixDiffTabProps>) {
   const fixedFileData = fixedFileQuery.data;
   const mergedSource = fixedFileData?.fixedFileContent;
   const jobId = fixedFileData?.jobId;
+  const incrementalId = fixedFileData?.incrementalId;
+
+  const prStatusQuery = useCodefixPrStatusQuery(jobId);
+  const prStatusType = prStatusQuery.data?.type.toLowerCase();
+  const prStatusMessage = prStatusQuery.data?.message;
+
+  const pullRequestAlreadyCreated =
+    prStatusType === 'success' || issue.codefixStatus === IssueCodefixStatus.PullRequestCreated;
 
   const hasChanges = React.useMemo(() => {
     if (!originalSource || !mergedSource) return false;
@@ -184,6 +194,11 @@ export function FixDiffTab({ branchLike, issue }: Readonly<FixDiffTabProps>) {
 
   return (
     <div className="sw-flex sw-flex-col sw-gap-0">
+      <CodefixPrStatusBanner
+        jobId={jobId}
+        prStatusMessage={prStatusMessage}
+        prStatusType={prStatusType}
+      />
       <FixDiffHeader
         filePath={filePath}
         branchDisplayName={branchDisplayName}
@@ -192,6 +207,8 @@ export function FixDiffTab({ branchLike, issue }: Readonly<FixDiffTabProps>) {
         branchLike={branchLike}
         issueKey={issue.key}
         jobId={jobId}
+        pullRequestAlreadyCreated={pullRequestAlreadyCreated}
+        incrementalId={incrementalId}
       />
       <FixDiffTable
         branchLike={branchLike}
