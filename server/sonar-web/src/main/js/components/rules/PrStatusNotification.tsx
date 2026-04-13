@@ -70,18 +70,25 @@ export function CodefixPrStatusBanner({
         variant={prStatusType === 'success' ? 'success' : 'error'}
       >
         {prStatusType === 'error' && prStatusMessage && (
-          <>
-            <span>{translate(`issues.code_fix.pr_status.error.text.part_one`)}</span>
-            <button
-              type="button"
-              className="sw-ml-1 sw-bg-transparent sw-border-none sw-p-0 sw-cursor-pointer sw-underline"
-              style={{ background: 'transparent', color: '#5D6CD0', marginLeft: '4px', marginRight: '4px' }}
-              onClick={() => setPrErrorDetailsOpen((open) => !open)}
-            >
-              {translate('issues.code_fix.pr_status.error.review_the_error')}
-            </button>
-            <span>{translate(`issues.code_fix.pr_status.error.text.part_two`)}</span>
-          </>
+          <div style={{ width: '100%' }}>
+            <div>
+              <span>{translate(`issues.code_fix.pr_status.error.text.part_one`)}</span>
+              <button
+                type="button"
+                className="sw-ml-1 sw-bg-transparent sw-border-none sw-p-0 sw-cursor-pointer sw-underline"
+                style={{ background: 'transparent', color: '#5D6CD0', marginLeft: '4px', marginRight: '4px' }}
+                onClick={() => setPrErrorDetailsOpen((open) => !open)}
+              >
+                {translate('issues.code_fix.pr_status.error.review_the_error')}
+              </button>
+              <span>{translate(`issues.code_fix.pr_status.error.text.part_two`)}</span>
+            </div>
+            {prErrorDetailsOpen && (
+              <ErrorText role="region" aria-label={translate('issues.code_fix.pr_status.error.details_label')}>
+                {prStatusMessage}
+              </ErrorText>
+            )}
+          </div>
         )}
 
         {prStatusType === 'success' && prStatusMessage && (
@@ -99,11 +106,6 @@ export function CodefixPrStatusBanner({
           </>
         )}
       </FlagMessage>
-      {prStatusType === 'error' && prErrorDetailsOpen && prStatusMessage && (
-        <ErrorText role="region" aria-label={translate('issues.code_fix.pr_status.error.details_label')}>
-          {prStatusMessage}
-        </ErrorText>
-      )}
     </PrStatusNotificationRoot>
   );
 }

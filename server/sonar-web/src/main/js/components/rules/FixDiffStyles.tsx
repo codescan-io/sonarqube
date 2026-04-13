@@ -224,7 +224,7 @@ export const PrStatusNotification = styled.div`
 `;
 
 export const ErrorText = styled.div`
-  margin: 0 0.5rem 0.5rem;
+  margin-top: 0.75rem;
   max-height: 16rem;
   overflow: auto;
   border-radius: 0.25rem;
