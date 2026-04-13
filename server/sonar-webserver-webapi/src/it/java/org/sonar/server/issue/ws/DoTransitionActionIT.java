@@ -19,6 +19,7 @@
  */
 package org.sonar.server.issue.ws;
 
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import org.junit.Before;
 import org.junit.Rule;
@@ -42,6 +43,7 @@ import org.sonar.server.es.EsTester;
 import org.sonar.server.exceptions.ForbiddenException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.exceptions.UnauthorizedException;
+import org.sonar.server.issue.IssueExceptionExpiryResolver;
 import org.sonar.server.issue.IssueFieldsSetter;
 import org.sonar.server.issue.IssueFinder;
 import org.sonar.server.issue.TestIssueChangePostProcessor;
@@ -69,11 +71,15 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.sonar.api.issue.DefaultTransitions.EXCEPTION;
+import static org.sonar.api.issue.Issue.RESOLUTION_EXCEPTION;
 import static org.sonar.api.issue.Issue.STATUS_CONFIRMED;
 import static org.sonar.api.issue.Issue.STATUS_OPEN;
+import static org.sonar.api.issue.Issue.STATUS_RESOLVED;
 import static org.sonar.api.rule.Severity.MAJOR;
 import static org.sonar.api.rules.RuleType.CODE_SMELL;
 import static org.sonar.api.web.UserRole.CODEVIEWER;
+import static org.sonar.api.web.UserRole.ISSUE_ADMIN;
 import static org.sonar.api.web.UserRole.USER;
 import static org.sonar.db.component.ComponentTesting.newFileDto;
 import static org.sonar.db.issue.IssueTesting.newIssue;
@@ -108,18 +114,10 @@ public class DoTransitionActionIT {
     mock(NotificationManager.class), issueChangePostProcessor, issuesChangesSerializer);
   private ArgumentCaptor<SearchResponseData> preloadedSearchResponseDataCaptor = ArgumentCaptor.forClass(SearchResponseData.class);
 
-  /**
-   * Simulates production {@link org.sonar.api.config.Configuration} after CodeScan Developer plugin registers
-   * PropertyDefinition defaults (see {@code io.codescan.cloud.DeveloperPlugin#DEFAULT_AUTO_ASSIGN_EXPIRY_DAYS}): one key is
-   * enough because {@link DoTransitionAction} falls back to MAJOR when a severity-specific key is unset, then to a hardcoded
-   * fallback if nothing is configured.
-   */
-  private final Configuration configuration = new MapSettings()
-    .setProperty("codescan.cloud.autoAssignExpiry.major", "10")
-    .asConfig();
+  private final IssueExceptionExpiryResolver exceptionExpiryResolver = new IssueExceptionExpiryResolver(dbClient, system2, new MapSettings().asConfig());
 
   private WsAction underTest = new DoTransitionAction(dbClient, userSession, issueChangeEventService,
-    new IssueFinder(dbClient, userSession), issueUpdater, transitionService, responseWriter, system2, configuration);
+    new IssueFinder(dbClient, userSession), issueUpdater, transitionService, responseWriter, system2, exceptionExpiryResolver);
   private WsActionTester tester = new WsActionTester(underTest);
 
   @Before
@@ -143,6 +141,39 @@ public class DoTransitionActionIT {
     IssueDto issueReloaded = db.getDbClient().issueDao().selectByKey(db.getSession(), issue.getKey()).get();
     assertThat(issueReloaded.getStatus()).isEqualTo(STATUS_CONFIRMED);
     assertThat(issueChangePostProcessor.calledComponents()).containsExactlyInAnyOrder(file);
+  }
+
+  @Test
+  public void exception_transition_succeeds_with_null_expiry_when_days_not_configured() {
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto rule = db.rules().insertIssueRule();
+    IssueDto issue = db.issues().insertIssue(rule, project, file, i -> i.setStatus(STATUS_OPEN).setResolution(null).setType(CODE_SMELL));
+    userSession.logIn(db.users().insertUser()).addProjectPermission(USER, project, file).addProjectPermission(ISSUE_ADMIN, project, file);
+
+    call(wsTester(new MapSettings().asConfig()), issue.getKey(), EXCEPTION);
+
+    IssueDto reloaded = db.getDbClient().issueDao().selectByKey(db.getSession(), issue.getKey()).get();
+    assertThat(reloaded.getStatus()).isEqualTo(STATUS_RESOLVED);
+    assertThat(reloaded.getResolution()).isEqualTo(RESOLUTION_EXCEPTION);
+    assertThat(reloaded.getIssueResolutionExpiresAt()).isNull();
+  }
+
+  @Test
+  public void exception_transition_sets_expiry_when_major_days_configured() {
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto rule = db.rules().insertIssueRule();
+    IssueDto issue = db.issues().insertIssue(rule, project, file, i -> i.setStatus(STATUS_OPEN).setResolution(null).setType(CODE_SMELL).setSeverity(MAJOR));
+    userSession.logIn(db.users().insertUser()).addProjectPermission(USER, project, file).addProjectPermission(ISSUE_ADMIN, project, file);
+
+    Configuration withExpiry = new MapSettings()
+      .setProperty("codescan.cloud.autoAssignExpiry.major", "10")
+      .asConfig();
+    call(wsTester(withExpiry), issue.getKey(), EXCEPTION);
+
+    IssueDto reloaded = db.getDbClient().issueDao().selectByKey(db.getSession(), issue.getKey()).get();
+    assertThat(reloaded.getIssueResolutionExpiresAt()).isEqualTo(NOW + TimeUnit.DAYS.toMillis(10));
   }
 
   @Test
@@ -251,7 +282,11 @@ public class DoTransitionActionIT {
   }
 
   private TestResponse call(@Nullable String issueKey, @Nullable String transition) {
-    TestRequest request = tester.newRequest();
+    return call(tester, issueKey, transition);
+  }
+
+  private static TestResponse call(WsActionTester wsTester, @Nullable String issueKey, @Nullable String transition) {
+    TestRequest request = wsTester.newRequest();
     if (issueKey != null) {
       request.setParam("issue", issueKey);
     }
@@ -259,6 +294,13 @@ public class DoTransitionActionIT {
       request.setParam("transition", transition);
     }
     return request.execute();
+  }
+
+  private WsActionTester wsTester(Configuration configuration) {
+    IssueExceptionExpiryResolver resolver = new IssueExceptionExpiryResolver(dbClient, system2, configuration);
+    WsAction action = new DoTransitionAction(dbClient, userSession, issueChangeEventService,
+      new IssueFinder(dbClient, userSession), issueUpdater, transitionService, responseWriter, system2, resolver);
+    return new WsActionTester(action);
   }
 
   private void verifyContentOfPreloadedSearchResponseData(IssueDto issue) {

@@ -304,7 +304,7 @@ public class BulkChangeAction implements IssuesWsAction {
     }
 
     List<DefaultIssue> defaultIssues = bulkChangeData.issues.stream()
-      .filter(bulkChange(issueChangeContext, bulkChangeData, result))
+      .filter(bulkChange(dbSession, issueChangeContext, bulkChangeData, result))
       .toList();
     issueStorage.save(dbSession, defaultIssues);
     refreshLiveMeasures(dbSession, bulkChangeData, result);
@@ -338,10 +338,11 @@ public class BulkChangeAction implements IssuesWsAction {
     issueChangePostProcessor.process(dbSession, changedIssues, touchedComponents, false);
   }
 
-  private static Predicate<DefaultIssue> bulkChange(IssueChangeContext issueChangeContext, BulkChangeData bulkChangeData, BulkChangeResult result) {
+  private static Predicate<DefaultIssue> bulkChange(DbSession dbSession, IssueChangeContext issueChangeContext, BulkChangeData bulkChangeData,
+    BulkChangeResult result) {
     return issue -> {
       ActionContext actionContext = new ActionContext(issue, bulkChangeData.originalIssueByKey.get(issue.key()), issueChangeContext,
-        bulkChangeData.branchComponentByUuid.get(issue.projectUuid()));
+        bulkChangeData.branchComponentByUuid.get(issue.projectUuid()), dbSession);
       bulkChangeData.getActionsWithoutComment().forEach(applyAction(actionContext, bulkChangeData, result));
       addCommentIfNeeded(actionContext, bulkChangeData);
       return result.success.contains(issue);

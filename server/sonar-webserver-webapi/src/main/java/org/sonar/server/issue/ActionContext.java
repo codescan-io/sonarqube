@@ -19,8 +19,10 @@
  */
 package org.sonar.server.issue;
 
+import javax.annotation.Nullable;
 import org.sonar.core.issue.DefaultIssue;
 import org.sonar.core.issue.IssueChangeContext;
+import org.sonar.db.DbSession;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueDto;
 
@@ -29,12 +31,19 @@ public class ActionContext implements Action.Context {
   private final IssueDto issueDto;
   private final IssueChangeContext changeContext;
   private final ComponentDto project;
+  private final DbSession dbSession;
 
   public ActionContext(DefaultIssue issue, IssueDto issueDto, IssueChangeContext changeContext, ComponentDto project) {
+    this(issue, issueDto, changeContext, project, null);
+  }
+
+  public ActionContext(DefaultIssue issue, IssueDto issueDto, IssueChangeContext changeContext, ComponentDto project,
+    @Nullable DbSession dbSession) {
     this.issue = issue;
     this.issueDto = issueDto;
     this.changeContext = changeContext;
     this.project = project;
+    this.dbSession = dbSession;
   }
 
   @Override
@@ -55,5 +64,11 @@ public class ActionContext implements Action.Context {
   @Override
   public ComponentDto project() {
     return project;
+  }
+
+  @Override
+  @Nullable
+  public DbSession dbSession() {
+    return dbSession;
   }
 }

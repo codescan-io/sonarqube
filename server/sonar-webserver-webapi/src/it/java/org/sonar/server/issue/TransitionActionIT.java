@@ -29,6 +29,7 @@ import org.sonar.api.issue.Issue;
 import org.sonar.api.rules.RuleType;
 import org.sonar.core.issue.DefaultIssue;
 import org.sonar.core.util.Uuids;
+import org.sonar.db.DbClient;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.BranchType;
 import org.sonar.db.component.ComponentDto;
@@ -37,6 +38,7 @@ import org.sonar.db.issue.IssueDto;
 import org.sonar.db.issue.IssueTesting;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.db.rule.RuleDto;
+import org.sonar.server.issue.IssueExceptionExpiryResolver;
 import org.sonar.server.issue.workflow.FunctionExecutor;
 import org.sonar.server.issue.workflow.IssueWorkflow;
 import org.sonar.server.tester.UserSessionRule;
@@ -44,7 +46,11 @@ import org.sonar.server.tester.UserSessionRule;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonar.api.issue.Issue.STATUS_CLOSED;
 import static org.sonar.api.web.UserRole.ISSUE_ADMIN;
@@ -61,13 +67,18 @@ public class TransitionActionIT {
   private final IssueWorkflow workflow = new IssueWorkflow(new FunctionExecutor(updater), updater);
   private final TransitionService transitionService = new TransitionService(userSession, workflow);
   private final Action.Context context = mock(Action.Context.class);
-  private final DefaultIssue issue = newIssue().toDefaultIssue();
-  private final TransitionAction action = new TransitionAction(transitionService);
+  private final IssueDto backingIssueDto = newIssue();
+  private final DefaultIssue issue = backingIssueDto.toDefaultIssue();
+  private final IssueExceptionExpiryResolver exceptionExpiryResolver = mock(IssueExceptionExpiryResolver.class);
+  private final DbClient dbClient = mock(DbClient.class);
+  private final TransitionAction action = new TransitionAction(transitionService, exceptionExpiryResolver, dbClient);
 
   @Before
   public void setUp() {
     workflow.start();
     when(context.issue()).thenReturn(issue);
+    when(context.issueDto()).thenReturn(backingIssueDto);
+    when(exceptionExpiryResolver.resolveIssueResolutionExpiresAt(any(), any(), any(), any())).thenReturn(null);
     when(context.issueChangeContext()).thenReturn(issueChangeContextByUserBuilder(new Date(), "user_uuid").build());
   }
 
@@ -85,6 +96,7 @@ public class TransitionActionIT {
 
     assertThat(issue.status()).isEqualTo(Issue.STATUS_REOPENED);
     assertThat(issue.resolution()).isNull();
+    verify(exceptionExpiryResolver).resolveIssueResolutionExpiresAt(any(), eq(backingIssueDto), eq(issue), eq("reopen"));
   }
 
   @Test
@@ -95,6 +107,7 @@ public class TransitionActionIT {
     action.execute(ImmutableMap.of("transition", "reopen"), context);
 
     assertThat(issue.status()).isEqualTo(STATUS_CLOSED);
+    verifyNoInteractions(exceptionExpiryResolver);
   }
 
   @Test

@@ -142,6 +142,7 @@ import org.sonar.server.issue.PrioritizedRulesFeature;
 import org.sonar.server.issue.RemoveTagsAction;
 import org.sonar.server.issue.SetSeverityAction;
 import org.sonar.server.issue.SetTypeAction;
+import org.sonar.server.issue.IssueExceptionExpiryResolver;
 import org.sonar.server.issue.TransitionAction;
 import org.sonar.server.issue.index.AsyncIssueIndexingImpl;
 import org.sonar.server.issue.index.IssueIndexDefinition;
@@ -524,6 +525,7 @@ public class PlatformLevel4 extends PlatformLevel {
       SetTypeAction.class,
       SetSeverityAction.class,
       CommentAction.class,
+      IssueExceptionExpiryResolver.class,
       TransitionAction.class,
       AddTagsAction.class,
       RemoveTagsAction.class,

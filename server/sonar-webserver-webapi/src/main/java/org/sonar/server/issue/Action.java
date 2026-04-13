@@ -26,9 +26,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.sonar.api.server.ServerSide;
+import javax.annotation.CheckForNull;
 import org.sonar.core.issue.DefaultIssue;
 import org.sonar.core.issue.IssueChangeContext;
 import org.sonar.db.component.ComponentDto;
+import org.sonar.db.DbSession;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.server.issue.workflow.Condition;
 import org.sonar.server.user.UserSession;
@@ -86,6 +88,14 @@ public abstract class Action {
     IssueChangeContext issueChangeContext();
 
     ComponentDto project();
+
+    /**
+     * Session of the surrounding transaction (e.g. bulk change). May be null for callers that do not run in DB scope.
+     */
+    @CheckForNull
+    default DbSession dbSession() {
+      return null;
+    }
   }
 
 }
