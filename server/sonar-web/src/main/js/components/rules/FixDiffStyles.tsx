@@ -217,3 +217,43 @@ export const CreatePRText = styled.span`
   line-height: var(--font-size-20, 20px);
 `;
 
+export const PrStatusNotification = styled.div`
+  position: relative;
+  z-index: 0;
+  padding: 0 0 10px 0;
+`;
+
+export const ErrorText = styled.div`
+  margin-top: 0.75rem;
+  max-height: 16rem;
+  overflow: auto;
+  border-radius: 0.25rem;
+  padding: 0.75rem;
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 0.875rem;
+
+  background-color: #fef3f2;
+  border: 1px #5d6cd0;
+  color: #111827;
+`;
+
+/** Inline chip for the project codefix incremental branch id (e.g. a1b200042) */
+export const CodefixIncrementalBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  max-width: 94rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid ${({ theme }) => themeColor('codeLineBorder')({ theme })};
+  background-color: ${({ theme }) => themeColor('backgroundSecondary')({ theme })};
+  color: var(--echoes-color-text-subdued, #637192);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 2.0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;

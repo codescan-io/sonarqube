@@ -101,14 +101,13 @@ export function Sidebar(props: Readonly<Props>) {
   const { data: isStandardMode } = useStandardExperienceModeQuery();
   const [aiEnabled, setAiEnabled] = React.useState(false);
   React.useEffect(() => {
-        async function checkAiEnabled() {
-          const projectKey = props.component.key || "";
-          const enabled = await isAiAssistantEnabled(projectKey);
-          setAiEnabled(enabled);
-        }
-
-        checkAiEnabled();
-      }, [props.component.key]);
+    async function checkAiEnabled() {
+      const projectKey = props.component.key || "";
+      const enabled = await isAiAssistantEnabled(projectKey);
+      setAiEnabled(enabled);
+    }
+    checkAiEnabled();
+  }, [props.component?.key]);
   const renderComponentFacets = () => {
     const hasFileOrDirectory =
       !isApplication(component?.qualifier) && !isPortfolioLike(component?.qualifier);

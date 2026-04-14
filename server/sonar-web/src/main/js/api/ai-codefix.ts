@@ -25,10 +25,13 @@ import {
   checkStatus,
 } from '../helpers/request';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
+import { Notification } from '../types/types';
 
 export interface CodefixFixedFileResponse {
   jobId: string;
   fixedFileContent: string;
+  /** Project-scoped AI fix branch id when the project has allocated at least one sequence */
+  incrementalId?: string;
 }
 
 export interface CodefixCreatePrDraft {
@@ -77,11 +80,11 @@ export function getCodefixQuota(organizationKey: string): Promise<{
  * so it is not callable from outside with a raw token.
  */
 export function getCodefixFixedFile(issueKey: string): Promise<CodefixFixedFileResponse> {
-  return get(`${CODEFIX_BASE}/fixed-file`, { issueKey }).then(parseJSON);
+  return get(`${CODEFIX_BASE}/fixed-file`, { issueKey }).then(parseJSON).catch(throwGlobalError);;
 }
 
 export function getCodefixCreatePrDraft(jobId: string): Promise<CodefixCreatePrDraft> {
-  return get(`${CODEFIX_BASE}/create-pr-draft`, { jobId }).then(parseJSON);
+  return get(`${CODEFIX_BASE}/create-pr-draft`, { jobId }).then(parseJSON).catch(throwGlobalError);;
 }
 
 export function createCodefixPr(
@@ -99,5 +102,9 @@ export function createCodefixPr(
 }
 
 export function getCodefixStatus(issueKey: string): Promise<CodefixStatusResponse> {
-  return get(`${CODEFIX_BASE}/get-status`, { issueKey }).then(parseJSON);
+  return get(`${CODEFIX_BASE}/get-status`, { issueKey }).then(parseJSON).catch(throwGlobalError);;
+}
+
+export function getPullRequestStatus(jobId: string): Promise<Notification> {
+  return get(`${CODEFIX_BASE}/get-pr-status`, { jobId }).then(parseJSON).catch(throwGlobalError);;
 }

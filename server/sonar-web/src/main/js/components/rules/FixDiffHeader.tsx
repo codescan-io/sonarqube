@@ -18,27 +18,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  ClipboardIconButton,
-  HoverLink,
-  InteractiveIcon,
-  LightLabel,
-  PencilIcon,
-} from '~design-system';
+import { ChevronRightIcon, ClipboardIconButton, HoverLink, LightLabel } from '~design-system';
 import { translate } from '../../helpers/l10n';
 import { collapsedDirFromPath, fileFromPath } from '../../helpers/path';
 import { getBranchLikeUrl } from '../../helpers/urls';
 import { BranchLike } from '../../types/branch-like';
 import { CreatePullRequestButton } from './CreatePullRequestButton';
-import {
-  BranchIcon,
-  BranchSelect,
-  BranchSelectButton,
-  BranchText,
-  FixDiffHeader as StyledFixDiffHeader,
-} from './FixDiffStyles';
+import { CodefixIncrementalBadge, FixDiffHeader as StyledFixDiffHeader } from './FixDiffStyles';
 
 interface FixDiffHeaderProps {
   filePath: string;
@@ -48,16 +34,20 @@ interface FixDiffHeaderProps {
   branchLike?: BranchLike;
   jobId?: string;
   issueKey?: string;
+  pullRequestAlreadyCreated?: boolean;
+  incrementalId?: string;
 }
 
 export function FixDiffHeader({
   filePath,
-  branchDisplayName,
+  branchDisplayName: _branchDisplayName,
   projectKey,
   projectName,
   branchLike,
   jobId,
   issueKey,
+  pullRequestAlreadyCreated,
+  incrementalId,
 }: Readonly<FixDiffHeaderProps>) {
   return (
     <StyledFixDiffHeader>
@@ -78,7 +68,21 @@ export function FixDiffHeader({
           copyLabel={translate('source_viewer.click_to_copy_filepath')}
         />
       </div>
-    <CreatePullRequestButton issueKey={issueKey} jobId={jobId} />
+      <div className="sw-flex sw-flex-shrink-0 sw-items-center sw-gap-2">
+        {incrementalId ? (
+          <CodefixIncrementalBadge
+            title={translate('issues.code_fix.incremental_id.tooltip')}
+            aria-label={`${translate('issues.code_fix.incremental_id.tooltip')}: ${incrementalId}`}
+          >
+            {incrementalId}
+          </CodefixIncrementalBadge>
+        ) : null}
+        <CreatePullRequestButton
+          issueKey={issueKey}
+          jobId={jobId}
+          pullRequestAlreadyCreated={pullRequestAlreadyCreated}
+        />
+      </div>
     </StyledFixDiffHeader>
   );
 }

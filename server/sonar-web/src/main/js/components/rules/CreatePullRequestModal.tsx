@@ -35,6 +35,22 @@ import {
   type CodefixCreatePrDraft,
 } from '../../api/ai-codefix';
 import { translate } from '../../helpers/l10n';
+import { CodefixPrStatusBanner, useCodefixPrStatusQuery } from './PrStatusNotification';
+
+function parseCreatePrErrorMessage(err: unknown): Promise<string> {
+  if (!(err instanceof Response)) {
+    return Promise.resolve(translate('issues.code_fix.create_pr_modal.submit_error'));
+  }
+  return err
+    .json()
+    .then(
+      (data: { error?: string; message?: string }) =>
+        (typeof data?.error === 'string' && data.error) ||
+        (typeof data?.message === 'string' && data.message) ||
+        translate('issues.code_fix.create_pr_modal.submit_error'),
+    )
+    .catch(() => translate('issues.code_fix.create_pr_modal.submit_error'));
+}
 
 interface CreatePullRequestModalProps {
   jobId: string;
@@ -59,11 +75,13 @@ export function CreatePullRequestModal({
   const [prTitle, setPrTitle] = React.useState('');
   const [commitMessage, setCommitMessage] = React.useState('');
   const [description, setDescription] = React.useState('');
+  const [submitError, setSubmitError] = React.useState('');
 
   React.useEffect(() => {
     let cancelled = false;
     setLoadingDraft(true);
     setLoadError(false);
+    setSubmitError('');
     getCodefixCreatePrDraft(jobId)
       .then((d) => {
         if (!cancelled) {
@@ -90,6 +108,7 @@ export function CreatePullRequestModal({
   }, [jobId]);
 
   const handleSubmit = React.useCallback(() => {
+    setSubmitError('');
     setSubmitting(true);
     createCodefixPr(jobId, {
       baseBranch,
@@ -100,11 +119,12 @@ export function CreatePullRequestModal({
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ['codefix-fixed-file', issueKey] });
         queryClient.invalidateQueries({ queryKey: ['codefix-status', issueKey] });
+        queryClient.invalidateQueries({ queryKey: ['codefix-get-pr-status', jobId] });
         onSuccess();
         onClose();
       })
-      .catch(() => {
-        /* error surfaced by request layer */
+      .catch((err: unknown) => {
+        void parseCreatePrErrorMessage(err).then(setSubmitError);
       })
       .finally(() => {
         setSubmitting(false);
@@ -121,7 +141,17 @@ export function CreatePullRequestModal({
     queryClient,
   ]);
 
+  // After a failed submit, clear the error when the user edits any field so they can retry.
+  React.useEffect(() => {
+    setSubmitError('');
+  }, [baseBranch, prTitle, commitMessage, description]);
+
   const canSubmit = !loadingDraft && !loadError && draft !== null && !submitting;
+  const primaryDisabled = !canSubmit || Boolean(submitError);
+
+  const prStatusQuery = useCodefixPrStatusQuery(jobId);
+  const prStatusType = prStatusQuery.data?.type.toLowerCase();
+  const prStatusMessage = prStatusQuery.data?.message;
 
   return (
     <Modal
@@ -139,6 +169,16 @@ export function CreatePullRequestModal({
           <FlagMessage variant="warning">{translate('issues.code_fix.create_pr_modal.load_error')}</FlagMessage>
         ) : (
           <div className="sw-flex sw-flex-col sw-gap-4">
+
+            {submitError && (
+              <div className="sw-flex sw-flex-col sw-gap-2">
+                <CodefixPrStatusBanner
+                  jobId={jobId}
+                  prStatusMessage={prStatusMessage}
+                  prStatusType={prStatusType}
+                />
+              </div>
+            )}
             <FormField htmlFor="codefix-pr-branch" label={translate('issues.code_fix.create_pr_modal.branch')}>
               <div className="sw-flex sw-flex-wrap sw-items-stretch sw-gap-2 sw-w-full">
                 <span
@@ -208,7 +248,7 @@ export function CreatePullRequestModal({
       }
       primaryButton={
         <Button
-          isDisabled={!canSubmit}
+          isDisabled={primaryDisabled}
           onClick={handleSubmit}
           variety={ButtonVariety.Primary}
         >
