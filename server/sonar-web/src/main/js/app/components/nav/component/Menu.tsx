@@ -33,7 +33,7 @@ import { isApplication, isProject } from '../../../../types/component';
 import { Feature } from '../../../../types/features';
 import { Component, Dict, Extension } from '../../../../types/types';
 import withAvailableFeatures, {
-  WithAvailableFeaturesProps,
+    WithAvailableFeaturesProps,
 } from '../../available-features/withAvailableFeatures';
 
 const SETTINGS_URLS = [
@@ -77,7 +77,10 @@ export function Menu(props: Readonly<Props>) {
   ]
 
   const isActiveRoute = moreURLS.some((url) => {
-    return window.location.href.includes(url) && !window.location.href.includes('extension/developer/project_admin');
+    return window.location.href.includes(url)
+      && !window.location.href.includes('extension/developer/project_admin')
+      && !window.location.href.includes('extension/developer/codescan_ai')
+      && !window.location.href.includes('extension/developer/debt_report');
   });
 
   const hasAnalysis = () => {
@@ -530,6 +533,44 @@ export function Menu(props: Readonly<Props>) {
       .map((e) => renderExtension(e, true, query));
   };
 
+  const AI_TOOLS_KEYS = ['developer/codescan_ai', 'developer/debt_report'];
+
+  const AI_TOOLS_NAMES: Record<string, string> = {
+    'developer/codescan_ai': 'AI Rule Assist',
+    'developer/debt_report': 'AI Codebase Diagnosis',
+  };
+
+  const renderAiTools = () => {
+    const query = getQuery();
+    const aiExtensions = extensions.filter((extension) =>
+      AI_TOOLS_KEYS.includes(extension.key),
+    );
+
+    if (aiExtensions.length === 0) {
+      return null;
+    }
+
+    const isAiToolsActive = AI_TOOLS_KEYS.some((key) =>
+      window.location.href.includes(`extension/${key}`),
+    );
+
+    return (
+      <DropdownMenu.Root
+        data-test="ai-tools"
+        id="component-navigation-ai-tools"
+        items={aiExtensions.map((e) =>
+          renderExtension(
+            { ...e, name: AI_TOOLS_NAMES[e.key] ?? e.name },
+            false,
+            query,
+          ),
+        )}
+      >
+        <NavBarTabLink preventDefault active={isAiToolsActive} text="Codefix AI" withChevron to={{}} />
+      </DropdownMenu.Root>
+    );
+  };
+
   const renderExtensions = () => {
     const query = getQuery();
     let withoutSecurityExtension = extensions.filter(
@@ -542,8 +583,12 @@ export function Menu(props: Readonly<Props>) {
     }
 
     withoutSecurityExtension = withoutSecurityExtension.filter((e)=>{
-      return e.name  !== "Project Job"
+      return e.name  !== "Project Job" && !AI_TOOLS_KEYS.includes(e.key)
     });
+
+    if (withoutSecurityExtension.length === 0) {
+      return null;
+    }
 
     return (
       <DropdownMenu.Root
@@ -568,6 +613,7 @@ export function Menu(props: Readonly<Props>) {
         {renderComponentMeasuresLink()}
         {renderCodeLink()}
         {renderActivityLink()}
+        {renderAiTools()}
         {renderExtensions()}
       </NavBarTabs>
       <NavBarTabs>
