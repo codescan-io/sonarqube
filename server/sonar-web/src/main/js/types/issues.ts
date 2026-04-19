@@ -141,6 +141,7 @@ export interface RawIssue {
   }>;
   impacts: SoftwareImpact[];
   issueStatus: IssueStatus;
+  issueResolutionExpiresAt?: number | string | bigint;
   key: string;
   line?: number;
   message?: string;
