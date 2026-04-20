@@ -61,10 +61,10 @@ public class CorePropertyDefinitions {
   public static final String SUBCATEGORY_PROJECT_CREATION = "subProjectCreation";
   public static final String SUBCATEGORY_QUALITY_PROFILE = "qualityProfile";
   public static final String TRIAL_MULESOFT_ENABLED = "sonar.organizations.trial.mulesoft";
-  public static final String TRIAL_AUDIT_ENABLED   = "sonar.organizations.trial.audit";
-  public static final String TRIAL_NCINO_ENABLED   = "sonar.organizations.trial.ncino";
-  public static final String TRIAL_MAX_DAYS ="sonar.organizations.trial.maxDays";
-  public static final String TRIAL_MAX_USERS="sonar.organizations.trial.maxUsers";
+  public static final String TRIAL_AUDIT_ENABLED = "sonar.organizations.trial.audit";
+  public static final String TRIAL_NCINO_ENABLED = "sonar.organizations.trial.ncino";
+  public static final String TRIAL_MAX_DAYS = "sonar.organizations.trial.maxDays";
+  public static final String TRIAL_MAX_USERS = "sonar.organizations.trial.maxUsers";
 
   private CorePropertyDefinitions() {
     // only static stuff
