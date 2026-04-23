@@ -24,8 +24,83 @@ import java.util.List;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.sonar.ce.task.projectanalysis.source.SourceLinesDiffFinder.DIFF_COMPLEXITY_THRESHOLD;
 
 public class SourceLinesDiffFinderTest {
+
+  /**
+   * When left.size() * right.size() > DIFF_COMPLEXITY_THRESHOLD, findMatchingLines()
+   * must short-circuit and return a zeroed array of length right.size() instead of
+   * running the O(N^2) Myers diff.
+   *
+   * Without the fix this call would run the full Myers diff on 100K*1K = 100M cells,
+   * taking minutes. With the fix it must complete in well under 2 seconds.
+   *
+   * Regression test for RCA boi-241415000220432413.
+   */
+  @Test
+  public void shouldShortCircuitWhenInputSizeExceedsComplexityThreshold() {
+    // left.size() * right.size() = 100_001 * 1_001 = 100_101_001 >> DIFF_COMPLEXITY_THRESHOLD
+    int leftSize = 100_001;
+    int rightSize = 1_001;
+    List<String> left = buildDisjointLines(leftSize, "db-line-");
+    List<String> right = buildDisjointLines(rightSize, "rpt-line-");
+
+    long start = System.currentTimeMillis();
+    int[] result = new SourceLinesDiffFinder().findMatchingLines(left, right);
+    long elapsed = System.currentTimeMillis() - start;
+
+    // Must return a zeroed array of length right.size()
+    assertThat(result).hasSize(rightSize);
+    assertThat(result).containsOnly(0);
+    // Must complete in well under 2 seconds (the guard makes this effectively O(1))
+    assertThat(elapsed)
+      .as("findMatchingLines must short-circuit above DIFF_COMPLEXITY_THRESHOLD in < 2000ms, but took " + elapsed + "ms")
+      .isLessThan(2_000L);
+  }
+
+  /**
+   * Normal-sized inputs (well below the threshold) must continue to use Myers diff
+   * and produce the correct matching array. Guards against the fix gating too aggressively.
+   *
+   * Uses the exact data from shouldDetectModifiedLinesInMiddleOfTheFile.
+   */
+  @Test
+  public void shouldNotShortCircuitForNormalSizedInputs() {
+    List<String> database = new ArrayList<>();
+    database.add("line - 0");
+    database.add("line - 1");
+    database.add("line - 2");
+    database.add("line - 3");
+    database.add("line - 4");
+    database.add("line - 5");
+
+    List<String> report = new ArrayList<>();
+    report.add("line - 0");
+    report.add("line - 1");
+    report.add("line - 2 - modified");
+    report.add("line - 3 - modified");
+    report.add("line - 4");
+    report.add("line - 5");
+
+    // 6 * 6 = 36 cells — far below the threshold; Myers diff must run normally
+    assertThat((long) database.size() * report.size())
+      .as("test inputs must be below DIFF_COMPLEXITY_THRESHOLD")
+      .isLessThan(DIFF_COMPLEXITY_THRESHOLD);
+
+    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
+
+    // Same golden expectation as shouldDetectModifiedLinesInMiddleOfTheFile
+    assertThat(diff).containsExactly(1, 2, 0, 0, 5, 6);
+  }
+
+  private static List<String> buildDisjointLines(int n, String prefix) {
+    List<String> lines = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) {
+      lines.add(prefix + i);
+    }
+    return lines;
+  }
 
   @Test
   public void shouldFindNothingWhenContentAreIdentical() {
