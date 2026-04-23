@@ -43,6 +43,8 @@ import org.sonar.scanner.protocol.output.ScannerReport;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.sonar.api.measures.CoreMetrics.NEW_CONDITIONS_TO_COVER_KEY;
 import static org.sonar.api.measures.CoreMetrics.NEW_LINES_TO_COVER_KEY;
@@ -154,13 +156,16 @@ public class NewCoverageMeasuresStepTest {
   }
 
   @Test
-  public void zero_measures_for_FILE_component_without_CoverageData() {
+  public void no_measures_for_FILE_component_without_CoverageData() {
+    // When there is no coverage data in the report, getNewLines() must never be called —
+    // the step short-circuits before the expensive SCM diff. No measures are emitted.
+    // Regression test for RCA boi-241415000220432413.
     treeRootHolder.setRoot(FILE_1);
-    setNewLines(FILE_1);
 
     underTest.execute(new TestComputationStepContext());
 
-    verify_only_zero_measures_on_new_lines_and_conditions_measures(FILE_1);
+    assertThat(measureRepository.isEmpty()).isTrue();
+    verify(newLinesRepository, never()).getNewLines(FILE_1);
   }
 
   @Test
