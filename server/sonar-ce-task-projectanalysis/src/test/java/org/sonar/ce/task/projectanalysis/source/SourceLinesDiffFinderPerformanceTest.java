@@ -26,8 +26,6 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Performance regression test for RCA boi-241415000220432413.
- *
  * Demonstrates that MyersDiff.buildPath() inside SourceLinesDiffFinder has no timeout
  * mechanism and exhibits O(N^2) worst-case behaviour when the first line of a large
  * file differs (edit-distance D ≈ 2N, causing the outer loop over k from -N to +N to
@@ -139,7 +137,7 @@ public class SourceLinesDiffFinderPerformanceTest {
       // In production this file had N=30,000+ → ~19 minutes
       assertThat(true).as(
         "MyersDiff timed out on 10,000-line fully-disjoint input after 60 s. " +
-          "O(N^2) worst-case confirmed. Bug reproduced (RCA boi-241415000220432413)."
+          "O(N^2) worst-case confirmed."
       ).isTrue();
     } else {
       long elapsed = elapsedHolder[0];
@@ -149,7 +147,7 @@ public class SourceLinesDiffFinderPerformanceTest {
         // Bug reproduced via elapsed time
         assertThat(elapsed).as(
           "MyersDiff took " + elapsed + " ms on 10,000-line fully-disjoint input — " +
-            "O(N^2) slowness confirmed (RCA boi-241415000220432413)."
+            "O(N^2) slowness confirmed."
         ).isGreaterThan(5_000L);
       } else {
         // Unexpectedly fast — possible shortcut or heuristic present
@@ -191,8 +189,6 @@ public class SourceLinesDiffFinderPerformanceTest {
   }
 
   /**
-   * CANONICAL REPRODUCTION of RCA boi-241415000220432413.
-   *
    * Scenario: ARM scanner sends only a small delta (100-line report) against a
    * large reference-branch file (30,000-line DB). Because report and DB content are
    * completely disjoint (different line hashes), the edit distance D = N + M = 30,100.

@@ -159,7 +159,6 @@ public class NewCoverageMeasuresStepTest {
   public void no_measures_for_FILE_component_without_CoverageData() {
     // When there is no coverage data in the report, getNewLines() must never be called —
     // the step short-circuits before the expensive SCM diff. No measures are emitted.
-    // Regression test for RCA boi-241415000220432413.
     treeRootHolder.setRoot(FILE_1);
 
     underTest.execute(new TestComputationStepContext());
