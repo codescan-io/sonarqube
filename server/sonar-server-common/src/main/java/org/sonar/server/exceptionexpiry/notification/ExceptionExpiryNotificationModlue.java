@@ -21,7 +21,7 @@ package org.sonar.server.exceptionexpiry.notification;
 
 import org.sonar.core.platform.Module;
 
-// used to make send metadata across modules
+
 public class ExceptionExpiryNotificationModlue extends Module{
 
     @Override
