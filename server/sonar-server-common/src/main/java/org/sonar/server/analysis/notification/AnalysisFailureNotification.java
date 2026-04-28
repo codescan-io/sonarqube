@@ -17,21 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+package org.sonar.server.analysis.notification;
 
-import { IssueTransition } from '../../types/issues';
+import org.sonar.api.notifications.Notification;
 
-export function isTransitionDeprecated(transition: IssueTransition) {
-  return transition === IssueTransition.Confirm || transition === IssueTransition.Resolve;
-}
+/**
+ * Logic to send email resides in CodeScan.
+ * This notification is created in sonarqube to save user preference
+ */
+public final class AnalysisFailureNotification extends Notification {
 
-export function isTransitionHidden(transition: IssueTransition) {
-  return transition === IssueTransition.WontFix;
-}
+    public static final String TYPE = "analysis_failure";
 
-export function transitionRequiresComment(transition: IssueTransition) {
-  return [IssueTransition.Accept, IssueTransition.FalsePositive, IssueTransition.Exception ].includes(transition);
-}
-
-export function transitionRequiresMandatoryComment(transition: IssueTransition) {
-  return transition === IssueTransition.Exception;
+    public AnalysisFailureNotification() {
+        super(TYPE);
+    }
 }

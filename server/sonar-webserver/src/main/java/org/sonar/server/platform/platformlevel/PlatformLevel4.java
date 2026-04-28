@@ -19,6 +19,9 @@
  */
 package org.sonar.server.platform.platformlevel;
 
+import static org.sonar.core.extension.CoreExtensionsInstaller.noAdditionalSideFilter;
+import static org.sonar.core.extension.PlatformLevelPredicates.hasPlatformLevel4OrNone;
+
 import io.codescan.sonarqube.codescanhosted.ce.CodeScanBranchSupportDelegate;
 import io.codescan.sonarqube.codescanhosted.web.CodeScanBranchFeatureExtension;
 import java.util.List;
@@ -63,6 +66,7 @@ import org.sonar.core.platform.PlatformEditionProvider;
 import org.sonar.core.platform.SpringComponentContainer;
 import org.sonar.server.ai.code.assurance.AiCodeAssuranceEntitlement;
 import org.sonar.server.ai.code.assurance.AiCodeAssuranceVerifier;
+import org.sonar.server.analysis.notification.AnalysisFailureNotificationHandler;
 import org.sonar.server.authentication.AuthenticationModule;
 import org.sonar.server.authentication.DefaultAdminCredentialsVerifierImpl;
 import org.sonar.server.authentication.DefaultAdminCredentialsVerifierNotificationHandler;
@@ -192,7 +196,11 @@ import org.sonar.server.platform.telemetry.TelemetryNclocProvider;
 import org.sonar.server.platform.telemetry.TelemetryPortfolioConfidentialFlagProvider;
 import org.sonar.server.platform.telemetry.TelemetryUserEnabledProvider;
 import org.sonar.server.platform.telemetry.TelemetryVersionProvider;
-import org.sonar.server.platform.web.*;
+import org.sonar.server.platform.web.ActionDeprecationLoggerInterceptor;
+import org.sonar.server.platform.web.CustomerAdminFilter;
+import org.sonar.server.platform.web.SonarLintConnectionFilter;
+import org.sonar.server.platform.web.WebServiceFilter;
+import org.sonar.server.platform.web.WebServiceReroutingFilter;
 import org.sonar.server.platform.web.requestid.HttpRequestIdModule;
 import org.sonar.server.platform.ws.ChangeLogLevelServiceModule;
 import org.sonar.server.platform.ws.HealthCheckerModule;
@@ -295,9 +303,6 @@ import org.sonar.telemetry.legacy.QualityProfileDataProvider;
 import org.sonar.telemetry.legacy.TelemetryDataJsonWriter;
 import org.sonar.telemetry.legacy.TelemetryDataLoaderImpl;
 import org.sonar.telemetry.metrics.TelemetryMetricsLoader;
-
-import static org.sonar.core.extension.CoreExtensionsInstaller.noAdditionalSideFilter;
-import static org.sonar.core.extension.PlatformLevelPredicates.hasPlatformLevel4OrNone;
 
 public class PlatformLevel4 extends PlatformLevel {
 
@@ -509,6 +514,10 @@ public class PlatformLevel4 extends PlatformLevel {
       MyNewIssuesNotificationHandler.newMetadata(),
       IssueChangeEventServiceImpl.class,
       HotspotChangeEventServiceImpl.class,
+
+      // Analysis Failure
+      AnalysisFailureNotificationHandler.class,
+      AnalysisFailureNotificationHandler.newMetadata(),
 
       // issues actions
       AssignAction.class,

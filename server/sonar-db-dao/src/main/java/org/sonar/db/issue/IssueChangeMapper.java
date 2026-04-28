@@ -36,6 +36,9 @@ public interface IssueChangeMapper {
   int update(IssueChangeDto change);
 
   @CheckForNull
+  IssueChangeDto selectByKey(@Param("key") String key);
+
+  @CheckForNull
   IssueChangeDto selectByKeyAndType(@Param("key") String key, @Param("changeType") String type);
 
   /**

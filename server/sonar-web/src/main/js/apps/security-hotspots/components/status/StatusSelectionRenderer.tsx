@@ -21,7 +21,7 @@
 import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { DatePicker, FormField, InputTextArea, Modal, Note, SelectionCard } from '~design-system';
+import { DatePicker, FormField, InputTextArea, LightPrimary, Modal, Note, SelectionCard } from '~design-system';
 import FormattingTips from '../../../../components/common/FormattingTips';
 import { translate } from '../../../../helpers/l10n';
 import { Hotspot, HotspotStatusOption } from '../../../../types/security-hotspots';
@@ -33,16 +33,18 @@ export interface StatusSelectionRendererProps {
   onCancel: () => void;
   onCommentChange: (comment: string) => void;
   onExpiryDateChange: (date?: string) => void;
+  onExceptionReasonChange: (reason: string) => void;
   onStatusChange: (statusOption: HotspotStatusOption) => void;
   onSubmit: () => Promise<void>;
   status: HotspotStatusOption;
   submitDisabled: boolean;
+  exceptionReason?: string;
   issueResolutionExpiryDate?: string;
   hotspot: Hotspot;
 }
 
 export default function StatusSelectionRenderer(props: StatusSelectionRendererProps) {
-  const { comment, expiryDate, loading, status, submitDisabled } = props;
+  const { comment, expiryDate, exceptionReason, loading, status, submitDisabled } = props;
   const [date, setDate] = useState<Date | undefined>(expiryDate ? new Date(expiryDate) : undefined);
 
   // Load existing expiry date from server when component mounts using the show api
@@ -113,6 +115,29 @@ export default function StatusSelectionRenderer(props: StatusSelectionRendererPr
               </div>
             )}
           </div>
+        )}
+        <br/>
+
+        {statusOption === HotspotStatusOption.EXCEPTION && (
+          <FormField
+            htmlFor="exception-reason-textarea"
+            label={
+              <LightPrimary className="sw-typo-semibold">
+                {`${translate('hotspots.status.exception_reason')} *`}
+              </LightPrimary>
+            }
+          >
+            <InputTextArea
+              className="sw-mb-2 sw-resize-y"
+              id="exception-reason-textarea"
+              onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                props.onExceptionReasonChange(event.currentTarget.value)
+              }
+              rows={4}
+              size="full"
+              value={exceptionReason}
+            />
+          </FormField>
         )}
       </SelectionCard>
     );
