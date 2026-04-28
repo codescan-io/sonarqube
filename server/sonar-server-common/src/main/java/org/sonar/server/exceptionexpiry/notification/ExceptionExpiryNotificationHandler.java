@@ -28,7 +28,7 @@ import org.sonar.server.notification.NotificationDispatcherMetadata;
 import org.sonar.server.notification.email.EmailNotificationChannel;
 import org.sonar.server.notification.email.EmailNotificationChannel.EmailDeliveryRequest;
 
-// to make changable per project notification
+
 public class ExceptionExpiryNotificationHandler extends EmailNotificationHandler<ExceptionExpiryNotification> {
     private static final String KEY = "ExceptionExpiry";
     private static final NotificationDispatcherMetadata METADATA = NotificationDispatcherMetadata.create(KEY)
