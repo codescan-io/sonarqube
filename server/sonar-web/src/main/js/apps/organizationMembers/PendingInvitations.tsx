@@ -22,7 +22,7 @@ import { Table } from '~design-system';
 import Avatar from '../../components/ui/Avatar';
 import ListFooter from '../../components/controls/ListFooter';
 import { getPendingInvitations, PendingInvitation } from '../../api/organizations';
-import { Organization, Paging } from '../../types/types';
+import { Organization } from '../../types/types';
 import './MembersList.css';
 
 interface Props {
@@ -34,7 +34,8 @@ const AVATAR_SIZE = 36;
 
 export default function PendingInvitations({ organization }: Props) {
   const [invitations, setInvitations] = React.useState<PendingInvitation[]>([]);
-  const [paging, setPaging] = React.useState<Paging>();
+  const [totalElements, setTotalElements] = React.useState<number>(0);
+  const [currentPage, setCurrentPage] = React.useState<number>(0);
   const [loading, setLoading] = React.useState<boolean>(false);
 
   const fetchInvitations = (page?: number) => {
@@ -44,14 +45,15 @@ export default function PendingInvitations({ organization }: Props) {
       p: page || 1,
       ps: PAGE_SIZE,
     }).then(
-      ({ paging, invitations: newInvitations }) => {
+      (response) => {
         setLoading(false);
         if (page && page > 1) {
-          setInvitations((prev) => [...prev, ...newInvitations]);
+          setInvitations((prev) => [...prev, ...response.content]);
         } else {
-          setInvitations(newInvitations);
+          setInvitations(response.content);
         }
-        setPaging(paging);
+        setTotalElements(response.totalElements);
+        setCurrentPage(response.number);
       },
       () => setLoading(false),
     );
@@ -64,9 +66,7 @@ export default function PendingInvitations({ organization }: Props) {
   }, []);
 
   const handleLoadMore = () => {
-    if (paging) {
-      fetchInvitations(paging.pageIndex + 1);
-    }
+    fetchInvitations(currentPage + 2); // currentPage is 0-indexed, API p is 1-indexed
   };
 
   const formatDate = (dateStr: string) => {
@@ -124,17 +124,17 @@ export default function PendingInvitations({ organization }: Props) {
               <td className="nowrap text-middle">
                 {formatDate(invitation.invitedOn)}
               </td>
-              <td className="nowrap text-middle">{invitation.status}</td>
+              <td className="nowrap text-middle">Invited</td>
             </tr>
           ))}
         </Table>
       </div>
-      {paging && paging.total > 0 && (
+      {totalElements > 0 && (
         <ListFooter
           count={invitations.length}
           loadMore={handleLoadMore}
           ready={!loading}
-          total={paging.total}
+          total={totalElements}
         />
       )}
     </div>
