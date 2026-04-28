@@ -148,13 +148,20 @@ export interface PendingInvitation {
   email: string;
   userType: string;
   invitedOn: string;
-  status: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
 }
 
 export function getPendingInvitations(data: {
   organizationKee: string;
   p?: number;
   ps?: number;
-}): Promise<{ paging: Paging; invitations: PendingInvitation[] }> {
+}): Promise<PageResponse<PendingInvitation>> {
   return getJSON('/_codescan/signup/pending-invitations', data).catch(throwGlobalError);
 }
