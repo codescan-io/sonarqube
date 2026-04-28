@@ -123,7 +123,7 @@ public class DoTransitionActionIT {
   @Before
   public void setUp() {
     workflow.start();
-    mapSettings.setProperty("codescan.issue.exception.autoAssignExpiry.enabled", "false");
+    mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.enabled", "false");
     mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.major", "0");
   }
 
@@ -252,7 +252,7 @@ public class DoTransitionActionIT {
 
   @Test
   public void exception_transition_from_open_sets_auto_expiry_when_enabled() {
-    mapSettings.setProperty("codescan.issue.exception.autoAssignExpiry.enabled", "true");
+    mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.enabled", "true");
     mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.major", "7");
 
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
@@ -290,7 +290,7 @@ public class DoTransitionActionIT {
 
   @Test
   public void exception_transition_from_open_respects_manual_expiry_date() {
-    mapSettings.setProperty("codescan.issue.exception.autoAssignExpiry.enabled", "true");
+    mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.enabled", "true");
     mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.major", "7");
 
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();

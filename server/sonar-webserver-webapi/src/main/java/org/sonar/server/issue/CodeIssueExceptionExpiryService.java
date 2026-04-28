@@ -49,7 +49,7 @@ public class CodeIssueExceptionExpiryService {
   public static final String PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES = "issueResolutionExpiryOffsetMinutes";
 
   /** @see io.codescan.cloud.DeveloperPlugin#KEY_ISSUE_EXCEPTION_AUTO_EXPIRY_ENABLED */
-  private static final String KEY_ISSUE_EXCEPTION_AUTO_EXPIRY_ENABLED = "codescan.issue.exception.autoAssignExpiry.enabled";
+  private static final String KEY_ISSUE_EXCEPTION_AUTO_EXPIRY_ENABLED = "codescan.cloud.issue.exception.autoAssignExpiry.enabled";
   private static final String KEY_DAYS_BLOCKER = "codescan.cloud.issue.exception.autoAssignExpiry.blocker";
   private static final String KEY_DAYS_CRITICAL = "codescan.cloud.issue.exception.autoAssignExpiry.critical";
   private static final String KEY_DAYS_MAJOR = "codescan.cloud.issue.exception.autoAssignExpiry.major";
