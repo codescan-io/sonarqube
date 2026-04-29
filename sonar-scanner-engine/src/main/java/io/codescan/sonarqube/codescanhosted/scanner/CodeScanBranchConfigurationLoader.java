@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -170,11 +169,10 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
             return new CodeScanBranchConfiguration(BranchType.PULL_REQUEST, pullRequestBranch,
                     branches.defaultBranchName(), branches.defaultBranchName(), pullRequestKey);
         } else {
+            LOG.info("Validating pull request base branch: {}", pullRequestBase);
+            getBranchInfo(branches, pullRequestBase);
             return new CodeScanBranchConfiguration(BranchType.PULL_REQUEST, pullRequestBranch,
-                    Optional.ofNullable(branches.get(pullRequestBase))
-                            .map(b -> pullRequestBase)
-                            .orElse(null),
-                    pullRequestBase, pullRequestKey);
+                    pullRequestBase, pullRequestBase, pullRequestKey);
         }
     }
 
@@ -187,11 +185,10 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
             return new CodeScanBranchConfiguration(BranchType.PULL_REQUEST, comparisonBranchName,
                     branches.defaultBranchName(), branches.defaultBranchName(), comparisonBranchName);
         } else {
+            LOG.info("Validating comparison base branch: {}", comparisonBranchBase);
+            getBranchInfo(branches, comparisonBranchBase);
             return new CodeScanBranchConfiguration(BranchType.PULL_REQUEST, comparisonBranchName,
-                    Optional.ofNullable(branches.get(comparisonBranchBase))
-                            .map(b -> comparisonBranchBase)
-                            .orElse(null),
-                    comparisonBranchBase, comparisonBranchName);
+                    comparisonBranchBase, comparisonBranchBase, comparisonBranchName);
         }
     }
 
