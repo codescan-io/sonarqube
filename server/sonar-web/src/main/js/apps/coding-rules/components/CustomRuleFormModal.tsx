@@ -124,7 +124,7 @@ export default function CustomRuleFormModal(props: Readonly<Props>) {
 
     const standardRule = {
       type: standardType,
-      ...(isSecurityHotspot ? {} : { severity: standardSeverity }),
+      severity: standardSeverity,
     };
 
     const cctRule = isSecurityHotspot
@@ -447,7 +447,7 @@ export default function CustomRuleFormModal(props: Readonly<Props>) {
           {isStandardMode && (
             <>
               {StandardTypeField}
-              {standardType !== 'SECURITY_HOTSPOT' && StandardSeverityField}
+              {StandardSeverityField}
             </>
           )}
           {!isStandardMode && (
