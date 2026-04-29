@@ -67,6 +67,7 @@ import org.sonar.core.platform.SpringComponentContainer;
 import org.sonar.server.ai.code.assurance.AiCodeAssuranceEntitlement;
 import org.sonar.server.ai.code.assurance.AiCodeAssuranceVerifier;
 import org.sonar.server.analysis.notification.AnalysisFailureNotificationHandler;
+import org.sonar.server.exceptionexpiry.notification.ExceptionExpiryNotificationHandler;
 import org.sonar.server.authentication.AuthenticationModule;
 import org.sonar.server.authentication.DefaultAdminCredentialsVerifierImpl;
 import org.sonar.server.authentication.DefaultAdminCredentialsVerifierNotificationHandler;
@@ -528,6 +529,10 @@ public class PlatformLevel4 extends PlatformLevel {
       AddTagsAction.class,
       RemoveTagsAction.class,
       IssueChangePostProcessorImpl.class,
+
+      // Exception Expiry
+      ExceptionExpiryNotificationHandler.class,
+      ExceptionExpiryNotificationHandler.newMetadata(),
 
       // hotspots
       new HotspotsWsModule(),
