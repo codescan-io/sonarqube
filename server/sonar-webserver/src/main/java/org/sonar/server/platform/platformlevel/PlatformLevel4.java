@@ -136,6 +136,7 @@ import org.sonar.server.feature.ws.FeatureWsModule;
 import org.sonar.server.hotspot.ws.HotspotsWsModule;
 import org.sonar.server.issue.AddTagsAction;
 import org.sonar.server.issue.AssignAction;
+import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.CommentAction;
 import org.sonar.server.issue.IssueChangePostProcessorImpl;
 import org.sonar.server.issue.PrioritizedRulesFeature;
@@ -524,6 +525,7 @@ public class PlatformLevel4 extends PlatformLevel {
       SetTypeAction.class,
       SetSeverityAction.class,
       CommentAction.class,
+      CodeIssueExceptionExpiryService.class,
       TransitionAction.class,
       AddTagsAction.class,
       RemoveTagsAction.class,
