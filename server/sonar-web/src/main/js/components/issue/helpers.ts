@@ -18,7 +18,40 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { IssueTransition } from '../../types/issues';
+import {
+  IssueDeprecatedStatus,
+  IssueResolution,
+  IssueStatus,
+  IssueTransition,
+  IssueType,
+} from '../../types/issues';
+import { Issue } from '../../types/types';
+
+/** Matches workflow: exception transition exists from OPEN, REOPENED, CONFIRMED (non-hotspot). */
+const STATUSES_FOR_EXCEPTION_EXPIRY_UI = new Set<string>([
+  IssueDeprecatedStatus.Open,
+  IssueDeprecatedStatus.Reopened,
+  IssueDeprecatedStatus.Confirmed,
+]);
+
+export function issueSupportsExceptionExpiryPicker(issue: Pick<Issue, 'status' | 'type'>): boolean {
+  if (issue.type === IssueType.SecurityHotspot) {
+    return false;
+  }
+  const status = (issue.status ?? '').toString().toUpperCase();
+  return STATUSES_FOR_EXCEPTION_EXPIRY_UI.has(status);
+}
+
+export function issueIsCodeException(issue: Pick<Issue, 'resolution' | 'issueStatus' | 'type'>): boolean {
+  if (issue.type === IssueType.SecurityHotspot) {
+    return false;
+  }
+  return (
+    issue.issueStatus === IssueStatus.Exception ||
+    issue.resolution === IssueResolution.Exception ||
+    (issue.resolution ?? '').toUpperCase() === IssueResolution.Exception
+  );
+}
 
 export function isTransitionDeprecated(transition: IssueTransition) {
   return transition === IssueTransition.Confirm || transition === IssueTransition.Resolve;
@@ -29,5 +62,9 @@ export function isTransitionHidden(transition: IssueTransition) {
 }
 
 export function transitionRequiresComment(transition: IssueTransition) {
-  return [IssueTransition.Accept, IssueTransition.FalsePositive].includes(transition);
+  return [IssueTransition.Accept, IssueTransition.FalsePositive, IssueTransition.Exception ].includes(transition);
+}
+
+export function transitionRequiresMandatoryComment(transition: IssueTransition) {
+  return transition === IssueTransition.Exception;
 }

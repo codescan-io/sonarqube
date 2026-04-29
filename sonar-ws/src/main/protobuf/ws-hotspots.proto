@@ -86,6 +86,7 @@ message ShowWsResponse {
   repeated sonarqube.ws.commons.MessageFormatting messageFormattings = 20;
   repeated string codeVariants = 21;
   optional int64 issueResolutionExpiresAt = 22;
+  optional string exceptionReason = 23;
 }
 
 message Component {
@@ -135,4 +136,12 @@ message TextRange {
   optional int32 endLine = 3;
   optional int32 endLineOffset = 4;
   optional string hash = 5;
+}
+
+// Response of GET api/hotspots/show
+message ChangeStatusWsResponse {
+  optional int32 totalKeysCount = 1;
+  optional int32 expiredKeysCount = 2;
+  optional int32 failedExpirationKeysCount = 3;
+  repeated string failedTransactionList = 4;;
 }

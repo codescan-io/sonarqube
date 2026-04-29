@@ -18,33 +18,41 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { Checkbox, RadioButtonGroup, Spinner } from '@sonarsource/echoes-react';
-import { countBy, flattenDeep, pickBy, sortBy } from 'lodash';
+import {Checkbox, RadioButtonGroup, Spinner} from '@sonarsource/echoes-react';
+import {countBy, flattenDeep, pickBy, sortBy} from 'lodash';
 import * as React from 'react';
-import { FormattedMessage } from 'react-intl';
+import {FormattedMessage} from 'react-intl';
 import {
+  addGlobalErrorMessage,
   ButtonPrimary,
+  DatePicker,
   FlagMessage,
   FormField,
   Highlight,
   InputTextArea,
   LightLabel,
   Modal,
-  addGlobalErrorMessage,
+  Note,
+  SelectionCard,
 } from '~design-system';
-import { throwGlobalError } from '~sonar-aligned/helpers/error';
-import { bulkChangeIssues, searchIssueTags } from '../../../api/issues';
+import {throwGlobalError} from '~sonar-aligned/helpers/error';
+import {bulkChangeIssues, searchIssueTags} from '../../../api/issues';
+import withComponentContext from '../../../app/components/componentContext/withComponentContext';
 import FormattingTips from '../../../components/common/FormattingTips';
-import { isTransitionHidden, transitionRequiresComment } from '../../../components/issue/helpers';
-import { translate, translateWithParameters } from '../../../helpers/l10n';
-import { withBranchStatusRefresh } from '../../../queries/branch';
-import { IssueTransition } from '../../../types/issues';
-import { Issue, Organization, Paging } from '../../../types/types';
+import {
+  issueSupportsExceptionExpiryPicker,
+  isTransitionHidden,
+  transitionRequiresComment,
+  transitionRequiresMandatoryComment,
+} from '../../../components/issue/helpers';
+import {translate, translateWithParameters} from '../../../helpers/l10n';
+import {withBranchStatusRefresh} from '../../../queries/branch';
+import {IssueTransition} from '../../../types/issues';
+import {Issue, Organization, Paging} from '../../../types/types';
+import {withOrganizationContext} from "../../organizations/OrganizationContext";
 import AssigneeSelect from './AssigneeSelect';
 import TagsSelect from './TagsSelect';
-import { withOrganizationContext } from "../../organizations/OrganizationContext";
-import withComponentContext from '../../../app/components/componentContext/withComponentContext';
-import { getCodefixQuota, queueCodeFix } from '../../../api/ai-codefix';
+import {getCodefixQuota, queueCodeFix} from '../../../api/ai-codefix';
 
 interface Props {
   organization: Organization;
@@ -60,6 +68,7 @@ interface FormFields {
   addTags?: Array<string>;
   assignee?: string;
   comment?: string;
+  exceptionExpiryDate?: Date;
   notifications?: boolean;
   removeTags?: Array<string>;
   severity?: string;
@@ -156,7 +165,11 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
   };
 
   handleRadioTransitionChange = (transition: IssueTransition) => {
-    this.setState({ transition });
+    this.setState({ transition, exceptionExpiryDate: undefined });
+  };
+
+  handleExceptionExpiryDateChange = (date?: Date) => {
+    this.setState({ exceptionExpiryDate: date });
   };
 
   handleCommentChange = (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
@@ -170,6 +183,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       addTags,
       assignee,
       comment,
+      exceptionExpiryDate,
       issues,
       notifications,
       removeTags,
@@ -177,6 +191,23 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       transition,
       type,
     } = this.state;
+    if (transition && transitionRequiresMandatoryComment(transition) && !comment?.trim()) {
+      return;
+    }
+    const supportsBulkExceptionExpiry =
+      transition === IssueTransition.Exception &&
+      issues.some((issue) => issueSupportsExceptionExpiryPicker(issue));
+
+    const expiryFields: Record<string, string> = {};
+    if (supportsBulkExceptionExpiry) {
+      expiryFields.issueResolutionExpiryOffsetMinutes = String(new Date().getTimezoneOffset());
+      if (exceptionExpiryDate) {
+        const yyyy = exceptionExpiryDate.getFullYear();
+        const mm = String(exceptionExpiryDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(exceptionExpiryDate.getDate()).padStart(2, '0');
+        expiryFields.issueResolutionExpiryDate = `${yyyy}-${mm}-${dd}`;
+      }
+    }
 
     if (assignee === 'ai-code-assistant') {
       const hasAnyAiDisabled = issues.some((issue) => issue.aiCodeFixEnabled !== true);
@@ -211,6 +242,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
         sendNotifications: notifications,
         set_severity: severity,
         set_type: type,
+        ...expiryFields,
       },
       (x) => x !== undefined,
     );
@@ -382,6 +414,44 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
     );
   };
 
+  renderBulkExceptionExpiryCard = () => {
+    const { issues, transition, exceptionExpiryDate } = this.state;
+    if (transition !== IssueTransition.Exception) {
+      return null;
+    }
+    if (!issues.some((issue) => issueSupportsExceptionExpiryPicker(issue))) {
+      return null;
+    }
+    return (
+      <SelectionCard
+        className="sw-mb-6"
+        selected
+        vertical
+        title={translate('issue.transition.exception')}
+        onClick={() => {
+          /* noop: visual parity with single-issue exception flow */
+        }}
+      >
+        <Note className="sw-mt-1 sw-mr-12">{translate('issue.transition.exception.description')}</Note>
+        <div className="sw-mt-10 sw-flex sw-flex-wrap sw-items-center sw-gap-3">
+          <DatePicker
+            clearButtonLabel={translate('clear')}
+            minDate={(() => {
+              const d = new Date();
+              d.setHours(0, 0, 0, 0);
+              return d;
+            })()}
+            maxDate={new Date(2050, 11, 31)}
+            name="bulkIssueExceptionExpiry"
+            onChange={this.handleExceptionExpiryDateChange}
+            placeholder={translate('issue.exception.expiry.no_expiry_placeholder')}
+            value={exceptionExpiryDate}
+          />
+        </div>
+      </SelectionCard>
+    );
+  };
+
   renderCommentField = () => {
     const affectedIssuesCount = this.state.issues.filter(hasAction('comment')).length;
     if (affectedIssuesCount === 0) {
@@ -393,10 +463,17 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       return null;
     }
 
+    const exceptionWithExpiry =
+      this.state.transition === IssueTransition.Exception &&
+      this.state.issues.some((issue) => issueSupportsExceptionExpiryPicker(issue));
+    const commentLabel = exceptionWithExpiry
+      ? `${translate('issue.transition.exception.reason')} *`
+      : translate('issue_bulk_change.resolution_comment');
+
     return (
-      <FormField label={translate('issue_bulk_change.resolution_comment')}>
+      <FormField label={commentLabel}>
         <InputTextArea
-          aria-label={translate('issue_bulk_change.resolution_comment')}
+          aria-label={commentLabel}
           onChange={this.handleCommentChange}
           placeholder={translate(
             'issue.transition.comment.placeholder',
@@ -449,6 +526,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
             this.renderTagsField(InputField.removeTags, 'issue.remove_tags', false)}
 
           {this.renderTransitionsField()}
+          {this.renderBulkExceptionExpiryCard()}
           {this.renderCommentField()}
           {issues.length > 0 && this.renderNotificationsField()}
 
@@ -478,7 +556,8 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
         onClose={this.props.onClose}
         primaryButton={
           <ButtonPrimary
-            disabled={!canSubmit || submitting || issues.length === 0}
+            disabled={!canSubmit || submitting || issues.length === 0 ||
+              (transitionRequiresMandatoryComment(this.state.transition) && !this.state.comment?.trim())}
             form="bulk-change-form"
             id="bulk-change-submit"
             type="submit"

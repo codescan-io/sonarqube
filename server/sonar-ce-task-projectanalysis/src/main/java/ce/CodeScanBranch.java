@@ -20,7 +20,7 @@
 package ce;
 
 import javax.annotation.Nullable;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sonar.api.utils.MessageException;
 import org.sonar.ce.task.projectanalysis.analysis.Branch;
 import org.sonar.db.component.BranchType;

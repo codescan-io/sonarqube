@@ -23,23 +23,39 @@ import { useIntl } from 'react-intl';
 import {
   ButtonPrimary,
   ButtonSecondary,
+  DatePicker,
+  FormField,
   InputTextArea,
   ItemDivider,
+  LightPrimary,
+  Note,
   PageContentFontWrapper,
+  SelectionCard,
   Spinner,
 } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { IssueActions, IssueTransition } from '../../../types/issues';
 import { Issue } from '../../../types/types';
-import { isTransitionDeprecated, isTransitionHidden, transitionRequiresComment } from '../helpers';
+import {
+  isTransitionDeprecated,
+  isTransitionHidden,
+  issueSupportsExceptionExpiryPicker,
+  transitionRequiresComment,
+  transitionRequiresMandatoryComment,
+} from '../helpers';
 import { IssueTransitionItem } from './IssueTransitionItem';
 import './IssueTransitionOverlay.css';
 
 export type Props = {
-  issue: Pick<Issue, 'transitions' | 'actions'>;
+  issue: Pick<Issue, 'transitions' | 'actions' | 'status' | 'type'>;
   loading?: boolean;
   onClose: () => void;
-  onSetTransition: (transition: IssueTransition, comment?: string) => void;
+  onSetTransition: (
+    transition: IssueTransition,
+    comment?: string,
+    issueResolutionExpiryDate?: string,
+    issueResolutionExpiryOffsetMinutes?: string,
+  ) => void;
 };
 
 export function IssueTransitionOverlay(props: Readonly<Props>) {
@@ -48,20 +64,54 @@ export function IssueTransitionOverlay(props: Readonly<Props>) {
 
   const [comment, setComment] = useState('');
   const [selectedTransition, setSelectedTransition] = useState<IssueTransition>();
+  const [exceptionExpiryDate, setExceptionExpiryDate] = useState<Date | undefined>();
 
   const hasCommentAction = issue.actions.includes(IssueActions.Comment);
+  const showExceptionExpiry = issueSupportsExceptionExpiryPicker(issue);
+  const showExceptionExpiryControls =
+    selectedTransition === IssueTransition.Exception && showExceptionExpiry;
+
+  /** Same as Date.getTimezoneOffset(); sent for manual date and for auto-expiry so server anchors "today" to local civil day. */
+  function buildExpiryOffset(transition: IssueTransition): string | undefined {
+    if (transition !== IssueTransition.Exception || !showExceptionExpiry) {
+      return undefined;
+    }
+    return String(new Date().getTimezoneOffset());
+  }
 
   function selectTransition(transition: IssueTransition) {
     if (!transitionRequiresComment(transition) || !hasCommentAction) {
-      onSetTransition(transition);
+      onSetTransition(transition, undefined, buildExpiryPayload(transition), buildExpiryOffset(transition));
     } else {
       setSelectedTransition(transition);
+      setExceptionExpiryDate(undefined);
     }
+  }
+
+  function buildExpiryPayload(transition: IssueTransition): string | undefined {
+    if (transition !== IssueTransition.Exception || !showExceptionExpiry) {
+      return undefined;
+    }
+    if (exceptionExpiryDate) {
+      const yyyy = exceptionExpiryDate.getFullYear();
+      const mm = String(exceptionExpiryDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(exceptionExpiryDate.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return undefined;
   }
 
   function handleResolve() {
     if (selectedTransition) {
-      onSetTransition(selectedTransition, comment);
+      if (transitionRequiresMandatoryComment(selectedTransition) && !comment.trim()) {
+            return;
+      }
+      onSetTransition(
+        selectedTransition,
+        comment,
+        buildExpiryPayload(selectedTransition),
+        buildExpiryOffset(selectedTransition),
+      );
     }
   }
 
@@ -100,24 +150,89 @@ export function IssueTransitionOverlay(props: Readonly<Props>) {
         <>
           <ItemDivider />
           <div className="sw-mx-4 sw-mt-2">
-            <PageContentFontWrapper className="sw-font-semibold">
-              {intl.formatMessage({ id: 'issue.transition.comment' })}
-            </PageContentFontWrapper>
-            <InputTextArea
-              autoFocus
-              onChange={(event) => setComment(event.currentTarget.value)}
-              placeholder={translate(
-                'issue.transition.comment.placeholder',
-                selectedTransition ?? '',
-              )}
-              rows={5}
-              value={comment}
-              size="large"
-              className="sw-mt-2"
-            />
+            {selectedTransition === IssueTransition.Exception ? (
+              <SelectionCard
+                className="sw-mb-2"
+                selected
+                vertical
+                title={translate('issue.transition.exception')}
+                onClick={() => {
+                  /* noop: keeps radio + selected border; inputs handle their own focus */
+                }}
+              >
+                <Note className="sw-mt-1 sw-mr-12">
+                  {translate('issue.transition.exception.description')}
+                </Note>
+                {showExceptionExpiryControls && (
+                  <div className="sw-mt-10 sw-flex sw-flex-wrap sw-items-center sw-gap-3">
+                    <DatePicker
+                      clearButtonLabel={translate('clear')}
+                      minDate={(() => {
+                        const d = new Date();
+                        d.setHours(0, 0, 0, 0);
+                        return d;
+                      })()}
+                      maxDate={new Date(2050, 11, 31)}
+                      name="issueExceptionExpiry"
+                      onChange={(d?: Date) => setExceptionExpiryDate(d)}
+                      placeholder={translate('issue.exception.expiry.no_expiry_placeholder')}
+                      value={exceptionExpiryDate}
+                    />
+                  </div>
+                )}
+                <FormField
+                  className={showExceptionExpiryControls ? 'sw-mt-6' : 'sw-mt-10'}
+                  htmlFor="issue-exception-reason-textarea"
+                  label={
+                    <LightPrimary className="sw-typo-semibold">
+                      {`${translate('issue.transition.exception.reason')} *`}
+                    </LightPrimary>
+                  }
+                >
+                  <InputTextArea
+                    autoFocus
+                    className="sw-mb-2 sw-resize-y"
+                    id="issue-exception-reason-textarea"
+                    onChange={(event) => setComment(event.currentTarget.value)}
+                    placeholder={translate(
+                      'issue.transition.comment.placeholder',
+                      selectedTransition,
+                    )}
+                    rows={4}
+                    size="full"
+                    value={comment}
+                  />
+                </FormField>
+              </SelectionCard>
+            ) : (
+              <>
+                <PageContentFontWrapper className="sw-font-semibold">
+                  {intl.formatMessage({ id: 'issue.transition.comment' })}
+                </PageContentFontWrapper>
+                <InputTextArea
+                  autoFocus
+                  onChange={(event) => setComment(event.currentTarget.value)}
+                  placeholder={translate(
+                    'issue.transition.comment.placeholder',
+                    selectedTransition ?? '',
+                  )}
+                  rows={5}
+                  value={comment}
+                  size="large"
+                  className="sw-mt-2"
+                />
+              </>
+            )}
             <Spinner loading={loading} className="sw-float-right sw-m-2">
               <div className="sw-mt-2 sw-flex sw-gap-3 sw-justify-end">
-                <ButtonPrimary onClick={handleResolve}>{translate('resolve')}</ButtonPrimary>
+                <ButtonPrimary
+                  onClick={handleResolve}
+                  disabled={transitionRequiresMandatoryComment(selectedTransition) && !comment.trim()}
+                >
+                  {transitionRequiresMandatoryComment(selectedTransition)
+                    ? translate('issue.change_status')
+                    : translate('resolve')}
+                </ButtonPrimary>
                 <ButtonSecondary onClick={onClose}>{translate('cancel')}</ButtonSecondary>
               </div>
             </Spinner>

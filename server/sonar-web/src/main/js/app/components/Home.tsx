@@ -28,6 +28,12 @@ import withCurrentUserContext from './current-user/withCurrentUserContext';
 import "../styles/components/home.css";
 import { isNonStandardUser } from '../utils/userAccess';
 
+import { getValue } from '../../api/settings';
+import MsaGate from '../../apps/sessions/components/MsaGate';
+const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
+import { getEulaVerification } from '../../api/eula';
+import { isMsaConsentPopupEnabled } from '../../helpers/eula-constants';
+import { GlobalSettingKeys } from '../../types/settings';
 
 interface Props {
   appState: AppState;
@@ -38,17 +44,48 @@ interface Props {
 
 interface State {
     loading:boolean;
+    msaEnabled: boolean;
+    msaDismissed: boolean;
+    msaVerify: boolean;
+    msaLoading:boolean;
 }
 
 class Home extends React.PureComponent<Props, State> {
     mounted = false;
     state : State = {
-        loading:false
+        loading:false,
+        msaEnabled: false,
+        msaDismissed: false,
+        msaVerify: false,
+        msaLoading:true,
     }
+   async componentDidMount() {
+     this.mounted = true;
 
-    componentDidMount() {
-        this.mounted = true;
-    }
+     try {
+       const resp = await getValue({ key: GlobalSettingKeys.CodescanMsaConsentDisplayMessage });
+       const msaEnabled = resp?.value==='true';
+
+       if (this.mounted) {
+         this.setState({ msaEnabled });
+       }
+
+       if (msaEnabled) {
+         const value = await getEulaVerification();
+         if (this.mounted) {
+           this.setState({ msaVerify: Boolean(value) });
+         }
+       }
+     } catch {
+       if (this.mounted) {
+         this.setState({ msaEnabled: false, msaVerify: false });
+       }
+     } finally {
+       if (this.mounted) {
+         this.setState({ msaLoading: false });
+       }
+     }
+   }
 
     componentWillUnmount() {
         this.mounted = false;
@@ -79,8 +116,14 @@ class Home extends React.PureComponent<Props, State> {
     }
 
     render() {
-        const {loading} = this.state;
+        const {loading,msaEnabled,msaDismissed,msaVerify,msaLoading} = this.state;
+        const isFirstLogin = !this.props.currentUser.onboarded;
+        const shouldShowMsa = !msaLoading && msaEnabled && isFirstLogin && !msaDismissed && msaVerify===false;
         return (
+          <MsaGate
+                  enabled={shouldShowMsa}
+                  onDismiss={() => this.setState({ msaDismissed: true })}
+                >
             <div className="landing">
                 <div className="home">
                     <img className="light-emblem" src='/images/grc/CodeScanShieldEmblem.svg' alt="" />
@@ -105,6 +148,7 @@ class Home extends React.PureComponent<Props, State> {
                     }
                 </div>
             </div>
+            </MsaGate>
         );
     }
 }

@@ -36,6 +36,7 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.issue.IssueDto;
+import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.IssueFinder;
 import org.sonar.server.issue.TransitionService;
 import org.sonar.server.pushapi.issues.IssueChangeEventService;
@@ -62,10 +63,11 @@ public class DoTransitionAction implements IssuesWsAction {
   private final TransitionService transitionService;
   private final OperationResponseWriter responseWriter;
   private final System2 system2;
+  private final CodeIssueExceptionExpiryService codeIssueExceptionExpiryService;
 
   public DoTransitionAction(DbClient dbClient, UserSession userSession, IssueChangeEventService issueChangeEventService,
     IssueFinder issueFinder, IssueUpdater issueUpdater, TransitionService transitionService,
-    OperationResponseWriter responseWriter, System2 system2) {
+    OperationResponseWriter responseWriter, System2 system2, CodeIssueExceptionExpiryService codeIssueExceptionExpiryService) {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.issueChangeEventService = issueChangeEventService;
@@ -74,6 +76,7 @@ public class DoTransitionAction implements IssuesWsAction {
     this.transitionService = transitionService;
     this.responseWriter = responseWriter;
     this.system2 = system2;
+    this.codeIssueExceptionExpiryService = codeIssueExceptionExpiryService;
   }
 
   @Override
@@ -87,6 +90,7 @@ public class DoTransitionAction implements IssuesWsAction {
       .setSince("3.6")
       .setChangelog(
         new Change("10.8", "The response fields 'severity' and 'type' are not deprecated anymore."),
+        new Change("10.8", "Optional parameter 'issueResolutionExpiryDate' (YYYY-MM-DD) is supported when transition is 'exception' for code issues."),
         new Change("10.8", format("Possible values '%s' and '%s' for response field 'severity' of 'impacts' have been added.", Severity.INFO.name(), Severity.BLOCKER.name())),
         new Change("10.4", "The transitions '%s' and '%s' are deprecated. Please use '%s' instead. The transition '%s' is deprecated too. "
           .formatted(DefaultTransitions.WONT_FIX, DefaultTransitions.CONFIRM, DefaultTransitions.ACCEPT, DefaultTransitions.UNCONFIRM)),
@@ -114,6 +118,17 @@ public class DoTransitionAction implements IssuesWsAction {
       .setDescription("Transition")
       .setRequired(true)
       .setPossibleValues(DefaultTransitions.ALL);
+    action.createParam(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE)
+      .setDescription("Optional expiry date (YYYY-MM-DD) when transition is 'exception' on a code issue (not security hotspot). "
+        + "When omitted, instance auto-expiry by severity may apply if enabled. When sent empty, expiry is cleared and auto-expiry is skipped.")
+      .setExampleValue("2026-12-31")
+      .setRequired(false);
+    action.createParam(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES)
+      .setDescription("Optional: JavaScript Date.getTimezoneOffset() from the browser. "
+        + "With a non-blank " + CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE + ", the civil date is stored as start-of-day in that offset. "
+        + "When the date is omitted and instance auto-expiry applies, the offset anchors \"today\" so the configured day count matches the UI countdown in the user's timezone; when omitted, UTC calendar is used.")
+      .setExampleValue("420")
+      .setRequired(false);
   }
 
   @Override
@@ -122,16 +137,22 @@ public class DoTransitionAction implements IssuesWsAction {
     String issue = request.mandatoryParam(PARAM_ISSUE);
     try (DbSession dbSession = dbClient.openSession(false)) {
       IssueDto issueDto = issueFinder.getByKey(dbSession, issue);
-      SearchResponseData preloadedSearchResponseData = doTransition(dbSession, issueDto, request.mandatoryParam(PARAM_TRANSITION));
+      SearchResponseData preloadedSearchResponseData = doTransition(dbSession, issueDto, request.mandatoryParam(PARAM_TRANSITION), request);
       responseWriter.write(issue, preloadedSearchResponseData, request, response, true);
     }
   }
 
-  private SearchResponseData doTransition(DbSession session, IssueDto issueDto, String transitionKey) {
+  private SearchResponseData doTransition(DbSession session, IssueDto issueDto, String transitionKey, Request request) {
     DefaultIssue defaultIssue = issueDto.toDefaultIssue();
     IssueChangeContext context = issueChangeContextByUserBuilder(new Date(system2.now()), userSession.getUuid()).withRefreshMeasures().build();
     transitionService.checkTransitionPermission(transitionKey, defaultIssue);
+    String previousStatus = issueDto.getStatus();
+    boolean hasExpiryDateParam = request.hasParam(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
+    String expiryDateParam = request.param(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
+    String expiryOffsetMinutesParam = request.param(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES);
     if (transitionService.doTransition(defaultIssue, context, transitionKey)) {
+      codeIssueExceptionExpiryService.applyAfterTransition(defaultIssue, issueDto, transitionKey, previousStatus, hasExpiryDateParam, expiryDateParam,
+        expiryOffsetMinutesParam);
       BranchDto branch = issueUpdater.getBranch(session, defaultIssue);
       SearchResponseData response = issueUpdater.saveIssueAndPreloadSearchResponseData(session, issueDto, defaultIssue, context, branch);
 

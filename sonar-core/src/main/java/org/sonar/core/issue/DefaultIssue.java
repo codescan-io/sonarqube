@@ -80,6 +80,7 @@ public class DefaultIssue implements Issue, Trackable, org.sonar.api.ce.measure.
   private String checksum = null;
   private String authorLogin = null;
   private List<DefaultIssueComment> comments = null;
+  private List<DefaultIssueExceptionReason> exceptionReasons = null;
   private Set<String> tags = null;
   private Set<String> codeVariants = null;
   private boolean prioritizedRule = false;
@@ -654,11 +655,26 @@ public class DefaultIssue implements Issue, Trackable, org.sonar.api.ce.measure.
     return this;
   }
 
+  public DefaultIssue addExceptionReason(DefaultIssueExceptionReason exceptionReason) {
+    if (exceptionReasons == null) {
+      exceptionReasons = new ArrayList<>();
+    }
+    exceptionReasons.add(exceptionReason);
+    return this;
+  }
+
   public List<DefaultIssueComment> defaultIssueComments() {
     if (comments == null) {
       return Collections.emptyList();
     }
     return ImmutableList.copyOf(comments);
+  }
+
+  public List<DefaultIssueExceptionReason> defaultIssueExceptionReasons() {
+    if (exceptionReasons == null) {
+      return Collections.emptyList();
+    }
+    return ImmutableList.copyOf(exceptionReasons);
   }
 
   @CheckForNull

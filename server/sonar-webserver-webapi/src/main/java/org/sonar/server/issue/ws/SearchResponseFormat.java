@@ -63,6 +63,7 @@ import org.sonarqube.ws.Issues.Actions;
 import org.sonarqube.ws.Issues.Comments;
 import org.sonarqube.ws.Issues.Component;
 import org.sonarqube.ws.Issues.Issue;
+import org.sonarqube.ws.Issues.Issue.Builder;
 import org.sonarqube.ws.Issues.Operation;
 import org.sonarqube.ws.Issues.SearchWsResponse;
 import org.sonarqube.ws.Issues.Sort;
@@ -77,6 +78,8 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
+import static org.sonar.api.issue.Issue.RESOLUTION_FIXED;
+import static org.sonar.api.issue.Issue.STATUS_CLOSED;
 import static org.sonar.db.component.ComponentQualifiers.UNIT_TEST_FILE;
 import static org.sonar.api.rule.RuleKey.EXTERNAL_RULE_REPO_PREFIX;
 import static org.sonar.server.issue.index.IssueIndex.FACET_ASSIGNED_TO_ME;
@@ -216,7 +219,7 @@ public class SearchResponseFormat {
 
     ofNullable(emptyToNull(dto.getResolution())).ifPresent(issueBuilder::setResolution);
     issueBuilder.setStatus(dto.getStatus());
-    ofNullable(dto.getIssueStatus()).map(IssueStatus::name).ifPresent(issueBuilder::setIssueStatus);
+    setExportIssueStatus(issueBuilder, dto);
     issueBuilder.setMessage(nullToEmpty(dto.getMessage()));
     issueBuilder.addAllMessageFormattings(MessageFormattingUtils.dbMessageFormattingToWs(dto.parseMessageFormattings()));
     issueBuilder.addAllTags(dto.getTags());
@@ -255,6 +258,8 @@ public class SearchResponseFormat {
 
     Optional.ofNullable(dto.getCveId()).ifPresent(issueBuilder::setCveId);
 
+    Optional.ofNullable(dto.getIssueResolutionExpiresAt()).ifPresent(issueBuilder::setIssueResolutionExpiresAt);
+
     if (issueMap != null && !issueMap.isEmpty()) {
       Sort.Builder wsSort = Sort.newBuilder();
       Object[] sortValue = issueMap.get(issueBuilder.getKey());
@@ -264,6 +269,19 @@ public class SearchResponseFormat {
         }
       }
       issueBuilder.setSort(wsSort);
+    }
+  }
+
+  private static void setExportIssueStatus(Builder issueBuilder, IssueDto dto) {
+    if (STATUS_CLOSED.equals(dto.getStatus())) {
+      String res = dto.getResolution();
+      if (RESOLUTION_FIXED.equals(res)) {
+        issueBuilder.setIssueStatus("CLOSED");
+      }else{
+        issueBuilder.setIssueStatus("REMOVED");
+      }
+    }else{
+        ofNullable(dto.getIssueStatus()).map(IssueStatus::name).ifPresent(issueBuilder::setIssueStatus);
     }
   }
 

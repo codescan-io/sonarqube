@@ -32,6 +32,7 @@ public class DoTransitionRequest {
 
   private String issue;
   private String transition;
+  private String issueResolutionExpiryDate;
 
   /**
    * This is a mandatory parameter.
@@ -66,5 +67,17 @@ public class DoTransitionRequest {
 
   public String getTransition() {
     return transition;
+  }
+
+  /**
+   * Optional. When transition is {@code exception}, expiry date (YYYY-MM-DD) for code issues (non-hotspot).
+   */
+  public DoTransitionRequest setIssueResolutionExpiryDate(String issueResolutionExpiryDate) {
+    this.issueResolutionExpiryDate = issueResolutionExpiryDate;
+    return this;
+  }
+
+  public String getIssueResolutionExpiryDate() {
+    return issueResolutionExpiryDate;
   }
 }

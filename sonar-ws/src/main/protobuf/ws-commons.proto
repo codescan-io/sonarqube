@@ -196,6 +196,7 @@ message Comment {
   optional string markdown = 6;
   optional bool updatable = 7;
   optional string createdAt = 8;
+  optional string type = 9;
 }
 
 message Metric {

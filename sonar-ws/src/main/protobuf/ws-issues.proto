@@ -172,6 +172,7 @@ message Issue {
   optional Sort sort = 50;
   optional string issueMarkedBy = 51;
   optional bool aiCodeFixEnabled = 52;
+  optional int64 issueResolutionExpiresAt = 53;
 }
 
 message Sort {

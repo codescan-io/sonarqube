@@ -56,6 +56,7 @@ export enum IssueResolution {
   Fixed = 'FIXED',
   Removed = 'REMOVED',
   WontFix = 'WONTFIX',
+  Exception = 'EXCEPTION'
 }
 
 export enum IssueDeprecatedStatus {
@@ -72,6 +73,7 @@ export enum IssueStatus {
   Confirmed = 'CONFIRMED',
   Accepted = 'ACCEPTED',
   FalsePositive = 'FALSE_POSITIVE',
+  Exception = 'EXCEPTION',
 }
 
 /** AI Codefix status values for the "AI Code Assistant" filter */
@@ -123,6 +125,7 @@ export enum IssueTransition {
   FalsePositive = 'falsepositive',
   WontFix = 'wontfix',
   Reopen = 'reopen',
+  Exception = 'exception',
 }
 
 interface Comment {
@@ -172,6 +175,7 @@ export interface RawIssue {
   }>;
   impacts: SoftwareImpact[];
   issueStatus: IssueStatus;
+  issueResolutionExpiresAt?: number | string | bigint;
   key: string;
   line?: number;
   message?: string;
