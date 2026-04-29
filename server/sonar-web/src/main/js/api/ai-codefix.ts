@@ -58,7 +58,7 @@ const CODEFIX_BASE = '/_codescan/codefix';
 export function queueCodeFix(data: {
     organizationKey: string;
     projectKey: string;
-    issueKey: string;
+    issueKeys: string[];
 }): Promise<void> {
   return postJSONBody(`${CODEFIX_BASE}/queue`, data);
 }
@@ -102,7 +102,7 @@ export function createCodefixPr(
 }
 
 export function getCodefixStatus(issueKey: string): Promise<CodefixStatusResponse> {
-  return get(`${CODEFIX_BASE}/get-status`, { issueKey }).then(parseJSON).catch(throwGlobalError);;
+  return get(`${CODEFIX_BASE}/get-status`, { issueKey }).then(parseJSON).catch();;
 }
 
 export function getPullRequestStatus(jobId: string): Promise<Notification> {
