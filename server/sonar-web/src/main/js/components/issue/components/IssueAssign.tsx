@@ -176,7 +176,6 @@ export default function IssueAssignee(props: Props) {
 
         const alreadyFixed =
           codefixStatus === 'FIX_GENERATED' || codefixStatus === 'PULL_REQUEST_CREATED';
-        console.log('codefix status:', codefixStatus, 'alreadyFixed:', alreadyFixed);
         if (!alreadyFixed) {
           queueCodeFix({
             organizationKey,
