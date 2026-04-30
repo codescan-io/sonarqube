@@ -129,9 +129,18 @@ export async function getChatBotFlag(): Promise<{ message: boolean }> {
   );
 }
 
+const aiAssistantEnabledCache: Record<string, Promise<boolean>> = {};
+
 export async function isAiAssistantEnabled(projectKey: string): Promise<boolean> {
-  const res = await getValues({ keys: ['codescan.cloud.aiAssistant'], component: projectKey });
-  const raw = res?.[0]?.value;
-  const enabled = raw === 'true';
-  return enabled;
+  if (aiAssistantEnabledCache[projectKey] !== undefined) {
+    return aiAssistantEnabledCache[projectKey];
+  }
+  const promise = (async () => {
+    const res = await getValues({ keys: ['codescan.cloud.aiAssistant'], component: projectKey });
+    const raw = res?.[0]?.value;
+    return raw === 'true';
+  })();
+
+  aiAssistantEnabledCache[projectKey] = promise;
+  return promise;
 }

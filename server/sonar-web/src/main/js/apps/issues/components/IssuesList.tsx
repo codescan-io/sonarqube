@@ -25,7 +25,7 @@ import IssueItem from '../../../components/issue/Issue';
 import { BranchLike } from '../../../types/branch-like';
 import { Component, Issue } from '../../../types/types';
 import ComponentBreadcrumbs from './ComponentBreadcrumbs';
-import { getValues } from 'src/main/js/api/settings';
+import { getValues, isAiAssistantEnabled } from 'src/main/js/api/settings';
 
 interface Props {
   branchLike: BranchLike | undefined;
@@ -70,13 +70,7 @@ export default class IssuesList extends React.PureComponent<Props, State> {
       return;
     }
     const projectKey = issues[0].projectKey;
-    const res = await getValues({
-      keys: ['codescan.cloud.aiAssistant'],
-      component: projectKey,
-    });
-
-    const raw = res?.[0]?.value;
-    const enabled = raw === 'true';
+    const enabled = await isAiAssistantEnabled(projectKey);
 
     this.setState({ aiAssistantEnabled: enabled });
   };
