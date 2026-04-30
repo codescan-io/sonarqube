@@ -24,10 +24,11 @@ import { Issue } from '../../../types/types';
 
 const AI_CODE_ASSISTANT_ASSIGNEE = 'ai-code-assistant';
 
-function isAssignedToAiCodeAssistant(issue: Issue): boolean {
+function hasAiCodefix(issue: Issue): boolean {
   return (
     issue.assignee === AI_CODE_ASSISTANT_ASSIGNEE ||
-    issue.assigneeLogin === AI_CODE_ASSISTANT_ASSIGNEE
+    issue.assigneeLogin === AI_CODE_ASSISTANT_ASSIGNEE ||
+    Boolean(issue.codefixStatus)
   );
 }
 
@@ -80,11 +81,11 @@ const CODEFIX_STATUS_STALE_MS = 60_000; // 1 minute
 const CODEFIX_IN_PROGRESS_POLL_MS = 10_000; // 10 seconds
 
 export default function AiCodefixBadge({ issue }: { issue: Issue }) {
-  const assignedToAi = isAssignedToAiCodeAssistant(issue);
+  const hasAiFix = hasAiCodefix(issue);
   const { data: statusData, isLoading, isError } = useQuery({
     queryKey: ['codefix-status', issue.key],
     queryFn: () => getCodefixStatus(issue.key),
-    enabled: assignedToAi && Boolean(issue.key),
+    enabled: hasAiFix && Boolean(issue.key),
     staleTime: CODEFIX_STATUS_STALE_MS,
     refetchOnWindowFocus: false,
     refetchInterval: (query) => {
@@ -95,7 +96,7 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
     },
   });
 
-  if (!assignedToAi || isLoading || isError || !statusData?.status) {
+  if (!hasAiFix || isLoading || isError || !statusData?.status) {
     return (
       <div className="sparkle-label sw-mr-5">
         <img src="/images/magic-wand.svg" alt="" />

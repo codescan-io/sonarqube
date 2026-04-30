@@ -47,10 +47,11 @@ import IssuesSourceViewer from './IssuesSourceViewer';
 
 const AI_CODE_ASSISTANT_ASSIGNEE = 'ai-code-assistant';
 
-function isAssignedToAiCodeAssistant(issue: Issue): boolean {
+function hasAiCodefix(issue: Issue): boolean {
   return (
     issue.assignee === AI_CODE_ASSISTANT_ASSIGNEE ||
-    issue.assigneeLogin === AI_CODE_ASSISTANT_ASSIGNEE
+    issue.assigneeLogin === AI_CODE_ASSISTANT_ASSIGNEE ||
+    Boolean(issue.codefixStatus)
   );
 }
 
@@ -199,7 +200,7 @@ export default function IssueDetails({
                             />
                           }
                           fixDiffContent={
-                            isAssignedToAiCodeAssistant(openIssue)
+                            hasAiCodefix(openIssue)
                               ? (
                                   <FixDiffTab
                                     branchLike={fillBranchLike(openIssue.branch, openIssue.pullRequest)}
