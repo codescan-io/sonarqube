@@ -235,6 +235,7 @@ export default class IssueHeader extends React.PureComponent<Props, State> {
             canSetTags={canSetTags}
             showTags
             showSonarLintBadge
+            showAiAssistantBadge
           />
         </div>
         <IssueHeaderSide
