@@ -235,7 +235,8 @@
     issue_type=#{type,jdbcType=INTEGER},
     code_variants=#{codeVariantsString,jdbcType=VARCHAR},
     clean_code_attribute=#{effectiveCleanCodeAttribute,jdbcType=VARCHAR},
-    prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN}
+    prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN},
+    issue_resolution_expires_at=#{issueResolutionExpiresAt,jdbcType=BIGINT}
     where kee = #{kee}
   </update>
 
@@ -268,7 +269,8 @@
     issue_type=#{type,jdbcType=INTEGER},
     code_variants=#{codeVariantsString,jdbcType=VARCHAR},
     clean_code_attribute=#{effectiveCleanCodeAttribute,jdbcType=VARCHAR},
-    prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN}
+    prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN},
+    issue_resolution_expires_at=#{issueResolutionExpiresAt,jdbcType=BIGINT}
     where kee = #{kee} and updated_at &lt;= #{selectedAt}
   </update>
 

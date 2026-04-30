@@ -255,6 +255,8 @@ public class SearchResponseFormat {
 
     Optional.ofNullable(dto.getCveId()).ifPresent(issueBuilder::setCveId);
 
+    Optional.ofNullable(dto.getIssueResolutionExpiresAt()).ifPresent(issueBuilder::setIssueResolutionExpiresAt);
+
     if (issueMap != null && !issueMap.isEmpty()) {
       Sort.Builder wsSort = Sort.newBuilder();
       Object[] sortValue = issueMap.get(issueBuilder.getKey());

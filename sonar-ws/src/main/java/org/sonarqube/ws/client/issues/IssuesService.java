@@ -171,11 +171,13 @@ public class IssuesService extends BaseService {
    * @since 3.6
    */
   public DoTransitionResponse doTransition(DoTransitionRequest request) {
-    return call(
-      new PostRequest(path("do_transition"))
-        .setParam("issue", request.getIssue())
-        .setParam("transition", request.getTransition()),
-      DoTransitionResponse.parser());
+    PostRequest post = new PostRequest(path("do_transition"))
+      .setParam("issue", request.getIssue())
+      .setParam("transition", request.getTransition());
+    if (request.getIssueResolutionExpiryDate() != null) {
+      post.setParam("issueResolutionExpiryDate", request.getIssueResolutionExpiryDate());
+    }
+    return call(post, DoTransitionResponse.parser());
   }
 
   /**

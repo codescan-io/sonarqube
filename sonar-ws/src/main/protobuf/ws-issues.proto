@@ -170,6 +170,7 @@ message Issue {
   // Codescan customization:
   optional Sort sort = 50;
   optional string issueMarkedBy = 51;
+  optional int64 issueResolutionExpiresAt = 52;
 }
 
 message Sort {

@@ -1,0 +1,127 @@
+{
+  "ServerSideRequestForgery": {
+    "cvssScore": "9.0",
+    "baseScore": "9.9",
+    "temporalScore": "8.9",
+    "environmentalScore": "9.0",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:L/MUI:N/MS:C/MC:H/MI:H/MA:H/CR:H/IR:H/AR:H",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "SSRF is exploitable via network inputs where attackers control request parameters influencing server-side calls."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Exploitation is straightforward when user input is directly used to construct request endpoints without validation."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "An authenticated user or low-privileged actor can often supply crafted input to trigger SSRF."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No additional user interaction is required once the malicious request is submitted."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Changed (C)",
+          "justification": "SSRF allows access to internal systems or services beyond the original application boundary."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Attackers can access sensitive internal data, metadata services, or restricted endpoints."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "High (H)",
+          "justification": "SSRF may allow unauthorized modification of internal services or trigger unintended actions."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "High (H)",
+          "justification": "Abuse of internal services or repeated requests can lead to denial-of-service conditions."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "SSRF exploitation techniques are well-known and easily reproducible with simple payloads."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "Input validation, allowlisting endpoints, and secure request handling are well-established mitigations."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The vulnerability is clearly defined (CWE-918) and reliably detected by static analysis."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "The vulnerability remains exploitable through network-accessible interfaces in the deployment environment."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Environmental controls typically do not significantly increase exploitation complexity."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "Attackers with basic access can still exploit SSRF if input is not validated."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No user interaction is required in the target environment."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Changed (C)",
+          "justification": "Impact extends beyond the application to internal systems and services."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Internal data exposure risk remains high in real-world deployments."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "High (H)",
+          "justification": "Unauthorized internal actions can compromise system integrity."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "High (H)",
+          "justification": "Internal service disruption or resource exhaustion may occur."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Protection of internal systems and sensitive data is critical."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Preventing unauthorized internal operations is essential."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Maintaining availability of internal services is critical for business operations."
+        }
+      ]
+    }
+  }
+}
