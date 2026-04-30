@@ -80,7 +80,7 @@ export function getCodefixQuota(organizationKey: string): Promise<{
  * so it is not callable from outside with a raw token.
  */
 export function getCodefixFixedFile(issueKey: string): Promise<CodefixFixedFileResponse> {
-  return get(`${CODEFIX_BASE}/fixed-file`, { issueKey }).then(parseJSON).catch(throwGlobalError);;
+  return get(`${CODEFIX_BASE}/fixed-file`, { issueKey }).then(parseJSON).catch();;
 }
 
 export function getCodefixCreatePrDraft(jobId: string): Promise<CodefixCreatePrDraft> {
@@ -106,5 +106,5 @@ export function getCodefixStatus(issueKey: string): Promise<CodefixStatusRespons
 }
 
 export function getPullRequestStatus(jobId: string): Promise<Notification> {
-  return get(`${CODEFIX_BASE}/get-pr-status`, { jobId }).then(parseJSON).catch(throwGlobalError);;
+  return get(`${CODEFIX_BASE}/get-pr-status`, { jobId }).then(parseJSON).catch();;
 }

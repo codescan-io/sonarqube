@@ -262,11 +262,19 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
               return;
             }
 
-            queueCodeFix({
-              organizationKey: issues[0].organization,
-              projectKey: issues[0].projectKey,
-              issueKeys: issues.map((issue) => issue.key),
-            });
+            const issuesToQueue = issues.filter(
+              (issue) =>
+                issue.codefixStatus !== 'FIX_GENERATED' &&
+                issue.codefixStatus !== 'PULL_REQUEST_CREATED',
+            );
+
+            if (issuesToQueue.length > 0) {
+              queueCodeFix({
+                organizationKey: issuesToQueue[0].organization,
+                projectKey: issuesToQueue[0].projectKey,
+                issueKeys: issuesToQueue.map((issue) => issue.key),
+              });
+            }
 
             this.props.refreshBranchStatus();
             this.props.onDone();

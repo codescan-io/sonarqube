@@ -159,7 +159,12 @@ export default function IssueAssignee(props: Props) {
 
   const handleAssign = (userOption: SingleValue<LabelValueSelectOption<string>>) => {
     if (userOption?.value === 'ai-code-assistant') {
-      const { key: issueKey, organization: organizationKey, projectKey } = props.issue;
+      const {
+        key: issueKey,
+        organization: organizationKey,
+        projectKey,
+        codefixStatus,
+      } = props.issue;
 
       getCodefixQuota(organizationKey).then((quota) => {
         if (quota.currentUsage + 1 > quota.dailyLimit) {
@@ -169,15 +174,20 @@ export default function IssueAssignee(props: Props) {
 
         props.onAssign(userOption.value);
 
-        queueCodeFix({
-          organizationKey,
-          projectKey: projectKey ?? '',
-          issueKeys: issueKey ? [issueKey] : [],
-        }).then(() => {
-          if (issueKey) {
-            queryClient.invalidateQueries({ queryKey: ['codefix-status', issueKey] });
-          }
-        });
+        const alreadyFixed =
+          codefixStatus === 'FIX_GENERATED' || codefixStatus === 'PULL_REQUEST_CREATED';
+        console.log('codefix status:', codefixStatus, 'alreadyFixed:', alreadyFixed);
+        if (!alreadyFixed) {
+          queueCodeFix({
+            organizationKey,
+            projectKey: projectKey ?? '',
+            issueKeys: issueKey ? [issueKey] : [],
+          }).then(() => {
+            if (issueKey) {
+              queryClient.invalidateQueries({ queryKey: ['codefix-status', issueKey] });
+            }
+          });
+        }
       });
 
       return;

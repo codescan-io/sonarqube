@@ -209,6 +209,7 @@ public class SearchResponseFormat {
       issueBuilder.setProject(branch.getKey());
     }
     issueBuilder.setRule(dto.getRuleKey().toString());
+    ofNullable(dto.getCodefixStatus()).ifPresent(issueBuilder::setCodefixStatus);
     if (dto.isExternal()) {
       issueBuilder.setExternalRuleEngine(engineNameFrom(dto.getRuleKey()));
     }
