@@ -1,0 +1,127 @@
+{
+  "FlowRunContextValidation": {
+    "cvssScore": "7.9",
+    "baseScore": "8.1",
+    "temporalScore": "7.3",
+    "environmentalScore": "7.9",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:L/MUI:N/MS:U/MC:H/MI:H/MA:N/CR:H/IR:H/AR:L",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Salesforce Flows are typically triggered through network-accessible user actions, APIs, or platform events within the application."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "If a flow runs in an elevated context, exploitation is straightforward because the excessive privileges are granted by configuration rather than requiring complex attack conditions."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "A user with normal access to invoke the flow may be able to benefit from the elevated execution context without needing administrative privileges."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No additional user interaction is required once the attacker can trigger the vulnerable flow path."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact remains within the same Salesforce org and security authority rather than crossing into a different trust boundary."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Flows running with elevated privileges can expose records or fields that the invoking user would not normally be allowed to access."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "High (H)",
+          "justification": "An improperly elevated flow can create, update, or delete protected records and perform unauthorized business actions."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "None (N)",
+          "justification": "The primary risk is unauthorized access and modification rather than disruption of service availability."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "Misconfigured flow execution context issues are easy to demonstrate by invoking the flow with a lower-privileged user."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "Salesforce provides documented guidance for choosing the correct flow run mode and enforcing explicit access validation."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The weakness is well understood, mapped to established access control CWEs, and can be reliably identified from flow metadata."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "In the deployed environment, the flow remains reachable through standard Salesforce network-accessible interactions."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Environmental conditions do not significantly increase the difficulty once the flow is configured with an unsafe run mode."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "Ordinary users who can invoke the flow may still gain access to elevated operations in the target environment."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No extra user interaction is needed beyond triggering the flow."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The resulting impact stays within the same Salesforce organizational boundary."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "In production use, elevated flow execution can expose sensitive business data and protected records."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "High (H)",
+          "justification": "The environment may allow unauthorized updates, record creation, or privileged business actions through the misconfigured flow."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "None (N)",
+          "justification": "Availability is generally unaffected because the misconfiguration primarily impacts access control rather than service uptime."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Preventing unauthorized access to records and fields is critical in most Salesforce deployments."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Maintaining correct authorization boundaries for record changes and automation behavior is essential."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Low (L)",
+          "justification": "Availability is less important for this issue than preventing unauthorized disclosure and modification."
+        }
+      ]
+    }
+  }
+}
