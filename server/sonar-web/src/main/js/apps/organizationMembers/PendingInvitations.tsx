@@ -47,15 +47,19 @@ export default function PendingInvitations({ organization }: Props) {
     }).then(
       (response) => {
         setLoading(false);
+        if (!response) return;
+        const items = Array.isArray(response.content) ? response.content : [];
         if (page && page > 1) {
-          setInvitations((prev) => [...prev, ...response.content]);
+          setInvitations((prev) => [...prev, ...items]);
         } else {
-          setInvitations(response.content);
+          setInvitations(items);
         }
-        setTotalElements(response.totalElements);
-        setCurrentPage(response.number);
+        setTotalElements(response.totalElements ?? 0);
+        setCurrentPage(response.number ?? 0);
       },
-      () => setLoading(false),
+      () => {
+        setLoading(false);
+      },
     );
   };
 
@@ -89,7 +93,7 @@ export default function PendingInvitations({ organization }: Props) {
       .replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
-  if (!organization.actions?.admin || invitations.length === 0) {
+  if (!organization.actions?.admin || !invitations || invitations.length === 0) {
     return null;
   }
 
@@ -110,19 +114,19 @@ export default function PendingInvitations({ organization }: Props) {
               <td className="thin nowrap">
                 <Avatar
                   className="sw-p-2"
-                  name={getNameFromEmail(invitation.email)}
+                  name={invitation.email ? getNameFromEmail(invitation.email) : '?'}
                   size={AVATAR_SIZE}
                 />
               </td>
               <td className="nowrap text-middle" style={{ width: '40%' }}>
-                <strong>{getNameFromEmail(invitation.email)}</strong>
-                <span className="note sw-ml-2">{invitation.email}</span>
+                <strong>{invitation.email ? getNameFromEmail(invitation.email) : ''}</strong>
+                <span className="note sw-ml-2">{invitation.email || ''}</span>
               </td>
               <td className="nowrap text-middle">
                 {getUserTypeLabel(invitation.userType)}
               </td>
               <td className="nowrap text-middle">
-                {formatDate(invitation.invitedOn)}
+                {invitation.invitedOn ? formatDate(invitation.invitedOn) : ''}
               </td>
               <td className="nowrap text-middle">Invited</td>
             </tr>
