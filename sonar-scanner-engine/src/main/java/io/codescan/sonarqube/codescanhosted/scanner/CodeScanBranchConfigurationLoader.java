@@ -166,8 +166,12 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
         String pullRequestBase = projectSettings.get(ScannerProperties.PULL_REQUEST_BASE);
 
         if (null == pullRequestBase || pullRequestBase.isEmpty()) {
+            String defaultBranch = branches.defaultBranchName();
+            if (defaultBranch != null) {
+                validateBranchAnalysed(branches, defaultBranch);
+            }
             return new CodeScanBranchConfiguration(BranchType.PULL_REQUEST, pullRequestBranch,
-                    branches.defaultBranchName(), branches.defaultBranchName(), pullRequestKey);
+                    defaultBranch, defaultBranch, pullRequestKey);
         } else {
             LOG.info("Validating pull request base branch: {}", pullRequestBase);
             getBranchInfo(branches, pullRequestBase);
@@ -182,8 +186,12 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
         String comparisonBranchBase = projectSettings.get(ScannerProperties.COMPARISON_BASE);
 
         if (null == comparisonBranchBase || comparisonBranchBase.isEmpty()) {
+            String defaultBranch = branches.defaultBranchName();
+            if (defaultBranch != null) {
+                validateBranchAnalysed(branches, defaultBranch);
+            }
             return new CodeScanBranchConfiguration(BranchType.PULL_REQUEST, comparisonBranchName,
-                    branches.defaultBranchName(), branches.defaultBranchName(), comparisonBranchName);
+                    defaultBranch, defaultBranch, comparisonBranchName);
         } else {
             LOG.info("Validating comparison base branch: {}", comparisonBranchBase);
             getBranchInfo(branches, comparisonBranchBase);
@@ -209,8 +217,22 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
         if (ret == null) {
             throw MessageException
                     .of("Target branch does not exist on server. Run a regular analysis before running a branch analysis");
-        } else {
-            return ret;
+        }
+        if (!ret.isAnalysed()) {
+            throw MessageException
+                    .of("Target branch '" + branchTarget + "' has not been analyzed yet. "
+                            + "Please run an analysis on branch '" + branchTarget + "' before using it as a base branch.");
+        }
+        return ret;
+    }
+
+    private static void validateBranchAnalysed(ProjectBranches branches, String branchName) {
+        BranchInfo info = branches.get(branchName);
+        if (info != null && !info.isAnalysed()) {
+            LOG.info("Default base branch '{}' has not been analyzed yet", branchName);
+            throw MessageException
+                    .of("Target branch '" + branchName + "' has not been analyzed yet. "
+                            + "Please run an analysis on branch '" + branchName + "' before using it as a base branch.");
         }
     }
 }
