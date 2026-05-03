@@ -37,6 +37,7 @@ export default function PendingInvitations({ organization }: Props) {
   const [totalElements, setTotalElements] = React.useState<number>(0);
   const [currentPage, setCurrentPage] = React.useState<number>(0);
   const [loading, setLoading] = React.useState<boolean>(false);
+  const [loaded, setLoaded] = React.useState<boolean>(false);
 
   const fetchInvitations = (page?: number) => {
     setLoading(true);
@@ -47,6 +48,7 @@ export default function PendingInvitations({ organization }: Props) {
     }).then(
       (response) => {
         setLoading(false);
+        setLoaded(true);
         if (!response) return;
         const items = Array.isArray(response.content) ? response.content : [];
         if (page && page > 1) {
@@ -59,6 +61,7 @@ export default function PendingInvitations({ organization }: Props) {
       },
       () => {
         setLoading(false);
+        setLoaded(true);
       },
     );
   };
@@ -93,53 +96,63 @@ export default function PendingInvitations({ organization }: Props) {
       .replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
-  if (!organization.actions?.admin || !invitations || invitations.length === 0) {
+  if (!organization.actions?.admin || !loaded) {
     return null;
   }
+
+  const hasInvitations = invitations && invitations.length > 0;
 
   return (
     <div className="sw-mt-16 sw-ml-16 sw-mr-8">
       <h2 className="page-title">Pending Invitations</h2>
-      <div className="boxed-group boxed-group-inner">
-        <Table className="data zebra members-list-table">
-          <tr>
-            <td className="thin nowrap"></td>
-            <td className="nowrap text-middle" style={{ width: '40%' }}><strong>Name</strong></td>
-            <td className="nowrap text-middle"><strong>User Type</strong></td>
-            <td className="nowrap text-middle"><strong>Invited On</strong></td>
-            <td className="nowrap text-middle"><strong>Status</strong></td>
-          </tr>
-          {invitations.map((invitation) => (
-            <tr key={invitation.id}>
-              <td className="thin nowrap">
-                <Avatar
-                  className="sw-p-2"
-                  name={invitation.email ? getNameFromEmail(invitation.email) : '?'}
-                  size={AVATAR_SIZE}
-                />
-              </td>
-              <td className="nowrap text-middle" style={{ width: '40%' }}>
-                <strong>{invitation.email ? getNameFromEmail(invitation.email) : ''}</strong>
-                <span className="note sw-ml-2">{invitation.email || ''}</span>
-              </td>
-              <td className="nowrap text-middle">
-                {getUserTypeLabel(invitation.userType)}
-              </td>
-              <td className="nowrap text-middle">
-                {invitation.invitedOn ? formatDate(invitation.invitedOn) : ''}
-              </td>
-              <td className="nowrap text-middle">Invited</td>
-            </tr>
-          ))}
-        </Table>
-      </div>
-      {totalElements > 0 && (
-        <ListFooter
-          count={invitations.length}
-          loadMore={handleLoadMore}
-          ready={!loading}
-          total={totalElements}
-        />
+      {!hasInvitations ? (
+        <div className="note sw-mt-4">
+          No pending invitations. Invite new members to collaborate.
+        </div>
+      ) : (
+        <>
+          <div className="boxed-group boxed-group-inner">
+            <Table className="data zebra members-list-table">
+              <tr>
+                <td className="thin nowrap"></td>
+                <td className="nowrap text-middle" style={{ width: '40%' }}><strong>Name</strong></td>
+                <td className="nowrap text-middle"><strong>User Type</strong></td>
+                <td className="nowrap text-middle"><strong>Invited On</strong></td>
+                <td className="nowrap text-middle"><strong>Status</strong></td>
+              </tr>
+              {invitations.map((invitation) => (
+                <tr key={invitation.id}>
+                  <td className="thin nowrap">
+                    <Avatar
+                      className="sw-p-2"
+                      name={invitation.email ? getNameFromEmail(invitation.email) : '?'}
+                      size={AVATAR_SIZE}
+                    />
+                  </td>
+                  <td className="nowrap text-middle" style={{ width: '40%' }}>
+                    <strong>{invitation.email ? getNameFromEmail(invitation.email) : ''}</strong>
+                    <span className="note sw-ml-2">{invitation.email || ''}</span>
+                  </td>
+                  <td className="nowrap text-middle">
+                    {getUserTypeLabel(invitation.userType)}
+                  </td>
+                  <td className="nowrap text-middle">
+                    {invitation.invitedOn ? formatDate(invitation.invitedOn) : ''}
+                  </td>
+                  <td className="nowrap text-middle">Invited</td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+          {totalElements > 0 && (
+            <ListFooter
+              count={invitations.length}
+              loadMore={handleLoadMore}
+              ready={!loading}
+              total={totalElements}
+            />
+          )}
+        </>
       )}
     </div>
   );
