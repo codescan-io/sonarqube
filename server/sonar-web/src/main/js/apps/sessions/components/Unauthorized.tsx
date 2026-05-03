@@ -41,6 +41,7 @@ export default function Unauthorized() {
   const ERROR_MESSAGES: Record<string, string> = {
     email_not_verified: 'unauthorized.email_verification_required',
     email_verification_failed: 'unauthorized.email_verification_failed',
+    max_trial_users_exceeded: 'unauthorized.max_trial_users_exceeded',
   };
 
   const rawJson = decodeURIComponent(getCookie('AUTHENTICATION-ERROR') || '');
