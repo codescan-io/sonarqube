@@ -61,6 +61,7 @@ import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.issue.Action;
 import org.sonar.server.issue.ActionContext;
 import org.sonar.server.issue.AddTagsAction;
+import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.AssignAction;
 import org.sonar.server.issue.IssueChangePostProcessor;
 import org.sonar.server.issue.RemoveTagsAction;
@@ -115,6 +116,8 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ASSIGN;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_COMMENT;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_DO_TRANSITION;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUES;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_REMOVE_TAGS;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SEND_NOTIFICATIONS;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SET_SEVERITY;
@@ -157,6 +160,8 @@ public class BulkChangeAction implements IssuesWsAction {
         "Requires authentication.")
       .setSince("3.7")
       .setChangelog(
+        new Change("10.8", "Optional parameters '" + PARAM_ISSUE_RESOLUTION_EXPIRY_DATE + "' and '" + PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES
+          + "' are supported with '" + PARAM_DO_TRANSITION + "' when transition is 'exception' for code issues (same semantics as api/issues/do_transition)."),
         new Change("10.8", format("The parameters '%s' and '%s' are not deprecated anymore.", PARAM_SET_SEVERITY, PARAM_SET_TYPE)),
         new Change("10.4", ("Transitions '%s' and '%s' are now deprecated. Use transition '%s' instead. " +
           "The transition '%s' is deprecated too.").formatted(WONT_FIX, CONFIRM, ACCEPT, UNCONFIRM)),
@@ -189,6 +194,14 @@ public class BulkChangeAction implements IssuesWsAction {
       .setDescription("Transition")
       .setExampleValue(REOPEN)
       .setPossibleValues(DefaultTransitions.ALL);
+    action.createParam(PARAM_ISSUE_RESOLUTION_EXPIRY_DATE)
+      .setDescription("Optional with " + PARAM_DO_TRANSITION + " when transition is 'exception' on code issues. Same as api/issues/do_transition.")
+      .setExampleValue("2026-12-31")
+      .setRequired(false);
+    action.createParam(PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES)
+      .setDescription("Optional; JavaScript Date.getTimezoneOffset() for exception expiry (manual civil day or auto-expiry anchor). Same as api/issues/do_transition.")
+      .setExampleValue("420")
+      .setRequired(false);
     action.createParam(PARAM_ADD_TAGS)
       .setDescription("Add tags")
       .setExampleValue("security,java8");
@@ -549,7 +562,15 @@ public class BulkChangeAction implements IssuesWsAction {
       request.getParam(PARAM_ASSIGN, value -> properties.put(AssignAction.ASSIGN_KEY, new HashMap<>(of(ASSIGNEE_PARAMETER, value))));
       request.getParam(PARAM_SET_SEVERITY, value -> properties.put(SET_SEVERITY_KEY, new HashMap<>(of(SEVERITY_PARAMETER, value))));
       request.getParam(PARAM_SET_TYPE, value -> properties.put(SET_TYPE_KEY, new HashMap<>(of(TYPE_PARAMETER, value))));
-      request.getParam(PARAM_DO_TRANSITION, value -> properties.put(DO_TRANSITION_KEY, new HashMap<>(of(TRANSITION_PARAMETER, value))));
+      request.getParam(PARAM_DO_TRANSITION, transitionValue -> {
+        Map<String, Object> transitionProps = new HashMap<>();
+        transitionProps.put(TRANSITION_PARAMETER, transitionValue);
+        request.getParam(PARAM_ISSUE_RESOLUTION_EXPIRY_DATE,
+          v -> transitionProps.put(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE, v));
+        request.getParam(PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES,
+          v -> transitionProps.put(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES, v));
+        properties.put(DO_TRANSITION_KEY, transitionProps);
+      });
       request.getParam(PARAM_ADD_TAGS, value -> properties.put(AddTagsAction.KEY, new HashMap<>(of(TAGS_PARAMETER, value))));
       request.getParam(PARAM_REMOVE_TAGS, value -> properties.put(RemoveTagsAction.KEY, new HashMap<>(of(TAGS_PARAMETER, value))));
       request.getParam(PARAM_COMMENT, value -> properties.put(COMMENT_KEY, new HashMap<>(of(COMMENT_PROPERTY, value))));

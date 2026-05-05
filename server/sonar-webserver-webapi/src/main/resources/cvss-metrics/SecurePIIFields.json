@@ -1,0 +1,127 @@
+{
+  "SecurePIIFields": {
+    "cvssScore": "7.6",
+    "baseScore": "7.1",
+    "temporalScore": "6.4",
+    "environmentalScore": "7.6",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:L/MUI:N/MS:U/MC:H/MI:L/MA:N/CR:H/IR:M/AR:L",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "PII data in Salesforce objects can be accessed remotely through application interfaces, APIs, or user access over the network."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "No special conditions are required if sensitive fields are improperly handled or exposed."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "An authenticated user with basic access to Salesforce records may be able to access sensitive PII fields."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No additional user interaction is required once access to the sensitive data is obtained."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact is limited to the Salesforce environment and does not cross into another security boundary."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Exposure of PII such as personal identifiers, emails, or financial data can lead to serious privacy breaches."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "Low (L)",
+          "justification": "While integrity is not the primary concern, improper handling may allow limited modification or misuse of sensitive records."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "None (N)",
+          "justification": "The issue does not directly affect system availability."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "Exposure of PII fields is easily demonstrable through improper access control or lack of data protection."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "Established best practices exist, including encryption, masking, and strict access control enforcement."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The rule is based on well-known data protection requirements and reliably identifies sensitive fields."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "In the deployed environment, sensitive data remains accessible via network-based access methods."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "No additional environmental protections significantly increase attack complexity."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "Authenticated users with typical access rights may still access improperly secured PII."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No additional user interaction is required in the target environment."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact remains confined within the same Salesforce organizational boundary."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "In real-world environments, exposed PII can lead to regulatory violations and significant data breaches."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "Low (L)",
+          "justification": "Integrity concerns remain secondary, with limited potential for unauthorized modification."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "None (N)",
+          "justification": "Availability is not impacted by this type of vulnerability."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Protection of PII is critical due to regulatory, legal, and privacy requirements."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Maintaining correctness of sensitive records is important but less critical than preventing exposure."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Low (L)",
+          "justification": "Availability is not a primary concern compared to confidentiality risks."
+        }
+      ]
+    }
+  }
+}
