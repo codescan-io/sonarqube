@@ -1,0 +1,127 @@
+{
+  "ResourceInjection": {
+    "cvssScore": "7.9",
+    "baseScore": "8.3",
+    "temporalScore": "7.5",
+    "environmentalScore": "7.9",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:L/MUI:N/MS:U/MC:H/MI:H/MA:L/CR:H/IR:H/AR:M",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "The vulnerability is triggered through user-controlled input that influences internal request URLs or page references over application network flows."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Exploitation is straightforward when unvalidated input is concatenated into resource identifiers without proper sanitization."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "An authenticated user with access to the vulnerable functionality can often supply the malicious input needed to exploit the issue."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No additional user interaction is required once the attacker can submit crafted input to the vulnerable code path."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact remains within the same application and trust boundary that processes the unsafe resource identifier."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Improper control of resource identifiers can expose internal endpoints, sensitive records, or unintended resources to unauthorized access."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "High (H)",
+          "justification": "Attackers may manipulate requests or target unintended internal resources, resulting in unauthorized actions or data modification."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "Low (L)",
+          "justification": "Resource misuse may cause limited disruption or unintended processing, but availability is typically a secondary concern."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "Unsafe URL or resource construction vulnerabilities are easy to demonstrate with crafted inputs."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "The standard remediation is to validate, sanitize, or safely transform untrusted input before using it in resource identifiers."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The weakness is well understood, maps directly to CWE-99, and is reliably identified by static analysis."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "In the deployed environment, the vulnerable resource construction remains reachable through application network interfaces."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Environmental conditions do not significantly increase the difficulty of exploiting unsafe resource identifiers."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "Typical authenticated access is still sufficient to reach the vulnerable functionality in most deployments."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "The vulnerability remains exploitable without requiring action from another user."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact remains within the same application or organizational security boundary."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "In production environments, unintended access to internal resources or endpoints may expose sensitive business or platform data."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "High (H)",
+          "justification": "Manipulated resource identifiers may trigger unauthorized internal actions or alter the behavior of trusted workflows."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "Low (L)",
+          "justification": "Availability impact remains limited, though misuse of internal resources may degrade operations or trigger unintended requests."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Protecting internal endpoints, resource references, and associated data is critical in most enterprise environments."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Preventing unauthorized manipulation of internal request targets and resulting actions is a high priority."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Availability matters because abuse of internal resources can affect workflows, though confidentiality and integrity remain more critical."
+        }
+      ]
+    }
+  }
+}
