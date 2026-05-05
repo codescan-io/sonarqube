@@ -9,8 +9,8 @@
       "BASE": [
         {
           "name": "ATTACK_VECTOR",
-          "value": "Network (N)",
-          "justification": "The issue can be exploited remotely because hardcoded cryptographic keys or ivs are used."
+          "value": "Local (L)",
+          "justification": "Exploitation typically requires access to the vulnerable application logic or environment where the hardcoded cryptographic keys or IVs are used."
         },
         {
           "name": "ATTACK_COMPLEXITY",
@@ -19,8 +19,8 @@
         },
         {
           "name": "PRIVILEGES_REQUIRED",
-          "value": "Low (L)",
-          "justification": "Basic authenticated access is sufficient."
+          "value": "None (N)",
+          "justification": "No special privileges are required beyond access to the vulnerable functionality."
         },
         {
           "name": "USER_INTERACTION",
@@ -34,18 +34,18 @@
         },
         {
           "name": "CONFIDENTIALITY",
-          "value": "Low (L)",
-          "justification": "Limited data exposure is possible."
+          "value": "High (H)",
+          "justification": "Hardcoded keys or IVs can expose encrypted sensitive data to unauthorized disclosure."
         },
         {
           "name": "INTEGRITY",
-          "value": "Low (L)",
-          "justification": "Data or logic may be modified."
+          "value": "High (H)",
+          "justification": "Attackers may be able to alter or forge protected data because the cryptographic material is predictable or recoverable."
         },
         {
           "name": "AVAILABILITY",
           "value": "Low (L)",
-          "justification": "Minimal availability impact."
+          "justification": "Availability impact is limited, but compromised cryptographic operations may affect application reliability or trust in protected data."
         }
       ],
       "TEMPORAL": [
@@ -68,18 +68,18 @@
       "ENVIRONMENTAL": [
         {
           "name": "MODIFIED_ATTACK_VECTOR",
-          "value": "Network (N)",
-          "justification": "Deployment does not reduce exposure."
+          "value": "Local (L)",
+          "justification": "The deployment environment does not significantly change how the vulnerable cryptographic implementation is accessed."
         },
         {
           "name": "MODIFIED_ATTACK_COMPLEXITY",
           "value": "Low (L)",
-          "justification": "No additional complexity in deployment."
+          "justification": "No additional complexity is introduced by the deployment environment."
         },
         {
           "name": "MODIFIED_PRIVILEGES_REQUIRED",
-          "value": "Low (L)",
-          "justification": "Basic authenticated access is sufficient."
+          "value": "None (N)",
+          "justification": "No additional privileges are required in the deployed environment."
         },
         {
           "name": "MODIFIED_USER_INTERACTION",
@@ -93,33 +93,33 @@
         },
         {
           "name": "MODIFIED_CONFIDENTIALITY",
-          "value": "Low (L)",
+          "value": "High (H)",
           "justification": "Limited exposure in this environment."
         },
         {
           "name": "MODIFIED_INTEGRITY",
-          "value": "Low (L)",
-          "justification": "Limited integrity impact."
+          "value": "High (H)",
+          "justification": "The ability to tamper with or forge protected data remains a significant concern."
         },
         {
           "name": "MODIFIED_AVAILABILITY",
           "value": "Low (L)",
-          "justification": "Limited availability impact."
+          "justification": "Availability impact remains limited in this environment."
         },
         {
           "name": "CONFIDENTIALITY_REQUIREMENT",
-          "value": "Medium (M)",
-          "justification": "Confidential data is relevant."
+          "value": "High (H)",
+          "justification": "Protecting sensitive encrypted data is critical in this environment."
         },
         {
           "name": "INTEGRITY_REQUIREMENT",
-          "value": "Medium (M)",
-          "justification": "Integrity is important."
+          "value": "High (H)",
+          "justification": "Maintaining the integrity of cryptographically protected data is critical."
         },
         {
           "name": "AVAILABILITY_REQUIREMENT",
-          "value": "Low (L)",
-          "justification": "Availability impact is minor."
+          "value": "Medium (M)",
+          "justification": "Availability matters, but it is less critical than confidentiality and integrity for this issue."
         }
       ]
     }
