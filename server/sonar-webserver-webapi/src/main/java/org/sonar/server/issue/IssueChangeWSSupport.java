@@ -57,6 +57,7 @@ import static java.util.Optional.empty;
 import static java.util.Optional.ofNullable;
 import static org.sonar.api.utils.DateUtils.formatDateTime;
 import static org.sonar.db.issue.IssueChangeDto.TYPE_COMMENT;
+import static org.sonar.db.issue.IssueChangeDto.TYPE_EXCEPTION_REASON;
 import static org.sonar.db.issue.IssueChangeDto.TYPE_FIELD_CHANGE;
 import static org.sonar.server.issue.IssueFieldsSetter.FILE;
 import static org.sonar.server.issue.IssueFieldsSetter.TECHNICAL_DEBT;
@@ -106,7 +107,9 @@ public class IssueChangeWSSupport {
         changes = dbClient.issueChangeDao().selectByTypeAndIssueKeys(dbSession, issueKeys, TYPE_FIELD_CHANGE);
         break;
       case COMMENTS:
-        comments = dbClient.issueChangeDao().selectByTypeAndIssueKeys(dbSession, issueKeys, TYPE_COMMENT);
+        List<IssueChangeDto> commentList = dbClient.issueChangeDao().selectByTypeAndIssueKeys(dbSession, issueKeys, TYPE_COMMENT);
+        List<IssueChangeDto> reasonList = dbClient.issueChangeDao().selectByTypeAndIssueKeys(dbSession, issueKeys, TYPE_EXCEPTION_REASON);
+        comments = Stream.concat(commentList.stream(), reasonList.stream()).toList();
         break;
       case ALL:
         List<IssueChangeDto> all = dbClient.issueChangeDao().selectByIssueKeys(dbSession, issueKeys);
@@ -114,7 +117,7 @@ public class IssueChangeWSSupport {
           .filter(t -> TYPE_FIELD_CHANGE.equals(t.getChangeType()))
           .toList();
         comments = all.stream()
-          .filter(t -> TYPE_COMMENT.equals(t.getChangeType()))
+          .filter(t -> TYPE_COMMENT.equals(t.getChangeType()) || TYPE_EXCEPTION_REASON.equals(t.getChangeType()))
           .toList();
         break;
       default:
@@ -271,6 +274,9 @@ public class IssueChangeWSSupport {
           .setKey(comment.getKey())
           .setUpdatable(formattingContext.isUpdatableComment(comment))
           .setCreatedAt(DateUtils.formatDateTime(new Date(comment.getIssueChangeCreationDate())));
+        if (comment.getChangeType() != null) {
+          commentBuilder.setType(comment.getChangeType());
+        }
         String markdown = comment.getChangeData();
         formattingContext.getUserByUuid(comment.getUserUuid()).ifPresent(user -> commentBuilder.setLogin(user.getLogin()));
         if (markdown != null) {

@@ -41,6 +41,7 @@ import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.BranchType;
 import org.sonar.db.component.ComponentDto;
+import org.sonar.db.issue.IssueChangeDto;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.db.protobuf.DbIssues;
@@ -77,6 +78,7 @@ import static org.sonar.api.server.rule.RuleDescriptionSection.RuleDescriptionSe
 import static org.sonar.api.server.rule.RuleDescriptionSection.RuleDescriptionSectionKeys.ROOT_CAUSE_SECTION_KEY;
 import static org.sonar.api.utils.DateUtils.formatDateTime;
 import static org.sonar.db.rule.RuleDescriptionSectionDto.DEFAULT_KEY;
+import static org.sonar.db.issue.IssueChangeDto.TYPE_EXCEPTION_REASON;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
 
 public class ShowAction implements HotspotsWsAction {
@@ -275,6 +277,13 @@ public class ShowAction implements HotspotsWsAction {
       .forEach(responseBuilder::addChangelog);
     issueChangeSupport.formatComments(hotspot, Common.Comment.newBuilder(), formattingContext)
       .forEach(responseBuilder::addComment);
+
+    if (hotspot.getResolution() != null && hotspot.getResolution().equals("EXCEPTION")) {
+      dbClient.issueChangeDao().selectByTypeAndIssueKeys(dbSession, Set.of(hotspot.getKey()), TYPE_EXCEPTION_REASON)
+        .stream()
+        .max(comparing(IssueChangeDto::getIssueChangeCreationDate))
+        .ifPresent(reason -> responseBuilder.setExceptionReason(reason.getChangeData()));
+    }
 
     return formattingContext;
   }

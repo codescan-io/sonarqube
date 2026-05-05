@@ -34,7 +34,7 @@ import {
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { bulkChangeIssues, searchIssueTags } from '../../../api/issues';
 import FormattingTips from '../../../components/common/FormattingTips';
-import { isTransitionHidden, transitionRequiresComment } from '../../../components/issue/helpers';
+import { isTransitionHidden, transitionRequiresComment, transitionRequiresMandatoryComment } from '../../../components/issue/helpers';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { withBranchStatusRefresh } from '../../../queries/branch';
 import { IssueTransition } from '../../../types/issues';
@@ -174,7 +174,9 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       transition,
       type,
     } = this.state;
-
+    if (transition && transitionRequiresMandatoryComment(transition) && !comment?.trim()) {
+      return;
+    }
     const query = pickBy(
       {
         add_tags: addTags?.join(),
@@ -430,7 +432,8 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
         onClose={this.props.onClose}
         primaryButton={
           <ButtonPrimary
-            disabled={!canSubmit || submitting || issues.length === 0}
+            disabled={!canSubmit || submitting || issues.length === 0 ||
+              (transitionRequiresMandatoryComment(this.state.transition) && !this.state.comment?.trim())}
             form="bulk-change-form"
             id="bulk-change-submit"
             type="submit"

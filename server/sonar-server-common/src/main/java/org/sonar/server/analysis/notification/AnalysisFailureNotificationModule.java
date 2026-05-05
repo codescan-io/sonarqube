@@ -17,21 +17,15 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+package org.sonar.server.analysis.notification;
 
-import { IssueTransition } from '../../types/issues';
+import org.sonar.core.platform.Module;
 
-export function isTransitionDeprecated(transition: IssueTransition) {
-  return transition === IssueTransition.Confirm || transition === IssueTransition.Resolve;
-}
-
-export function isTransitionHidden(transition: IssueTransition) {
-  return transition === IssueTransition.WontFix;
-}
-
-export function transitionRequiresComment(transition: IssueTransition) {
-  return [IssueTransition.Accept, IssueTransition.FalsePositive, IssueTransition.Exception ].includes(transition);
-}
-
-export function transitionRequiresMandatoryComment(transition: IssueTransition) {
-  return transition === IssueTransition.Exception;
+public class AnalysisFailureNotificationModule extends Module {
+  @Override
+  protected void configureModule() {
+    add(
+      AnalysisFailureNotificationHandler.class,
+      AnalysisFailureNotificationHandler.newMetadata());
+  }
 }

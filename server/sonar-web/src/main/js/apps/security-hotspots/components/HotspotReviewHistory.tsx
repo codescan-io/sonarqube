@@ -26,6 +26,7 @@ import {
   HtmlFormatter,
   InteractiveIcon,
   LightLabel,
+  LightPrimary,
   Modal,
   PencilIcon,
   SafeHTMLInjection,
@@ -73,12 +74,13 @@ export default function HotspotReviewHistory(props: Readonly<HotspotReviewHistor
               )}
 
               {type === ReviewHistoryType.Creation && translate('hotspots.review_history.created')}
-
-              {type === ReviewHistoryType.Comment &&
-                translate('hotspots.review_history.comment_added')}
+              {type === ReviewHistoryType.Comment && translate('hotspots.review_history.comment_added')}
+              {type === ReviewHistoryType.ExceptionReason &&
+                translate('hotspots.review_history.reason_added')}
+              {type === ReviewHistoryType.Diff && translate('hotspots.review_history.reason_added')}
             </LightLabel>
 
-            {type === ReviewHistoryType.Diff && diffs && (
+            {(type === ReviewHistoryType.Comment || type === ReviewHistoryType.Diff) && diffs && (
               <div className="sw-mt-2">
                 {diffs.map((diff, diffIndex) => (
                   <IssueChangelogDiff diff={diff} key={diffIndex} />
@@ -86,7 +88,7 @@ export default function HotspotReviewHistory(props: Readonly<HotspotReviewHistor
               </div>
             )}
 
-            {type === ReviewHistoryType.Comment && key && html && markdown && (
+            { (type === ReviewHistoryType.Comment || type === ReviewHistoryType.ExceptionReason) && key && html && markdown && (
               <div className="sw-mt-2 sw-flex sw-justify-between">
                 <SafeHTMLInjection htmlAsString={html} sanitizeLevel={SanitizeLevel.USER_INPUT}>
                   <CommentBox className="sw-pl-2 sw-ml-2 sw-typo-default" />
@@ -96,24 +98,35 @@ export default function HotspotReviewHistory(props: Readonly<HotspotReviewHistor
                   <div className="sw-flex sw-gap-6">
                     <InteractiveIcon
                       Icon={PencilIcon}
-                      aria-label={translate('issue.comment.edit')}
+                      aria-label={
+                        type === ReviewHistoryType.ExceptionReason
+                          ? translate('hotspots.status.exception_reason.edit')
+                          : translate('issue.comment.edit')
+                      }
                       onClick={() => setEditCommentKey(key)}
                       size="small"
                       stopPropagation={false}
                     />
-                    <DestructiveIcon
-                      Icon={TrashIcon}
-                      aria-label={translate('issue.comment.delete')}
-                      onClick={() => setDeleteCommentKey(key)}
-                      size="small"
-                      stopPropagation={false}
-                    />
+                    {type !== ReviewHistoryType.ExceptionReason && (
+                      <DestructiveIcon
+                        Icon={TrashIcon}
+                        aria-label={translate('issue.comment.delete')}
+                        onClick={() => setDeleteCommentKey(key)}
+                        size="small"
+                        stopPropagation={false}
+                      />
+                    )}
                   </div>
                 )}
 
                 {editCommentKey === key && (
                   <HotspotCommentModal
                     value={markdown}
+                    headerTitle={
+                      type === ReviewHistoryType.ExceptionReason
+                        ? translate('hotspots.status.exception_reason.edit')
+                        : undefined
+                    }
                     onCancel={() => setEditCommentKey('')}
                     onSubmit={(comment) => {
                       setEditCommentKey('');
