@@ -154,7 +154,7 @@ public class EsClient implements Closeable {
   /**
    * @deprecated Use {@link #bulkV2(java.util.function.Function)} instead. This method uses the old Elasticsearch API.
    */
-  @Deprecated(since = "2025.6", forRemoval = true)
+  @Deprecated(since = "2024.12", forRemoval = true)
   public Cancellable bulkAsync(BulkRequest bulkRequest, ActionListener<BulkResponse> listener) {
     return restHighLevelClient.bulkAsync(bulkRequest, RequestOptions.DEFAULT, listener);
   }
@@ -162,7 +162,7 @@ public class EsClient implements Closeable {
   /**
    * @deprecated Use the new API search methods directly. This method uses the old Elasticsearch API.
    */
-  @Deprecated(since = "2025.6", forRemoval = true)
+  @Deprecated(since = "2024.12", forRemoval = true)
   public static SearchRequest prepareSearch(String indexName) {
     return Requests.searchRequest(indexName);
   }
@@ -170,7 +170,7 @@ public class EsClient implements Closeable {
   /**
    * @deprecated Use the new API search methods directly. This method uses the old Elasticsearch API.
    */
-  @Deprecated(since = "2025.6", forRemoval = true)
+  @Deprecated(since = "2024.12", forRemoval = true)
   public static SearchRequest prepareSearch(IndexType.IndexMainType mainType) {
     return Requests.searchRequest(mainType.getIndex().getName());
   }
@@ -178,7 +178,7 @@ public class EsClient implements Closeable {
   /**
    * @deprecated Use {@link #searchV2(java.util.function.Function, Class)} instead. This method uses the old Elasticsearch API.
    */
-  @Deprecated(since = "2025.6", forRemoval = true)
+  @Deprecated(since = "2024.12", forRemoval = true)
   public SearchResponse search(SearchRequest searchRequest) {
     return execute(() -> restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT),
       () -> computeDetailsAsString(searchRequest));
@@ -201,7 +201,7 @@ public class EsClient implements Closeable {
   /**
    * @deprecated Use {@link #scrollV2(Function)} instead. This method uses the old Elasticsearch API.
    */
-  @Deprecated(since = "2025.6", forRemoval = true)
+  @Deprecated(since = "2024.12", forRemoval = true)
   public SearchResponse scroll(SearchScrollRequest searchScrollRequest) {
     return execute(() -> restHighLevelClient.scroll(searchScrollRequest, RequestOptions.DEFAULT),
       () -> computeDetailsAsString(searchScrollRequest));
@@ -339,7 +339,7 @@ public class EsClient implements Closeable {
   /**
    * @deprecated Use {@link #clusterHealthV2(java.util.function.Function)} instead. This method uses the old Elasticsearch API.
    */
-  @Deprecated(since = "2025.6", forRemoval = true)
+  @Deprecated(since = "2024.12", forRemoval = true)
   public ClusterHealthResponse clusterHealth(ClusterHealthRequest clusterHealthRequest) {
     return execute(() -> restHighLevelClient.cluster().health(clusterHealthRequest, RequestOptions.DEFAULT),
       () -> computeDetailsAsString(clusterHealthRequest));
@@ -358,7 +358,7 @@ public class EsClient implements Closeable {
   /**
    * @deprecated Use {@link #waitForStatusV2(HealthStatus)} instead. This method uses the old Elasticsearch API.
    */
-  @Deprecated(since = "2025.6", forRemoval = true)
+  @Deprecated(since = "2024.12", forRemoval = true)
   public void waitForStatus(ClusterHealthStatus clusterHealthStatus) {
     clusterHealth(new ClusterHealthRequest().waitForEvents(Priority.LANGUID).waitForStatus(clusterHealthStatus));
   }

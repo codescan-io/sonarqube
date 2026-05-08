@@ -222,7 +222,7 @@ subprojects {
     protobufVersion = '4.28.2'
     springVersion = '5.3.39'
     elasticSearchClientVersion = '7.17.29' // Old REST High Level Client (to be removed)
-    elasticSearchJavaClientVersion = '8.16.6' // New Java API Client
+    elasticSearchJavaClientVersion = '9.2.8' // New Java API Client
   }
 
   sonar {

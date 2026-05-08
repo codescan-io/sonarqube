@@ -24,6 +24,8 @@ import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.aggregations.FiltersBucket;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.HighlightField;
+import co.elastic.clients.util.NamedValue;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,7 +49,6 @@ import org.sonar.server.permission.index.WebAuthorizationTypeSupport;
 import static java.util.Optional.ofNullable;
 import static org.sonar.server.component.index.ComponentIndexDefinition.FIELD_KEY;
 import static org.sonar.server.component.index.ComponentIndexDefinition.FIELD_NAME;
-import static org.sonar.server.component.index.ComponentIndexDefinition.FIELD_ORGANIZATION_UUID;
 import static org.sonar.server.component.index.ComponentIndexDefinition.FIELD_QUALIFIER;
 import static org.sonar.server.component.index.ComponentIndexDefinition.NAME_ANALYZERS;
 import static org.sonar.server.component.index.ComponentIndexDefinition.TYPE_COMPONENT;
@@ -151,30 +152,36 @@ public class ComponentIndex {
           .value(qualifier)))));
 
     SearchResponse<Void> response = client.searchV2(req -> req
-        .index(TYPE_COMPONENT.getMainType().getIndex().getName())
-        .query(esQuery)
-        // search hits are part of the aggregations
-        .size(0)
-        .aggregations(FILTERS_AGGREGATION_NAME, agg -> agg
-          .filters(f -> f.filters(b -> b.keyed(filtersMap)))
-          .aggregations(DOCS_AGGREGATION_NAME, subAgg -> subAgg
-            .topHits(th -> th
-              .from(query.getSkip())
-              .size(query.getLimit())
-              .sort(sort -> sort.score(s -> s.order(SortOrder.Desc)))
-              .sort(sort -> sort.field(f -> f.field(FIELD_NAME).order(SortOrder.Asc)))
-              .source(s -> s.fetch(false))
-              .highlight(h -> h
-                .encoder(co.elastic.clients.elasticsearch.core.search.HighlighterEncoder.Html)
-                .preTags("<mark>")
-                .postTags("</mark>")
-                .fields(FIELD_NAME, hf -> hf
-                  .type("fvh")
-                  .matchedFields(
-                    Stream.concat(
-                        Stream.of(FIELD_NAME),
-                        Arrays.stream(NAME_ANALYZERS).map(a -> a.subField(FIELD_NAME)))
-                      .toList())))))),
+      .index(TYPE_COMPONENT.getMainType().getIndex().getName())
+      .query(esQuery)
+      // search hits are part of the aggregations
+      .size(0)
+      .aggregations(FILTERS_AGGREGATION_NAME, agg -> agg
+        .filters(f -> f.filters(b -> b.keyed(filtersMap)))
+        .aggregations(DOCS_AGGREGATION_NAME, subAgg -> subAgg
+          .topHits(th -> th
+            .from(query.getSkip())
+            .size(query.getLimit())
+            .sort(sort -> sort.score(s -> s.order(SortOrder.Desc)))
+            .sort(sort -> sort.field(f -> f.field(FIELD_NAME).order(SortOrder.Asc)))
+            .source(s -> s.fetch(false))
+            .highlight(h -> h
+              .encoder(co.elastic.clients.elasticsearch.core.search.HighlighterEncoder.Html)
+              .preTags("<mark>")
+              .postTags("</mark>")
+              .fields(NamedValue.of(FIELD_NAME, HighlightField.of(hf -> hf
+                .type("fvh")
+                .matchedFields(
+                  Stream.concat(
+                    Stream.of(FIELD_NAME),
+                    Arrays.stream(NAME_ANALYZERS).map(a -> a.subField(FIELD_NAME)))
+                    .toList()
+                )
+              )))
+            )
+          )
+        )
+      ),
       Void.class);
 
     return aggregationsToQualifiersV2(response);

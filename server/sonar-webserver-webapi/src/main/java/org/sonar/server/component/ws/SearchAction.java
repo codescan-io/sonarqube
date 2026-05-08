@@ -63,8 +63,7 @@ import static org.sonar.server.es.SearchOptions.MAX_PAGE_SIZE;
 import static org.sonar.server.ws.WsParameterBuilder.createQualifiersParameter;
 import static org.sonar.server.ws.WsParameterBuilder.QualifierParameterContext.newQualifierParameterContext;
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
-import static org.sonarqube.ws.client.component.ComponentsWsParameters.ACTION_SEARCH;
-import static org.sonarqube.ws.client.component.ComponentsWsParameters.PARAM_QUALIFIERS;
+import static org.sonarqube.ws.client.component.ComponentsWsParameters.*;
 
 public class SearchAction implements ComponentsWsAction {
   private static final ImmutableSet<String> VALID_QUALIFIERS = ImmutableSet.<String>builder()
@@ -107,13 +106,13 @@ public class SearchAction implements ComponentsWsAction {
         DefaultIndexSettings.MAXIMUM_NGRAM_LENGTH + " (inclusive) characters. In case longer value is provided it will be truncated.")
       .setExampleValue("sonar");
 
-      action
-              .createParam(PARAM_ORGANIZATION)
-              .setDescription("Organization key")
-              .setRequired(false)
-              .setInternal(true)
-              .setExampleValue("my-org")
-              .setSince("6.3");
+    action
+      .createParam(PARAM_ORGANIZATION)
+      .setDescription("Organization key")
+      .setRequired(false)
+      .setInternal(true)
+      .setExampleValue("my-org")
+      .setSince("6.3");
 
     createQualifiersParameter(action, newQualifierParameterContext(i18n, componentTypes), VALID_QUALIFIERS)
       .setRequired(true);
@@ -147,8 +146,8 @@ public class SearchAction implements ComponentsWsAction {
       if (userToken.isPresent() && PROJECT_ANALYSIS_TOKEN.name().equals(userToken.get().getType())) {
         String projectUuid = userToken.get().getProjectUuid();
         components = components.stream()
-            .filter(c -> c.getAuthUuid().equals(projectUuid))
-            .collect(Collectors.toList());
+          .filter(c -> c.getAuthUuid().equals(projectUuid))
+          .collect(Collectors.toList());
       }
 
       Map<String, String> projectKeysByUuids = searchProjectsKeysByUuids(dbSession, components);
@@ -178,10 +177,10 @@ public class SearchAction implements ComponentsWsAction {
 
   private OrganizationDto getOrganization(DbSession dbSession, SearchRequest request) {
     String organizationKey = Optional.ofNullable(request.getOrganization())
-            .orElseGet(dbClient.organizationDao().getDefaultOrganization(dbSession)::getKey);
+      .orElseGet(dbClient.organizationDao().getDefaultOrganization(dbSession)::getKey);
     return NotFoundException.checkFoundWithOptional(
-            dbClient.organizationDao().selectByKey(dbSession, organizationKey),
-            "No organizationDto with key '%s'", organizationKey);
+      dbClient.organizationDao().selectByKey(dbSession, organizationKey),
+      "No organizationDto with key '%s'", organizationKey);
   }
 
   private static ComponentQuery buildEsQuery(OrganizationDto organization, SearchRequest request) {
