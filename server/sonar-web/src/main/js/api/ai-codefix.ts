@@ -36,14 +36,14 @@ export interface CodefixFixedFileResponse {
 
 export interface CodefixCreatePrDraft {
   branchNamePrefix: string;
-  baseBranch: string;
+  sourceBranchSuffix: string;
   pullRequestTitle: string;
   commitMessage: string;
   pullRequestDescription: string;
 }
 
 export interface CodefixCreatePrSubmit {
-  baseBranch: string;
+  sourceBranchSuffix: string;
   pullRequestTitle: string;
   commitMessage: string;
   pullRequestDescription: string;
