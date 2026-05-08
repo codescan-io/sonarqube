@@ -77,7 +77,7 @@ public class Facets {
     this.timeZone = timeZone;
   }
 
-  @Deprecated(since = "2025.6", forRemoval = true)
+  @Deprecated(since = "2024.12", forRemoval = true)
   public Facets(SearchResponse response, ZoneId timeZone) {
     this.facetsByName = new LinkedHashMap<>();
     this.timeZone = timeZone;

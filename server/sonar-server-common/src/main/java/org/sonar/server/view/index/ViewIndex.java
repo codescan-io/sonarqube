@@ -20,6 +20,7 @@
 package org.sonar.server.view.index;
 
 import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.TimeUnit;
 import co.elastic.clients.elasticsearch.core.ScrollResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
@@ -37,7 +38,7 @@ import org.sonar.server.es.EsClient;
 @ComputeEngineSide
 public class ViewIndex {
 
-  private static final String SCROLL_TIMEOUT_IN_MINUTES = "3m";
+  private static final int SCROLL_TIMEOUT_IN_MINUTES = 3;
 
   private final EsClient esClient;
 
@@ -48,7 +49,7 @@ public class ViewIndex {
   public List<String> findAllViewUuids() {
     SearchResponse<Void> searchResponse = esClient.searchV2(req -> req
       .index(ViewIndexDefinition.TYPE_VIEW.getMainType().getIndex().getName())
-      .scroll(t -> t.time(SCROLL_TIMEOUT_IN_MINUTES))
+      .scroll(t -> t.time(SCROLL_TIMEOUT_IN_MINUTES, TimeUnit.Minutes))
       .sort(s -> s.doc(d -> d.order(SortOrder.Asc)))
       .source(s -> s.fetch(false))
       .size(100)
@@ -71,7 +72,7 @@ public class ViewIndex {
       final String currentScrollId = scrollId;
       ScrollResponse<Void> scrollResponse = esClient.scrollV2(ssr ->
         ssr.scrollId(currentScrollId)
-          .scroll(b -> b.time(SCROLL_TIMEOUT_IN_MINUTES)));
+          .scroll(b -> b.time(SCROLL_TIMEOUT_IN_MINUTES, TimeUnit.Minutes)));
 
       List<Hit<Void>> hits = scrollResponse.hits().hits();
 

@@ -55,7 +55,7 @@ public class WebAuthorizationTypeSupport {
    *
    * @deprecated Use {@link #createQueryFilterV2()} instead. This method uses the old Elasticsearch API.
    */
-  @Deprecated(since = "2025.6", forRemoval = true)
+  @Deprecated(since = "2024.12", forRemoval = true)
   public QueryBuilder createQueryFilter() {
     if (userSession.isRoot()) {
       return QueryBuilders.matchAllQuery();

@@ -41,7 +41,7 @@ public class SearchIdResult<ID> {
   /**
    * @deprecated Use the constructor that accepts co.elastic.clients.elasticsearch.core.SearchResponse instead.
    */
-  @Deprecated(since = "2025.6", forRemoval = true)
+  @Deprecated(since = "2024.12", forRemoval = true)
   public SearchIdResult(SearchResponse response, Function<String, ID> converter, ZoneId timeZone) {
     this.facets = new Facets(response, timeZone);
     this.total = getTotalHits(response).value;
