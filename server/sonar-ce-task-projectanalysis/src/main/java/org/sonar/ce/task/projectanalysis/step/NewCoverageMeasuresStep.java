@@ -202,17 +202,26 @@ public class NewCoverageMeasuresStep implements ComputationStep {
       if (component.getType() != Component.Type.FILE || component.getFileAttributes().isUnitTest()) {
         return;
       }
-      Optional<Set<Integer>> newLinesSet = newLinesRepository.getNewLines(component);
-      if (!newLinesSet.isPresent()) {
-        return;
-      }
 
-      newLines.increment(0);
-      newCoveredLines.increment(0);
-      newConditions.increment(0);
-      newCoveredConditions.increment(0);
+      int fileRef = component.getReportAttributes().getRef();
+      try (CloseableIterator<ScannerReport.LineCoverage> lineCoverage = reportReader.readComponentCoverage(fileRef)) {
+        if (!lineCoverage.hasNext()) {
+          // No coverage data for this file — computing new lines would be wasted work
+          // (all coverage metrics stay at zero regardless). Skip getNewLines() entirely,
+          // which avoids the expensive SCM diff path for large files with no test coverage.
+          return;
+        }
 
-      try (CloseableIterator<ScannerReport.LineCoverage> lineCoverage = reportReader.readComponentCoverage(component.getReportAttributes().getRef())) {
+        Optional<Set<Integer>> newLinesSet = newLinesRepository.getNewLines(component);
+        if (!newLinesSet.isPresent()) {
+          return;
+        }
+
+        newLines.increment(0);
+        newCoveredLines.increment(0);
+        newConditions.increment(0);
+        newCoveredConditions.increment(0);
+
         while (lineCoverage.hasNext()) {
           final ScannerReport.LineCoverage line = lineCoverage.next();
           int lineId = line.getLine();
@@ -230,7 +239,6 @@ public class NewCoverageMeasuresStep implements ComputationStep {
           }
         }
       }
-
     }
 
     boolean hasNewCode() {

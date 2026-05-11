@@ -22,6 +22,7 @@ import { Helmet } from 'react-helmet-async';
 import MembersPageHeader from './MembersPageHeader';
 import MembersListHeader from './MembersListHeader';
 import MembersList from './MembersList';
+import PendingInvitations from './PendingInvitations';
 import { getUsersGroups } from '../../api/user_groups';
 import Suggestions from "../../components/embed-docs-modal/Suggestions";
 import { translate } from "../../helpers/l10n";
@@ -199,6 +200,7 @@ function OrganizationMembers({ currentUser, organization }: Props) {
                 total={paging.total}
               />
             )}
+            <PendingInvitations organization={organization} />
           </>
         )}
     </div>
