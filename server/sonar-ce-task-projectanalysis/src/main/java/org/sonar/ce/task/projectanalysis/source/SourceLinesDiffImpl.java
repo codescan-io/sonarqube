@@ -75,13 +75,19 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
 
   @Override
   public int[] computeMatchingLines(Component component) {
-    boolean useHistogram = useHistogramDiff();
+    boolean useHistogram = useHistogramDiff() && isXmlFile(component);
     LOG.info("[SOURCELINES-DIFF] computeMatchingLines called for component={}, useHistogramDiff={}", component.getKey(), useHistogram);
     if (useHistogram) {
       return computeWithHistogramDiff(component);
     }
-    LOG.info("[SOURCELINES-DIFF] Using MYERS diff for component={}", component.getKey());
     return computeWithMyersDiff(component);
+  }
+
+  private static boolean isXmlFile(Component component) {
+    String key = component.getKey().toLowerCase();
+    return key.endsWith(".xml") || key.endsWith(".permissionset") || key.endsWith(".profile")
+      || key.endsWith(".object") || key.endsWith(".layout") || key.endsWith(".flow")
+      || key.endsWith(".flexipage") || key.endsWith(".labels");
   }
 
   private int[] computeWithMyersDiff(Component component) {
@@ -99,18 +105,15 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
         component.getKey(), dbSourceLines.size(), reportSourceLines.size());
 
       if (dbSourceLines.isEmpty() && reportSourceLines.isEmpty()) {
-        LOG.info("[HISTOGRAM-DIFF] Both empty, returning empty array for {}", component.getKey());
         return new int[0];
       }
 
       if (dbSourceLines.isEmpty()) {
-        LOG.info("[HISTOGRAM-DIFF] DB empty, all lines are new for {}", component.getKey());
         return new int[reportSourceLines.size()];
       }
 
       int[] result = new GitHistogramDiffFinder().findMatchingLines(dbSourceLines, reportSourceLines);
 
-      // Log which lines are new (value == 0)
       StringBuilder newLines = new StringBuilder();
       for (int i = 0; i < result.length; i++) {
         if (result[i] == 0) {
@@ -121,10 +124,6 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
       LOG.info("[HISTOGRAM-DIFF] SUCCESS for {}. New lines (match=0): [{}]", component.getKey(), newLines);
 
       return result;
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOG.warn("[HISTOGRAM-DIFF] Interrupted for {}, falling back to Myers", component.getKey());
-      return computeWithMyersDiff(component);
     } catch (Exception e) {
       LOG.warn("[HISTOGRAM-DIFF] FAILED for {}, falling back to Myers. Error: {}", component.getKey(), e.getMessage(), e);
       return computeWithMyersDiff(component);
