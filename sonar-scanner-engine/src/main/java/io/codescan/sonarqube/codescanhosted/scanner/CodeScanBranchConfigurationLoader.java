@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -167,14 +166,17 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
         String pullRequestBase = projectSettings.get(ScannerProperties.PULL_REQUEST_BASE);
 
         if (null == pullRequestBase || pullRequestBase.isEmpty()) {
+            String defaultBranch = branches.defaultBranchName();
+            if (defaultBranch != null) {
+                validateBranchAnalysed(branches, defaultBranch);
+            }
             return new CodeScanBranchConfiguration(BranchType.PULL_REQUEST, pullRequestBranch,
-                    branches.defaultBranchName(), branches.defaultBranchName(), pullRequestKey);
+                    defaultBranch, defaultBranch, pullRequestKey);
         } else {
+            LOG.info("Validating pull request base branch: {}", pullRequestBase);
+            getBranchInfo(branches, pullRequestBase);
             return new CodeScanBranchConfiguration(BranchType.PULL_REQUEST, pullRequestBranch,
-                    Optional.ofNullable(branches.get(pullRequestBase))
-                            .map(b -> pullRequestBase)
-                            .orElse(null),
-                    pullRequestBase, pullRequestKey);
+                    pullRequestBase, pullRequestBase, pullRequestKey);
         }
     }
 
@@ -184,14 +186,17 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
         String comparisonBranchBase = projectSettings.get(ScannerProperties.COMPARISON_BASE);
 
         if (null == comparisonBranchBase || comparisonBranchBase.isEmpty()) {
+            String defaultBranch = branches.defaultBranchName();
+            if (defaultBranch != null) {
+                validateBranchAnalysed(branches, defaultBranch);
+            }
             return new CodeScanBranchConfiguration(BranchType.PULL_REQUEST, comparisonBranchName,
-                    branches.defaultBranchName(), branches.defaultBranchName(), comparisonBranchName);
+                    defaultBranch, defaultBranch, comparisonBranchName);
         } else {
+            LOG.info("Validating comparison base branch: {}", comparisonBranchBase);
+            getBranchInfo(branches, comparisonBranchBase);
             return new CodeScanBranchConfiguration(BranchType.PULL_REQUEST, comparisonBranchName,
-                    Optional.ofNullable(branches.get(comparisonBranchBase))
-                            .map(b -> comparisonBranchBase)
-                            .orElse(null),
-                    comparisonBranchBase, comparisonBranchName);
+                    comparisonBranchBase, comparisonBranchBase, comparisonBranchName);
         }
     }
 
@@ -212,8 +217,22 @@ public class CodeScanBranchConfigurationLoader implements BranchConfigurationLoa
         if (ret == null) {
             throw MessageException
                     .of("Target branch does not exist on server. Run a regular analysis before running a branch analysis");
-        } else {
-            return ret;
+        }
+        if (!ret.isAnalysed()) {
+            throw MessageException
+                    .of("Target branch '" + branchTarget + "' has not been analyzed yet. "
+                            + "Please run an analysis on branch '" + branchTarget + "' before using it as a base branch.");
+        }
+        return ret;
+    }
+
+    private static void validateBranchAnalysed(ProjectBranches branches, String branchName) {
+        BranchInfo info = branches.get(branchName);
+        if (info != null && !info.isAnalysed()) {
+            LOG.info("Default base branch '{}' has not been analyzed yet", branchName);
+            throw MessageException
+                    .of("Target branch '" + branchName + "' has not been analyzed yet. "
+                            + "Please run an analysis on branch '" + branchName + "' before using it as a base branch.");
         }
     }
 }

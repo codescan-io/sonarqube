@@ -78,12 +78,24 @@ public class ProjectBranchesLoaderImpl implements ProjectBranchesLoader {
             ret = branchResponse.branches
                     .stream()
                     .map(branch -> new BranchInfo(branch.name, parseBranchType(branch.type), branch.isMain,
-                            branch.mergeBranch))
+                            branch.mergeBranch, isFullyAnalysed(branch)))
                     .collect(Collectors.toList());
         } finally {
             IOUtils.closeQuietly(content);
         }
         return ret;
+    }
+
+    /**
+     * A branch is considered fully analysed only if it has an analysisDate AND a quality gate status.
+     * A branch with analysisDate but no quality gate status indicates an incomplete or cancelled analysis.
+     */
+    private static boolean isFullyAnalysed(WsProjectBranch branch) {
+        boolean hasAnalysisDate = branch.analysisDate != null && !branch.analysisDate.isEmpty();
+        boolean hasQualityGateStatus = branch.status != null
+                && branch.status.qualityGateStatus != null
+                && !branch.status.qualityGateStatus.isEmpty();
+        return hasAnalysisDate && hasQualityGateStatus;
     }
 
     private static BranchType parseBranchType(String branchType) {
@@ -110,5 +122,12 @@ public class ProjectBranchesLoaderImpl implements ProjectBranchesLoader {
         private String type;
         private boolean isMain;
         private String mergeBranch;
+        private String analysisDate;
+        private WsBranchStatus status;
+    }
+
+    private static class WsBranchStatus {
+
+        private String qualityGateStatus;
     }
 }
