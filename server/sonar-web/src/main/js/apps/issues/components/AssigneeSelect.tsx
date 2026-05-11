@@ -67,7 +67,8 @@ export default function AssigneeSelect(props: Readonly<AssigneeSelectProps>) {
     async function checkAiEnabled() {
       const projectKey = issues?.[0]?.projectKey || "";
       const enabled = await isAiAssistantEnabled(projectKey);
-      setAiEnabled(enabled);
+      const allIssuesSupport = issues.every(issue => issue.aiCodeFixEnabled === true);
+      setAiEnabled(enabled && allIssuesSupport);
     }
 
     checkAiEnabled();
