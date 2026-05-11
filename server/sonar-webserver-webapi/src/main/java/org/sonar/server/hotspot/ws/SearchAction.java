@@ -209,8 +209,16 @@ public class SearchAction implements HotspotsWsAction {
      List<IssueChangeDto> comments = dbClient.issueChangeDao()
               .selectByTypeAndIssueKeys(dbSession, collector.getIssueKeys(), IssueChangeDto.TYPE_COMMENT);
      result.setComments(comments);
-     comments.stream().filter(c -> c.getUserUuid() != null)
+     List<IssueChangeDto> changes = dbClient.issueChangeDao()
+              .selectByIssueKeys(dbSession, collector.getIssueKeys());
+     result.addExceptionReasons(changes);
+     result.addAssignedDates(changes);
+     comments.stream()
+              .filter(c -> c.getUserUuid() != null)
               .forEach(comment -> loadComment(collector, result, comment));
+     changes.stream()
+              .filter(c -> c.getUserUuid() != null)
+              .forEach(change -> collector.addUserUuids(singletonList(change.getUserUuid())));
      result.addUsers(dbClient.userDao().selectByUuids(dbSession, collector.getUserUuids()));
   }
 

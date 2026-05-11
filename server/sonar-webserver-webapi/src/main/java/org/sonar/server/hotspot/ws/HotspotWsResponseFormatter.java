@@ -114,13 +114,17 @@ public class HotspotWsResponseFormatter {
         .setSecurityCategory(sqCategory.getKey())
         .setVulnerabilityProbability(sqCategory.getVulnerability().name())
         .setRuleKey(hotspot.getRuleKey().toString());
+      ofNullable(hotspot.getSeverity()).ifPresent(builder::setSeverity);
       ofNullable(hotspot.getStatus()).ifPresent(builder::setStatus);
       builder.setStatusMarkedBy(nullToEmpty(searchResponseData.getStatusMarkedBy(hotspot.getKey())));
       ofNullable(hotspot.getResolution()).ifPresent(builder::setResolution);
+      ofNullable(hotspot.getAssigneeUuid()).ifPresent(builder::setAssignee);
+      ofNullable(hotspot.getAssigneeLogin()).ifPresent(assignedTo -> {builder.setAssignedTo(assignedTo);ofNullable(searchResponseData.getAssignedDate(hotspot.getKey())).ifPresent(date -> builder.setAssignedDate(formatDateTime(new Date(date))));});
+      ofNullable(hotspot.getIssueResolutionExpiresAt()).ifPresent(expiresAt -> builder.setExceptionExpiryDate(formatDateTime(new Date(expiresAt))));
+      ofNullable(searchResponseData.getExceptionReason(hotspot.getKey())).ifPresent(reason -> builder.setExceptionReason(reason));
       ofNullable(hotspot.getLine()).ifPresent(builder::setLine);
       builder.setMessage(nullToEmpty(hotspot.getMessage()));
       builder.addAllMessageFormattings(MessageFormattingUtils.dbMessageFormattingToWs(hotspot.parseMessageFormattings()));
-      ofNullable(hotspot.getAssigneeUuid()).ifPresent(builder::setAssignee);
       builder.setAuthor(nullToEmpty(hotspot.getAuthorLogin()));
       builder.setCreationDate(formatDateTime(hotspot.getIssueCreationDate()));
       builder.setUpdateDate(formatDateTime(hotspot.getIssueUpdateDate()));
@@ -190,6 +194,8 @@ public class HotspotWsResponseFormatter {
     private final Set<String> updatableComments = new HashSet<>();
     private final Map<String, UserDto> usersByUuid = new HashMap<>();
     private final Map<String, String> statusMarkedByByIssueKey = new HashMap<>();
+    private final Map<String, IssueChangeDto> exceptionReasonByIssueKey = new HashMap<>();
+    private final Map<String, Long> assignedDateByIssueKey = new HashMap<>();
 
     SearchResponseData(Paging paging, List<IssueDto> hotspots) {
       this.paging = paging;
@@ -218,6 +224,30 @@ public class HotspotWsResponseFormatter {
       for (BranchDto branch : branchDtos) {
         branchesByBranchUuid.put(branch.getUuid(), branch);
       }
+    }
+
+    void addExceptionReasons(List<IssueChangeDto> changes) {
+          changes.stream()
+                  .filter(c -> IssueChangeDto.TYPE_EXCEPTION_REASON.equals(c.getChangeType()))
+                  .forEach(c -> exceptionReasonByIssueKey.put(c.getIssueKey(), c));
+      }
+
+    @Nullable
+    String getExceptionReason(String issueKey) {
+          IssueChangeDto dto = exceptionReasonByIssueKey.get(issueKey);
+          return dto == null ? null : dto.getChangeData();
+    }
+
+    void addAssignedDates(List<IssueChangeDto> changes) {
+          changes.stream()
+                  .filter(c -> IssueChangeDto.TYPE_FIELD_CHANGE.equals(c.getChangeType()))
+                  .filter(c -> c.getChangeData() != null && c.getChangeData().contains("assignee"))
+                  .forEach(c -> assignedDateByIssueKey.put(c.getIssueKey(), c.getIssueChangeCreationDate()));
+    }
+
+    @Nullable
+    Long getAssignedDate(String issueKey) {
+        return assignedDateByIssueKey.get(issueKey);
     }
 
     public BranchDto getBranch(String branchUuid) {
