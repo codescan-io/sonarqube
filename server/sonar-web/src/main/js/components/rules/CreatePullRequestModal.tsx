@@ -71,7 +71,7 @@ export function CreatePullRequestModal({
   const [loadingDraft, setLoadingDraft] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
 
-  const [baseBranch, setBaseBranch] = React.useState('');
+  const [sourceBranchSuffix, setSourceBranchSuffix] = React.useState('');
   const [prTitle, setPrTitle] = React.useState('');
   const [commitMessage, setCommitMessage] = React.useState('');
   const [description, setDescription] = React.useState('');
@@ -86,7 +86,7 @@ export function CreatePullRequestModal({
       .then((d) => {
         if (!cancelled) {
           setDraft(d);
-          setBaseBranch(d.baseBranch);
+          setSourceBranchSuffix(d.sourceBranchSuffix);
           setPrTitle(d.pullRequestTitle);
           setCommitMessage(d.commitMessage);
           setDescription(d.pullRequestDescription);
@@ -111,7 +111,7 @@ export function CreatePullRequestModal({
     setSubmitError('');
     setSubmitting(true);
     createCodefixPr(jobId, {
-      baseBranch,
+      sourceBranchSuffix,
       pullRequestTitle: prTitle,
       commitMessage,
       pullRequestDescription: description,
@@ -125,6 +125,7 @@ export function CreatePullRequestModal({
       })
       .catch((err: unknown) => {
         void parseCreatePrErrorMessage(err).then(setSubmitError);
+        onClose();
       })
       .finally(() => {
         setSubmitting(false);
@@ -132,7 +133,7 @@ export function CreatePullRequestModal({
   }, [
     jobId,
     issueKey,
-    baseBranch,
+    sourceBranchSuffix,
     prTitle,
     commitMessage,
     description,
@@ -144,7 +145,7 @@ export function CreatePullRequestModal({
   // After a failed submit, clear the error when the user edits any field so they can retry.
   React.useEffect(() => {
     setSubmitError('');
-  }, [baseBranch, prTitle, commitMessage, description]);
+  }, [sourceBranchSuffix, prTitle, commitMessage, description]);
 
   const canSubmit = !loadingDraft && !loadError && draft !== null && !submitting;
   const primaryDisabled = !canSubmit || Boolean(submitError);
@@ -200,11 +201,11 @@ export function CreatePullRequestModal({
                   <InputField
                     className="sw-flex-1"
                     id="codefix-pr-branch"
-                    onChange={(e) => setBaseBranch(e.currentTarget.value)}
+                    onChange={(e) => setSourceBranchSuffix(e.currentTarget.value)}
                     size="full"
                     type="text"
                     maxLength={20}
-                    value={baseBranch}
+                    value={sourceBranchSuffix}
                   />
                 </div>
               </div>
