@@ -1,125 +1,125 @@
 {
   "InlineStyleCheck": {
-    "cvssScore": "",
-    "baseScore": "",
-    "temporalScore": "",
-    "environmentalScore": "",
-    "vectorString": "",
+    "cvssScore": "6.4",
+    "baseScore": "5.4",
+    "temporalScore": "4.9",
+    "environmentalScore": "6.4",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N/E:P/RL:O/RC:C/CR:M/IR:M/AR:L/MAV:N/MAC:L/MPR:L/MUI:R/MS:C/MC:L/MI:H/MA:N",
     "metrics": {
       "BASE": [
         {
           "name": "ATTACK_VECTOR",
           "value": "Network (N)",
-          "justification": "The issue can be exploited remotely because inline css styles are used."
+          "justification": "The vulnerable Visualforce page is accessible over the network and can be triggered via crafted requests."
         },
         {
           "name": "ATTACK_COMPLEXITY",
           "value": "Low (L)",
-          "justification": "No special conditions are required to exploit this issue."
+          "justification": "No special conditions are required beyond inline style usage in the page."
         },
         {
           "name": "PRIVILEGES_REQUIRED",
           "value": "Low (L)",
-          "justification": "Basic authenticated access is sufficient."
+          "justification": "Basic access to the application or page is required, but no elevated privileges."
         },
         {
           "name": "USER_INTERACTION",
-          "value": "None (N)",
-          "justification": "No user interaction is required."
+          "value": "Required (R)",
+          "justification": "A user must view or load the affected page for the issue to have impact."
         },
         {
           "name": "SCOPE",
-          "value": "Unchanged (U)",
-          "justification": "The impact is limited to the same application scope."
+          "value": "Changed (C)",
+          "justification": "The issue impacts the browser/UI context, affecting how content is rendered and trusted."
         },
         {
           "name": "CONFIDENTIALITY",
           "value": "Low (L)",
-          "justification": "Limited data exposure is possible."
+          "justification": "Limited exposure of UI-visible data may occur in certain injection scenarios."
         },
         {
           "name": "INTEGRITY",
           "value": "Low (L)",
-          "justification": "Data or logic may be modified."
+          "justification": "Inline styles can manipulate UI presentation and influence user perception."
         },
         {
           "name": "AVAILABILITY",
-          "value": "Low (L)",
-          "justification": "Minimal availability impact."
+          "value": "None (N)",
+          "justification": "The issue does not impact system availability."
         }
       ],
       "TEMPORAL": [
         {
           "name": "EXPLOIT_CODE_MATURITY",
           "value": "Proof-of-Concept (P)",
-          "justification": "The issue is well known and demonstrable."
+          "justification": "The issue can be demonstrated with simple payloads affecting UI rendering."
         },
         {
           "name": "REMEDIATION_LEVEL",
           "value": "Official Fix (O)",
-          "justification": "Vendor or best-practice remediation exists."
+          "justification": "Best practice is clearly defined: avoid inline styles and use CSS classes or static resources."
         },
         {
           "name": "REPORT_CONFIDENCE",
           "value": "Confirmed (C)",
-          "justification": "The issue is clearly identified by static analysis."
+          "justification": "Static analysis reliably identifies inline style usage."
         }
       ],
       "ENVIRONMENTAL": [
         {
           "name": "MODIFIED_ATTACK_VECTOR",
           "value": "Network (N)",
-          "justification": "Deployment does not reduce exposure."
+          "justification": "The application remains accessible over the network."
         },
         {
           "name": "MODIFIED_ATTACK_COMPLEXITY",
           "value": "Low (L)",
-          "justification": "No additional complexity in deployment."
+          "justification": "No environmental factors increase attack complexity."
         },
         {
           "name": "MODIFIED_PRIVILEGES_REQUIRED",
           "value": "Low (L)",
-          "justification": "Basic authenticated access is sufficient."
+          "justification": "Basic access to the page is still required."
         },
         {
           "name": "MODIFIED_USER_INTERACTION",
-          "value": "None (N)",
-          "justification": "No interaction required."
+          "value": "Required (R)",
+          "justification": "Users must interact with the affected page."
         },
         {
           "name": "MODIFIED_SCOPE",
-          "value": "Unchanged (U)",
-          "justification": "Scope remains unchanged."
+          "value": "Changed (C)",
+          "justification": "Impact remains in the browser/UI trust boundary."
         },
         {
           "name": "MODIFIED_CONFIDENTIALITY",
           "value": "Low (L)",
-          "justification": "Limited exposure in this environment."
+          "justification": "Confidentiality exposure remains limited."
         },
         {
           "name": "MODIFIED_INTEGRITY",
-          "value": "Low (L)",
-          "justification": "Limited integrity impact."
+          "value": "High (H)",
+          "justification": "In the specific environment, UI manipulation can significantly mislead users, alter workflows, or influence business decisions."
         },
         {
           "name": "MODIFIED_AVAILABILITY",
-          "value": "Low (L)",
-          "justification": "Limited availability impact."
+          "value": "None (N)",
+          "justification": "Availability is not impacted."
         },
         {
           "name": "CONFIDENTIALITY_REQUIREMENT",
           "value": "Medium (M)",
-          "justification": "Confidential data is relevant."
+          "justification": "Business data displayed on pages has moderate sensitivity."
         },
         {
           "name": "INTEGRITY_REQUIREMENT",
           "value": "Medium (M)",
-          "justification": "Integrity is important."
+          "justification": "Maintaining correct UI behavior and trust is important but not critical system integrity."
         },
         {
           "name": "AVAILABILITY_REQUIREMENT",
           "value": "Low (L)",
-          "justification": "Availability impact is minor."
+          "justification": "Availability is not a key concern for this issue."
         }
       ]
     }

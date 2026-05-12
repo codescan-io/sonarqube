@@ -540,7 +540,7 @@ public class RuleIndex {
     if (options.getFacets().contains(FACET_TAGS) || options.getFacets().contains(FACET_OLD_DEFAULT)) {
       Collection<String> tags = query.getTags();
       aggregations.put(FACET_TAGS,
-          stickyFacetBuilder.buildStickyFacet(FIELD_RULE_TAGS, FACET_TAGS, MAX_FACET_SIZE,
+          stickyFacetBuilder.buildStickyFacet(FIELD_RULE_TAGS, FACET_TAGS, FACET_MAX_SIZE,
               (tags == null) ? (new String[0]) : tags.toArray()));
     }
     if (options.getFacets().contains(FACET_TYPES)) {
