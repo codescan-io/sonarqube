@@ -1,0 +1,127 @@
+{
+  "AvoidUnfiledPublic": {
+    "cvssScore": "7.6",
+    "baseScore": "7.1",
+    "temporalScore": "6.4",
+    "environmentalScore": "7.6",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:L/MUI:N/MS:U/MC:H/MI:L/MA:N/CR:H/IR:M/AR:L",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Salesforce public folders are accessed through the platform over the network, so exposure occurs through normal remote access paths."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "No special conditions are required beyond the metadata being placed in an unfiled public folder with broad visibility."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "A user typically needs only ordinary authenticated access to the Salesforce org to benefit from overly broad public-folder exposure."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No victim interaction is needed; the issue exists as soon as the metadata is stored in the exposed location."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact remains within the same Salesforce security authority and does not cross into a different trust boundary."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Unfiled public folders can expose sensitive metadata or records to a broad set of users, creating a significant confidentiality risk."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "Low (L)",
+          "justification": "Improperly exposed folder contents may be misused or handled in ways that affect data governance and control, but direct integrity compromise is not the primary risk."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "None (N)",
+          "justification": "The issue does not directly affect service uptime or prevent legitimate access to the platform."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "The weakness is straightforward to demonstrate by showing broad access to metadata stored in an unfiled public folder."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "The recommended remediation is clear and standard: move metadata into properly structured folders with restricted access and least-privilege sharing."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The rule is based on a concrete, detectable folder path pattern and a well-understood access control weakness."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "The deployed environment does not change the fact that access is through the Salesforce platform over the network."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Environmental conditions do not add meaningful barriers once metadata is placed in the exposed folder."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "Ordinary authenticated users within the organization may still benefit from the excessive exposure."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "The weakness remains exploitable without requiring any action from another user."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact remains confined to the same Salesforce organizational boundary."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "In many real deployments, the exposed metadata may contain business-sensitive configuration or regulated information, keeping confidentiality impact high."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "Low (L)",
+          "justification": "Integrity concerns remain secondary to exposure risk, though weak governance can still affect control over metadata usage."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "None (N)",
+          "justification": "Availability remains unaffected because the weakness is about overexposure rather than disruption."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Organizations typically treat Salesforce metadata and related records as sensitive and requiring strong access control."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Maintaining correct governance and controlled handling of metadata is important, even if integrity is not the primary impact."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Low (L)",
+          "justification": "Availability is not the main concern for this vulnerability compared with confidentiality and governance risk."
+        }
+      ]
+    }
+  }
+}
