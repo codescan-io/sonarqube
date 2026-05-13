@@ -37,6 +37,7 @@ export default function OrganizationNavigationExtensions({ location, organizatio
     '/csvexport/csvexport',
     '/extension/developer/projects',
     '/policy-results',
+    '/extension/csvexport/export_rules_evaluation',
   ];
 
   const isActiveRoute = SETTINGS_URLS.some((url) => {
