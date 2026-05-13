@@ -19,6 +19,8 @@
  */
 package org.sonar.server.issue.index;
 
+import co.elastic.clients.elasticsearch.core.IndexRequest;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
@@ -27,9 +29,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.db.component.ComponentQualifiers;
@@ -54,8 +53,6 @@ import org.sonar.server.permission.index.AuthorizationScope;
 import org.sonar.server.permission.index.NeedAuthorizationIndexer;
 
 import static java.util.Collections.emptyList;
-import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
-import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 import static org.sonar.server.issue.index.IssueIndexDefinition.FIELD_ISSUE_BRANCH_UUID;
 import static org.sonar.server.issue.index.IssueIndexDefinition.FIELD_ISSUE_PROJECT_UUID;
 import static org.sonar.server.issue.index.IssueIndexDefinition.TYPE_ISSUE;
@@ -235,6 +232,7 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
     return result;
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private IndexingResult doIndexIssueItems(DbSession dbSession, ListMultimap<String, EsQueueDto> itemsByIssueKey) {
     if (itemsByIssueKey.isEmpty()) {
       return new IndexingResult();
@@ -259,6 +257,7 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
     return bulkIndexer.stop();
   }
 
+  @SuppressWarnings("rawtypes")
   private IndexingResult doDeleteProjectIndexItems(DbSession dbSession, ListMultimap<String, EsQueueDto> itemsByDeleteProjectUuid) {
     IndexingListener listener = new OneToManyResilientIndexingListener(dbClient, dbSession, itemsByDeleteProjectUuid.values());
     BulkIndexer bulkIndexer = createBulkIndexer(listener);
@@ -269,6 +268,7 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
     return bulkIndexer.stop();
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private IndexingResult doIndexBranchItems(DbSession dbSession, ListMultimap<String, EsQueueDto> itemsByBranchUuid) {
     if (itemsByBranchUuid.isEmpty()) {
       return new IndexingResult();
@@ -299,6 +299,7 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
   }
 
   // Used by Compute Engine, no need to recovery on errors
+  @SuppressWarnings("rawtypes")
   public void deleteByKeys(String projectUuid, Collection<String> issueKeys) {
     if (issueKeys.isEmpty()) {
       return;
@@ -315,6 +316,7 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
     doIndex(issues);
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private void doIndex(Iterator<IssueDoc> issues) {
     BulkIndexer bulk = createBulkIndexer(IndexingListener.FAIL_ON_ERROR);
     bulk.start();
@@ -325,28 +327,54 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
     bulk.stop();
   }
 
+  @SuppressWarnings("rawtypes")
   private static IndexRequest newIndexRequest(IssueDoc issue) {
-    return new IndexRequest(TYPE_ISSUE.getMainType().getIndex().getName())
+    return IndexRequest.of(b ->b
+      .index(TYPE_ISSUE.getMainType().getIndex().getName())
       .id(issue.getId())
       .routing(issue.getRouting().orElseThrow(() -> new IllegalStateException("IssueDoc should define a routing")))
-      .source(issue.getFields());
+      .document(issue.getFields())
+    );
   }
 
+  @SuppressWarnings("rawtypes")
   private static void addProjectDeletionToBulkIndexer(BulkIndexer bulkIndexer, String projectUuid) {
-    SearchRequest search = EsClient.prepareSearch(TYPE_ISSUE.getMainType())
+    SearchRequest search = SearchRequest.of(b -> b
+      .index(TYPE_ISSUE.getMainType().getIndex().getName())
       .routing(AuthorizationDoc.idOf(projectUuid))
-      .source(new SearchSourceBuilder().query(boolQuery().must(termQuery(FIELD_ISSUE_PROJECT_UUID, projectUuid))));
-
+      .query(q -> q
+        .bool(bq -> bq
+          .must(m -> m
+            .term(t -> t
+              .field(FIELD_ISSUE_PROJECT_UUID)
+              .value(projectUuid)
+            )
+          )
+        )
+      )
+    );
     bulkIndexer.addDeletion(search);
   }
 
+  @SuppressWarnings("rawtypes")
   private static void addBranchDeletionToBulkIndexer(BulkIndexer bulkIndexer, String projectUUid, String branchUuid) {
-    SearchRequest search = EsClient.prepareSearch(TYPE_ISSUE.getMainType())
       // routing is based on the parent (See BaseDoc#getRouting).
       // The parent is set to the projectUUid when an issue is indexed (See IssueDoc#setProjectUuid). We need to set it here
       // so that the search finds the indexed docs to be deleted.
+    SearchRequest search = SearchRequest.of(b -> b
+      .index(TYPE_ISSUE.getMainType().getIndex().getName())
       .routing(AuthorizationDoc.idOf(projectUUid))
-      .source(new SearchSourceBuilder().query(boolQuery().must(termQuery(FIELD_ISSUE_BRANCH_UUID, branchUuid))));
+      .query(q -> q
+        .bool(bq -> bq
+          .must(m -> m
+            .term(t -> t
+              .field(FIELD_ISSUE_BRANCH_UUID)
+              .value(branchUuid)
+            )
+          )
+        )
+      )
+    );
 
     bulkIndexer.addDeletion(search);
   }
@@ -355,7 +383,8 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
     return EsQueueDto.create(TYPE_ISSUE.format(), docId, docIdType, AuthorizationDoc.idOf(projectUuid));
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private BulkIndexer createBulkIndexer(IndexingListener listener) {
-    return new BulkIndexer(esClient, TYPE_ISSUE, Size.REGULAR, listener);
+    return new BulkIndexer(esClient, TYPE_ISSUE, Size.REGULAR, listener, Object.class);
   }
 }

@@ -20,9 +20,10 @@
 package org.sonar.server.es.newindex;
 
 import java.util.Arrays;
-import org.elasticsearch.action.support.WriteRequest.RefreshPolicy;
-import org.elasticsearch.cluster.metadata.IndexMetadata;
-import org.elasticsearch.common.settings.Settings;
+
+import co.elastic.clients.elasticsearch._types.Refresh;
+import co.elastic.clients.elasticsearch._types.TimeUnit;
+import co.elastic.clients.elasticsearch.indices.IndexSettings;
 
 public class DefaultIndexSettings {
 
@@ -59,8 +60,8 @@ public class DefaultIndexSettings {
   public static final String CUSTOM = "custom";
   public static final String KEYWORD = "keyword";
   public static final String CLASSIC = "classic";
-  public static final RefreshPolicy REFRESH_IMMEDIATE = RefreshPolicy.IMMEDIATE;
-  public static final RefreshPolicy REFRESH_NONE = RefreshPolicy.NONE;
+  public static final Refresh REFRESH_IMMEDIATE = Refresh.WaitFor;
+  public static final Refresh REFRESH_NONE = Refresh.False;
 
   public static final String TRUNCATE = "truncate";
 
@@ -75,19 +76,24 @@ public class DefaultIndexSettings {
   public static final String MAX_GRAM = "max_gram";
   public static final String LENGTH = "length";
   public static final String HTML_STRIP = "html_strip";
+  public static final String DEFAULT_NUMBER_OF_SHARDS = "1";
+  public static final int DEFAULT_REFRESH_INTERVAL_SECONDS = 30;
 
   private DefaultIndexSettings() {
     // only static stuff
   }
 
-  public static Settings.Builder defaults() {
-    Settings.Builder builder = Settings.builder()
-      .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
-      .put("index.refresh_interval", "30s");
+  public static IndexSettings.Builder defaults() {
+    IndexSettings.Builder builder = new IndexSettings.Builder()
+      .numberOfShards(DEFAULT_NUMBER_OF_SHARDS)
+      .refreshInterval(t -> t.time(DEFAULT_REFRESH_INTERVAL_SECONDS, TimeUnit.Seconds))
+    ;
 
     Arrays.stream(DefaultIndexSettingsElement.values())
       .map(DefaultIndexSettingsElement::settings)
-      .forEach(builder::put);
+      .map(IndexSettings::otherSettings)
+      .flatMap(map -> map.entrySet().stream())
+      .forEach(entry -> builder.otherSettings(entry.getKey(), entry.getValue()));
 
     return builder;
   }

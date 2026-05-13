@@ -21,7 +21,6 @@ package org.sonar.server.es;
 
 import static org.sonar.process.ProcessProperties.Property.CLUSTER_ES_HTTP_KEYSTORE;
 import static org.sonar.process.ProcessProperties.Property.CLUSTER_ES_HTTP_KEYSTORE_PASSWORD;
-import static org.sonar.process.ProcessProperties.Property.CLUSTER_NAME;
 import static org.sonar.process.ProcessProperties.Property.CLUSTER_SEARCH_HOSTS;
 import static org.sonar.process.ProcessProperties.Property.CLUSTER_SEARCH_PASSWORD;
 import static org.sonar.process.ProcessProperties.Property.SEARCH_HOST;
@@ -40,7 +39,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
-import org.elasticsearch.common.settings.Settings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.ce.ComputeEngineSide;
@@ -55,10 +53,6 @@ public class EsClientProvider {
 
   @Bean("EsClient")
   public EsClient provide(Configuration config) {
-    Settings.Builder esSettings = Settings.builder();
-
-    // mandatory property defined by bootstrap process
-    esSettings.put("cluster.name", config.get(CLUSTER_NAME.getKey()).get());
 
     //boolean clusterEnabled = config.getBoolean(CLUSTER_ENABLED.getKey()).orElse(false);
     //boolean searchNode = !clusterEnabled || SEARCH.equals(NodeType.parse(config.get(CLUSTER_NODE_TYPE.getKey()).orElse(null)));

@@ -19,6 +19,7 @@
  */
 package org.sonar.server.es.newindex;
 
+import co.elastic.clients.elasticsearch.indices.IndexSettings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedMap;
 import java.io.Serializable;
@@ -27,7 +28,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-import org.elasticsearch.common.settings.Settings;
 import org.sonar.server.es.IndexType;
 import org.sonar.server.es.IndexType.IndexRelationType;
 
@@ -42,7 +42,7 @@ import static org.sonar.server.es.newindex.DefaultIndexSettings.TYPE;
 public final class BuiltIndex<T extends NewIndex<T>> {
   private final IndexType.IndexMainType mainType;
   private final Set<IndexRelationType> relationTypes;
-  private final Settings settings;
+  private final IndexSettings settings;
   private final Map<String, Object> attributes;
   private final Map<String, String> customHashMetadata;
 
@@ -61,6 +61,7 @@ public final class BuiltIndex<T extends NewIndex<T>> {
     return ImmutableSortedMap.copyOf(indexAttributes);
   }
 
+  @SuppressWarnings("rawtypes")
   private static void setRouting(Map<String, Object> indexAttributes, NewIndex newIndex) {
     if (!newIndex.getRelations().isEmpty()) {
       indexAttributes.put("_routing", ImmutableMap.of("required", true));
@@ -74,6 +75,7 @@ public final class BuiltIndex<T extends NewIndex<T>> {
     return indexProperties;
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private static void setTypeField(TreeMap<String, Object> indexProperties, NewIndex newIndex) {
     Collection<IndexRelationType> relations = newIndex.getRelations();
     if (!relations.isEmpty()) {
@@ -87,6 +89,7 @@ public final class BuiltIndex<T extends NewIndex<T>> {
     }
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private static void setJoinField(TreeMap<String, Object> indexProperties, NewIndex newIndex) {
     Collection<IndexRelationType> relations = newIndex.getRelations();
     IndexType.IndexMainType mainType = newIndex.getMainType();
@@ -116,7 +119,7 @@ public final class BuiltIndex<T extends NewIndex<T>> {
     return relationTypes;
   }
 
-  public Settings getSettings() {
+  public IndexSettings getSettings() {
     return settings;
   }
 

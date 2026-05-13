@@ -19,18 +19,12 @@
  */
 package org.sonar.server.es;
 
-import java.io.IOException;
+import co.elastic.clients.elasticsearch.core.IndexRequest;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.indices.GetIndicesSettingsResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.cluster.metadata.IndexMetadata;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.event.Level;
@@ -58,18 +52,20 @@ public class BulkIndexerIT {
   @Rule
   public LogTester logTester = new LogTester();
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Test
   public void index_nothing() {
-    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR);
+    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR, Object.class);
     indexer.start();
     indexer.stop();
 
     assertThat(count()).isZero();
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Test
   public void index_documents() {
-    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR);
+    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR, Object.class);
     indexer.start();
     indexer.add(newIndexRequest(42));
     indexer.add(newIndexRequest(78));
@@ -82,12 +78,13 @@ public class BulkIndexerIT {
     assertThat(count()).isEqualTo(2);
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Test
   public void large_indexing() {
     // index has one replica
     assertThat(replicas()).isOne();
 
-    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.LARGE);
+    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.LARGE, Object.class);
     indexer.start();
 
     // replicas are temporarily disabled
@@ -118,17 +115,27 @@ public class BulkIndexerIT {
     es.putDocuments(TYPE_FAKE, docs);
     assertThat(count()).isEqualTo(max);
 
-    SearchRequest req = EsClient.prepareSearch(TYPE_FAKE)
-      .source(new SearchSourceBuilder().query(QueryBuilders.rangeQuery(FakeIndexDefinition.INT_FIELD).gte(removeFrom)));
-    BulkIndexer.delete(es.client(), TYPE_FAKE, req);
+    SearchRequest req = SearchRequest.of(b -> b
+      .index(TYPE_FAKE.getIndex().getName())
+      .query(q -> q
+        .range(r -> r
+          .number(nb -> nb
+            .field(FakeIndexDefinition.INT_FIELD)
+            .gte((double)removeFrom)
+          )
+        )
+      )
+    );
+    BulkIndexer.delete(es.client(), TYPE_FAKE, req, Object.class);
 
     assertThat(count()).isEqualTo(removeFrom);
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Test
   public void listener_is_called_on_successful_requests() {
     FakeListener listener = new FakeListener();
-    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR, listener);
+    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR, listener, Object.class);
     indexer.start();
     indexer.addDeletion(TYPE_FAKE, "foo");
     indexer.stop();
@@ -138,10 +145,11 @@ public class BulkIndexerIT {
     assertThat(listener.calledResult.getTotal()).isOne();
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Test
   public void listener_is_called_even_if_deleting_a_doc_that_does_not_exist() {
     FakeListener listener = new FakeListener();
-    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR, listener);
+    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR, listener, Object.class);
     indexer.start();
     indexer.add(newIndexRequestWithDocId("foo"));
     indexer.add(newIndexRequestWithDocId("bar"));
@@ -152,24 +160,31 @@ public class BulkIndexerIT {
     assertThat(listener.calledResult.getTotal()).isEqualTo(2);
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Test
   public void listener_is_not_called_with_errors() {
     FakeListener listener = new FakeListener();
-    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR, listener);
+    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR, listener, Object.class);
     indexer.start();
     indexer.add(newIndexRequestWithDocId("foo"));
-    indexer.add(new IndexRequest("index_does_not_exist").id("bar").source(emptyMap()));
+    indexer.add(IndexRequest.of(b -> b
+        .index("index_does_not_exist")
+        .id("bar")
+        .document(emptyMap())
+      )
+    );
     indexer.stop();
     assertThat(listener.calledDocIds).containsExactly(newDocId(EXCPECTED_TYPE_FAKE, "foo"));
     assertThat(listener.calledResult.getSuccess()).isOne();
     assertThat(listener.calledResult.getTotal()).isEqualTo(2);
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Test
   public void log_requests_when_TRACE_level_is_enabled() {
     logTester.setLevel(LoggerLevel.TRACE);
 
-    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR, new FakeListener());
+    BulkIndexer indexer = new BulkIndexer(es.client(), TYPE_FAKE, Size.REGULAR, new FakeListener(), Object.class);
     indexer.start();
     indexer.add(newIndexRequestWithDocId("foo"));
     indexer.addDeletion(TYPE_FAKE, "foo");
@@ -203,24 +218,25 @@ public class BulkIndexerIT {
   }
 
   private int replicas() {
-    try {
-      GetSettingsResponse settingsResp = es.client().nativeClient().indices()
-          .getSettings(new GetSettingsRequest().indices(INDEX), RequestOptions.DEFAULT);
-      return Integer.parseInt(settingsResp.getSetting(INDEX, IndexMetadata.SETTING_NUMBER_OF_REPLICAS));
-    } catch (IOException e) {
-      throw new IllegalStateException("Could not get index settings", e);
-    }
+    GetIndicesSettingsResponse settingsResp =
+      es.client().getSettingsV2(req -> req.index(INDEX));
+    return Integer.parseInt(settingsResp.get(INDEX).settings().index().numberOfReplicas());
   }
-
+  @SuppressWarnings("rawtypes")
   private IndexRequest newIndexRequest(int intField) {
-    return new IndexRequest(INDEX)
-      .source(Map.of(FakeIndexDefinition.INT_FIELD, intField));
+    return IndexRequest.of(b -> b
+      .index(INDEX)
+      .document(Map.of(FakeIndexDefinition.INT_FIELD, intField))
+    );
   }
 
+  @SuppressWarnings("rawtypes")
   private IndexRequest newIndexRequestWithDocId(String id) {
-    return new IndexRequest(INDEX)
+    return IndexRequest.of(b -> b
+      .index(INDEX)
       .id(id)
-      .source(Map.of(FakeIndexDefinition.INT_FIELD, 42));
+      .document(Map.of(FakeIndexDefinition.INT_FIELD, 42))
+    );
   }
 
   private static DocId newDocId(IndexType.IndexMainType mainType, String id) {

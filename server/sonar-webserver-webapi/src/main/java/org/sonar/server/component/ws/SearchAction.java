@@ -106,13 +106,13 @@ public class SearchAction implements ComponentsWsAction {
         DefaultIndexSettings.MAXIMUM_NGRAM_LENGTH + " (inclusive) characters. In case longer value is provided it will be truncated.")
       .setExampleValue("sonar");
 
-      action
-              .createParam(PARAM_ORGANIZATION)
-              .setDescription("Organization key")
-              .setRequired(false)
-              .setInternal(true)
-              .setExampleValue("my-org")
-              .setSince("6.3");
+    action
+      .createParam(PARAM_ORGANIZATION)
+      .setDescription("Organization key")
+      .setRequired(false)
+      .setInternal(true)
+      .setExampleValue("my-org")
+      .setSince("6.3");
 
     createQualifiersParameter(action, newQualifierParameterContext(i18n, componentTypes), VALID_QUALIFIERS)
       .setRequired(true);
@@ -138,7 +138,7 @@ public class SearchAction implements ComponentsWsAction {
       OrganizationDto organization = getOrganization(dbSession, request);
       userSession.checkMembership(organization);
       ComponentQuery esQuery = buildEsQuery(organization, request);
-      SearchIdResult<String> results = componentIndex.search(esQuery, new SearchOptions().setPage(request.getPage(), request.getPageSize()));
+      SearchIdResult<String> results = componentIndex.searchV2(esQuery, new SearchOptions().setPage(request.getPage(), request.getPageSize()));
 
       List<EntityDto> components = dbClient.entityDao().selectByUuids(dbSession, results.getUuids());
 
@@ -146,8 +146,8 @@ public class SearchAction implements ComponentsWsAction {
       if (userToken.isPresent() && PROJECT_ANALYSIS_TOKEN.name().equals(userToken.get().getType())) {
         String projectUuid = userToken.get().getProjectUuid();
         components = components.stream()
-            .filter(c -> c.getAuthUuid().equals(projectUuid))
-            .collect(Collectors.toList());
+          .filter(c -> c.getAuthUuid().equals(projectUuid))
+          .collect(Collectors.toList());
       }
 
       Map<String, String> projectKeysByUuids = searchProjectsKeysByUuids(dbSession, components);
@@ -177,10 +177,10 @@ public class SearchAction implements ComponentsWsAction {
 
   private OrganizationDto getOrganization(DbSession dbSession, SearchRequest request) {
     String organizationKey = Optional.ofNullable(request.getOrganization())
-            .orElseGet(dbClient.organizationDao().getDefaultOrganization(dbSession)::getKey);
+      .orElseGet(dbClient.organizationDao().getDefaultOrganization(dbSession)::getKey);
     return NotFoundException.checkFoundWithOptional(
-            dbClient.organizationDao().selectByKey(dbSession, organizationKey),
-            "No organizationDto with key '%s'", organizationKey);
+      dbClient.organizationDao().selectByKey(dbSession, organizationKey),
+      "No organizationDto with key '%s'", organizationKey);
   }
 
   private static ComponentQuery buildEsQuery(OrganizationDto organization, SearchRequest request) {

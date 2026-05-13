@@ -19,17 +19,15 @@
  */
 package org.sonar.server.permission.index;
 
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.HasParentQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.join.query.JoinQueryBuilders;
 import org.sonar.api.server.ServerSide;
-import org.sonar.db.user.GroupDto;
 import org.sonar.server.user.UserSession;
 
-import static org.elasticsearch.index.query.QueryBuilders.boolQuery;
-import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 import static org.sonar.server.permission.index.IndexAuthorizationConstants.FIELD_ALLOW_ANYONE;
 import static org.sonar.server.permission.index.IndexAuthorizationConstants.FIELD_GROUP_IDS;
 import static org.sonar.server.permission.index.IndexAuthorizationConstants.FIELD_USER_IDS;
@@ -46,30 +44,38 @@ public class WebAuthorizationTypeSupport {
 
   /**
    * Build a filter to restrict query to the documents on which
-   * user has read access.
+   * user has read access using the new Elasticsearch Java API Client (8.x).
    */
-  public QueryBuilder createQueryFilter() {
-    if (userSession.isRoot()) {
-      return QueryBuilders.matchAllQuery();
-    }
-    BoolQueryBuilder filter = boolQuery();
+  public Query createQueryFilterV2() {
+    List<Query> shouldQueries = new ArrayList<>();
 
     // anyone
-    filter.should(QueryBuilders.termQuery(FIELD_ALLOW_ANYONE, true));
+    shouldQueries.add(Query.of(q -> q.term(t -> t
+      .field(FIELD_ALLOW_ANYONE)
+      .value(true))));
 
     // users
     Optional.ofNullable(userSession.getUuid())
-      .ifPresent(uuid -> filter.should(termQuery(FIELD_USER_IDS, uuid)));
+      .ifPresent(uuid -> shouldQueries.add(Query.of(q -> q.term(t -> t
+        .field(FIELD_USER_IDS)
+        .value(uuid)))));
 
     // groups
-    userSession.getGroups()
-      .stream()
-      .map(GroupDto::getUuid)
-      .forEach(groupUuid -> filter.should(termQuery(FIELD_GROUP_IDS, groupUuid)));
+    shouldQueries.addAll(
+      userSession.getGroups()
+        .stream()
+        .map(groupDto -> Query.of(q -> q.term(t -> t
+          .field(FIELD_GROUP_IDS)
+          .value(groupDto.getUuid()))))
+        .toList()
+    );
 
-    return JoinQueryBuilders.hasParentQuery(
-      TYPE_AUTHORIZATION,
-      QueryBuilders.boolQuery().filter(filter),
-      false);
+    BoolQuery boolQuery = BoolQuery.of(b -> b.should(shouldQueries));
+
+    return Query.of(q -> q.hasParent(HasParentQuery.of(hp -> hp
+      .parentType(TYPE_AUTHORIZATION)
+      .query(Query.of(innerQ -> innerQ.bool(BoolQuery.of(innerB -> innerB.filter(Query.of(filterQ -> filterQ.bool(boolQuery)))))))
+      .score(false))));
   }
 }
+

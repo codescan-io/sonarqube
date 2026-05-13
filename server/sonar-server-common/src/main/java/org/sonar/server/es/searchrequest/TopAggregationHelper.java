@@ -21,18 +21,17 @@ package org.sonar.server.es.searchrequest;
 
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.bucket.filter.FilterAggregationBuilder;
+
+import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 
 import static com.google.common.base.Preconditions.checkState;
 
 public class TopAggregationHelper {
 
-  public static final Consumer<BoolQueryBuilder> NO_EXTRA_FILTER = t -> {
+  public static final Consumer<Query> NO_EXTRA_FILTER = t -> {
   };
-  public static final Consumer<FilterAggregationBuilder> NO_OTHER_SUBAGGREGATION = t -> {
+  public static final Consumer<Aggregation> NO_OTHER_SUBAGGREGATION = t -> {
   };
 
   private final RequestFiltersComputer filterComputer;
@@ -62,17 +61,19 @@ public class TopAggregationHelper {
    * @throws IllegalStateException if no sub-aggregation has been added
    * @return the aggregation, that can be added on top level of the elasticsearch request
    */
-  public FilterAggregationBuilder buildTopAggregation(String topAggregationName, TopAggregationDefinition<?> topAggregation,
-    Consumer<BoolQueryBuilder> extraFilters, Consumer<FilterAggregationBuilder> subAggregations) {
-    BoolQueryBuilder filter = filterComputer.getTopAggregationFilter(topAggregation)
-      .orElseGet(QueryBuilders::boolQuery);
+  public Aggregation buildTopAggregation(String topAggregationName, TopAggregationDefinition<?> topAggregation,
+    Consumer<Query> extraFilters, Consumer<Aggregation> subAggregations) {
+    Query filter = filterComputer.getTopAggregationFilter(topAggregation)
+      .orElse(Query.of(b -> b));
     // optionally add extra filter(s)
     extraFilters.accept(filter);
 
-    FilterAggregationBuilder res = AggregationBuilders.filter(topAggregationName, filter);
+    Aggregation res = Aggregation.of(b -> b
+      .filter(filter)
+    );
     subAggregations.accept(res);
     checkState(
-      !res.getSubAggregations().isEmpty(),
+      !res.aggregations().isEmpty(),
       "no sub-aggregation has been added to top-aggregation %s", topAggregationName);
     return res;
   }
@@ -82,15 +83,17 @@ public class TopAggregationHelper {
    * top-term sub aggregation based field defined by {@link TopAggregationDefinition.FilterScope#getFieldName()} of
    * {@link TopAggregationDefinition#getFilterScope()}.
    */
-  public FilterAggregationBuilder buildTermTopAggregation(
+  public Aggregation buildTermTopAggregation(
     String topAggregationName,
     TopAggregationDefinition<?> topAggregation,
     @Nullable Integer numberOfTerms,
-    Consumer<BoolQueryBuilder> extraFilters,
-    Consumer<FilterAggregationBuilder> otherSubAggregations
+    Consumer<Query> extraFilters,
+    Consumer<Aggregation> otherSubAggregations
   ) {
-    Consumer<FilterAggregationBuilder> subAggregations = t -> {
-      t.subAggregation(subAggregationHelper.buildTermsAggregation(topAggregationName, topAggregation, numberOfTerms));
+    Consumer<Aggregation> subAggregations = t -> {
+      Aggregation.of(b -> b
+        .aggregations(topAggregationName, subAggregationHelper.buildTermsAggregation(topAggregationName, topAggregation, numberOfTerms))
+      );
       otherSubAggregations.accept(t);
     };
     return buildTopAggregation(topAggregationName, topAggregation, extraFilters, subAggregations);

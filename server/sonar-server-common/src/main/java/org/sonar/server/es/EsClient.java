@@ -19,7 +19,16 @@
  */
 package org.sonar.server.es;
 
-import com.google.common.collect.Lists;
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.HealthStatus;
+import co.elastic.clients.elasticsearch.cluster.HealthRequest;
+import co.elastic.clients.elasticsearch.cluster.HealthResponse;
+import co.elastic.clients.elasticsearch.core.*;
+import co.elastic.clients.elasticsearch.indices.*;
+import co.elastic.clients.elasticsearch.indices.ExistsRequest;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
+import co.elastic.clients.util.ObjectBuilder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -31,6 +40,8 @@ import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import javax.net.ssl.SSLContext;
@@ -41,50 +52,10 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.apache.http.util.EntityUtils;
-import org.elasticsearch.action.ActionListener;
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
-import org.elasticsearch.action.admin.indices.cache.clear.ClearIndicesCacheRequest;
-import org.elasticsearch.action.admin.indices.cache.clear.ClearIndicesCacheResponse;
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.elasticsearch.action.admin.indices.forcemerge.ForceMergeRequest;
-import org.elasticsearch.action.admin.indices.forcemerge.ForceMergeResponse;
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
-import org.elasticsearch.action.admin.indices.refresh.RefreshResponse;
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
-import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.delete.DeleteRequest;
-import org.elasticsearch.action.delete.DeleteResponse;
-import org.elasticsearch.action.get.GetRequest;
-import org.elasticsearch.action.get.GetResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.action.search.ClearScrollRequest;
-import org.elasticsearch.action.search.ClearScrollResponse;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchScrollRequest;
-import org.elasticsearch.action.support.master.AcknowledgedResponse;
-import org.elasticsearch.client.Cancellable;
 import org.elasticsearch.client.Request;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.Requests;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.client.indices.CreateIndexRequest;
-import org.elasticsearch.client.indices.CreateIndexResponse;
-import org.elasticsearch.client.indices.GetIndexRequest;
-import org.elasticsearch.client.indices.GetIndexResponse;
-import org.elasticsearch.client.indices.GetMappingsRequest;
-import org.elasticsearch.client.indices.GetMappingsResponse;
-import org.elasticsearch.client.indices.PutMappingRequest;
-import org.elasticsearch.cluster.health.ClusterHealthStatus;
-import org.elasticsearch.common.Priority;
 import org.jetbrains.annotations.NotNull;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -93,6 +64,7 @@ import org.sonar.server.es.response.ClusterStatsResponse;
 import org.sonar.server.es.response.IndicesStatsResponse;
 import org.sonar.server.es.response.NodeStatsResponse;
 
+import static org.sonar.server.es.EsClient.MinimalRestHighLevelClient.buildHttpClient;
 import static org.sonar.server.es.EsRequestDetails.computeDetailsAsString;
 
 /**
@@ -102,124 +74,209 @@ import static org.sonar.server.es.EsRequestDetails.computeDetailsAsString;
 public class EsClient implements Closeable {
   public static final Logger LOGGER = Loggers.get("es");
   private static final String ES_USERNAME = "elastic";
-  private final RestHighLevelClient restHighLevelClient;
+
+  // New Java API Client
+  private final ElasticsearchClient elasticsearchClient;
+  private final RestClient restClient;
+
   private final Gson gson;
 
   public EsClient(HttpHost... hosts) {
-    this(new MinimalRestHighLevelClient(null, null, null, hosts));
+    this(buildHttpClient(null, null, null, hosts).build());
   }
 
   public EsClient(@Nullable String searchPassword, @Nullable String keyStorePath, @Nullable String keyStorePassword, HttpHost... hosts) {
-    this(new MinimalRestHighLevelClient(searchPassword, keyStorePath, keyStorePassword, hosts));
+    this(buildHttpClient(searchPassword, keyStorePath, keyStorePassword, hosts).build());
   }
 
-  EsClient(RestHighLevelClient restHighLevelClient) {
-    this.restHighLevelClient = restHighLevelClient;
+  EsClient(RestClient restClient) {
+    //The restClient is shared by both the old and the new client, by extracting it we have one less dependency on the RestHighLevelClient
+    this.restClient = restClient;
+
+    // Create new Java API Client using the same RestClient
+    RestClientTransport transport = new RestClientTransport(this.restClient, new JacksonJsonpMapper());
+    this.elasticsearchClient = new ElasticsearchClient(transport);
+
     this.gson = new GsonBuilder().create();
   }
 
-  public BulkResponse bulk(BulkRequest bulkRequest) {
-    return execute(() -> restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT));
+  /**
+   * Bulk operations using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the bulk request using the new API builder
+   * @return The bulk response from Elasticsearch
+   */
+  public BulkResponse bulkV2(
+    Function<BulkRequest.Builder, ObjectBuilder<BulkRequest>> fn) {
+    return execute(() -> elasticsearchClient.bulk(fn));
   }
 
-  public Cancellable bulkAsync(BulkRequest bulkRequest, ActionListener<BulkResponse> listener) {
-    return restHighLevelClient.bulkAsync(bulkRequest, RequestOptions.DEFAULT, listener);
+  /**
+   * Search operation using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn             A function that configures the search request using the new API builder
+   * @param tDocumentClass The class of the document type to return
+   * @return The search response from Elasticsearch
+   */
+  public <T> SearchResponse<T> searchV2(
+    Function<SearchRequest.Builder, ObjectBuilder<SearchRequest>> fn,
+    Class<T> tDocumentClass) {
+    return execute(() -> elasticsearchClient.search(fn, tDocumentClass));
   }
 
-  public static SearchRequest prepareSearch(String indexName) {
-    return Requests.searchRequest(indexName);
+  public <T> ScrollResponse<T> scrollV2(Function<ScrollRequest.Builder, ObjectBuilder<ScrollRequest>> fn, Class<T> tClass) {
+    return execute(() -> elasticsearchClient.scroll(fn, tClass));
   }
 
-  public static SearchRequest prepareSearch(IndexType.IndexMainType mainType) {
-    return Requests.searchRequest(mainType.getIndex().getName());
+  /**
+   * Clear scroll operation using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the clear scroll request using the new API builder
+   * @return The clear scroll response from Elasticsearch
+   */
+  public ClearScrollResponse clearScrollV2(Function<ClearScrollRequest.Builder, ObjectBuilder<ClearScrollRequest>> fn) {
+    return execute(() -> elasticsearchClient.clearScroll(fn));
   }
 
-  public SearchResponse search(SearchRequest searchRequest) {
-    return execute(() -> restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(searchRequest));
+  /**
+   * Delete a document using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the delete request using the new API builder
+   * @return The delete response from Elasticsearch
+   */
+  public DeleteResponse deleteV2(Function<DeleteRequest.Builder, ObjectBuilder<DeleteRequest>> fn) {
+    return execute(() -> elasticsearchClient.delete(fn));
   }
 
-  public SearchResponse scroll(SearchScrollRequest searchScrollRequest) {
-    return execute(() -> restHighLevelClient.scroll(searchScrollRequest, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(searchScrollRequest));
+  public RefreshResponse refreshV2(Index... indices) {
+    List<String> indexNames = Arrays.stream(indices).map(Index::getName).toList();
+    return execute(() -> elasticsearchClient.indices().refresh(rr -> rr.index(indexNames)));
   }
 
-  public ClearScrollResponse clearScroll(ClearScrollRequest clearScrollRequest) {
-    return execute(() -> restHighLevelClient.clearScroll(clearScrollRequest, RequestOptions.DEFAULT));
+  /**
+   * Force merge indices using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the force merge request using the new API builder
+   * @return The force merge response from Elasticsearch
+   */
+  public ForcemergeResponse forcemergeV2(Function<ForcemergeRequest.Builder, ObjectBuilder<ForcemergeRequest>> fn) {
+    return execute(() -> elasticsearchClient.indices().forcemerge(fn));
   }
 
-  public DeleteResponse delete(DeleteRequest deleteRequest) {
-    return execute(() -> restHighLevelClient.delete(deleteRequest, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(deleteRequest));
+  /**
+   * Update index settings using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the put index settings request using the new API builder
+   * @return The put index settings response from Elasticsearch
+   */
+  public PutIndicesSettingsResponse putSettingsV2(
+    Function<PutIndicesSettingsRequest.Builder, ObjectBuilder<PutIndicesSettingsRequest>> fn) {
+    return execute(() -> elasticsearchClient.indices().putSettings(fn));
   }
 
-  public RefreshResponse refresh(Index... indices) {
-    RefreshRequest refreshRequest = new RefreshRequest()
-      .indices(Arrays.stream(indices).map(Index::getName).toArray(String[]::new));
-    return execute(() -> restHighLevelClient.indices().refresh(refreshRequest, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(refreshRequest));
+  /**
+   * Clear indices cache using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the clear cache request using the new API builder
+   * @return The clear cache response from Elasticsearch
+   */
+  public ClearCacheResponse clearCacheV2(Function<ClearCacheRequest.Builder, ObjectBuilder<ClearCacheRequest>> fn) {
+    return execute(() -> elasticsearchClient.indices().clearCache(fn));
   }
 
-  public ForceMergeResponse forcemerge(ForceMergeRequest forceMergeRequest) {
-    return execute(() -> restHighLevelClient.indices().forcemerge(forceMergeRequest, RequestOptions.DEFAULT));
+  /**
+   * Index a document using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the index request using the new API builder
+   * @return The index response from Elasticsearch
+   */
+  public <T> IndexResponse indexV2(Function<IndexRequest.Builder<T>, ObjectBuilder<IndexRequest<T>>> fn) {
+    return execute(() -> elasticsearchClient.index(fn));
   }
 
-  public AcknowledgedResponse putSettings(UpdateSettingsRequest req) {
-    return execute(() -> restHighLevelClient.indices().putSettings(req, RequestOptions.DEFAULT));
+  /**
+   * Get a document using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn             A function that configures the get request using the new API builder
+   * @param tDocumentClass The class of the document type to return
+   * @return The get response from Elasticsearch
+   */
+  public <T> GetResponse<T> getV2(Function<GetRequest.Builder, ObjectBuilder<GetRequest>> fn, Class<T> tDocumentClass) {
+    return execute(() -> elasticsearchClient.get(fn, tDocumentClass));
   }
 
-  public ClearIndicesCacheResponse clearCache(ClearIndicesCacheRequest request) {
-    return execute(() -> restHighLevelClient.indices().clearCache(request, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(request));
+  public GetIndexResponse getIndexV2(String indexName) {
+    return execute(() -> elasticsearchClient.indices().get(req -> req.index(indexName)));
   }
 
-  public IndexResponse index(IndexRequest indexRequest) {
-    return execute(() -> restHighLevelClient.index(indexRequest, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(indexRequest));
+  public GetIndexResponse getIndexV2(List<String> indexNames) {
+    return execute(() -> elasticsearchClient.indices().get(req -> req.index(indexNames)));
   }
 
-  public GetResponse get(GetRequest request) {
-    return execute(() -> restHighLevelClient.get(request, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(request));
+  /**
+   * Check if an index exists using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the exists request using the new API builder
+   * @return True if the index exists, false otherwise
+   */
+  public boolean indexExistsV2(Function<ExistsRequest.Builder, ObjectBuilder<ExistsRequest>> fn) {
+    return execute(() -> elasticsearchClient.indices().exists(fn).value());
   }
 
-  public GetIndexResponse getIndex(GetIndexRequest getRequest) {
-    return execute(() -> restHighLevelClient.indices().get(getRequest, RequestOptions.DEFAULT));
+  /**
+   * Create an index using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the create index request using the new API builder
+   * @return The create index response from Elasticsearch
+   */
+  public co.elastic.clients.elasticsearch.indices.CreateIndexResponse createIndexV2(
+    Function<co.elastic.clients.elasticsearch.indices.CreateIndexRequest.Builder,
+      ObjectBuilder<co.elastic.clients.elasticsearch.indices.CreateIndexRequest>> fn) {
+    return execute(() -> elasticsearchClient.indices().create(fn));
   }
 
-  public boolean indexExists(GetIndexRequest getIndexRequest) {
-    return execute(() -> restHighLevelClient.indices().exists(getIndexRequest, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(getIndexRequest));
+  public DeleteIndexResponse deleteIndexV2(String indexName) {
+    return deleteIndexV2(List.of(indexName));
   }
 
-  public CreateIndexResponse create(CreateIndexRequest createIndexRequest) {
-    return execute(() -> restHighLevelClient.indices().create(createIndexRequest, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(createIndexRequest));
+  public DeleteIndexResponse deleteIndexV2(List<String> indexNames) {
+    return execute(() -> elasticsearchClient.indices().delete(idr -> idr.index(indexNames)));
   }
 
-  public AcknowledgedResponse deleteIndex(DeleteIndexRequest deleteIndexRequest) {
-    return execute(() -> restHighLevelClient.indices().delete(deleteIndexRequest, RequestOptions.DEFAULT));
+  /**
+   * Update mapping using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the put mapping request using the new API builder
+   * @return The put mapping response from Elasticsearch
+   */
+  public PutMappingResponse putMappingV2(Function<PutMappingRequest.Builder, ObjectBuilder<PutMappingRequest>> fn) {
+    return execute(() -> elasticsearchClient.indices().putMapping(fn));
   }
 
-  public AcknowledgedResponse putMapping(PutMappingRequest request) {
-    return execute(() -> restHighLevelClient.indices().putMapping(request, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(request));
+  /**
+   * Get cluster health using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the cluster health request using the new API builder
+   * @return The cluster health response from Elasticsearch
+   */
+  public HealthResponse clusterHealthV2(Function<HealthRequest.Builder, ObjectBuilder<HealthRequest>> fn) {
+    return execute(() -> elasticsearchClient.cluster().health(fn));
   }
 
-  public ClusterHealthResponse clusterHealth(ClusterHealthRequest clusterHealthRequest) {
-    return execute(() -> restHighLevelClient.cluster().health(clusterHealthRequest, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(clusterHealthRequest));
-  }
-
-  public void waitForStatus(ClusterHealthStatus clusterHealthStatus) {
-    clusterHealth(new ClusterHealthRequest().waitForEvents(Priority.LANGUID).waitForStatus(clusterHealthStatus));
+  /**
+   * Wait for the cluster to reach a specific health status using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param healthStatus The health status to wait for
+   */
+  public void waitForStatusV2(HealthStatus healthStatus) {
+    clusterHealthV2(req -> req.waitForStatus(healthStatus));
   }
 
   // https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-nodes-stats.html
   public NodeStatsResponse nodesStats() {
     return execute(() -> {
       Request request = new Request("GET", "/_nodes/stats/fs,process,jvm,indices,breaker");
-      Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
+      Response response = restClient.performRequest(request);
       return NodeStatsResponse.toNodeStatsResponse(gson.fromJson(EntityUtils.toString(response.getEntity()), JsonObject.class));
     });
   }
@@ -229,7 +286,7 @@ public class EsClient implements Closeable {
     return execute(() -> {
       Request request = new Request("GET", "/" + (indices.length > 0 ? (String.join(",", indices) + "/") : "") + "_stats");
       request.addParameter("level", "shards");
-      Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
+      Response response = restClient.performRequest(request);
       return IndicesStatsResponse.toIndicesStatsResponse(gson.fromJson(EntityUtils.toString(response.getEntity()), JsonObject.class));
     }, () -> computeDetailsAsString(indices));
   }
@@ -238,23 +295,37 @@ public class EsClient implements Closeable {
   public ClusterStatsResponse clusterStats() {
     return execute(() -> {
       Request request = new Request("GET", "/_cluster/stats");
-      Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
+      Response response = restClient.performRequest(request);
       return ClusterStatsResponse.toClusterStatsResponse(gson.fromJson(EntityUtils.toString(response.getEntity()), JsonObject.class));
     });
   }
 
-  public GetSettingsResponse getSettings(GetSettingsRequest getSettingsRequest) {
-    return execute(() -> restHighLevelClient.indices().getSettings(getSettingsRequest, RequestOptions.DEFAULT));
+  /**
+   * Get index settings using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the get settings request using the new API builder
+   * @return The get settings response from Elasticsearch
+   */
+  public co.elastic.clients.elasticsearch.indices.GetIndicesSettingsResponse getSettingsV2(
+    Function<co.elastic.clients.elasticsearch.indices.GetIndicesSettingsRequest.Builder,
+      ObjectBuilder<co.elastic.clients.elasticsearch.indices.GetIndicesSettingsRequest>> fn) {
+    return execute(() -> elasticsearchClient.indices().getSettings(fn));
   }
 
-  public GetMappingsResponse getMapping(GetMappingsRequest getMappingsRequest) {
-    return execute(() -> restHighLevelClient.indices().getMapping(getMappingsRequest, RequestOptions.DEFAULT));
+  /**
+   * Get index mapping using the new Elasticsearch Java API Client (8.x).
+   *
+   * @param fn A function that configures the get mapping request using the new API builder
+   * @return The get mapping response from Elasticsearch
+   */
+  public GetMappingResponse getMappingV2(Function<GetMappingRequest.Builder, ObjectBuilder<GetMappingRequest>> fn) {
+    return execute(() -> elasticsearchClient.indices().getMapping(fn));
   }
 
   @Override
   public void close() {
     try {
-      restHighLevelClient.close();
+      restClient.close();
     } catch (IOException e) {
       throw new ElasticsearchException("Could not close ES Rest high level client", e);
     }
@@ -265,26 +336,21 @@ public class EsClient implements Closeable {
    *
    * @return native ES client object
    */
-  RestHighLevelClient nativeClient() {
-    return restHighLevelClient;
+  RestClient nativeClient() {
+    return restClient;
   }
 
-  static class MinimalRestHighLevelClient extends RestHighLevelClient {
+  ElasticsearchClient client() {
+    return elasticsearchClient;
+  }
+
+  static class MinimalRestHighLevelClient {
     private static final int CONNECT_TIMEOUT = 5000;
     private static final int SOCKET_TIMEOUT = 60000;
 
-    public MinimalRestHighLevelClient(@Nullable String searchPassword, @Nullable String keyStorePath,
-                                      @Nullable String keyStorePassword, HttpHost... hosts) {
-      super(buildHttpClient(searchPassword, keyStorePath, keyStorePassword, hosts).build(), RestClient::close, Lists.newArrayList(), true);
-    }
-
-    MinimalRestHighLevelClient(RestClient restClient) {
-      super(restClient, RestClient::close, Lists.newArrayList(), true);
-    }
-
     @NotNull
-    private static RestClientBuilder buildHttpClient(@Nullable String searchPassword, @Nullable String keyStorePath,
-                                                     @Nullable String keyStorePassword, HttpHost[] hosts) {
+    static RestClientBuilder buildHttpClient(@Nullable String searchPassword, @Nullable String keyStorePath,
+      @Nullable String keyStorePassword, HttpHost[] hosts) {
       return RestClient.builder(hosts)
         .setRequestConfigCallback(r -> r
           .setConnectTimeout(CONNECT_TIMEOUT)

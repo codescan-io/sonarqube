@@ -77,6 +77,7 @@ public class RuleIndexer implements ResilientIndexer {
     indexAll(Size.REGULAR);
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private void indexAll(Size bulkSize) {
     try (DbSession dbSession = dbClient.openSession(false)) {
       BulkIndexer bulk = createBulkIndexer(bulkSize, IndexingListener.FAIL_ON_ERROR);
@@ -117,6 +118,7 @@ public class RuleIndexer implements ResilientIndexer {
     return result;
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private Optional<IndexingResult> doIndexRules(DbSession dbSession, List<EsQueueDto> items) {
     if (items.isEmpty()) {
       return Optional.empty();
@@ -159,9 +161,9 @@ public class RuleIndexer implements ResilientIndexer {
     return RuleDoc.createFrom(dto, securityStandards);
 }
 
-
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private BulkIndexer createBulkIndexer(Size bulkSize, IndexingListener listener) {
-    return new BulkIndexer(esClient, TYPE_RULE, bulkSize, listener);
+    return new BulkIndexer(esClient, TYPE_RULE, bulkSize, listener, Object.class);
   }
 
   private static ListMultimap<String, EsQueueDto> groupItemsByIndexTypeFormat(Collection<EsQueueDto> items) {

@@ -19,15 +19,15 @@
  */
 package org.sonar.server.es;
 
+import co.elastic.clients.elasticsearch.core.search.Hit;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+
+import co.elastic.clients.elasticsearch.core.search.TotalHits;
+import co.elastic.clients.elasticsearch.core.search.TotalHitsRelation;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
-import org.apache.lucene.search.TotalHits;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
 
 import static java.util.Optional.ofNullable;
 
@@ -37,14 +37,31 @@ public class SearchIdResult<ID> {
   private final Facets facets;
   private final long total;
 
-  public SearchIdResult(SearchResponse response, Function<String, ID> converter, ZoneId timeZone) {
-    this.facets = new Facets(response, timeZone);
-    this.total = getTotalHits(response).value;
-    this.uuids = convertToIds(response.getHits(), converter);
+  /**
+   * Constructor for new Elasticsearch Java API Client (8.x).
+   * Note: This constructor does not support facets from the response. If you need facets,
+   * pass them separately using the LinkedHashMap constructor.
+   */
+  public <T> SearchIdResult(co.elastic.clients.elasticsearch.core.SearchResponse<T> response, Function<String, ID> converter, ZoneId timeZone) {
+    this.facets = new Facets(new java.util.LinkedHashMap<>(), timeZone);
+    this.total = getTotalHitsV2(response).value();
+    this.uuids = convertToIdsV2(response.hits().hits(), converter);
   }
 
-  private static TotalHits getTotalHits(SearchResponse response) {
-    return ofNullable(response.getHits().getTotalHits()).orElseThrow(() -> new IllegalStateException("Could not get total hits of search results"));
+  private static <T> TotalHits getTotalHitsV2(co.elastic.clients.elasticsearch.core.SearchResponse<T> response) {
+    return ofNullable(response.hits().total())
+      .map(total -> {
+        // Map the relation from new API to old API
+        TotalHitsRelation relation = switch (total.relation()) {
+          case Eq -> TotalHitsRelation.Eq;
+          case Gte -> TotalHitsRelation.Gte;
+        };
+        return TotalHits.of(b -> b
+          .value(total.value())
+          .relation(relation)
+        );
+      })
+      .orElseThrow(() -> new IllegalStateException("Could not get total hits of search results"));
   }
 
   public List<ID> getUuids() {
@@ -64,10 +81,10 @@ public class SearchIdResult<ID> {
     return ReflectionToStringBuilder.toString(this);
   }
 
-  private static <ID> List<ID> convertToIds(SearchHits hits, Function<String, ID> converter) {
-    List<ID> docs = new ArrayList<>();
-    for (SearchHit hit : hits.getHits()) {
-      docs.add(converter.apply(hit.getId()));
+  private static <I, T> List<I> convertToIdsV2(List<Hit<T>> hits, Function<String, I> converter) {
+    List<I> docs = new ArrayList<>();
+    for (Hit<T> hit : hits) {
+      docs.add(converter.apply(hit.id()));
     }
     return docs;
   }

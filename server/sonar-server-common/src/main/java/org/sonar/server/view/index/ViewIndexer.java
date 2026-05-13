@@ -25,8 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.elasticsearch.action.admin.indices.cache.clear.ClearIndicesCacheRequest;
-import org.elasticsearch.action.index.IndexRequest;
+
+import co.elastic.clients.elasticsearch.core.IndexRequest;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.ComponentDto;
@@ -98,15 +98,17 @@ public class ViewIndexer implements ResilientIndexer {
    * <p/>
    * The views lookup cache will be cleared
    */
+  @SuppressWarnings({"rawtypes", "unchecked"})
   public void index(ViewDoc viewDoc) {
-    BulkIndexer bulk = new BulkIndexer(esClient, TYPE_VIEW, Size.REGULAR);
+    BulkIndexer bulk = new BulkIndexer(esClient, TYPE_VIEW, Size.REGULAR, Object.class);
     bulk.start();
     doIndex(bulk, viewDoc, true);
     bulk.stop();
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private void index(DbSession dbSession, Map<String, String> rootViewUuidByViewUuid, boolean needClearCache, Size bulkSize) {
-    BulkIndexer bulk = new BulkIndexer(esClient, TYPE_VIEW, bulkSize);
+    BulkIndexer bulk = new BulkIndexer(esClient, TYPE_VIEW, bulkSize, Object.class);
     bulk.start();
     for (Map.Entry<String, String> entry : rootViewUuidByViewUuid.entrySet()) {
       String viewUuid = entry.getKey();
@@ -119,6 +121,7 @@ public class ViewIndexer implements ResilientIndexer {
     bulk.stop();
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private void doIndex(BulkIndexer bulk, ViewDoc viewDoc, boolean needClearCache) {
     bulk.add(newIndexRequest(viewDoc));
     if (needClearCache) {
@@ -126,16 +129,19 @@ public class ViewIndexer implements ResilientIndexer {
     }
   }
 
+  @SuppressWarnings("rawtypes")
   private static IndexRequest newIndexRequest(ViewDoc doc) {
-    return new IndexRequest(TYPE_VIEW.getIndex().getName())
+    return IndexRequest.of(b -> b
+      .index(TYPE_VIEW.getIndex().getName())
       .id(doc.getId())
       .routing(doc.getRouting().orElse(null))
-      .source(doc.getFields());
+      .document(doc.getFields())
+    );
   }
 
   private void clearLookupCache(String viewUuid) {
     try {
-      esClient.clearCache(new ClearIndicesCacheRequest().queryCache(true));
+      esClient.clearCacheV2(req -> req.query(true));
     } catch (Exception e) {
       throw new IllegalStateException(String.format("Unable to clear lookup cache of view '%s'", viewUuid), e);
     }
@@ -147,6 +153,7 @@ public class ViewIndexer implements ResilientIndexer {
    * A safety check is done by not deleting any component that still exist in database.
    * This should not occur but prevent any misuse on this resiliency
    */
+  @SuppressWarnings("rawtypes")
   @Override
   public IndexingResult index(DbSession dbSession, Collection<EsQueueDto> items) {
     if (items.isEmpty()) {
@@ -177,7 +184,8 @@ public class ViewIndexer implements ResilientIndexer {
     index(dbSession, items);
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private BulkIndexer newBulkIndexer(Size bulkSize, IndexingListener listener) {
-    return new BulkIndexer(esClient, TYPE_VIEW, bulkSize, listener);
+    return new BulkIndexer(esClient, TYPE_VIEW, bulkSize, listener, Object.class);
   }
 }

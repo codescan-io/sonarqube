@@ -19,33 +19,31 @@
  */
 package org.sonar.server.es;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Queue;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchScrollRequest;
-import org.elasticsearch.core.TimeValue;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.search.sort.SortOrder;
-import org.joda.time.format.ISODateTimeFormat;
+
+import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.SortOptions;
+import co.elastic.clients.elasticsearch._types.aggregations.Buckets;
+import co.elastic.clients.elasticsearch._types.aggregations.StringTermsAggregate;
+import co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
+
+import static org.sonar.core.util.CollectionUtils.isNotEmpty;
 
 public class EsUtils {
 
   public static final int SCROLL_TIME_IN_MINUTES = 3;
+  public static final int SEARCH_AFTER_PAGE_SIZE = 500;
 
   /**
    * See https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-regexp-query.html
@@ -56,29 +54,35 @@ public class EsUtils {
     // only static methods
   }
 
-  public static <D extends BaseDoc> List<D> convertToDocs(SearchHits hits, Function<Map<String, Object>, D> converter) {
+  public static <D extends BaseDoc> List<D> convertToDocs(HitsMetadata<Map<String, Object>> hits, Function<Map<String, Object>, D> converter) {
     List<D> docs = new ArrayList<>();
-    for (SearchHit hit : hits.getHits()) {
-      docs.add(converter.apply(hit.getSourceAsMap()));
+    for (Hit<Map<String, Object>> hit: hits.hits()) {
+      docs.add(converter.apply(hit.source()));
     }
     return docs;
   }
 
-  public static Map<String, Long> termsToMap(Terms terms) {
+  public static Map<String, Long> termsToMap(StringTermsAggregate terms) {
     LinkedHashMap<String, Long> map = new LinkedHashMap<>();
-    List<? extends Terms.Bucket> buckets = terms.getBuckets();
-    for (Terms.Bucket bucket : buckets) {
-      map.put(bucket.getKeyAsString(), bucket.getDocCount());
+    Buckets<StringTermsBucket> buckets = terms.buckets();
+    if (buckets != null && buckets.isArray() && isNotEmpty(buckets.array())) {
+      for (StringTermsBucket bucket : buckets.array()) {
+        map.put(bucket.key().stringValue(), bucket.docCount());
+      }
     }
     return map;
   }
 
-  public static List<String> termsKeys(Terms terms) {
-    terms.getBuckets();
-    return terms.getBuckets()
-      .stream()
-      .map(Terms.Bucket::getKeyAsString)
-      .toList();
+  public static List<String> termsKeys(StringTermsAggregate terms) {
+    Buckets<StringTermsBucket> buckets = terms.buckets();
+    if (buckets != null && buckets.isArray() && isNotEmpty(buckets.array())) {
+      return buckets.array()
+        .stream()
+        .map(StringTermsBucket::key)
+        .map(FieldValue::stringValue)
+        .toList();
+    }
+    return Collections.emptyList();
   }
 
   @CheckForNull
@@ -86,23 +90,34 @@ public class EsUtils {
     if (s == null) {
       return null;
     }
-    return ISODateTimeFormat.dateTime().parseDateTime(s).toDate();
+    LocalDateTime parsedDate = LocalDateTime.parse(s, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    return Date.from(parsedDate.atZone(ZoneId.systemDefault()).toInstant());
   }
 
   @CheckForNull
   public static String formatDateTime(@Nullable Date date) {
     if (date != null) {
-      return ISODateTimeFormat.dateTime().print(date.getTime());
+      return date.toInstant()
+        .atZone(ZoneId.systemDefault())
+        .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
     return null;
   }
 
   /**
-   * Optimize scolling, by specifying document sorting.
-   * See https://www.elastic.co/guide/en/elasticsearch/reference/2.4/search-request-scroll.html#search-request-scroll
+   * ES 8: Optimize search_after pagination by specifying document sorting.
+   * This provides efficient pagination without the overhead of maintaining scroll contexts.
+   * Note: _doc and _id sorting cannot be used with search_after:
+   * <ul>
+   * <li>_doc is only for scroll API</li>
+   * <li>_id requires fielddata to be enabled (disabled by default in ES 8)</li>
+   * </ul>
+   * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/paginate-search-results.html#search-after">Elasticsearch search_after documentation</a>
    */
-  public static void optimizeScrollRequest(SearchSourceBuilder esSearch) {
-    esSearch.sort("_doc", SortOrder.ASC);
+  public static void optimizeSearchAfterRequest(SearchRequest.Builder esSearch, String sortField) {
+    // Sort by sortField to ensure deterministic ordering for search_after pagination
+    // This sortField has doc_values enabled and provides a unique sort key for reliable pagination
+    esSearch.sort(s -> s.field(f -> f.field(sortField).order(co.elastic.clients.elasticsearch._types.SortOrder.Asc)));
   }
 
   /**
@@ -114,31 +129,93 @@ public class EsUtils {
     return SPECIAL_REGEX_CHARS.matcher(str).replaceAll("\\\\$0");
   }
 
-  public static <I> Iterator<I> scrollIds(EsClient esClient, SearchResponse scrollResponse, Function<String, I> idConverter) {
-    return new IdScrollIterator<>(esClient, scrollResponse, idConverter);
+  /**
+   * ES 8: Iterate through search results using search_after API
+   * This is the recommended approach for deep pagination in ES 8.
+   * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/paginate-search-results.html#search-after">Elasticsearch search_after documentation</a>
+   */
+  public static <T, I> Iterator<I> searchAfterIds(EsClient esClient, SearchRequest initialRequest, Class<T> tClass, Function<String, I> idConverter) {
+    return new SearchAfterIterator<>(esClient, initialRequest, tClass, idConverter);
   }
 
-  private static class IdScrollIterator<I> implements Iterator<I> {
+  private static class SearchAfterIterator<T, I> implements Iterator<I> {
 
     private final EsClient esClient;
-    private final String scrollId;
+    private final SearchRequest initialRequest;
+    private final Class<T> tClass;
     private final Function<String, I> idConverter;
 
-    private final Queue<SearchHit> hits = new ArrayDeque<>();
+    private final Queue<Hit<T>> hits = new ArrayDeque<>();
+    private List<FieldValue> lastSortValues = null;
+    private boolean hasMore = true;
+    private boolean isFirstRequest = true;
 
-    private IdScrollIterator(EsClient esClient, SearchResponse scrollResponse, Function<String, I> idConverter) {
+    private SearchAfterIterator(EsClient esClient, SearchRequest initialRequest, Class<T> tClass, Function<String, I> idConverter) {
       this.esClient = esClient;
-      this.scrollId = scrollResponse.getScrollId();
+      this.initialRequest = initialRequest;
+      this.tClass = tClass;
       this.idConverter = idConverter;
-      Collections.addAll(hits, scrollResponse.getHits().getHits());
+      fetchNextBatch();
+    }
+
+    private void fetchNextBatch() {
+      if (!hasMore) {
+        return;
+      }
+
+      co.elastic.clients.elasticsearch.core.SearchResponse<T> response;
+
+      if (isFirstRequest) {
+        // For the first request, use the initial request but disable source fetching
+        // since we're using Void.class and only need document IDs
+        response = esClient.searchV2(b -> b
+            .index(initialRequest.index())
+            .query(initialRequest.query())
+            .size(initialRequest.size())
+            .sort(initialRequest.sort())
+            .source(s -> s.fetch(false)),
+          tClass);
+        isFirstRequest = false;
+      } else {
+        // For subsequent requests, add search_after with the last sort values
+        final List<String> indexNames = initialRequest.index();
+        final Query query = initialRequest.query();
+        final Integer size = initialRequest.size();
+        final List<SortOptions> sortOptions = initialRequest.sort();
+
+        response = esClient.searchV2(b -> {
+          b.index(indexNames)
+            .query(query)
+            .size(size)
+            .source(s -> s.fetch(false));
+
+          // Apply the same sort configuration as the initial request
+          if (sortOptions != null && !sortOptions.isEmpty()) {
+            b.sort(sortOptions);
+          }
+
+          // Add search_after for pagination
+          b.searchAfter(lastSortValues);
+
+          return b;
+        }, tClass);
+      }
+
+      if (response.hits() != null && response.hits().hits() != null && !response.hits().hits().isEmpty()) {
+        List<Hit<T>> newHits = response.hits().hits();
+        hits.addAll(newHits);
+        // Save the sort values from the last hit for the next request
+        Hit<T> lastHit = newHits.get(newHits.size() - 1);
+        lastSortValues = lastHit.sort();
+      } else {
+        hasMore = false;
+      }
     }
 
     @Override
     public boolean hasNext() {
-      if (hits.isEmpty()) {
-        SearchScrollRequest esRequest = new SearchScrollRequest(scrollId)
-          .scroll(TimeValue.timeValueMinutes(SCROLL_TIME_IN_MINUTES));
-        Collections.addAll(hits, esClient.scroll(esRequest).getHits().getHits());
+      if (hits.isEmpty() && hasMore) {
+        fetchNextBatch();
       }
       return !hits.isEmpty();
     }
@@ -148,12 +225,12 @@ public class EsUtils {
       if (!hasNext()) {
         throw new NoSuchElementException();
       }
-      return idConverter.apply(hits.poll().getId());
+      return idConverter.apply(hits.poll().id());
     }
 
     @Override
     public void remove() {
-      throw new UnsupportedOperationException("Cannot remove item when scrolling");
+      throw new UnsupportedOperationException("Cannot remove item when iterating");
     }
   }
 }

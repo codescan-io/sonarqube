@@ -25,7 +25,8 @@ import java.util.Map;
 import java.util.Optional;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.elasticsearch.action.index.IndexRequest;
+
+import co.elastic.clients.elasticsearch.core.IndexRequest;
 import org.sonar.server.es.IndexType.IndexMainType;
 import org.sonar.server.es.IndexType.IndexRelationType;
 
@@ -91,6 +92,7 @@ public abstract class BaseDoc {
    * Use this method when field value can be null. See warning in {@link #getField(String)}
    */
   @CheckForNull
+  @SuppressWarnings("unchecked")
   public <K> K getNullableField(String key) {
     if (!fields.containsKey(key)) {
       throw new IllegalStateException(String.format("Field %s not specified in query options", key));
@@ -156,12 +158,14 @@ public abstract class BaseDoc {
     checkState(this.parentId != null, SETPARENT_NOT_CALLED);
   }
 
-  public IndexRequest toIndexRequest() {
+  public IndexRequest<Map<String, Object>> toIndexRequest() {
     IndexMainType mainType = this.indexType.getMainType();
-    return new IndexRequest(mainType.getIndex().getName())
+    return IndexRequest.of(b -> b
+      .index(mainType.getIndex().getName())
       .id(getId())
       .routing(getRouting().orElse(null))
-      .source(getFields());
+      .document(getFields())
+    );
   }
 
   private static Date epochSecondsToDate(Number value) {
