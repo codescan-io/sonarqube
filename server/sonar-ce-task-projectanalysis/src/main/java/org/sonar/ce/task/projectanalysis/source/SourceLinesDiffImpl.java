@@ -85,6 +85,7 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
   }
 
   private int[] computeWithMyersDiff(Component component) {
+    LOG.info("Diff started for {} using Myers algorithm", component.getKey());
     List<String> database = getDBLines(component);
     List<String> report = getReportLines(component);
 
@@ -92,6 +93,7 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
   }
 
   private int[] computeWithHistogramDiff(Component component) {
+    LOG.info("Diff started for {} using Histogram (git-cli) algorithm", component.getKey());
     try {
       List<String> dbSourceLines = getDBSourceContent(component);
       List<String> reportSourceLines = getReportSourceContent(component);
