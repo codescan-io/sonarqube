@@ -19,10 +19,12 @@
  */
 package org.sonar.ce.task.projectanalysis.source;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.config.Configuration;
@@ -44,7 +46,8 @@ import org.sonar.db.source.FileSourceDto;
 public class SourceLinesDiffImpl implements SourceLinesDiff {
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceLinesDiffImpl.class);
-  private static final String KEY_HISTOGRAM_DIFF_ENABLED = "codescan.ce.histogramDiff.enabled";
+  private static final String KEY_CODESCAN_GITCLI_ENABLED = "codescan.gitcli.enabled";
+  private static final String KEY_SFMETA_FILE_SUFFIXES = "sonar.sfmeta.file.suffixes";
 
   private final DbClient dbClient;
   private final FileSourceDao fileSourceDao;
@@ -75,73 +78,112 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
 
   @Override
   public int[] computeMatchingLines(Component component) {
-    boolean useHistogram = useHistogramDiff();
-    LOG.info("[SOURCELINES-DIFF] computeMatchingLines called for component={}, useHistogramDiff={}", component.getKey(), useHistogram);
-    if (useHistogram) {
+    if (isGitCliEnabled() && isSalesforceMetadataFile(component)) {
       return computeWithHistogramDiff(component);
     }
-    LOG.info("[SOURCELINES-DIFF] Using MYERS diff for component={}", component.getKey());
     return computeWithMyersDiff(component);
   }
 
   private int[] computeWithMyersDiff(Component component) {
-    List<String> database = getDBLineHashes(component);
-    List<String> report = getReportLineHashes(component);
+    LOG.info("Diff started for {} using Myers algorithm", component.getKey());
+    List<String> database = getDBLines(component);
+    List<String> report = getReportLines(component);
+
     return new SourceLinesDiffFinder().findMatchingLines(database, report);
   }
 
   private int[] computeWithHistogramDiff(Component component) {
+    LOG.info("Diff started for {} using Histogram (git-cli) algorithm", component.getKey());
     try {
       List<String> dbSourceLines = getDBSourceContent(component);
       List<String> reportSourceLines = getReportSourceContent(component);
 
-      LOG.info("[HISTOGRAM-DIFF] component={}, dbLines={}, reportLines={}",
-        component.getKey(), dbSourceLines.size(), reportSourceLines.size());
-
       if (dbSourceLines.isEmpty() && reportSourceLines.isEmpty()) {
-        LOG.info("[HISTOGRAM-DIFF] Both empty, returning empty array for {}", component.getKey());
         return new int[0];
       }
 
       if (dbSourceLines.isEmpty()) {
-        LOG.info("[HISTOGRAM-DIFF] DB empty, all lines are new for {}", component.getKey());
         return new int[reportSourceLines.size()];
       }
 
-      int[] result = new GitHistogramDiffFinder().findMatchingLines(dbSourceLines, reportSourceLines);
+      return new GitDiffFinder().findMatchingLines(dbSourceLines, reportSourceLines);
 
-      // Log which lines are new (value == 0)
-      StringBuilder newLines = new StringBuilder();
-      for (int i = 0; i < result.length; i++) {
-        if (result[i] == 0) {
-          if (newLines.length() > 0) newLines.append(",");
-          newLines.append(i + 1);
-        }
-      }
-      LOG.info("[HISTOGRAM-DIFF] SUCCESS for {}. New lines (match=0): [{}]", component.getKey(), newLines);
-
-      return result;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOG.warn("[HISTOGRAM-DIFF] Interrupted for {}, falling back to Myers", component.getKey());
+      LOG.warn("git-cli diff interrupted for {}, falling back to Myers", component.getKey());
       return computeWithMyersDiff(component);
-    } catch (Exception e) {
-      LOG.warn("[HISTOGRAM-DIFF] FAILED for {}, falling back to Myers. Error: {}", component.getKey(), e.getMessage(), e);
+    } catch (IOException e) {
+      LOG.warn("git-cli diff failed for {}, falling back to Myers", component.getKey(), e);
       return computeWithMyersDiff(component);
     }
   }
 
-  private boolean useHistogramDiff() {
+  private boolean isGitCliEnabled() {
     Configuration config = configurationRepository.getConfiguration();
-    Optional<Boolean> configValue = config.getBoolean(KEY_HISTOGRAM_DIFF_ENABLED);
-    boolean result = configValue.orElse(true);
-    LOG.info("[HISTOGRAM-DIFF] Toggle check: key={}, configValue={}, resolved={}", KEY_HISTOGRAM_DIFF_ENABLED, configValue, result);
-    return result;
+    return config.getBoolean(KEY_CODESCAN_GITCLI_ENABLED).orElse(false);
+  }
+
+  private boolean isSalesforceMetadataFile(Component component) {
+    String fileName = component.getName();
+    if (StringUtils.isBlank(fileName)) {
+      return false;
+    }
+    String[] suffixes = configurationRepository.getConfiguration().getStringArray(KEY_SFMETA_FILE_SUFFIXES);
+    if (suffixes == null) {
+      return false;
+    }
+    for (String suffix : suffixes) {
+      if (StringUtils.isBlank(suffix)) {
+        continue;
+      }
+      String normalizedSuffix = suffix.startsWith(".") ? suffix : "." + suffix;
+      if (fileName.endsWith(normalizedSuffix)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private List<String> getDBLines(Component component) {
+    try (DbSession dbSession = dbClient.openSession(false)) {
+      String uuid;
+      if (analysisMetadataHolder.isPullRequest()) {
+        uuid = referenceBranchComponentUuids.getComponentUuid(component.getKey());
+      } else if (periodHolder.hasPeriod() && periodHolder.getPeriod().getMode().equals(NewCodePeriodType.REFERENCE_BRANCH.name())) {
+        uuid = newCodeReferenceBranchComponentUuids.getComponentUuid(component.getKey());
+      } else {
+        Optional<MovedFilesRepository.OriginalFile> originalFile = movedFilesRepository.getOriginalFile(component);
+        uuid = originalFile.map(MovedFilesRepository.OriginalFile::uuid).orElse(component.getUuid());
+      }
+
+      if (uuid == null) {
+        return Collections.emptyList();
+      }
+
+      List<String> database = fileSourceDao.selectLineHashes(dbSession, uuid);
+      if (database == null) {
+        return Collections.emptyList();
+      }
+      return database;
+    }
+  }
+
+  private List<String> getReportLines(Component component) {
+    return sourceLinesHash.getLineHashesMatchingDBVersion(component);
   }
 
   private List<String> getDBSourceContent(Component component) {
     try (DbSession dbSession = dbClient.openSession(false)) {
-      String uuid = resolveDbFileUuid(component);
+      String uuid;
+      if (analysisMetadataHolder.isPullRequest()) {
+        uuid = referenceBranchComponentUuids.getComponentUuid(component.getKey());
+      } else if (periodHolder.hasPeriod() && periodHolder.getPeriod().getMode().equals(NewCodePeriodType.REFERENCE_BRANCH.name())) {
+        uuid = newCodeReferenceBranchComponentUuids.getComponentUuid(component.getKey());
+      } else {
+        Optional<MovedFilesRepository.OriginalFile> originalFile = movedFilesRepository.getOriginalFile(component);
+        uuid = originalFile.map(MovedFilesRepository.OriginalFile::uuid).orElse(component.getUuid());
+      }
+
       if (uuid == null) {
         return Collections.emptyList();
       }
@@ -175,33 +217,4 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
     return lines;
   }
 
-  private String resolveDbFileUuid(Component component) {
-    if (analysisMetadataHolder.isPullRequest()) {
-      return referenceBranchComponentUuids.getComponentUuid(component.getKey());
-    } else if (periodHolder.hasPeriod() && periodHolder.getPeriod().getMode().equals(NewCodePeriodType.REFERENCE_BRANCH.name())) {
-      return newCodeReferenceBranchComponentUuids.getComponentUuid(component.getKey());
-    } else {
-      Optional<MovedFilesRepository.OriginalFile> originalFile = movedFilesRepository.getOriginalFile(component);
-      return originalFile.map(MovedFilesRepository.OriginalFile::uuid).orElse(component.getUuid());
-    }
-  }
-
-  private List<String> getDBLineHashes(Component component) {
-    try (DbSession dbSession = dbClient.openSession(false)) {
-      String uuid = resolveDbFileUuid(component);
-      if (uuid == null) {
-        return Collections.emptyList();
-      }
-
-      List<String> database = fileSourceDao.selectLineHashes(dbSession, uuid);
-      if (database == null) {
-        return Collections.emptyList();
-      }
-      return database;
-    }
-  }
-
-  private List<String> getReportLineHashes(Component component) {
-    return sourceLinesHash.getLineHashesMatchingDBVersion(component);
-  }
 }
