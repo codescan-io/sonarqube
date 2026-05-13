@@ -25,6 +25,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.config.Configuration;
 import org.sonar.ce.task.projectanalysis.analysis.AnalysisMetadataHolder;
 import org.sonar.ce.task.projectanalysis.component.Component;
@@ -43,6 +45,7 @@ import org.sonar.db.source.FileSourceDto;
 
 public class SourceLinesDiffImpl implements SourceLinesDiff {
 
+  private static final Logger LOG = LoggerFactory.getLogger(SourceLinesDiffImpl.class);
   private static final String KEY_CODESCAN_GITCLI_ENABLED = "codescan.gitcli.enabled";
   private static final String KEY_SFMETA_FILE_SUFFIXES = "sonar.sfmeta.file.suffixes";
 
@@ -105,8 +108,10 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
 
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      LOG.warn("git-cli diff interrupted for {}, falling back to Myers", component.getKey());
       return computeWithMyersDiff(component);
     } catch (IOException e) {
+      LOG.warn("git-cli diff failed for {}, falling back to Myers", component.getKey(), e);
       return computeWithMyersDiff(component);
     }
   }
