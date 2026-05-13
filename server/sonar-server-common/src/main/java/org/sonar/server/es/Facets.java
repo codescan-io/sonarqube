@@ -45,17 +45,6 @@ import java.util.regex.Pattern;
 import javax.annotation.CheckForNull;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.search.aggregations.Aggregation;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.HasAggregations;
-import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
-import org.elasticsearch.search.aggregations.bucket.filter.Filter;
-import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
-import org.elasticsearch.search.aggregations.bucket.missing.Missing;
-import org.elasticsearch.search.aggregations.bucket.nested.ReverseNested;
-import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.aggregations.metrics.Sum;
 
 import static org.sonar.api.utils.DateUtils.parseDateTime;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.FACET_MODE_EFFORT;
@@ -77,18 +66,6 @@ public class Facets {
     this.timeZone = timeZone;
   }
 
-  @Deprecated(since = "2024.12", forRemoval = true)
-  public Facets(SearchResponse response, ZoneId timeZone) {
-    this.facetsByName = new LinkedHashMap<>();
-    this.timeZone = timeZone;
-    Aggregations aggregations = response.getAggregations();
-    if (aggregations != null) {
-      for (Aggregation facet : aggregations) {
-        processAggregation(facet);
-      }
-    }
-  }
-
   public <T> Facets(co.elastic.clients.elasticsearch.core.SearchResponse<T> response, ZoneId timeZone) {
     this.facetsByName = new LinkedHashMap<>();
     this.timeZone = timeZone;
@@ -97,26 +74,6 @@ public class Facets {
       for (Map.Entry<String, Aggregate> entry : aggregations.entrySet()) {
         processAggregationV2(entry.getKey(), entry.getValue());
       }
-    }
-  }
-
-  private void processAggregation(Aggregation aggregation) {
-    if (Missing.class.isAssignableFrom(aggregation.getClass())) {
-      processMissingAggregation((Missing) aggregation);
-    } else if (Terms.class.isAssignableFrom(aggregation.getClass())) {
-      processTermsAggregation((Terms) aggregation);
-    } else if (Filter.class.isAssignableFrom(aggregation.getClass())) {
-      processSubAggregations((Filter) aggregation);
-    } else if (HasAggregations.class.isAssignableFrom(aggregation.getClass())) {
-      processSubAggregations((HasAggregations) aggregation);
-    } else if (Histogram.class.isAssignableFrom(aggregation.getClass())) {
-      processDateHistogram((Histogram) aggregation);
-    } else if (Sum.class.isAssignableFrom(aggregation.getClass())) {
-      processSum((Sum) aggregation);
-    } else if (MultiBucketsAggregation.class.isAssignableFrom(aggregation.getClass())) {
-      processMultiBucketAggregation((MultiBucketsAggregation) aggregation);
-    } else {
-      throw new IllegalArgumentException("Aggregation type not supported yet: " + aggregation.getClass());
     }
   }
 
@@ -135,18 +92,6 @@ public class Facets {
     }
   }
 
-  private void processMissingAggregation(Missing aggregation) {
-    long docCount = aggregation.getDocCount();
-    if (docCount > 0L) {
-      LinkedHashMap<String, Long> facet = getOrCreateFacet(aggregation.getName().replace("_missing", ""));
-      if (aggregation.getAggregations().getAsMap().containsKey(FACET_MODE_EFFORT)) {
-        facet.put("", Math.round(((Sum) aggregation.getAggregations().get(FACET_MODE_EFFORT)).getValue()));
-      } else {
-        facet.put("", docCount);
-      }
-    }
-  }
-
   void processMissingAggregationV2(String name, MissingAggregate aggregation) {
     long docCount = aggregation.docCount();
     if (docCount > 0L) {
@@ -161,24 +106,6 @@ public class Facets {
         }
       } else {
         facet.put("", docCount);
-      }
-    }
-  }
-
-  private void processTermsAggregation(Terms aggregation) {
-    String facetName = aggregation.getName();
-    // TODO document this naming convention
-    if (facetName.contains("__") && !facetName.startsWith("__")) {
-      facetName = facetName.substring(0, facetName.indexOf("__"));
-    }
-    facetName = facetName.replace(SELECTED_SUB_AGG_NAME_SUFFIX, "");
-    LinkedHashMap<String, Long> facet = getOrCreateFacet(facetName);
-    for (Terms.Bucket value : aggregation.getBuckets()) {
-      List<Aggregation> aggregationList = value.getAggregations().asList();
-      if (aggregationList.size() == 1) {
-        facet.put(value.getKeyAsString(), Math.round(((Sum) aggregationList.get(0)).getValue()));
-      } else {
-        facet.put(value.getKeyAsString(), value.getDocCount());
       }
     }
   }
@@ -212,20 +139,6 @@ public class Facets {
     }
   }
 
-  private void processSubAggregations(HasAggregations aggregation) {
-    if (Filter.class.isAssignableFrom(aggregation.getClass())) {
-      Filter filter = (Filter) aggregation;
-      if (filter.getName().startsWith(NO_DATA_PREFIX)) {
-        LinkedHashMap<String, Long> facet = getOrCreateFacet(filter.getName().replaceFirst(NO_DATA_PREFIX, ""));
-        facet.put("NO_DATA", ((Filter) aggregation).getDocCount());
-      }
-    }
-
-    for (Aggregation sub : getOrderedAggregations(aggregation)) {
-      processAggregation(sub);
-    }
-  }
-
   void processSubAggregationsV2(String parentName, Map<String, Aggregate> subAggregations) {
     if (subAggregations.isEmpty()) {
       return;
@@ -242,19 +155,6 @@ public class Facets {
     }
   }
 
-  private static List<Aggregation> getOrderedAggregations(HasAggregations topAggregation) {
-    String topAggregationName = ((Aggregation) topAggregation).getName();
-    List<Aggregation> orderedAggregations = new ArrayList<>();
-    for (Aggregation aggregation : topAggregation.getAggregations()) {
-      if (isNameMatchingTopAggregation(topAggregationName, aggregation.getName())) {
-        orderedAggregations.add(0, aggregation);
-      } else {
-        orderedAggregations.add(aggregation);
-      }
-    }
-    return orderedAggregations;
-  }
-
   private static boolean isNameMatchingTopAggregation(String topAggregationName, String aggregationName) {
     return aggregationName.equals(topAggregationName) ||
       aggregationName.equals(FILTER_BY_RULE_PREFIX + topAggregationName.replace(FILTER_SUFFIX, ""));
@@ -263,18 +163,6 @@ public class Facets {
   static boolean isNameMatchingParent(String parentName, String aggregationName) {
     return aggregationName.equals(parentName) ||
       aggregationName.equals(FILTER_BY_RULE_PREFIX + parentName.replace(FILTER_SUFFIX, ""));
-  }
-
-  private void processDateHistogram(Histogram aggregation) {
-    LinkedHashMap<String, Long> facet = getOrCreateFacet(aggregation.getName());
-    for (Histogram.Bucket value : aggregation.getBuckets()) {
-      String day = dateTimeToDate(value.getKeyAsString(), timeZone);
-      if (value.getAggregations().getAsMap().containsKey(FACET_MODE_EFFORT)) {
-        facet.put(day, Math.round(((Sum) value.getAggregations().get(FACET_MODE_EFFORT)).getValue()));
-      } else {
-        facet.put(day, value.getDocCount());
-      }
-    }
   }
 
   void processDateHistogramV2(String name, DateHistogramAggregate aggregation) {
@@ -306,26 +194,8 @@ public class Facets {
     return date.toInstant().atZone(timeZone).toLocalDate().toString();
   }
 
-  private void processSum(Sum aggregation) {
-    getOrCreateFacet(aggregation.getName()).put(TOTAL, Math.round(aggregation.getValue()));
-  }
-
   void processSumV2(String name, SumAggregate aggregation) {
     getOrCreateFacet(name).put(TOTAL, Math.round(aggregation.value()));
-  }
-
-  private void processMultiBucketAggregation(MultiBucketsAggregation aggregation) {
-    LinkedHashMap<String, Long> facet = getOrCreateFacet(aggregation.getName());
-    aggregation.getBuckets().forEach(bucket -> {
-      if (!bucket.getAggregations().asList().isEmpty()) {
-        Aggregation next = bucket.getAggregations().iterator().next();
-        if (next instanceof ReverseNested reverseNestedBucket) {
-          facet.put(bucket.getKeyAsString(), reverseNestedBucket.getDocCount());
-        }
-      } else {
-        facet.put(bucket.getKeyAsString(), bucket.getDocCount());
-      }
-    });
   }
 
   void processFilterAggregation(String name, FilterAggregate aggregation) {

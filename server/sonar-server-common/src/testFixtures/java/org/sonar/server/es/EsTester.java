@@ -41,6 +41,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.apache.http.HttpHost;
 import org.elasticsearch.ElasticsearchStatusException;
@@ -52,6 +54,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchScrollRequest;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.analysis.common.CommonAnalysisPlugin;
+import org.elasticsearch.client.Node;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
@@ -59,13 +62,11 @@ import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.cluster.routing.allocation.DiskThresholdSettings;
-import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.discovery.DiscoveryModule;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.env.NodeEnvironment;
-import org.elasticsearch.http.BindHttpException;
 import org.elasticsearch.http.HttpTransportSettings;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -122,7 +123,7 @@ public class EsTester extends ExternalResource implements AfterEachCallback {
     System.setProperty("log4j2.disable.jmx", "true");
     System.setProperty("log4j.skipJansi", "true"); // jython has this crazy shaded Jansi version that log4j2 tries to load
 
-    if (!Strings.hasLength(System.getProperty("tests.es.logger.level"))) {
+    if (StringUtils.isEmpty(System.getProperty("tests.es.logger.level"))) {
       System.setProperty("tests.es.logger.level", "WARN");
     }
   }

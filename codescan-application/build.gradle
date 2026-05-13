@@ -47,7 +47,6 @@ dependencies {
     // please keep list ordered
     api 'org.slf4j:slf4j-api'
 
-    api 'org.elasticsearch.client:elasticsearch-rest-high-level-client'
     api 'com.fasterxml.jackson.core:jackson-core'
     api 'org.sonarsource.api.plugin:sonar-plugin-api'
     api project(':server:sonar-ce')

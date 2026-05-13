@@ -20,8 +20,10 @@
 package org.sonar.server.es;
 
 import java.util.List;
-import org.elasticsearch.search.sort.FieldSortBuilder;
-import org.elasticsearch.search.sort.SortOrder;
+
+import co.elastic.clients.elasticsearch._types.FieldSort;
+import co.elastic.clients.elasticsearch._types.SortOptions;
+import co.elastic.clients.elasticsearch._types.SortOrder;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,9 +53,9 @@ public class SortingTest {
     Sorting sorting = new Sorting();
     sorting.add("updatedAt");
 
-    List<FieldSortBuilder> fields = sorting.fill("updatedAt", true);
+    List<SortOptions> fields = sorting.fill("updatedAt", true);
     assertThat(fields).hasSize(1);
-    expectField(fields.get(0), "updatedAt", "_first", SortOrder.ASC);
+    expectField(fields.get(0), "updatedAt", "_first", SortOrder.Asc);
   }
 
   @Test
@@ -61,9 +63,9 @@ public class SortingTest {
     Sorting sorting = new Sorting();
     sorting.add("updatedAt");
 
-    List<FieldSortBuilder> fields = sorting.fill("updatedAt", false);
+    List<SortOptions> fields = sorting.fill("updatedAt", false);
     assertThat(fields).hasSize(1);
-    expectField(fields.get(0), "updatedAt", "_last", SortOrder.DESC);
+    expectField(fields.get(0), "updatedAt", "_last", SortOrder.Desc);
   }
 
   @Test
@@ -71,9 +73,9 @@ public class SortingTest {
     Sorting sorting = new Sorting();
     sorting.add("updatedAt").missingLast();
 
-    List<FieldSortBuilder> fields = sorting.fill("updatedAt", true);
+    List<SortOptions> fields = sorting.fill("updatedAt", true);
     assertThat(fields).hasSize(1);
-    expectField(fields.get(0), "updatedAt", "_last", SortOrder.ASC);
+    expectField(fields.get(0), "updatedAt", "_last", SortOrder.Asc);
   }
 
   @Test
@@ -81,26 +83,26 @@ public class SortingTest {
     Sorting sorting = new Sorting();
     sorting.add("updatedAt").missingLast();
 
-    List<FieldSortBuilder> fields = sorting.fill("updatedAt", false);
+    List<SortOptions> fields = sorting.fill("updatedAt", false);
     assertThat(fields).hasSize(1);
-    expectField(fields.get(0), "updatedAt", "_first", SortOrder.DESC);
+    expectField(fields.get(0), "updatedAt", "_first", SortOrder.Desc);
   }
 
   @Test
   public void sort_on_multiple_fields() {
-    // asc => file asc, line asc, severity desc, key asc
+    // Asc => file Asc, line Asc, severity Desc, key Asc
     Sorting sorting = new Sorting();
     sorting.add("fileLine", "file");
     sorting.add("fileLine", "line");
     sorting.add("fileLine", "severity").reverse();
     sorting.add("fileLine", "key").missingLast();
 
-    List<FieldSortBuilder> fields = sorting.fill("fileLine", true);
+    List<SortOptions> fields = sorting.fill("fileLine", true);
     assertThat(fields).hasSize(4);
-    expectField(fields.get(0), "file", "_first", SortOrder.ASC);
-    expectField(fields.get(1), "line", "_first", SortOrder.ASC);
-    expectField(fields.get(2), "severity", "_first", SortOrder.DESC);
-    expectField(fields.get(3), "key", "_last", SortOrder.ASC);
+    expectField(fields.get(0), "file", "_first", SortOrder.Asc);
+    expectField(fields.get(1), "line", "_first", SortOrder.Asc);
+    expectField(fields.get(2), "severity", "_first", SortOrder.Desc);
+    expectField(fields.get(3), "key", "_last", SortOrder.Asc);
   }
 
   @Test
@@ -121,13 +123,14 @@ public class SortingTest {
     Sorting sorting = new Sorting();
     sorting.addDefault("file");
 
-    List<FieldSortBuilder> fields = sorting.fillDefault();
+    List<SortOptions> fields = sorting.fillDefault();
     assertThat(fields).hasSize(1);
   }
 
-  private void expectField(FieldSortBuilder field, String expectedField, String expectedMissing, SortOrder expectedSort) {
-    assertThat(field.getFieldName()).isEqualTo(expectedField);
-    assertThat(field.missing()).isEqualTo(expectedMissing);
+  private void expectField(SortOptions sortOptions, String expectedField, String expectedMissing, SortOrder expectedSort) {
+    FieldSort field = sortOptions.field();
+    assertThat(field.field()).isEqualTo(expectedField);
+    assertThat(field.missing().stringValue()).isEqualTo(expectedMissing);
     assertThat(field.order()).isEqualTo(expectedSort);
   }
 }

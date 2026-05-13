@@ -122,6 +122,7 @@ public class PermissionIndexer implements EventIndexer {
     return items;
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private void index(Collection<IndexPermissions> authorizations, Stream<AuthorizationScope> scopes, Size bulkSize) {
     if (authorizations.isEmpty()) {
       return;
@@ -131,7 +132,7 @@ public class PermissionIndexer implements EventIndexer {
     scopes.forEach(scope -> {
       IndexType indexType = scope.getIndexType();
 
-      BulkIndexer bulkIndexer = new BulkIndexer(esClient, indexType, bulkSize);
+      BulkIndexer bulkIndexer = new BulkIndexer(esClient, indexType, bulkSize, Object.class);
       bulkIndexer.start();
 
       authorizations.stream()
@@ -143,6 +144,7 @@ public class PermissionIndexer implements EventIndexer {
     });
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Override
   public IndexingResult index(DbSession dbSession, Collection<EsQueueDto> items) {
     IndexingResult result = new IndexingResult();
@@ -152,7 +154,7 @@ public class PermissionIndexer implements EventIndexer {
       .distinct()
       .map(indexTypeByFormat::get)
       .filter(Objects::nonNull)
-      .map(indexType -> new BulkIndexer(esClient, indexType, Size.REGULAR, new OneToOneResilientIndexingListener(dbClient, dbSession, items)))
+      .map(indexType -> new BulkIndexer(esClient, indexType, Size.REGULAR, new OneToOneResilientIndexingListener(dbClient, dbSession, items), Object.class))
       .toList();
 
     if (bulkIndexers.isEmpty()) {

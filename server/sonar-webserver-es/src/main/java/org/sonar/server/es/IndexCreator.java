@@ -19,6 +19,7 @@
  */
 package org.sonar.server.es;
 
+import co.elastic.clients.elasticsearch._types.HealthStatus;
 import co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
 import co.elastic.clients.elasticsearch.indices.IndexSettings;
 import co.elastic.clients.elasticsearch.indices.PutMappingResponse;
@@ -32,7 +33,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.Startable;
@@ -71,6 +71,7 @@ public class IndexCreator implements Startable {
     this.esDbCompatibility = esDbCompatibility;
   }
 
+  @SuppressWarnings("rawtypes")
   @Override
   public void start() {
     // create the "metadata" index first
@@ -156,14 +157,15 @@ public class IndexCreator implements Startable {
 
     CreateIndexResponse indexResponse = client.createIndexV2(cir -> cir
       .index(index.getName())
-      .withJson(new StringReader("{\"settings\":" + builtIndex.getSettings().toString() + "}"))
+      .settings(builtIndex.getSettings())
+//      .withJson(new StringReader("{\"settings\":" + builtIndex.getSettings().toString() + "}"))
     );
 
     if (!indexResponse.acknowledged()) {
       throw new IllegalStateException("Failed to create index [" + index.getName() + "]");
     }
 
-    client.waitForStatus(ClusterHealthStatus.YELLOW);
+    client.waitForStatusV2(HealthStatus.Yellow);
 
     LOGGER.info("Create mapping {}", builtIndex.getMainType().getIndex().getName());
 
@@ -183,7 +185,7 @@ public class IndexCreator implements Startable {
     if (!putMappingResponse.acknowledged()) {
       throw new IllegalStateException("Failed to create mapping " + builtIndex.getMainType().getIndex().getName());
     }
-    client.waitForStatus(ClusterHealthStatus.YELLOW);
+    client.waitForStatusV2(HealthStatus.Yellow);
   }
 
   private void deleteIndex(String indexName) {
@@ -206,6 +208,7 @@ public class IndexCreator implements Startable {
       }).orElse(true);
   }
 
+  @SuppressWarnings("rawtypes")
   private void checkDbCompatibility(Collection<BuiltIndex> definitions) {
     List<String> existingIndices = loadExistingIndicesExceptMetadata(definitions);
     if (!existingIndices.isEmpty()) {
@@ -221,6 +224,7 @@ public class IndexCreator implements Startable {
     esDbCompatibility.markAsCompatible();
   }
 
+  @SuppressWarnings("rawtypes")
   private List<String> loadExistingIndicesExceptMetadata(Collection<BuiltIndex> definitions) {
     Set<String> definedNames = definitions.stream()
       .map(t -> t.getMainType().getIndex().getName())

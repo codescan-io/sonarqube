@@ -143,6 +143,7 @@ public class ProjectMeasuresIndexer implements EventIndexer, AnalysisIndexer, Ne
     return index(dbSession, items);
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Override
   public IndexingResult index(DbSession dbSession, Collection<EsQueueDto> items) {
     if (items.isEmpty()) {
@@ -170,6 +171,7 @@ public class ProjectMeasuresIndexer implements EventIndexer, AnalysisIndexer, Ne
     return bulkIndexer.stop();
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private void doIndex(Size size, @Nullable String branchUuid) {
 
     try (DbSession dbSession = dbClient.openSession(false)) {
@@ -195,8 +197,9 @@ public class ProjectMeasuresIndexer implements EventIndexer, AnalysisIndexer, Ne
     }
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private BulkIndexer createBulkIndexer(Size bulkSize, IndexingListener listener) {
-    return new BulkIndexer(esClient, TYPE_PROJECT_MEASURES, bulkSize, listener);
+    return new BulkIndexer(esClient, TYPE_PROJECT_MEASURES, bulkSize, listener, Object.class);
   }
 
   private static ProjectMeasuresDoc toProjectMeasuresDoc(ProjectMeasures projectMeasures) {

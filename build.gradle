@@ -221,7 +221,6 @@ subprojects {
   ext {
     protobufVersion = '4.28.2'
     springVersion = '5.3.39'
-    elasticSearchClientVersion = '7.17.29' // Old REST High Level Client (to be removed)
     elasticSearchJavaClientVersion = '9.2.8' // New Java API Client
   }
 
@@ -433,19 +432,12 @@ subprojects {
         entry 'jetty-server'
         entry 'jetty-servlet'
       }
-      // Old Elasticsearch REST High Level Client (7.x) - Keep temporarily for compatibility
-      dependency("org.elasticsearch.client:elasticsearch-rest-high-level-client:${elasticSearchClientVersion}") {
-        exclude 'org.apache.logging.log4j:log4j-core'
-        exclude 'org.elasticsearch:jna'
-        exclude 'com.fasterxml.jackson.core:jackson-core'
-        exclude 'org.lz4:lz4-java'
-      }
       dependency 'com.fasterxml.jackson.core:jackson-core:2.21.2'
-      dependency "org.elasticsearch.plugin:transport-netty4-client:${elasticSearchClientVersion}"
       dependency 'org.elasticsearch:mocksocket:1.2'
 
       // New Elasticsearch Java API Client (8.x) - For migration
       dependency "co.elastic.clients:elasticsearch-java:${elasticSearchJavaClientVersion}"
+      dependency "org.elasticsearch.client:elasticsearch-rest-client:${elasticSearchJavaClientVersion}"
       dependency 'org.eclipse.jgit:org.eclipse.jgit:7.4.0.202509020913-r'
       dependency 'org.eclipse.jgit:org.eclipse.jgit:7.3.0.202506031305-r'
       dependency "org.codelibs.elasticsearch.module:analysis-common:7.17.22"

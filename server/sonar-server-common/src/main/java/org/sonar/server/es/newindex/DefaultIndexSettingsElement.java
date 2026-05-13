@@ -19,12 +19,12 @@
  */
 package org.sonar.server.es.newindex;
 
+import co.elastic.clients.elasticsearch.indices.IndexSettings;
+import co.elastic.clients.json.JsonData;
 import com.google.common.collect.ImmutableSortedMap;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.SortedMap;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.settings.Settings.Builder;
 
 import static org.sonar.server.es.newindex.DefaultIndexSettings.ANALYSIS;
 import static org.sonar.server.es.newindex.DefaultIndexSettings.ANALYZER;
@@ -297,7 +297,7 @@ public enum DefaultIndexSettingsElement {
   private final String type;
   private final String name;
 
-  private Builder builder = Settings.builder();
+  private IndexSettings.Builder builder = new IndexSettings.Builder();
 
   DefaultIndexSettingsElement(String type) {
     this.type = type;
@@ -330,18 +330,18 @@ public enum DefaultIndexSettingsElement {
   }
 
   private void put(String setting, String value) {
-    builder = builder.put(setting, value);
+    builder = builder.otherSettings(setting, JsonData.of(value));
   }
 
   private void putList(String setting, String... values) {
-    builder = builder.putList(setting, values);
+    builder = builder.otherSettings(setting, JsonData.of(Arrays.asList(values)));
   }
 
   private String localName(String settingSuffix) {
     return ANALYSIS + DELIMITER + type + DELIMITER + name + DELIMITER + settingSuffix;
   }
 
-  public Settings settings() {
+  public IndexSettings settings() {
     return builder.build();
   }
 

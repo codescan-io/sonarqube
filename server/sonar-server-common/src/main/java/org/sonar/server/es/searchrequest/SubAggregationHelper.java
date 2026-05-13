@@ -20,17 +20,18 @@
 package org.sonar.server.es.searchrequest;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
-import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.BucketOrder;
-import org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
-import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+
+import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import co.elastic.clients.elasticsearch._types.aggregations.TermsAggregation;
+import co.elastic.clients.util.NamedValue;
 import org.sonar.server.es.EsUtils;
 import org.sonar.server.es.Facets;
 
@@ -39,62 +40,68 @@ import static java.util.Optional.of;
 
 public class SubAggregationHelper {
   private static final int TERM_AGGREGATION_MIN_DOC_COUNT = 1;
-  private static final BucketOrder ORDER_BY_BUCKET_SIZE_DESC = BucketOrder.count(false);
+  private static final NamedValue<SortOrder> ORDER_BY_BUCKET_SIZE_DESC = NamedValue.of("_count", SortOrder.Desc);
   /** In some cases the user selects >15 items for one facet. In that case, we want to calculate the doc count for all of them (not just the first 15 items, which would be the
    * default for the TermsAggregation). */
   private static final int MAXIMUM_NUMBER_OF_SELECTED_ITEMS_WHOSE_DOC_COUNT_WILL_BE_CALCULATED = 50;
   private static final Collector<CharSequence, ?, String> PIPE_JOINER = Collectors.joining("|");
 
   @CheckForNull
-  private final AbstractAggregationBuilder<?> subAggregation;
-  private final BucketOrder order;
+  private final Aggregation subAggregation;
+  private final NamedValue<SortOrder> order;
 
   public SubAggregationHelper() {
     this(null, null);
   }
 
-  public SubAggregationHelper(@Nullable AbstractAggregationBuilder<?> subAggregation) {
+  public SubAggregationHelper(@Nullable Aggregation subAggregation) {
     this(subAggregation, null);
   }
 
-  public SubAggregationHelper(@Nullable AbstractAggregationBuilder<?> subAggregation, @Nullable BucketOrder order) {
+  public SubAggregationHelper(@Nullable Aggregation subAggregation, @Nullable NamedValue<SortOrder> order) {
     this.subAggregation = subAggregation;
     this.order = order == null ? ORDER_BY_BUCKET_SIZE_DESC : order;
   }
 
-  public TermsAggregationBuilder buildTermsAggregation(String name,
+  public Aggregation buildTermsAggregation(String name,
     TopAggregationDefinition<?> topAggregation, @Nullable Integer numberOfTerms) {
-    TermsAggregationBuilder termsAggregation = AggregationBuilders.terms(name)
+    TermsAggregation.Builder termsAggregationBuilder = new TermsAggregation.Builder()
       .field(topAggregation.getFilterScope().getFieldName())
       .order(order)
       .minDocCount(TERM_AGGREGATION_MIN_DOC_COUNT);
     if (numberOfTerms != null) {
-      termsAggregation.size(numberOfTerms);
+      termsAggregationBuilder.size(numberOfTerms);
     }
+    Aggregation.Builder.ContainerBuilder aggregation = new Aggregation.Builder()
+      .terms(termsAggregationBuilder.build());
     if (subAggregation != null) {
-      termsAggregation = termsAggregation.subAggregation(subAggregation);
+      aggregation.aggregations(name, subAggregation);
     }
-    return termsAggregation;
+    return aggregation.build();
   }
 
-  public <T> Optional<TermsAggregationBuilder> buildSelectedItemsAggregation(String name, TopAggregationDefinition<?> topAggregation, T[] selected) {
-    if (selected.length <= 0) {
+  public <T> Optional<Aggregation> buildSelectedItemsAggregation(String name, TopAggregationDefinition<?> topAggregation, T[] selected) {
+    if (selected.length == 0) {
       return Optional.empty();
     }
 
-    String includes = Arrays.stream(selected)
+    List<String> includes = Arrays.stream(selected)
       .filter(Objects::nonNull)
       .map(s -> EsUtils.escapeSpecialRegexChars(s.toString()))
-      .collect(PIPE_JOINER);
+      .toList();
 
-    TermsAggregationBuilder selectedTerms = AggregationBuilders.terms(name + Facets.SELECTED_SUB_AGG_NAME_SUFFIX)
-      .size(max(MAXIMUM_NUMBER_OF_SELECTED_ITEMS_WHOSE_DOC_COUNT_WILL_BE_CALCULATED, includes.length()))
+    TermsAggregation termsAggregation = TermsAggregation.of(b -> b
       .field(topAggregation.getFilterScope().getFieldName())
-      .includeExclude(new IncludeExclude(includes, null));
+      .size(max(MAXIMUM_NUMBER_OF_SELECTED_ITEMS_WHOSE_DOC_COUNT_WILL_BE_CALCULATED, includes.size()))
+      .include(i -> i
+        .terms(includes)
+      )
+    );
+    Aggregation.Builder.ContainerBuilder selectedTerms = new Aggregation.Builder()
+      .terms(termsAggregation);
     if (subAggregation != null) {
-      selectedTerms = selectedTerms.subAggregation(subAggregation);
+      selectedTerms.aggregations(name + Facets.SELECTED_SUB_AGG_NAME_SUFFIX, subAggregation);
     }
-
-    return of(selectedTerms);
+    return of(selectedTerms.build());
   }
 }

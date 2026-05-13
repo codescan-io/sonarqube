@@ -19,13 +19,16 @@
  */
 package org.sonar.server.es.searchrequest;
 
+import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
-import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.BucketOrder;
-import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+
+import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import co.elastic.clients.elasticsearch._types.aggregations.AggregationBuilders;
+import co.elastic.clients.elasticsearch._types.aggregations.TermsAggregation;
+import co.elastic.clients.util.NamedValue;
 import org.junit.Test;
 
 import static org.apache.commons.lang3.RandomStringUtils.secure;
@@ -33,14 +36,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.sonar.server.es.searchrequest.TopAggregationHelperTest.DEFAULT_BUCKET_SIZE;
 
 public class SubAggregationHelperTest {
-  private static final BucketOrder ES_BUILTIN_TIE_BREAKER = BucketOrder.key(true);
-  private static final BucketOrder SQ_DEFAULT_BUCKET_ORDER = BucketOrder.count(false);
+  private static final NamedValue<SortOrder> ES_BUILTIN_TIE_BREAKER = NamedValue.of("_key", SortOrder.Asc);
+  private static final NamedValue<SortOrder> SQ_DEFAULT_BUCKET_ORDER = NamedValue.of("_count", SortOrder.Desc);
 
-  private AbstractAggregationBuilder<?> customSubAgg = AggregationBuilders.sum("foo");
-  private SubAggregationHelper underTest = new SubAggregationHelper();
-  private BucketOrder customOrder = BucketOrder.count(true);
-  private SubAggregationHelper underTestWithCustomSubAgg = new SubAggregationHelper(customSubAgg);
-  private SubAggregationHelper underTestWithCustomsSubAggAndOrder = new SubAggregationHelper(customSubAgg, customOrder);
+  private final Aggregation customSubAgg = AggregationBuilders.sum(s -> s);
+  private final SubAggregationHelper underTest = new SubAggregationHelper();
+  private final NamedValue<SortOrder> customOrder = NamedValue.of("_count", SortOrder.Asc);
+  private final SubAggregationHelper underTestWithCustomSubAgg = new SubAggregationHelper(customSubAgg);
+  private final SubAggregationHelper underTestWithCustomsSubAggAndOrder = new SubAggregationHelper(customSubAgg, customOrder);
 
   @Test
   public void buildTermsAggregation_adds_term_subaggregation_with_minDoc_1_and_default_sort() {
@@ -51,13 +54,18 @@ public class SubAggregationHelperTest {
       underTest,
       underTestWithCustomSubAgg)
       .forEach(t -> {
-        TermsAggregationBuilder agg = t.buildTermsAggregation(aggName, topAggregation, null);
+        Aggregation agg = t.buildTermsAggregation(aggName, topAggregation, null);
 
-        assertThat(agg.getName()).isEqualTo(aggName);
-        assertThat(agg.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
-        assertThat(agg.size()).isEqualTo(DEFAULT_BUCKET_SIZE);
-        assertThat(agg.minDocCount()).isOne();
-        assertThat(agg.order()).isEqualTo(BucketOrder.compound(SQ_DEFAULT_BUCKET_ORDER, ES_BUILTIN_TIE_BREAKER));
+        TermsAggregation terms = agg.terms();
+        assertThat(terms.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
+        assertThat(terms.size()).isEqualTo(DEFAULT_BUCKET_SIZE);
+        assertThat(terms.minDocCount()).isOne();
+        assertThat(terms.order()).isEqualTo(List.of(SQ_DEFAULT_BUCKET_ORDER, ES_BUILTIN_TIE_BREAKER));
+
+        if (t == underTestWithCustomSubAgg) {
+          Aggregation subAgg = agg.aggregations().get(aggName);
+          assertThat(subAgg).isEqualTo(customSubAgg);
+        }
       });
   }
 
@@ -66,11 +74,14 @@ public class SubAggregationHelperTest {
     String aggName = secure().nextAlphabetic(10);
     SimpleFieldTopAggregationDefinition topAggregation = new SimpleFieldTopAggregationDefinition("bar", false);
 
-    TermsAggregationBuilder agg = underTestWithCustomsSubAggAndOrder.buildTermsAggregation(aggName, topAggregation, null);
+    Aggregation agg = underTestWithCustomsSubAggAndOrder.buildTermsAggregation(aggName, topAggregation, null);
 
-    assertThat(agg.getName()).isEqualTo(aggName);
-    assertThat(agg.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
-    assertThat(agg.order()).isEqualTo(BucketOrder.compound(customOrder, ES_BUILTIN_TIE_BREAKER));
+    TermsAggregation terms = agg.terms();
+    assertThat(terms.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
+    assertThat(terms.order()).isEqualTo(List.of(customOrder, ES_BUILTIN_TIE_BREAKER));
+
+    Aggregation subAgg = agg.aggregations().get(aggName);
+    assertThat(subAgg).isEqualTo(customSubAgg);
   }
 
   @Test
@@ -82,12 +93,14 @@ public class SubAggregationHelperTest {
       underTestWithCustomSubAgg,
       underTestWithCustomsSubAggAndOrder)
       .forEach(t -> {
-        TermsAggregationBuilder agg = t.buildTermsAggregation(aggName, topAggregation, null);
+        Aggregation agg = t.buildTermsAggregation(aggName, topAggregation, null);
 
-        assertThat(agg.getName()).isEqualTo(aggName);
-        assertThat(agg.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
-        assertThat(agg.getSubAggregations()).hasSize(1);
-        assertThat(agg.getSubAggregations().iterator().next()).isSameAs(customSubAgg);
+        TermsAggregation terms = agg.terms();
+        assertThat(terms.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
+
+        assertThat(agg.aggregations()).hasSize(1);
+        Aggregation subAgg = agg.aggregations().get(aggName);
+        assertThat(subAgg).isSameAs(customSubAgg);
       });
   }
 
@@ -102,11 +115,16 @@ public class SubAggregationHelperTest {
       underTestWithCustomSubAgg,
       underTestWithCustomsSubAggAndOrder)
       .forEach(t -> {
-        TermsAggregationBuilder agg = t.buildTermsAggregation(aggName, topAggregation, customSize);
+        Aggregation agg = t.buildTermsAggregation(aggName, topAggregation, customSize);
 
-        assertThat(agg.getName()).isEqualTo(aggName);
-        assertThat(agg.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
-        assertThat(agg.size()).isEqualTo(customSize);
+        TermsAggregation terms = agg.terms();
+        assertThat(terms.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
+        assertThat(terms.size()).isEqualTo(customSize);
+
+        if (t != underTest) {
+          Aggregation subAgg = agg.aggregations().get(aggName);
+          assertThat(subAgg).isEqualTo(customSubAgg);
+        }
       });
   }
 
@@ -128,12 +146,15 @@ public class SubAggregationHelperTest {
     SimpleFieldTopAggregationDefinition topAggregation = new SimpleFieldTopAggregationDefinition("bar", false);
     String[] selected = randomNonEmptySelected();
 
-    TermsAggregationBuilder agg = underTestWithCustomsSubAggAndOrder.buildSelectedItemsAggregation(aggName, topAggregation, selected)
+    Aggregation agg = underTestWithCustomsSubAggAndOrder.buildSelectedItemsAggregation(aggName, topAggregation, selected)
       .get();
 
-    assertThat(agg.getName()).isEqualTo(aggName + "_selected");
-    assertThat(agg.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
-    assertThat(agg.order()).isEqualTo(BucketOrder.compound(SQ_DEFAULT_BUCKET_ORDER, ES_BUILTIN_TIE_BREAKER));
+    TermsAggregation terms = agg.terms();
+    assertThat(terms.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
+    assertThat(terms.order()).isEqualTo(List.of(SQ_DEFAULT_BUCKET_ORDER, ES_BUILTIN_TIE_BREAKER));
+
+    Aggregation subAgg = agg.aggregations().get(aggName + "_selected");
+    assertThat(subAgg).isEqualTo(customSubAgg);
   }
 
   @Test
@@ -146,12 +167,14 @@ public class SubAggregationHelperTest {
       underTestWithCustomSubAgg,
       underTestWithCustomsSubAggAndOrder)
       .forEach(t -> {
-        TermsAggregationBuilder agg = t.buildSelectedItemsAggregation(aggName, topAggregation, selected).get();
+        Aggregation agg = t.buildSelectedItemsAggregation(aggName, topAggregation, selected).get();
 
-        assertThat(agg.getName()).isEqualTo(aggName + "_selected");
-        assertThat(agg.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
-        assertThat(agg.getSubAggregations()).hasSize(1);
-        assertThat(agg.getSubAggregations().iterator().next()).isSameAs(customSubAgg);
+        TermsAggregation terms = agg.terms();
+        assertThat(terms.field()).isEqualTo(topAggregation.getFilterScope().getFieldName());
+
+        assertThat(agg.aggregations()).hasSize(1);
+        Aggregation subAgg = agg.aggregations().get(aggName + "_selected");
+        assertThat(subAgg).isSameAs(customSubAgg);
       });
   }
 

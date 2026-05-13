@@ -57,6 +57,7 @@ class IndexDefinitionHash {
     return DigestUtils.sha256Hex(sb.toString());
   }
 
+  @SuppressWarnings("rawtypes")
   private static void appendMap(StringBuilder sb, Map<?, ?> attributes) {
     for (Object entry : sort(attributes).entrySet()) {
       sb.append(((Map.Entry) entry).getKey());

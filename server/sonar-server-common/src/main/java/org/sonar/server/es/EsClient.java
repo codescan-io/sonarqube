@@ -23,33 +23,12 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.HealthStatus;
 import co.elastic.clients.elasticsearch.cluster.HealthRequest;
 import co.elastic.clients.elasticsearch.cluster.HealthResponse;
-import co.elastic.clients.elasticsearch.core.ClearScrollRequest;
-import co.elastic.clients.elasticsearch.core.ClearScrollResponse;
-import co.elastic.clients.elasticsearch.core.DeleteRequest;
-import co.elastic.clients.elasticsearch.core.DeleteResponse;
-import co.elastic.clients.elasticsearch.core.GetRequest;
-import co.elastic.clients.elasticsearch.core.GetResponse;
-import co.elastic.clients.elasticsearch.core.IndexRequest;
-import co.elastic.clients.elasticsearch.core.IndexResponse;
-import co.elastic.clients.elasticsearch.core.ScrollRequest;
-import co.elastic.clients.elasticsearch.core.ScrollResponse;
-import co.elastic.clients.elasticsearch.indices.ClearCacheRequest;
-import co.elastic.clients.elasticsearch.indices.ClearCacheResponse;
-import co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
+import co.elastic.clients.elasticsearch.core.*;
+import co.elastic.clients.elasticsearch.indices.*;
 import co.elastic.clients.elasticsearch.indices.ExistsRequest;
-import co.elastic.clients.elasticsearch.indices.ForcemergeRequest;
-import co.elastic.clients.elasticsearch.indices.ForcemergeResponse;
-import co.elastic.clients.elasticsearch.indices.GetIndexResponse;
-import co.elastic.clients.elasticsearch.indices.GetMappingRequest;
-import co.elastic.clients.elasticsearch.indices.GetMappingResponse;
-import co.elastic.clients.elasticsearch.indices.PutIndicesSettingsRequest;
-import co.elastic.clients.elasticsearch.indices.PutIndicesSettingsResponse;
-import co.elastic.clients.elasticsearch.indices.PutMappingRequest;
-import co.elastic.clients.elasticsearch.indices.PutMappingResponse;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import co.elastic.clients.util.ObjectBuilder;
-import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -73,24 +52,10 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.apache.http.util.EntityUtils;
-import org.elasticsearch.action.ActionListener;
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchScrollRequest;
-import org.elasticsearch.client.Cancellable;
 import org.elasticsearch.client.Request;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.Requests;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.cluster.health.ClusterHealthStatus;
-import org.elasticsearch.common.Priority;
 import org.jetbrains.annotations.NotNull;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -110,9 +75,6 @@ public class EsClient implements Closeable {
   public static final Logger LOGGER = Loggers.get("es");
   private static final String ES_USERNAME = "elastic";
 
-  // Old client - to be deprecated
-  private final RestHighLevelClient restHighLevelClient;
-
   // New Java API Client
   private final ElasticsearchClient elasticsearchClient;
   private final RestClient restClient;
@@ -130,7 +92,6 @@ public class EsClient implements Closeable {
   EsClient(RestClient restClient) {
     //The restClient is shared by both the old and the new client, by extracting it we have one less dependency on the RestHighLevelClient
     this.restClient = restClient;
-    this.restHighLevelClient = new MinimalRestHighLevelClient(restClient);
 
     // Create new Java API Client using the same RestClient
     RestClientTransport transport = new RestClientTransport(this.restClient, new JacksonJsonpMapper());
@@ -145,43 +106,9 @@ public class EsClient implements Closeable {
    * @param fn A function that configures the bulk request using the new API builder
    * @return The bulk response from Elasticsearch
    */
-  public co.elastic.clients.elasticsearch.core.BulkResponse bulkV2(
-    Function<co.elastic.clients.elasticsearch.core.BulkRequest.Builder,
-      ObjectBuilder<co.elastic.clients.elasticsearch.core.BulkRequest>> fn) {
+  public BulkResponse bulkV2(
+    Function<BulkRequest.Builder, ObjectBuilder<BulkRequest>> fn) {
     return execute(() -> elasticsearchClient.bulk(fn));
-  }
-
-  /**
-   * @deprecated Use {@link #bulkV2(java.util.function.Function)} instead. This method uses the old Elasticsearch API.
-   */
-  @Deprecated(since = "2024.12", forRemoval = true)
-  public Cancellable bulkAsync(BulkRequest bulkRequest, ActionListener<BulkResponse> listener) {
-    return restHighLevelClient.bulkAsync(bulkRequest, RequestOptions.DEFAULT, listener);
-  }
-
-  /**
-   * @deprecated Use the new API search methods directly. This method uses the old Elasticsearch API.
-   */
-  @Deprecated(since = "2024.12", forRemoval = true)
-  public static SearchRequest prepareSearch(String indexName) {
-    return Requests.searchRequest(indexName);
-  }
-
-  /**
-   * @deprecated Use the new API search methods directly. This method uses the old Elasticsearch API.
-   */
-  @Deprecated(since = "2024.12", forRemoval = true)
-  public static SearchRequest prepareSearch(IndexType.IndexMainType mainType) {
-    return Requests.searchRequest(mainType.getIndex().getName());
-  }
-
-  /**
-   * @deprecated Use {@link #searchV2(java.util.function.Function, Class)} instead. This method uses the old Elasticsearch API.
-   */
-  @Deprecated(since = "2024.12", forRemoval = true)
-  public SearchResponse search(SearchRequest searchRequest) {
-    return execute(() -> restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(searchRequest));
   }
 
   /**
@@ -191,24 +118,14 @@ public class EsClient implements Closeable {
    * @param tDocumentClass The class of the document type to return
    * @return The search response from Elasticsearch
    */
-  public <T> co.elastic.clients.elasticsearch.core.SearchResponse<T> searchV2(
-    Function<co.elastic.clients.elasticsearch.core.SearchRequest.Builder,
-      ObjectBuilder<co.elastic.clients.elasticsearch.core.SearchRequest>> fn,
+  public <T> SearchResponse<T> searchV2(
+    Function<SearchRequest.Builder, ObjectBuilder<SearchRequest>> fn,
     Class<T> tDocumentClass) {
     return execute(() -> elasticsearchClient.search(fn, tDocumentClass));
   }
 
-  /**
-   * @deprecated Use {@link #scrollV2(Function)} instead. This method uses the old Elasticsearch API.
-   */
-  @Deprecated(since = "2024.12", forRemoval = true)
-  public SearchResponse scroll(SearchScrollRequest searchScrollRequest) {
-    return execute(() -> restHighLevelClient.scroll(searchScrollRequest, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(searchScrollRequest));
-  }
-
-  public ScrollResponse<Void> scrollV2(Function<ScrollRequest.Builder, ObjectBuilder<ScrollRequest>> fn) {
-    return execute(() -> elasticsearchClient.scroll(fn, Void.class));
+  public <T> ScrollResponse<T> scrollV2(Function<ScrollRequest.Builder, ObjectBuilder<ScrollRequest>> fn, Class<T> tClass) {
+    return execute(() -> elasticsearchClient.scroll(fn, tClass));
   }
 
   /**
@@ -231,7 +148,7 @@ public class EsClient implements Closeable {
     return execute(() -> elasticsearchClient.delete(fn));
   }
 
-  public co.elastic.clients.elasticsearch.indices.RefreshResponse refreshV2(Index... indices) {
+  public RefreshResponse refreshV2(Index... indices) {
     List<String> indexNames = Arrays.stream(indices).map(Index::getName).toList();
     return execute(() -> elasticsearchClient.indices().refresh(rr -> rr.index(indexNames)));
   }
@@ -337,15 +254,6 @@ public class EsClient implements Closeable {
   }
 
   /**
-   * @deprecated Use {@link #clusterHealthV2(java.util.function.Function)} instead. This method uses the old Elasticsearch API.
-   */
-  @Deprecated(since = "2024.12", forRemoval = true)
-  public ClusterHealthResponse clusterHealth(ClusterHealthRequest clusterHealthRequest) {
-    return execute(() -> restHighLevelClient.cluster().health(clusterHealthRequest, RequestOptions.DEFAULT),
-      () -> computeDetailsAsString(clusterHealthRequest));
-  }
-
-  /**
    * Get cluster health using the new Elasticsearch Java API Client (8.x).
    *
    * @param fn A function that configures the cluster health request using the new API builder
@@ -353,14 +261,6 @@ public class EsClient implements Closeable {
    */
   public HealthResponse clusterHealthV2(Function<HealthRequest.Builder, ObjectBuilder<HealthRequest>> fn) {
     return execute(() -> elasticsearchClient.cluster().health(fn));
-  }
-
-  /**
-   * @deprecated Use {@link #waitForStatusV2(HealthStatus)} instead. This method uses the old Elasticsearch API.
-   */
-  @Deprecated(since = "2024.12", forRemoval = true)
-  public void waitForStatus(ClusterHealthStatus clusterHealthStatus) {
-    clusterHealth(new ClusterHealthRequest().waitForEvents(Priority.LANGUID).waitForStatus(clusterHealthStatus));
   }
 
   /**
@@ -425,7 +325,7 @@ public class EsClient implements Closeable {
   @Override
   public void close() {
     try {
-      restHighLevelClient.close();
+      restClient.close();
     } catch (IOException e) {
       throw new ElasticsearchException("Could not close ES Rest high level client", e);
     }
@@ -436,17 +336,17 @@ public class EsClient implements Closeable {
    *
    * @return native ES client object
    */
-  RestHighLevelClient nativeClient() {
-    return restHighLevelClient;
+  RestClient nativeClient() {
+    return restClient;
   }
 
-  static class MinimalRestHighLevelClient extends RestHighLevelClient {
+  ElasticsearchClient client() {
+    return elasticsearchClient;
+  }
+
+  static class MinimalRestHighLevelClient {
     private static final int CONNECT_TIMEOUT = 5000;
     private static final int SOCKET_TIMEOUT = 60000;
-
-    MinimalRestHighLevelClient(RestClient restClient) {
-      super(restClient, RestClient::close, Lists.newArrayList(), true);
-    }
 
     @NotNull
     static RestClientBuilder buildHttpClient(@Nullable String searchPassword, @Nullable String keyStorePath,

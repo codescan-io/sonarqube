@@ -19,6 +19,7 @@
  */
 package org.sonar.server.component.index;
 
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
 import java.util.Collection;
@@ -27,9 +28,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
@@ -132,7 +130,7 @@ public class EntityDefinitionIndexer implements EventIndexer, AnalysisIndexer, N
     }
 
     OneToManyResilientIndexingListener listener = new OneToManyResilientIndexingListener(dbClient, dbSession, items);
-    BulkIndexer bulkIndexer = new BulkIndexer(esClient, TYPE_COMPONENT, Size.REGULAR, listener);
+    BulkIndexer bulkIndexer = new BulkIndexer(esClient, TYPE_COMPONENT, Size.REGULAR, listener, Object.class);
     bulkIndexer.start();
     Set<String> entityUuids = items.stream().map(EsQueueDto::getDocId).collect(Collectors.toSet());
     Set<String> remaining = new HashSet<>(entityUuids);
@@ -154,7 +152,7 @@ public class EntityDefinitionIndexer implements EventIndexer, AnalysisIndexer, N
    *               <b>Warning:</b> only use {@code null} during startup.
    */
   private void doIndexByEntityUuid(EntityDto entity) {
-    BulkIndexer bulk = new BulkIndexer(esClient, TYPE_COMPONENT, Size.REGULAR);
+    BulkIndexer bulk = new BulkIndexer(esClient, TYPE_COMPONENT, Size.REGULAR, Object.class);
     bulk.start();
 
     try (DbSession dbSession = dbClient.openSession(false)) {
@@ -170,7 +168,7 @@ public class EntityDefinitionIndexer implements EventIndexer, AnalysisIndexer, N
   }
 
   private void doIndexByEntityUuid(Size bulkSize) {
-    BulkIndexer bulk = new BulkIndexer(esClient, TYPE_COMPONENT, bulkSize);
+    BulkIndexer bulk = new BulkIndexer(esClient, TYPE_COMPONENT, bulkSize, Object.class);
     bulk.start();
     try (DbSession dbSession = dbClient.openSession(false)) {
       dbClient.entityDao().scrollForIndexing(dbSession, context -> {
@@ -183,15 +181,22 @@ public class EntityDefinitionIndexer implements EventIndexer, AnalysisIndexer, N
   }
 
   private static void addProjectDeletionToBulkIndexer(BulkIndexer bulkIndexer, String projectUuid) {
-    SearchRequest searchRequest = EsClient.prepareSearch(TYPE_COMPONENT.getMainType())
-      .source(new SearchSourceBuilder().query(QueryBuilders.termQuery(ComponentIndexDefinition.FIELD_UUID, projectUuid)))
-      .routing(AuthorizationDoc.idOf(projectUuid));
+    SearchRequest searchRequest = SearchRequest.of(b -> b
+      .index(TYPE_COMPONENT.getMainType().getIndex().getName())
+      .query(q -> q
+        .term(t -> t
+          .field(ComponentIndexDefinition.FIELD_UUID)
+          .value(projectUuid)
+        )
+      )
+      .routing(AuthorizationDoc.idOf(projectUuid))
+    );
     bulkIndexer.addDeletion(searchRequest);
   }
 
   @VisibleForTesting
   void index(EntityDto... docs) {
-    BulkIndexer bulk = new BulkIndexer(esClient, TYPE_COMPONENT, Size.REGULAR);
+    BulkIndexer bulk = new BulkIndexer(esClient, TYPE_COMPONENT, Size.REGULAR, Object.class);
     bulk.start();
     Arrays.stream(docs)
       .map(EntityDefinitionIndexer::toDocument)
