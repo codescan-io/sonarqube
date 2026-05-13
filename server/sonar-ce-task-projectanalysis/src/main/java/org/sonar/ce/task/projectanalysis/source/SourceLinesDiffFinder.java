@@ -86,6 +86,8 @@ public class SourceLinesDiffFinder {
       return index;
     }
 
+    LOG.info("left={}, right={}", leftCore, rightCore);
+
     // 4. Apply gates against the CORE sizes (not the raw inputs). We only refuse work
     // that is *forced* to be expensive — never near-identical large files whose prefix
     // and suffix trim away most of the bulk.
