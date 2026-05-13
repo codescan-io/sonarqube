@@ -19,12 +19,12 @@
  */
 package org.sonar.ce.task.projectanalysis.source;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.sonar.api.config.Configuration;
 import org.sonar.ce.task.projectanalysis.analysis.AnalysisMetadataHolder;
 import org.sonar.ce.task.projectanalysis.component.Component;
@@ -43,13 +43,12 @@ import org.sonar.db.source.FileSourceDto;
 
 public class SourceLinesDiffImpl implements SourceLinesDiff {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SourceLinesDiffImpl.class);
   private static final String KEY_CODESCAN_GITCLI_ENABLED = "codescan.gitcli.enabled";
   private static final String KEY_SFMETA_FILE_SUFFIXES = "sonar.sfmeta.file.suffixes";
 
   private final DbClient dbClient;
   private final FileSourceDao fileSourceDao;
-  private final SourceLinesHashRepository sourceLinesHashRepository;
+  private final SourceLinesHashRepository sourceLinesHash;
   private final SourceLinesRepository sourceLinesRepository;
   private final ReferenceBranchComponentUuids referenceBranchComponentUuids;
   private final MovedFilesRepository movedFilesRepository;
@@ -58,13 +57,13 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
   private final NewCodeReferenceBranchComponentUuids newCodeReferenceBranchComponentUuids;
   private final ConfigurationRepository configurationRepository;
 
-  public SourceLinesDiffImpl(DbClient dbClient, FileSourceDao fileSourceDao, SourceLinesHashRepository sourceLinesHashRepository,
+  public SourceLinesDiffImpl(DbClient dbClient, FileSourceDao fileSourceDao, SourceLinesHashRepository sourceLinesHash,
     SourceLinesRepository sourceLinesRepository, ReferenceBranchComponentUuids referenceBranchComponentUuids,
     MovedFilesRepository movedFilesRepository, AnalysisMetadataHolder analysisMetadataHolder, PeriodHolder periodHolder,
     NewCodeReferenceBranchComponentUuids newCodeReferenceBranchComponentUuids, ConfigurationRepository configurationRepository) {
     this.dbClient = dbClient;
     this.fileSourceDao = fileSourceDao;
-    this.sourceLinesHashRepository = sourceLinesHashRepository;
+    this.sourceLinesHash = sourceLinesHash;
     this.sourceLinesRepository = sourceLinesRepository;
     this.referenceBranchComponentUuids = referenceBranchComponentUuids;
     this.movedFilesRepository = movedFilesRepository;
@@ -83,123 +82,132 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
   }
 
   private int[] computeWithMyersDiff(Component component) {
-    List<String> database = getPreviousVersionLineHashes(component);
-    List<String> report = getCurrentVersionLineHashes(component);
+    List<String> database = getDBLines(component);
+    List<String> report = getReportLines(component);
+
     return new SourceLinesDiffFinder().findMatchingLines(database, report);
   }
 
   private int[] computeWithHistogramDiff(Component component) {
     try {
-      List<String> previousVersionSourceLines = getPreviousVersionSourceContent(component);
-      List<String> currentVersionSourceLines = getCurrentVersionSourceContent(component);
+      List<String> dbSourceLines = getDBSourceContent(component);
+      List<String> reportSourceLines = getReportSourceContent(component);
 
-      if (previousVersionSourceLines.isEmpty() && currentVersionSourceLines.isEmpty()) {
+      if (dbSourceLines.isEmpty() && reportSourceLines.isEmpty()) {
         return new int[0];
       }
 
-      if (previousVersionSourceLines.isEmpty()) {
-        return new int[currentVersionSourceLines.size()];
+      if (dbSourceLines.isEmpty()) {
+        return new int[reportSourceLines.size()];
       }
 
-      return new GitDiffFinder().findMatchingLines(previousVersionSourceLines, currentVersionSourceLines);
+      return new GitDiffFinder().findMatchingLines(dbSourceLines, reportSourceLines);
 
-    } catch (InterruptedException interruptedException) {
+    } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOG.warn("[HISTOGRAM-DIFF] Interrupted for {}, falling back to Myers", component.getKey());
       return computeWithMyersDiff(component);
-    } catch (Exception histogramDiffException) {
-      LOG.warn("[HISTOGRAM-DIFF] Failed for {}, falling back to Myers. Error: {}",
-        component.getKey(), histogramDiffException.getMessage(), histogramDiffException);
+    } catch (IOException e) {
       return computeWithMyersDiff(component);
     }
   }
 
   private boolean isGitCliEnabled() {
-    Configuration projectConfiguration = configurationRepository.getConfiguration();
-    return projectConfiguration.getBoolean(KEY_CODESCAN_GITCLI_ENABLED).orElse(false);
+    Configuration config = configurationRepository.getConfiguration();
+    return config.getBoolean(KEY_CODESCAN_GITCLI_ENABLED).orElse(false);
   }
 
   private boolean isSalesforceMetadataFile(Component component) {
     String fileName = component.getName();
-    if (fileName == null || fileName.isEmpty()) {
+    if (StringUtils.isBlank(fileName)) {
       return false;
     }
     String[] suffixes = configurationRepository.getConfiguration().getStringArray(KEY_SFMETA_FILE_SUFFIXES);
+    if (suffixes == null) {
+      return false;
+    }
     for (String suffix : suffixes) {
-      if (suffix == null || suffix.isEmpty()) {
+      if (StringUtils.isBlank(suffix)) {
         continue;
       }
-      String normalized = suffix.startsWith(".") ? suffix : "." + suffix;
-      if (fileName.endsWith(normalized)) {
+      String normalizedSuffix = suffix.startsWith(".") ? suffix : "." + suffix;
+      if (fileName.endsWith(normalizedSuffix)) {
         return true;
       }
     }
     return false;
   }
 
-  private List<String> getPreviousVersionSourceContent(Component component) {
+  private List<String> getDBLines(Component component) {
     try (DbSession dbSession = dbClient.openSession(false)) {
-      String previousFileUuid = resolveDbFileUuid(component);
-      if (previousFileUuid == null) {
+      String uuid;
+      if (analysisMetadataHolder.isPullRequest()) {
+        uuid = referenceBranchComponentUuids.getComponentUuid(component.getKey());
+      } else if (periodHolder.hasPeriod() && periodHolder.getPeriod().getMode().equals(NewCodePeriodType.REFERENCE_BRANCH.name())) {
+        uuid = newCodeReferenceBranchComponentUuids.getComponentUuid(component.getKey());
+      } else {
+        Optional<MovedFilesRepository.OriginalFile> originalFile = movedFilesRepository.getOriginalFile(component);
+        uuid = originalFile.map(MovedFilesRepository.OriginalFile::uuid).orElse(component.getUuid());
+      }
+
+      if (uuid == null) {
         return Collections.emptyList();
       }
 
-      FileSourceDto fileSourceDto = fileSourceDao.selectByFileUuid(dbSession, previousFileUuid);
-      if (fileSourceDto == null) {
+      List<String> database = fileSourceDao.selectLineHashes(dbSession, uuid);
+      if (database == null) {
         return Collections.emptyList();
       }
-
-      DbFileSources.Data protobufSourceData = fileSourceDto.getSourceData();
-      if (protobufSourceData == null) {
-        return Collections.emptyList();
-      }
-
-      List<DbFileSources.Line> protobufLines = protobufSourceData.getLinesList();
-      List<String> sourceLines = new ArrayList<>(protobufLines.size());
-      for (DbFileSources.Line protobufLine : protobufLines) {
-        sourceLines.add(protobufLine.hasSource() ? protobufLine.getSource() : "");
-      }
-      return sourceLines;
+      return database;
     }
   }
 
-  private List<String> getCurrentVersionSourceContent(Component component) {
-    List<String> sourceLines = new ArrayList<>();
-    try (CloseableIterator<String> lineIterator = sourceLinesRepository.readLines(component)) {
-      while (lineIterator.hasNext()) {
-        sourceLines.add(lineIterator.next());
-      }
-    }
-    return sourceLines;
+  private List<String> getReportLines(Component component) {
+    return sourceLinesHash.getLineHashesMatchingDBVersion(component);
   }
 
-  private String resolveDbFileUuid(Component component) {
-    if (analysisMetadataHolder.isPullRequest()) {
-      return referenceBranchComponentUuids.getComponentUuid(component.getKey());
-    } else if (periodHolder.hasPeriod() && periodHolder.getPeriod().getMode().equals(NewCodePeriodType.REFERENCE_BRANCH.name())) {
-      return newCodeReferenceBranchComponentUuids.getComponentUuid(component.getKey());
-    } else {
-      Optional<MovedFilesRepository.OriginalFile> originalFile = movedFilesRepository.getOriginalFile(component);
-      return originalFile.map(MovedFilesRepository.OriginalFile::uuid).orElse(component.getUuid());
-    }
-  }
-
-  private List<String> getPreviousVersionLineHashes(Component component) {
+  private List<String> getDBSourceContent(Component component) {
     try (DbSession dbSession = dbClient.openSession(false)) {
-      String previousFileUuid = resolveDbFileUuid(component);
-      if (previousFileUuid == null) {
+      String uuid;
+      if (analysisMetadataHolder.isPullRequest()) {
+        uuid = referenceBranchComponentUuids.getComponentUuid(component.getKey());
+      } else if (periodHolder.hasPeriod() && periodHolder.getPeriod().getMode().equals(NewCodePeriodType.REFERENCE_BRANCH.name())) {
+        uuid = newCodeReferenceBranchComponentUuids.getComponentUuid(component.getKey());
+      } else {
+        Optional<MovedFilesRepository.OriginalFile> originalFile = movedFilesRepository.getOriginalFile(component);
+        uuid = originalFile.map(MovedFilesRepository.OriginalFile::uuid).orElse(component.getUuid());
+      }
+
+      if (uuid == null) {
         return Collections.emptyList();
       }
 
-      List<String> lineHashes = fileSourceDao.selectLineHashes(dbSession, previousFileUuid);
-      if (lineHashes == null) {
+      FileSourceDto dto = fileSourceDao.selectByFileUuid(dbSession, uuid);
+      if (dto == null) {
         return Collections.emptyList();
       }
-      return lineHashes;
+
+      DbFileSources.Data sourceData = dto.getSourceData();
+      if (sourceData == null) {
+        return Collections.emptyList();
+      }
+
+      List<DbFileSources.Line> lines = sourceData.getLinesList();
+      List<String> result = new ArrayList<>(lines.size());
+      for (DbFileSources.Line line : lines) {
+        result.add(line.hasSource() ? line.getSource() : "");
+      }
+      return result;
     }
   }
 
-  private List<String> getCurrentVersionLineHashes(Component component) {
-    return sourceLinesHashRepository.getLineHashesMatchingDBVersion(component);
+  private List<String> getReportSourceContent(Component component) {
+    List<String> lines = new ArrayList<>();
+    try (CloseableIterator<String> iterator = sourceLinesRepository.readLines(component)) {
+      while (iterator.hasNext()) {
+        lines.add(iterator.next());
+      }
+    }
+    return lines;
   }
+
 }
