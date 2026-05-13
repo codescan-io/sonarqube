@@ -22,6 +22,8 @@ import { Helmet } from 'react-helmet-async';
 import { Card, CenteredLayout, Link, PageContentFontWrapper } from '~design-system';
 import { getCookie } from '../../../helpers/cookies';
 import { translate } from '../../../helpers/l10n';
+import { FormattedMessage } from 'react-intl';
+import { LinkStandalone } from '@sonarsource/echoes-react';
 
 export default function Unauthorized() {
   const OAUTH2_ERROR_CODES: Record<string, string> = {
@@ -39,6 +41,7 @@ export default function Unauthorized() {
   const ERROR_MESSAGES: Record<string, string> = {
     email_not_verified: 'unauthorized.email_verification_required',
     email_verification_failed: 'unauthorized.email_verification_failed',
+    max_trial_users_exceeded: 'unauthorized.max_trial_users_exceeded',
   };
 
   const rawJson = decodeURIComponent(getCookie('AUTHENTICATION-ERROR') || '');
@@ -51,8 +54,9 @@ export default function Unauthorized() {
   const errorMessage = errorObj.error_message;
   const errorCode = errorObj.error;
   let translationKey = errorCode ? OAUTH2_ERROR_CODES[errorCode] : OAUTH2_ERROR_CODES[errorMessage];
+  const emailVerificationError = errorCode === 'access_denied' && Boolean(ERROR_MESSAGES[errorMessage]);
 
-  if (errorCode === 'access_denied' && ERROR_MESSAGES[errorMessage]) {
+  if (emailVerificationError) {
     translationKey = ERROR_MESSAGES[errorMessage];
   }
 
@@ -63,13 +67,38 @@ export default function Unauthorized() {
       <Helmet defer={false} title={translate('unauthorized.page')} />
       <PageContentFontWrapper className="sw-typo-lg sw-flex sw-justify-center" id="nonav">
         <Card className="sw-w-abs-500 sw-my-14 sw-text-center">
-          <p id="unauthorized">{translate('unauthorized.message')}</p>
-
-          {Boolean(message) && (
+          {emailVerificationError ? (
             <p className="sw-mt-4">
-              {translate('unauthorized.reason')}
-              <br /> {message}
+              {message}
+              {errorMessage === 'email_not_verified' && (
+                <>
+                  <br />
+                  <br />
+                  <FormattedMessage
+                    id="unauthorized.email_verification_check_junk"
+                    defaultMessage={translate('unauthorized.email_verification_check_junk')}
+                    values={{
+                      link: (
+                        <LinkStandalone to="mailto:support@autorabit.com">
+                          {translate('unauthorized.email_verification_check_junk.link')}
+                        </LinkStandalone>
+                      ),
+                    }}
+                  />
+                </>
+              )}
             </p>
+          ) : (
+            <>
+              <p id="unauthorized">{translate('unauthorized.message')}</p>
+
+              {Boolean(message) && (
+                <p className="sw-mt-4">
+                  {translate('unauthorized.reason')}
+                  <br /> {message}
+                </p>
+              )}
+            </>
           )}
 
           <div className="sw-mt-8">
