@@ -21,11 +21,8 @@ package org.sonar.scm.git;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Arrays;
@@ -68,7 +65,6 @@ import org.eclipse.jgit.treewalk.filter.PathFilterGroup;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.sonar.api.batch.scm.BlameCommand;
 import org.sonar.api.batch.scm.ScmProvider;
-import org.sonar.api.config.Configuration;
 import org.sonar.api.notifications.AnalysisWarnings;
 import org.sonar.api.utils.MessageException;
 import org.sonar.api.utils.System2;
@@ -92,25 +88,20 @@ public class GitScmProvider extends ScmProvider {
   private static final String NO_MERGE_BASE_FOUND_MESSAGE = "No merge base found between HEAD and %s";
   @VisibleForTesting
   static final String SCM_INTEGRATION_DOCUMENTATION_SUFFIX = "/analyzing-source-code/scm-integration/";
-
-  private static final String KEY_CODESCAN_GITCLI_ENABLED = "codescan.gitcli.enabled";
-
   private final BlameCommand blameCommand;
   private final AnalysisWarnings analysisWarnings;
   private final GitIgnoreCommand gitIgnoreCommand;
   private final System2 system2;
   private final DocumentationLinkGenerator documentationLinkGenerator;
-  private final Configuration configuration;
 
   public GitScmProvider(CompositeBlameCommand blameCommand, AnalysisWarnings analysisWarnings, GitIgnoreCommand gitIgnoreCommand, System2 system2,
-    DocumentationLinkGenerator documentationLinkGenerator, Configuration configuration) {
+    DocumentationLinkGenerator documentationLinkGenerator) {
 
     this.blameCommand = blameCommand;
     this.analysisWarnings = analysisWarnings;
     this.gitIgnoreCommand = gitIgnoreCommand;
     this.system2 = system2;
     this.documentationLinkGenerator = documentationLinkGenerator;
-    this.configuration = configuration;
   }
 
   @Override
@@ -132,10 +123,6 @@ public class GitScmProvider extends ScmProvider {
   @Override
   public BlameCommand blameCommand() {
     return this.blameCommand;
-  }
-
-  private boolean useNativeGitDiff() {
-    return configuration.getBoolean(KEY_CODESCAN_GITCLI_ENABLED).orElse(false);
   }
 
   @CheckForNull
@@ -259,15 +246,8 @@ public class GitScmProvider extends ScmProvider {
 
       Map<Path, Set<Integer>> changedLines = new HashMap<>();
 
-      boolean nativeGit = useNativeGitDiff();
-      LOG.info("Using {} for changed-line detection", nativeGit ? "native Git CLI" : "JGit");
-
       for (Map.Entry<Path, ChangedFile> entry : changedFiles.entrySet()) {
-        if (nativeGit) {
-          collectChangedLinesWithNativeGit(repo, mergeBaseCommit.get(), changedLines, entry.getKey());
-        } else {
-          collectChangedLines(repo, mergeBaseCommit.get(), changedLines, entry.getKey(), entry.getValue());
-        }
+        collectChangedLines(repo, mergeBaseCommit.get(), changedLines, entry.getKey(), entry.getValue());
       }
 
       return changedLines;
@@ -316,45 +296,6 @@ public class GitScmProvider extends ScmProvider {
         .ifPresent(diffEntry -> changedLines.put(changedFilePath, computer.changedLines()));
     } catch (Exception e) {
       LOG.warn("Failed to get changed lines from git for file " + changedFilePath, e);
-    }
-  }
-
-  private void collectChangedLinesWithNativeGit(Repository repo, RevCommit mergeBase,
-          Map<Path, Set<Integer>> changedLines, Path file) throws IOException, InterruptedException {
-
-    Path workTree = repo.getWorkTree().toPath();
-    String relPath = toGitPath(workTree.relativize(file).toString());
-
-    ProcessBuilder pb = new ProcessBuilder("git", "diff", "--no-color", "--diff-algorithm=histogram",
-            mergeBase.getName(), "--", relPath);
-
-    pb.directory(repo.getWorkTree());
-    pb.redirectError(ProcessBuilder.Redirect.DISCARD);
-
-    Process process = pb.start();
-    ChangedLinesComputer computer = new ChangedLinesComputer();
-
-    try (BufferedReader br = new BufferedReader(
-            new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-      String line;
-      while ((line = br.readLine()) != null) {
-        for (char c : line.toCharArray()) {
-          computer.receiver().write(c);
-        }
-        computer.receiver().write('\n');
-      }
-    }
-
-    int exitCode = process.waitFor();
-
-    if (exitCode != 0) {
-      LOG.warn("git diff failed with exit code {} for {}", exitCode, relPath);
-      return;
-    }
-
-    Set<Integer> lines = computer.changedLines();
-    if (!lines.isEmpty()) {
-      changedLines.put(file, lines);
     }
   }
 
