@@ -239,12 +239,19 @@ public class HotspotWsResponseFormatter {
           return dto == null ? null : dto.getChangeData();
     }
 
-    void addAssignedDates(List<IssueChangeDto> changes) {
+      void addAssignedDates(@Nullable List<IssueChangeDto> changes) {
+          if (changes == null) {
+              return;
+          }
           changes.stream()
                   .filter(c -> IssueChangeDto.TYPE_FIELD_CHANGE.equals(c.getChangeType()))
                   .filter(c -> c.getChangeData() != null && c.getChangeData().contains("assignee"))
-                  .forEach(c -> assignedDateByIssueKey.put(c.getIssueKey(), c.getIssueChangeCreationDate()));
-    }
+                  .forEach(c -> assignedDateByIssueKey.merge(
+                          c.getIssueKey(),
+                          c.getIssueChangeCreationDate(),
+                          Math::max
+                  ));
+      }
 
     @Nullable
     Long getAssignedDate(String issueKey) {
