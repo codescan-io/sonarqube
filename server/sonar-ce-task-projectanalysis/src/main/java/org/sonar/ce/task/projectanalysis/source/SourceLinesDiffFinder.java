@@ -80,8 +80,6 @@ public class SourceLinesDiffFinder {
     int leftCore = n - prefix - suffix;
     int rightCore = m - prefix - suffix;
 
-    LOG.warn("left={}, right={}", leftCore, rightCore);
-
     // 3. If either core is empty the remaining mapping is trivially zero (no possible
     // matches) — return what prefix/suffix already produced.
     if (leftCore == 0 || rightCore == 0) {
