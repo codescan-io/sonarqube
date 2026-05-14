@@ -228,10 +228,18 @@ public class HotspotWsResponseFormatter {
       }
     }
 
-    void addExceptionReasons(List<IssueChangeDto> changes) {
+      void addExceptionReasons(@Nullable List<IssueChangeDto> changes) {
+          if (changes == null) {
+              return;
+          }
           changes.stream()
                   .filter(c -> IssueChangeDto.TYPE_EXCEPTION_REASON.equals(c.getChangeType()))
-                  .forEach(c -> exceptionReasonByIssueKey.put(c.getIssueKey(), c));
+                  .forEach(c -> exceptionReasonByIssueKey.merge(c.getIssueKey(), c,
+                          (existing, current) ->
+                                  current.getIssueChangeCreationDate() > existing.getIssueChangeCreationDate()
+                                          ? current
+                                          : existing
+                  ));
       }
 
     @Nullable
