@@ -120,8 +120,9 @@ public class HotspotWsResponseFormatter {
       ofNullable(hotspot.getResolution()).ifPresent(builder::setResolution);
       ofNullable(hotspot.getAssigneeUuid()).ifPresent(builder::setAssignee);
       ofNullable(hotspot.getAssigneeLogin()).ifPresent(assignedTo -> {builder.setAssignedTo(assignedTo);ofNullable(searchResponseData.getAssignedDate(hotspot.getKey())).ifPresent(date -> builder.setAssignedDate(formatDateTime(new Date(date))));});
-      ofNullable(hotspot.getIssueResolutionExpiresAt()).ifPresent(expiresAt -> builder.setExceptionExpiryDate(formatDateTime(new Date(expiresAt))));
-      ofNullable(searchResponseData.getExceptionReason(hotspot.getKey())).ifPresent(reason -> builder.setExceptionReason(reason));
+      boolean hasActiveException = "REVIEWED".equals(hotspot.getStatus()) && "EXCEPTION".equals(hotspot.getResolution());
+      if (hasActiveException) {ofNullable(hotspot.getIssueResolutionExpiresAt()).ifPresent(expiresAt -> builder.setExceptionExpiryDate(formatDateTime(new Date(expiresAt))));
+      ofNullable(searchResponseData.getExceptionReason(hotspot.getKey())).ifPresent(reason -> builder.setExceptionReason(reason));}
       ofNullable(hotspot.getLine()).ifPresent(builder::setLine);
       builder.setMessage(nullToEmpty(hotspot.getMessage()));
       builder.addAllMessageFormattings(MessageFormattingUtils.dbMessageFormattingToWs(hotspot.parseMessageFormattings()));
