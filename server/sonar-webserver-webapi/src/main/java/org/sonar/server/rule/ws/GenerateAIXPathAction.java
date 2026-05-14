@@ -96,9 +96,21 @@ public class GenerateAIXPathAction implements RulesWsAction {
       ruleWsSupport.checkQProfileAdminPermission(organization);
 
       String userUuid = userSession.getUuid();
-      String generatedXPath = aiRuleGenerator.generateXPath(description, organization.getUuid(), userUuid);
+      String aiResponse = aiRuleGenerator.generateXPath(description, organization.getUuid(), userUuid);
 
-      String aiSummary = "This rule detects: " + description;
+      // Parse the AI response - it should be JSON with "xpath" and "description" fields
+      String generatedXPath;
+      String aiSummary;
+      try {
+        com.google.gson.JsonObject parsed = new GsonBuilder().create().fromJson(aiResponse, com.google.gson.JsonObject.class);
+        generatedXPath = parsed.has("xpath") ? parsed.get("xpath").getAsString().trim() : aiResponse.trim();
+        aiSummary = parsed.has("description") ? parsed.get("description").getAsString().trim() : "";
+      } catch (Exception e) {
+        // Fallback: if AI didn't return valid JSON, treat the whole response as XPath
+        generatedXPath = aiResponse.trim();
+        aiSummary = "";
+      }
+
       writeResponse(response, new GenerateXPathResult(generatedXPath, description, "COMPLETED", aiSummary));
     }
   }
