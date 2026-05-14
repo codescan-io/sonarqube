@@ -83,7 +83,6 @@ export default function IssueTransition(props: Readonly<Props>) {
     transition: string,
     comment?: string,
     issueResolutionExpiryDate?: string,
-    issueResolutionExpiryOffsetMinutes?: string,
   ) {
     setTransitioning(true);
 
@@ -92,13 +91,9 @@ export default function IssueTransition(props: Readonly<Props>) {
         issue: string;
         transition: string;
         issueResolutionExpiryDate?: string;
-        issueResolutionExpiryOffsetMinutes?: string;
       } = { issue: issue.key, transition };
       if (issueResolutionExpiryDate !== undefined) {
         transitionPayload.issueResolutionExpiryDate = issueResolutionExpiryDate;
-      }
-      if (issueResolutionExpiryOffsetMinutes !== undefined) {
-        transitionPayload.issueResolutionExpiryOffsetMinutes = issueResolutionExpiryOffsetMinutes;
       }
       if (typeof comment === 'string' && comment.length > 0) {
         await setIssueTransition(transitionPayload);
