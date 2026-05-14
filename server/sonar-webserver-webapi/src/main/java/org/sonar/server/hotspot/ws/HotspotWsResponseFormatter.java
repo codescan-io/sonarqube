@@ -119,7 +119,8 @@ public class HotspotWsResponseFormatter {
       builder.setStatusMarkedBy(nullToEmpty(searchResponseData.getStatusMarkedBy(hotspot.getKey())));
       ofNullable(hotspot.getResolution()).ifPresent(builder::setResolution);
       ofNullable(hotspot.getAssigneeUuid()).ifPresent(builder::setAssignee);
-      ofNullable(searchResponseData.getUserByUuid(hotspot.getAssigneeUuid())).ifPresent(user -> builder.setAssignedTo(user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getLogin()));
+      ofNullable(searchResponseData.getUserByUuid(hotspot.getAssigneeUuid())).ifPresent(user -> {String assignedTo = user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getLogin();builder.setAssignedTo(assignedTo);
+      ofNullable(searchResponseData.getAssignedDate(hotspot.getKey())).ifPresent(date -> builder.setAssignedDate(formatDateTime(new Date(date))));});
       boolean hasActiveException = "REVIEWED".equals(hotspot.getStatus()) && "EXCEPTION".equals(hotspot.getResolution());
       if (hasActiveException) {ofNullable(hotspot.getIssueResolutionExpiresAt()).ifPresent(expiresAt -> builder.setExceptionExpiryDate(formatDateTime(new Date(expiresAt))));
       ofNullable(searchResponseData.getExceptionReason(hotspot.getKey())).ifPresent(reason -> builder.setExceptionReason(reason));}
