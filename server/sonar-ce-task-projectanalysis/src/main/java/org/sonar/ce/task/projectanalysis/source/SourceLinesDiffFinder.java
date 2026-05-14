@@ -80,13 +80,13 @@ public class SourceLinesDiffFinder {
     int leftCore = n - prefix - suffix;
     int rightCore = m - prefix - suffix;
 
+    LOG.warn("left={}, right={}", leftCore, rightCore);
+
     // 3. If either core is empty the remaining mapping is trivially zero (no possible
     // matches) — return what prefix/suffix already produced.
     if (leftCore == 0 || rightCore == 0) {
       return index;
     }
-
-    LOG.info("left={}, right={}", leftCore, rightCore);
 
     // 4. Apply gates against the CORE sizes (not the raw inputs). We only refuse work
     // that is *forced* to be expensive — never near-identical large files whose prefix
