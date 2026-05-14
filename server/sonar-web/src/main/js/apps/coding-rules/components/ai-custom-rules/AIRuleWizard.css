@@ -1,0 +1,277 @@
+/*
+ * SonarQube
+ * Copyright (C) 2009-2024 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+.ai-wizard-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-wizard-modal {
+  display: flex;
+  width: 620px;
+  height: 720px;
+  flex-direction: column;
+  align-items: flex-start;
+  border-radius: 4px;
+  border: 1px solid #EBEBEB;
+  background: #FFF;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+/* Generate step: smaller modal */
+.ai-wizard-modal--generate {
+  height: 616px;
+}
+
+/* Review step: wider modal */
+.ai-wizard-modal--review {
+  width: 920px;
+  height: 726px;
+}
+
+/* Top bar */
+.ai-wizard-topbar {
+  display: flex;
+  width: 100%;
+  height: 63px;
+  padding: 0 24px;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  border-bottom: 1px solid #EBEBEB;
+  background: #FFFFFF;
+  box-sizing: border-box;
+}
+
+/* Breadcrumb */
+.ai-wizard-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 24px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* "New Rule" text */
+.ai-wizard-breadcrumb-parent {
+  color: #637192;
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 21px;
+}
+
+/* > chevron separator icon */
+.ai-wizard-breadcrumb-separator {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* "Define AI Rule" text */
+.ai-wizard-breadcrumb-current {
+  color: #2A2F40;
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 21px;
+}
+
+/* Stepper */
+.ai-wizard-stepper {
+  display: flex;
+  width: 316.742px;
+  height: 30px;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 16px;
+}
+
+.ai-wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-wizard-step-number {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Inter, sans-serif;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 15px;
+  flex-shrink: 0;
+}
+
+.ai-wizard-step-number--active {
+  background: #5C6BD1;
+  color: #FFFFFF;
+}
+
+.ai-wizard-step-number--completed {
+  background: #5C6BD1;
+  color: #FFFFFF;
+}
+
+.ai-wizard-step-number--inactive {
+  background: #EBEBEB;
+  color: #637192;
+}
+
+/* Step labels: "Define" (active), "Generate", "Review" (inactive) */
+.ai-wizard-step-label {
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.ai-wizard-step-label--active {
+  color: #2A2F40;
+  font-weight: 600;
+}
+
+.ai-wizard-step-label--completed {
+  color: #2A2F40;
+}
+
+/* "Generate", "Review" inactive */
+.ai-wizard-step-label--inactive {
+  color: #637192;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.ai-wizard-step-connector {
+  width: 48px;
+  height: 2px;
+  background: #EBEBEB;
+}
+
+.ai-wizard-step-connector--completed {
+  background: #5C6BD1;
+}
+
+/* Close button */
+.ai-wizard-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease;
+  margin-left: -6px;
+}
+
+.ai-wizard-close:hover {
+  opacity: 0.7;
+}
+
+.ai-wizard-close-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* Content area */
+.ai-wizard-content {
+  display: flex;
+  width: 100%;
+  padding: 24px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Remove padding when review step is active (review handles its own layout) */
+.ai-wizard-modal--review .ai-wizard-content {
+  padding: 0;
+  gap: 0;
+}
+
+/* Remove padding when generate step is active (generate handles its own layout) */
+.ai-wizard-modal--generate .ai-wizard-content {
+  padding: 0;
+  gap: 0;
+}
+
+/* Adjust padding for define step so scrollbar is at the right edge */
+.ai-wizard-modal--define .ai-wizard-content {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.ai-wizard-content-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Checkmark icon for completed steps */
+.ai-wizard-step-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #5C6BD1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ai-wizard-step-check img {
+  width: 14px;
+  height: 14px;
+  filter: brightness(0) invert(1);
+}
