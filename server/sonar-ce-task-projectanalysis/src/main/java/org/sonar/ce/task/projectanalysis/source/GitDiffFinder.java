@@ -31,10 +31,22 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Computes line-level mapping between the previous (DB) and current (report) version of a file
+ * by shelling out to {@code git diff --no-index --histogram} and parsing its unified-diff output.
+ *
+ * Returned array is indexed by current-file line (0-based): matchingLineArray[i] = the previous-file
+ * line number (1-based) that current line i+1 corresponds to, or 0 if the current line was added.
+ */
 class GitDiffFinder {
 
     private static final Logger LOG = LoggerFactory.getLogger(GitDiffFinder.class);
 
+    // Matches a unified-diff hunk header, e.g.  "@@ -12,5 +14,7 @@"
+    //   group 1 = previous-file start line
+    //   group 2 = previous-file line count (optional; defaults to 1 when omitted)
+    //   group 3 = current-file  start line
+    //   group 4 = current-file  line count  (optional; defaults to 1 when omitted)
     private static final Pattern HUNK_HEADER_PATTERN = Pattern.compile(
             "^@@ -(\\d+)(?:,(\\d+))? \\+(\\d+)(?:,(\\d+))? @@");
 
