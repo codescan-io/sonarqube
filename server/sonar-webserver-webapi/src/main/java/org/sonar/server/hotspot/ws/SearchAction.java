@@ -219,6 +219,10 @@ public class SearchAction implements HotspotsWsAction {
      changes.stream()
               .filter(c -> c.getUserUuid() != null)
               .forEach(change -> collector.addUserUuids(singletonList(change.getUserUuid())));
+      result.getHotspots().stream()
+              .map(IssueDto::getAssigneeUuid)
+              .filter(Objects::nonNull)
+              .forEach(uuid -> collector.addUserUuids(singletonList(uuid)));
      result.addUsers(dbClient.userDao().selectByUuids(dbSession, collector.getUserUuids()));
   }
 
