@@ -120,14 +120,9 @@ public class DoTransitionAction implements IssuesWsAction {
       .setPossibleValues(DefaultTransitions.ALL);
     action.createParam(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE)
       .setDescription("Optional expiry date (YYYY-MM-DD) when transition is 'exception' on a code issue (not security hotspot). "
+        + "The civil date is stored as UTC start-of-day, matching the security-hotspot exception expiry behavior. "
         + "When omitted, instance auto-expiry by severity may apply if enabled. When sent empty, expiry is cleared and auto-expiry is skipped.")
       .setExampleValue("2026-12-31")
-      .setRequired(false);
-    action.createParam(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES)
-      .setDescription("Optional: JavaScript Date.getTimezoneOffset() from the browser. "
-        + "With a non-blank " + CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE + ", the civil date is stored as start-of-day in that offset. "
-        + "When the date is omitted and instance auto-expiry applies, the offset anchors \"today\" so the configured day count matches the UI countdown in the user's timezone; when omitted, UTC calendar is used.")
-      .setExampleValue("420")
       .setRequired(false);
   }
 
@@ -149,10 +144,8 @@ public class DoTransitionAction implements IssuesWsAction {
     String previousStatus = issueDto.getStatus();
     boolean hasExpiryDateParam = request.hasParam(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
     String expiryDateParam = request.param(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
-    String expiryOffsetMinutesParam = request.param(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES);
     if (transitionService.doTransition(defaultIssue, context, transitionKey)) {
-      codeIssueExceptionExpiryService.applyAfterTransition(defaultIssue, issueDto, transitionKey, previousStatus, hasExpiryDateParam, expiryDateParam,
-        expiryOffsetMinutesParam);
+      codeIssueExceptionExpiryService.applyAfterTransition(defaultIssue, issueDto, transitionKey, previousStatus, hasExpiryDateParam, expiryDateParam);
       BranchDto branch = issueUpdater.getBranch(session, defaultIssue);
       SearchResponseData response = issueUpdater.saveIssueAndPreloadSearchResponseData(session, issueDto, defaultIssue, context, branch);
 

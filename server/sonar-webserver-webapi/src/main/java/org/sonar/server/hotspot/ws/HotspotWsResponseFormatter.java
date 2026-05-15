@@ -119,9 +119,11 @@ public class HotspotWsResponseFormatter {
       builder.setStatusMarkedBy(nullToEmpty(searchResponseData.getStatusMarkedBy(hotspot.getKey())));
       ofNullable(hotspot.getResolution()).ifPresent(builder::setResolution);
       ofNullable(hotspot.getAssigneeUuid()).ifPresent(builder::setAssignee);
-      ofNullable(hotspot.getAssigneeLogin()).ifPresent(assignedTo -> {builder.setAssignedTo(assignedTo);ofNullable(searchResponseData.getAssignedDate(hotspot.getKey())).ifPresent(date -> builder.setAssignedDate(formatDateTime(new Date(date))));});
-      ofNullable(hotspot.getIssueResolutionExpiresAt()).ifPresent(expiresAt -> builder.setExceptionExpiryDate(formatDateTime(new Date(expiresAt))));
-      ofNullable(searchResponseData.getExceptionReason(hotspot.getKey())).ifPresent(reason -> builder.setExceptionReason(reason));
+      ofNullable(searchResponseData.getUserByUuid(hotspot.getAssigneeUuid())).ifPresent(user -> {String assignedTo = user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getLogin();builder.setAssignedTo(assignedTo);
+      ofNullable(searchResponseData.getAssignedDate(hotspot.getKey())).ifPresent(date -> builder.setAssignedDate(formatDateTime(new Date(date))));});
+      boolean hasActiveException = "REVIEWED".equals(hotspot.getStatus()) && "EXCEPTION".equals(hotspot.getResolution());
+      if (hasActiveException) {ofNullable(hotspot.getIssueResolutionExpiresAt()).ifPresent(expiresAt -> builder.setExceptionExpiryDate(formatDateTime(new Date(expiresAt))));
+      ofNullable(searchResponseData.getExceptionReason(hotspot.getKey())).ifPresent(reason -> builder.setExceptionReason(reason));}
       ofNullable(hotspot.getLine()).ifPresent(builder::setLine);
       builder.setMessage(nullToEmpty(hotspot.getMessage()));
       builder.addAllMessageFormattings(MessageFormattingUtils.dbMessageFormattingToWs(hotspot.parseMessageFormattings()));
@@ -226,10 +228,18 @@ public class HotspotWsResponseFormatter {
       }
     }
 
-    void addExceptionReasons(List<IssueChangeDto> changes) {
+      void addExceptionReasons(@Nullable List<IssueChangeDto> changes) {
+          if (changes == null) {
+              return;
+          }
           changes.stream()
                   .filter(c -> IssueChangeDto.TYPE_EXCEPTION_REASON.equals(c.getChangeType()))
-                  .forEach(c -> exceptionReasonByIssueKey.put(c.getIssueKey(), c));
+                  .forEach(c -> exceptionReasonByIssueKey.merge(c.getIssueKey(), c,
+                          (existing, current) ->
+                                  current.getIssueChangeCreationDate() > existing.getIssueChangeCreationDate()
+                                          ? current
+                                          : existing
+                  ));
       }
 
     @Nullable
@@ -238,12 +248,19 @@ public class HotspotWsResponseFormatter {
           return dto == null ? null : dto.getChangeData();
     }
 
-    void addAssignedDates(List<IssueChangeDto> changes) {
+      void addAssignedDates(@Nullable List<IssueChangeDto> changes) {
+          if (changes == null) {
+              return;
+          }
           changes.stream()
                   .filter(c -> IssueChangeDto.TYPE_FIELD_CHANGE.equals(c.getChangeType()))
                   .filter(c -> c.getChangeData() != null && c.getChangeData().contains("assignee"))
-                  .forEach(c -> assignedDateByIssueKey.put(c.getIssueKey(), c.getIssueChangeCreationDate()));
-    }
+                  .forEach(c -> assignedDateByIssueKey.merge(
+                          c.getIssueKey(),
+                          c.getIssueChangeCreationDate(),
+                          Math::max
+                  ));
+      }
 
     @Nullable
     Long getAssignedDate(String issueKey) {
