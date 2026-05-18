@@ -21,6 +21,8 @@
 import * as React from 'react';
 import { RuleDetails } from '../../../types/types';
 import CustomRuleFormModal from './CustomRuleFormModal';
+import CreateRuleSelectionModal from './ai-custom-rules/CreateRuleSelectionModal';
+import AIRuleWizard from './ai-custom-rules/AIRuleWizard';
 
 interface Props {
   children: (props: { onClick: () => void }) => React.ReactNode;
@@ -31,20 +33,54 @@ interface Props {
 
 export default function CustomRuleButton(props: Props) {
   const { customRule, templateRule } = props;
-  const [modalOpen, setModalOpen] = React.useState(false);
+  const [selectionModalOpen, setSelectionModalOpen] = React.useState(false);
+  const [xpathModalOpen, setXpathModalOpen] = React.useState(false);
+  const [aiWizardOpen, setAiWizardOpen] = React.useState(false);
+
+  const handleSelectXPath = () => {
+    setSelectionModalOpen(false);
+    setXpathModalOpen(true);
+  };
+
+  const handleSelectAI = () => {
+    setSelectionModalOpen(false);
+    setAiWizardOpen(true);
+  };
 
   return (
     <>
-      {props.children({ onClick: () => setModalOpen(true) })}
-      {modalOpen && (
+      {props.children({ onClick: () => setSelectionModalOpen(true) })}
+
+      {/* Step 1: Selection Modal */}
+      <CreateRuleSelectionModal
+        isOpen={selectionModalOpen}
+        onClose={() => setSelectionModalOpen(false)}
+        onSelectAI={handleSelectAI}
+        onSelectXPath={handleSelectXPath}
+      />
+
+      {/* Step 2a: XPath Modal (Existing) */}
+      {xpathModalOpen && (
         <CustomRuleFormModal
           organization={props.organization}
           customRule={customRule}
-          onClose={() => setModalOpen(false)}
+          onClose={() => setXpathModalOpen(false)}
           templateRule={templateRule}
-          isOpen={modalOpen}
+          isOpen={xpathModalOpen}
         />
       )}
+
+      {/* Step 2b: AI Rule Wizard (Define → Generate → Review) */}
+      <AIRuleWizard
+        isOpen={aiWizardOpen}
+        onClose={() => setAiWizardOpen(false)}
+        onBack={() => {
+          setAiWizardOpen(false);
+          setSelectionModalOpen(true);
+        }}
+        organization={props.organization}
+        templateRule={templateRule}
+      />
     </>
   );
 }

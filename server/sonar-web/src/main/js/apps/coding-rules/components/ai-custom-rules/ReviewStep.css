@@ -1,0 +1,591 @@
+/*
+ * SonarQube
+ * Copyright (C) 2009-2024 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+.review-step {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.review-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Banner */
+.review-banner {
+  display: flex;
+  height: 42px;
+  padding-left: 12px;
+  align-items: center;
+  gap: 12px;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  line-height: 18px;
+  margin: 12px 24px 0 24px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.review-banner--success {
+  border-radius: 4px;
+  background: #E8FFF0;
+  color: #00642D;
+}
+
+.review-banner--success .review-banner-text {
+  color: #00642D;
+  font-family: Inter , sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.review-banner--success .review-banner-text strong {
+  font-weight: 700;
+}
+
+.review-banner--error {
+  background: #FFF1E8;
+  color: #EB4F01;
+}
+
+.review-banner--error .review-banner-text {
+  color: #EB4F01;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.review-banner--error .review-banner-text strong {
+  font-weight: 700;
+}
+
+.review-banner-icon {
+  flex-shrink: 0;
+}
+
+.review-banner-icon--white {
+  filter: brightness(0) invert(1);
+}
+
+.review-banner-text strong {
+  font-weight: 600;
+}
+
+/* Two-column panels using CSS Grid */
+.review-panels {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Left: details */
+.review-details {
+  display: flex;
+  padding: 16px 24px 24px 24px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  border-right: 1px solid #EBEBEB;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+/* Detail table - bordered box */
+.review-detail-table {
+  display: flex;
+  width: 100%;
+  padding: 16px 16px 16px 16px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  border-radius: 4px;
+  border: 1px solid #EBEBEB;
+  background: #F0F2FA;
+  box-sizing: border-box;
+}
+
+.review-detail-row {
+  display: flex;
+  width: 100%;
+  min-height: 18px;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  line-height: 18px;
+  overflow: visible;
+}
+
+.review-detail-label {
+  font-size: 12px;
+  font-weight: 400;
+  color: #637192;
+  flex-shrink: 0;
+  width: 80px;
+}
+
+.review-detail-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2A2F40;
+  text-align: right;
+  overflow-wrap: break-word;
+  word-break: break-all;
+  max-width: calc(100% - 90px);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.review-detail-value code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #637192;
+  font-weight: 400;
+  overflow-wrap: break-word;
+  word-break: break-all;
+}
+
+/* Severity icon */
+.review-severity-icon {
+  flex-shrink: 0;
+}
+
+/* Severity badge (fallback) */
+.review-severity-badge {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.review-severity-badge--blocker {
+  background: #D32F2F;
+}
+
+.review-severity-badge--critical {
+  background: #D32F2F;
+}
+
+.review-severity-badge--major {
+  background: #F57C00;
+}
+
+.review-severity-badge--minor {
+  background: #FBC02D;
+}
+
+.review-severity-badge--info {
+  background: #90CAF9;
+}
+
+/* Sections */
+.review-section {
+  width: 100%;
+}
+
+.review-section-header {
+  color: #637192;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 18px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-section-header-icon {
+  flex-shrink: 0;
+}
+
+.review-section-content {
+  display: flex;
+  padding: 13px 78px 13px 13px;
+  align-items: center;
+  flex-shrink: 0;
+  align-self: stretch;
+  border-radius: 4px;
+  border: 1px solid #EBEBEB;
+  background: #FFF;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #2A2F40;
+  line-height: 18px;
+  white-space: normal;
+  word-wrap: break-word;
+  box-sizing: border-box;
+}
+
+.review-section-content--ai {
+  display: flex;
+  padding: 13px 18px 13px 13px;
+  align-items: flex-start;
+  align-self: stretch;
+  border-radius: 4px;
+  border: none;
+  background: #E8EBFF;
+  color: #2A2F40;
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 22.4px;
+  white-space: normal;
+  word-wrap: break-word;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+/* Right: XPath editor */
+.review-xpath {
+  display: flex;
+  padding: 16px 24px 24px 24px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  min-height: 0;
+}
+
+.review-xpath-header {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  height: 26px;
+}
+
+.review-xpath-title {
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #637192;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-xpath-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.review-xpath-btn {
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #637192;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.15s ease, background 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 70px;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.review-xpath-btn:hover {
+  background: #F0F2FA;
+  color: #5C6BD1;
+}
+
+.review-xpath-btn:focus-visible {
+  outline: 2px solid #5C6BD1;
+  outline-offset: 1px;
+}
+
+.review-xpath-btn--active {
+  background: #E8EBFF;
+  color: #5C6BD1;
+}
+
+.review-xpath-btn--copied,
+.review-xpath-btn--copied:hover {
+  color: #00823C;
+  background: none;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+  min-width: 62px;
+  justify-content: center;
+}
+
+.review-copied-icon {
+  /* SVG is already green #00823C natively, no color filter needed */
+  flex-shrink: 0;
+}
+
+/* Code editor */
+.review-code-editor {
+  background: #1E1E2E;
+  border-radius: 8px;
+  padding: 16px;
+  width: 100%;
+  min-height: 200px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  flex: 1;
+}
+
+.review-code-editor--editable {
+  padding: 0;
+}
+
+.review-code-textarea {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  background: #1E1E2E;
+  color: #E0E0E0;
+  border: none;
+  border-radius: 8px;
+  padding: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 20px;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  caret-color: #E0E0E0;
+}
+
+.review-code-lines {
+  display: flex;
+  gap: 16px;
+}
+
+.review-code-numbers {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 20px;
+  color: #637192;
+  text-align: right;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.review-code-content {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 20px;
+  color: #E0E0E0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  flex: 1;
+}
+
+.review-code-empty {
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  color: #637192;
+  font-style: italic;
+}
+
+/* Info messages */
+.review-info-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.review-info-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+  color: #637192;
+  padding: 8px 10px;
+  width: 411px;
+  height: 60px;
+  border-radius: 4px;
+  background: #F0F2FA;
+  box-sizing: border-box;
+}
+
+.review-info-msg span {
+  width: 353px;
+}
+
+.review-info-msg--warning {
+  border-radius: 4px;
+  background: #E8EBFF;
+  color: #5D6CD0;
+}
+
+.review-info-msg--warning span {
+  color: #5D6CD0;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18.6px;
+}
+
+.review-info-msg-icon {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/* Footer */
+.review-footer {
+  display: flex;
+  height: 72px;
+  padding: 0 24px;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #EBEBEB;
+  flex-shrink: 0;
+}
+
+.review-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Buttons */
+.review-btn {
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 21px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.15s ease;
+}
+
+.review-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.review-btn--back {
+  display: flex;
+  padding: 9px 16.703px 9px 17px;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  border: 1px solid #EBEBEB;
+  background: #FFFFFF;
+  color: #2A2F40;
+  text-align: center;
+}
+
+.review-btn--back:hover {
+  background: #F5F6FA;
+}
+
+.review-btn--regenerate {
+  display: flex;
+  padding: 9px 15.891px 9px 17px;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  border: 1px solid #EBEBEB;
+  background: #FFFFFF;
+  color: #637192;
+  text-align: center;
+}
+
+.review-btn--regenerate:hover {
+  background: #F5F6FA;
+}
+
+.review-btn--primary {
+  display: flex;
+  padding: 9px 17px;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  background: #5C6BD1;
+  border: 1px solid #5C6BD1;
+  color: #FFF;
+  text-align: center;
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 21px;
+}
+
+.review-btn--primary:hover {
+  background: #4A59C0;
+  border-color: #4A59C0;
+}
+
+.review-btn--primary:disabled {
+  background: #A0A8C2;
+  border-color: #A0A8C2;
+}
+
+.review-btn-icon {
+  width: 15px;
+  height: 15px;
+  filter: brightness(0) invert(1);
+  flex-shrink: 0;
+}
