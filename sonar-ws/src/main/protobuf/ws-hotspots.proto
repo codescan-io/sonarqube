@@ -58,7 +58,12 @@ message SearchWsResponse {
     optional string exceptionReason = 23;
     optional string assignedTo = 24;
     optional string assignedDate = 25;
+    optional Sort sort = 21;
   }
+}
+
+message Sort {
+  repeated string sort = 1;
 }
 
 // Response of GET api/hotspots/list

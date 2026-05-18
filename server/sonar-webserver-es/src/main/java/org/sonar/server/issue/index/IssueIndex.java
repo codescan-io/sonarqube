@@ -417,11 +417,11 @@ public class IssueIndex {
     this.sorting.add(IssueQuery.SORT_BY_CREATION_DATE, FIELD_ISSUE_KEY);
     this.sorting.add(IssueQuery.SORT_BY_UPDATE_DATE, FIELD_ISSUE_FUNC_UPDATED_AT);
     this.sorting.add(IssueQuery.SORT_BY_UPDATE_DATE, FIELD_ISSUE_KEY);
-    this.sorting.add(IssueQuery.SORT_BY_CLOSE_DATE, FIELD_ISSUE_FUNC_CLOSED_AT);
+    this.sorting.add(IssueQuery.SORT_BY_CLOSE_DATE, FIELD_ISSUE_FUNC_CLOSED_AT).missingValue(0L);
     this.sorting.add(IssueQuery.SORT_BY_CLOSE_DATE, FIELD_ISSUE_KEY);
     this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_PROJECT_UUID);
     this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_FILE_PATH);
-    this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_LINE);
+    this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_LINE).missingValue(0);
     this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_SEVERITY_VALUE).reverse();
     this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_KEY);
     this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_VULNERABILITY_PROBABILITY).reverse();
@@ -429,12 +429,12 @@ public class IssueIndex {
     this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_RULE_UUID);
     this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_PROJECT_UUID);
     this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_FILE_PATH);
-    this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_LINE);
+    this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_LINE).missingValue(0);
     this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_KEY);
 
     // by default order by project, line , severity and issue key (in order to be deterministic when same ms)
     this.sorting.addDefault(FIELD_ISSUE_PROJECT_UUID);
-    this.sorting.addDefault(FIELD_ISSUE_LINE);
+    this.sorting.addDefault(FIELD_ISSUE_LINE).missingValue(0);
     this.sorting.addDefault(FIELD_ISSUE_SEVERITY_VALUE).reverse();
     this.sorting.addDefault(FIELD_ISSUE_KEY);
   }
@@ -443,10 +443,9 @@ public class IssueIndex {
     SearchRequest requestBuilder = EsClient.prepareSearch(TYPE_ISSUE.getMainType());
 
     SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
-    // Adding search_after parameter  to retrieve the next page of hits using a set of sort values from the previous page.
-    if (StringUtils.isNotEmpty(query.searchAfter())) {
-      Object[] searchAfterValues = Arrays.stream(query.searchAfter().split(",")).map(String::trim).toArray();
-      sourceBuilder.searchAfter(searchAfterValues);
+    // Use the last hit sort values from the previous page to continue after 10,000 results.
+    if (!query.searchAfter().isEmpty()) {
+      sourceBuilder.searchAfter(query.searchAfter().toArray());
     }
     requestBuilder.source(sourceBuilder);
 
