@@ -19,6 +19,7 @@
  */
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useLocation, useNavigate } from 'react-router-dom';
 import OrganizationsList from './OrganizationsList';
 import { Organization } from "../../../types/types";
 import { translate } from "../../../helpers/l10n";
@@ -44,11 +45,29 @@ function UserOrganizations(props: Props) {
   const anyoneCanCreate = settings[GlobalSettingKeys.OrganizationsAnyoneCanCreate] === 'true';
   const canCreateOrganizations = (anyoneCanCreate || canAdmin || canCustomerAdmin);
   const {currentUser, setIsNotStandardOrg} = useCurrentUser();
+  const location = useLocation();
+  const navigate = useNavigate();
   React.useEffect(() => {
     if (currentUser.standardOrgs?.length === 0) {
       setIsNotStandardOrg?.(true);
     }
   }, [currentUser.standardOrgs, setIsNotStandardOrg]);
+
+  // Gtihub Self-hosted Server drops `state` on member install requests; Java callback routes here with
+  // ?ghAppError=1. Forward to first real org's error page (skip `default-organization`) so existing UI shows the message.
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('ghAppError') !== '1') return;
+    const firstOrg = userOrganizations?.find(o => o.kee && o.kee !== 'default-organization')?.kee;
+    if (!firstOrg) return;
+    const type = params.get('type') ?? 'oauth';
+    const message = params.get('message') ?? '';
+    navigate(
+      `/organizations/${encodeURIComponent(firstOrg)}/extension/developer/error` +
+      `?type=${encodeURIComponent(type)}&message=${encodeURIComponent(message)}`,
+      { replace: true }
+    );
+  }, [location.search, userOrganizations, navigate]);
   return (
       <div className="account-body account-container organization-card-ctnr">
         <Helmet title={translate('my_account.organizations')}/>
