@@ -237,6 +237,14 @@ public class SearchResponseLoader {
   }
 
   private void loadComments(Collector collector, DbSession dbSession, Set<SearchAdditionalField> fields, SearchResponseData result) {
+      List<IssueChangeDto> changes = dbClient.issueChangeDao()
+              .selectByIssueKeys(dbSession, collector.getIssueKeys());
+      result.addExceptionReasons(changes);
+      result.addAssignedDates(changes);
+      result.getIssues().stream()
+              .map(IssueDto::getAssigneeUuid)
+              .filter(Objects::nonNull)
+              .forEach(uuid -> collector.addUserUuids(singletonList(uuid)));
     if (fields.contains(COMMENTS)) {
       List<IssueChangeDto> comments = dbClient.issueChangeDao().selectByTypeAndIssueKeys(dbSession, collector.getIssueKeys(), IssueChangeDto.TYPE_COMMENT);
       result.setComments(comments);

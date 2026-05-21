@@ -172,6 +172,9 @@ message Issue {
   optional string issueMarkedBy = 51;
   optional int64 issueResolutionExpiresAt = 52;
   optional CvssBreakdown cvssBreakdown = 53;
+  optional string assignedDate = 54;
+  optional string exceptionReason = 55;
+  optional string assignedTo = 56;
 }
 
 message Sort {
