@@ -43,6 +43,7 @@ export function CreatePullRequestButton({
     if (jobId && issueKey) {
       queryClient.invalidateQueries({ queryKey: ['codefix-get-pr-status', jobId] });
       queryClient.invalidateQueries({ queryKey: ['codefix-fixed-file', issueKey] });
+      queryClient.invalidateQueries({ queryKey: ['codefix-status', issueKey] });
     }
   }, [jobId, issueKey, queryClient]);
 

@@ -25,10 +25,10 @@ import { getPullRequestStatus } from '../../api/ai-codefix';
 import { translate } from '../../helpers/l10n';
 import { ErrorText, PrStatusNotification as PrStatusNotificationRoot } from './FixDiffStyles';
 
-export function useCodefixPrStatusQuery(jobId: string | undefined) {
+export function useCodefixPrStatusQuery(jobId: string | undefined, issueKey?: string) {
   return useQuery({
-    queryKey: ['codefix-get-pr-status', jobId],
-    queryFn: () => getPullRequestStatus(jobId!),
+    queryKey: ['codefix-get-pr-status', jobId, issueKey],
+    queryFn: () => getPullRequestStatus(jobId!, issueKey),
     enabled: Boolean(jobId),
     retry: (_, error) => {
       const res = error as unknown as Response;

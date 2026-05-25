@@ -22,6 +22,7 @@ import * as React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Options, SingleValue } from 'react-select';
 import { LabelValueSelectOption, PopupZLevel, SearchSelectDropdown, addGlobalErrorMessage } from '~design-system';
+import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getUsers } from '../../../api/users';
 import { CurrentUserContext } from '../../../app/components/current-user/CurrentUserContext';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
@@ -35,7 +36,7 @@ interface Props {
   organization: string;
   canAssign: boolean;
   isOpen: boolean;
-  issue: Pick<Issue, 'assignee' | 'assigneeActive' | 'assigneeAvatar' | 'assigneeName' | 'assigneeLogin' | 'aiCodeFixEnabled' | 'key' | 'projectKey' | 'projectOrganization' | 'organization'>;
+  issue: Pick<Issue, 'assignee' | 'assigneeActive' | 'assigneeAvatar' | 'assigneeName' | 'assigneeLogin' | 'aiCodeFixEnabled' | 'key' | 'projectKey' | 'projectOrganization' | 'organization' | 'codefixStatus'>;
   onAssign: (login: string) => void;
   togglePopup: (popup: string, show?: boolean) => void;
 }
@@ -157,7 +158,7 @@ export default function IssueAssignee(props: Props) {
     return <span className="sw-flex sw-items-center sw-gap-1">{translate('unassigned')}</span>;
   };
 
-  const handleAssign = (userOption: SingleValue<LabelValueSelectOption<string>>) => {
+  const handleAssign = async (userOption: SingleValue<LabelValueSelectOption<string>>) => {
     if (userOption?.value === 'ai-code-assistant') {
       const {
         key: issueKey,
@@ -166,28 +167,42 @@ export default function IssueAssignee(props: Props) {
         codefixStatus,
       } = props.issue;
 
-      getCodefixQuota(organizationKey).then((quota) => {
+      handleClose();
+
+      try {
+        const quota = await getCodefixQuota(organizationKey);
         if (quota.currentUsage + 1 > quota.dailyLimit) {
           addGlobalErrorMessage(translate('aicodefix.daily_limit_exceeded'));
           return;
         }
 
-        props.onAssign(userOption.value);
-
         const alreadyFixed =
           codefixStatus === 'FIX_GENERATED' || codefixStatus === 'PULL_REQUEST_CREATED';
+
+        if (!alreadyFixed && issueKey) {
+          queryClient.setQueryData(['codefix-status', issueKey], { status: 'IN_PROGRESS' });
+        }
+
+        props.onAssign(userOption.value);
+
         if (!alreadyFixed) {
-          queueCodeFix({
+          await queueCodeFix({
             organizationKey,
             projectKey: projectKey ?? '',
             issueKeys: issueKey ? [issueKey] : [],
-          }).then(() => {
-            if (issueKey) {
-              queryClient.invalidateQueries({ queryKey: ['codefix-status', issueKey] });
-            }
           });
+          if (issueKey) {
+            setTimeout(() => {
+              queryClient.invalidateQueries({ queryKey: ['codefix-status', issueKey] });
+            }, 4000);
+          }
         }
-      });
+      } catch (error) {
+        if (issueKey) {
+          queryClient.removeQueries({ queryKey: ['codefix-status', issueKey] });
+        }
+        throwGlobalError(error);
+      }
 
       return;
     }
