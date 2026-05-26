@@ -254,4 +254,162 @@ public class SourceLinesDiffFinderTest {
 
     assertThat(diff).containsExactly(3, 4);
   }
+
+  /**
+   * Large fully-identical inputs (100K x 100K) — prefix trim consumes everything,
+   * Myers diff is never invoked. Verifies that identity is returned via the trim path.
+   */
+  @Test
+  public void shouldReturnIdentityForLargeIdenticalInputsViaPrefixTrim() {
+    int size = 100_000;
+    List<String> database = buildLines(size, "line-");
+    List<String> report = buildLines(size, "line-");
+
+    long start = System.nanoTime();
+    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
+    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+    assertThat(diff).hasSize(size);
+    for (int i = 0; i < size; i++) {
+      assertThat(diff[i]).as("line " + i).isEqualTo(i + 1);
+    }
+    assertThat(elapsedMs).as("prefix trim must short-circuit Myers — wall time was " + elapsedMs + " ms")
+      .isLessThan(2_000L);
+  }
+
+  /**
+   * Large near-identical inputs (80K x 80K, 100 lines changed in the middle).
+   * Prefix and suffix together trim ~79 800 lines; Myers diff runs only on the
+   * 100x100 core. Result must be correct AND fast.
+   */
+  @Test
+  public void shouldRunMyersOnSmallCoreForLargeNearIdenticalInputs() {
+    int total = 80_000;
+    int prefixLen = 39_950;
+    int divergent = 100;
+
+    List<String> database = new ArrayList<>(total);
+    List<String> report = new ArrayList<>(total);
+    for (int i = 0; i < prefixLen; i++) {
+      String shared = "shared-" + i;
+      database.add(shared);
+      report.add(shared);
+    }
+    for (int i = 0; i < divergent; i++) {
+      database.add("db-divergent-" + i);
+      report.add("rp-divergent-" + i);
+    }
+    int suffixLen = total - prefixLen - divergent;
+    for (int i = 0; i < suffixLen; i++) {
+      String shared = "tail-" + i;
+      database.add(shared);
+      report.add(shared);
+    }
+
+    long start = System.nanoTime();
+    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
+    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+    assertThat(diff).hasSize(total);
+    for (int i = 0; i < prefixLen; i++) {
+      assertThat(diff[i]).as("prefix line " + i).isEqualTo(i + 1);
+    }
+    for (int i = prefixLen; i < prefixLen + divergent; i++) {
+      assertThat(diff[i]).as("divergent line " + i).isZero();
+    }
+    for (int i = prefixLen + divergent; i < total; i++) {
+      assertThat(diff[i]).as("suffix line " + i).isEqualTo(i + 1);
+    }
+    assertThat(elapsedMs).as("trim should leave only a 100x100 core — wall time was " + elapsedMs + " ms")
+      .isLessThan(2_000L);
+  }
+
+  /**
+   * Asymmetric customer scenario: 30 000-line DB file vs 50-line scanner delta
+   * with no overlapping content (ARM EZ-Commit pattern). Prefix/suffix trim
+   * removes nothing; the asymmetry gate must fire and short-circuit Myers.
+   */
+  @Test
+  public void shouldShortCircuitOnAsymmetricDisjointInputs_30kVs50() {
+    List<String> database = buildLines(30_000, "db-");
+    List<String> report = buildLines(50, "rp-");
+
+    long start = System.nanoTime();
+    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
+    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+    assertThat(diff).hasSize(50);
+    assertThat(diff).containsOnly(0);
+    assertThat(elapsedMs).as("asymmetry gate must short-circuit Myers — wall time was " + elapsedMs + " ms")
+      .isLessThan(500L);
+  }
+
+  /**
+   * BOI worst case: 100 000-line DB file vs 100-line scanner delta with no
+   * overlapping content. Both the asymmetry gate and the cell gate apply;
+   * either is sufficient to short-circuit. Without a guard this took ~70 s
+   * on M-series hardware and ~19 minutes on the production cloud VM.
+   */
+  @Test
+  public void shouldShortCircuitOnBoiScale_100kVs100Disjoint() {
+    List<String> database = buildLines(100_000, "db-");
+    List<String> report = buildLines(100, "rp-");
+
+    long start = System.nanoTime();
+    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
+    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+    assertThat(diff).hasSize(100);
+    assertThat(diff).containsOnly(0);
+    assertThat(elapsedMs).as("BOI-scale guarded call must complete fast — wall time was " + elapsedMs + " ms")
+      .isLessThan(500L);
+  }
+
+  /**
+   * Symmetric fully-disjoint large input (5K x 5K): trim removes nothing, ratio
+   * is 1 so the asymmetry gate does not fire, but the cell gate (5 000 x 5 000
+   * = 25 M cells > 4 M threshold) must short-circuit.
+   */
+  @Test
+  public void shouldShortCircuitOnLargeSymmetricDisjointInputs() {
+    List<String> database = buildLines(5_000, "db-");
+    List<String> report = buildLines(5_000, "rp-");
+
+    long start = System.nanoTime();
+    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
+    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+    assertThat(diff).hasSize(5_000);
+    assertThat(diff).containsOnly(0);
+    assertThat(elapsedMs).as("cell gate must short-circuit Myers — wall time was " + elapsedMs + " ms")
+      .isLessThan(500L);
+  }
+
+  /**
+   * Small asymmetric input (4K x 50) — below {@code DIFF_ASYMMETRY_MIN_SIZE} so
+   * the asymmetry gate does NOT fire, and cells (200K) are well under the cell
+   * gate. Myers must still run and produce the correct (no-match) result.
+   */
+  @Test
+  public void shouldRunMyersForSmallAsymmetricInputsBelowFloor() {
+    List<String> database = buildLines(4_000, "db-");
+    List<String> report = buildLines(50, "rp-");
+
+    long start = System.nanoTime();
+    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
+    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+    assertThat(diff).hasSize(50);
+    assertThat(diff).containsOnly(0);
+    assertThat(elapsedMs).as("below floor and below cell gate — Myers must run normally, wall time was " + elapsedMs + " ms")
+      .isLessThan(5_000L);
+  }
+
+  private static List<String> buildLines(int n, String prefix) {
+    List<String> lines = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) {
+      lines.add(prefix + String.format("%07d", i));
+    }
+    return lines;
+  }
 }
