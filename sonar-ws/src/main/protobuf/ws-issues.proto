@@ -173,9 +173,8 @@ message Issue {
   optional string issueMarkedBy = 51;
   optional int64 issueResolutionExpiresAt = 52;
   optional CvssBreakdown cvssBreakdown = 53;
-  optional bool aiCodeFixEnabled = 52;
-  optional int64 issueResolutionExpiresAt = 53;
-  optional string codefixStatus = 54;
+  optional bool aiCodeFixEnabled = 54;
+  optional string codefixStatus = 55;
 }
 
 message Sort {
