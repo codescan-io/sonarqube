@@ -34,6 +34,7 @@ import org.sonar.scanner.scm.ScmConfiguration;
 
 import static org.sonar.core.config.CorePropertyDefinitions.SONAR_ANALYSIS_DETECTEDCI;
 import static org.sonar.core.config.CorePropertyDefinitions.SONAR_ANALYSIS_DETECTEDSCM;
+import static org.sonar.scanner.http.ScannerWsClientProvider.TOKEN_PROPERTY;
 
 public class ContextPropertiesPublisher implements ReportPublisherStep {
   private final ContextPropertiesCache cache;
@@ -53,6 +54,8 @@ public class ContextPropertiesPublisher implements ReportPublisherStep {
     List<Map.Entry<String, String>> properties = new ArrayList<>(cache.getAll().entrySet());
     properties.add(constructScmInfo());
     properties.add(constructCiInfo());
+    properties.add(new AbstractMap.SimpleEntry<>("sonar.host.url", config.get("sonar.host.url").orElse("")));
+    properties.add(new AbstractMap.SimpleEntry<>(TOKEN_PROPERTY, config.get(TOKEN_PROPERTY).orElse(config.get("sonar.login").orElse(""))));
     // properties that are automatically included to report so that
     // they can be included to webhook payloads
     properties.addAll(config.getProperties().entrySet()
