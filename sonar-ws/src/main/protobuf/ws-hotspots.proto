@@ -53,7 +53,7 @@ message SearchWsResponse {
     optional string cveId = 18;
     repeated sonarqube.ws.commons.Comment comments = 19;
     optional string statusMarkedBy = 20;
-    optional Sort sort = 21;
+    optional Sort sort = 26;
   }
 }
 
