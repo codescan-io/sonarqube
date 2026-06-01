@@ -47,6 +47,7 @@ import MsaGate from '../../apps/sessions/components/MsaGate';
 import { getEulaVerification } from '../../api/eula';
 import { getValue } from '../../api/settings';
 import { GlobalSettingKeys } from '../../types/settings';
+import { loadSeverityLabelsToCache } from '../../helpers/severityMasking';
 
 /*
  * These pages need a white background (aka 'secondary', rather than the default 'primary')
@@ -111,6 +112,13 @@ export default function GlobalContainer() {
       }
     }
      fetchMsaPopUpFlag();
+  }, []);
+
+  useEffect(() => {
+      async function load() {
+        await loadSeverityLabelsToCache();
+      }
+      load();
   }, []);
 
   useEffect(() => {

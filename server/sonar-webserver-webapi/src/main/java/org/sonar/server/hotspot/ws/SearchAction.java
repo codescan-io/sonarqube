@@ -134,6 +134,7 @@ public class SearchAction implements HotspotsWsAction {
   private static final String PARAM_CWE = "cwe";
   private static final String PARAM_FILES = "files";
   private static final String PARAM_CVSS = "cvss";
+  private static final String PARAM_SEARCH_AFTER = "searchAfter";
 
 
   private static final List<String> STATUSES = List.of(STATUS_TO_REVIEW, STATUS_REVIEWED);
@@ -175,13 +176,15 @@ public class SearchAction implements HotspotsWsAction {
     Set<String> cwes = setFromList(request.paramAsStrings(PARAM_CWE));
     Set<String> files = setFromList(request.paramAsStrings(PARAM_FILES));
     Set<String> cvsss = setFromList(request.paramAsStrings(PARAM_CVSS));
+    List<String> searchAfter = readSearchAfter(request);
 
 
     return new WsRequest(
       request.mandatoryParamAsInt(PAGE), request.mandatoryParamAsInt(PAGE_SIZE), request.param(PARAM_PROJECT), request.param(PARAM_BRANCH),
       request.param(PARAM_PULL_REQUEST), hotspotKeys, request.param(PARAM_STATUS), request.paramAsStrings(PARAM_RESOLUTION),
       request.paramAsBoolean(PARAM_IN_NEW_CODE_PERIOD), request.paramAsBoolean(PARAM_ONLY_MINE), request.paramAsInt(PARAM_OWASP_ASVS_LEVEL),
-      pciDss32, pciDss40, owaspAsvs40, owasp2017Top10, owasp2021Top10, stigAsdV5R3, casa, sansTop25, sonarsourceSecurity, cwes, files, cvsss);
+      pciDss32, pciDss40, owaspAsvs40, owasp2017Top10, owasp2021Top10, stigAsdV5R3, casa, sansTop25, sonarsourceSecurity, cwes, files, cvsss,
+      searchAfter);
   }
 
   @Override
@@ -340,6 +343,11 @@ public class SearchAction implements HotspotsWsAction {
       .setDescription("Comma-separated list of files. Returns only hotspots found in those files")
       .setExampleValue("src/main/java/org/sonar/server/Test.java")
       .setSince("9.0");
+    action.createParam(PARAM_SEARCH_AFTER)
+      .setDescription("By default, you cannot get more than 10,000 items by using from/size parameters.<br>" +
+        "If you need to page through more than 10,000 items, use the searchAfter parameter instead.<br>" +
+        "To retrieve the next page of results, repeat the request and repeat the '" + PARAM_SEARCH_AFTER + "' parameter once per sort value " +
+        "returned in the last hotspot.");
 
     action.setResponseExample(getClass().getResource("search-example.json"));
   }
@@ -423,11 +431,13 @@ public class SearchAction implements HotspotsWsAction {
     List<String> issueKeys = Arrays.stream(result.getHits().getHits())
       .map(SearchHit::getId)
       .toList();
+    Map<String, Object[]> sortValuesByHotspotKey = Arrays.stream(result.getHits().getHits())
+      .collect(Collectors.toMap(SearchHit::getId, SearchHit::getSortValues));
     collector.setIssueKeys(issueKeys);
     List<IssueDto> hotspots = toIssueDtos(dbSession, issueKeys);
 
     Paging paging = forPageIndex(wsRequest.getPage()).withPageSize(wsRequest.getIndex()).andTotal((int) getTotalHits(result).value);
-    return new SearchResponseData(paging, hotspots);
+    return new SearchResponseData(paging, hotspots, sortValuesByHotspotKey);
   }
 
   private static TotalHits getTotalHits(SearchResponse response) {
@@ -490,11 +500,20 @@ public class SearchAction implements HotspotsWsAction {
     wsRequest.getStatus().ifPresent(status -> builder.resolved(STATUS_REVIEWED.equals(status)));
     wsRequest.getResolution().ifPresent(builder::resolutions);
     addSecurityStandardFilters(wsRequest, builder);
+    builder.searchAfter(wsRequest.getSearchAfter());
 
     IssueQuery query = builder.build();
-    SearchOptions searchOptions = new SearchOptions()
-      .setPage(wsRequest.page, wsRequest.index);
+    SearchOptions searchOptions = new SearchOptions();
+    applyPaging(wsRequest, searchOptions);
     return issueIndex.search(query, searchOptions);
+  }
+
+  private static void applyPaging(WsRequest wsRequest, SearchOptions searchOptions) {
+    if (!wsRequest.getSearchAfter().isEmpty()) {
+      searchOptions.setLimit(wsRequest.getIndex());
+      return;
+    }
+    searchOptions.setPage(wsRequest.page, wsRequest.index);
   }
 
   private void validateParameters(WsRequest wsRequest) {
@@ -798,13 +817,14 @@ public class SearchAction implements HotspotsWsAction {
     private final Set<String> cwe;
     private final Set<String> cvss;
     private final Set<String> files;
+    private final List<String> searchAfter;
 
     private WsRequest(int page, int index,
       @Nullable String projectKey, @Nullable String branch, @Nullable String pullRequest, Set<String> hotspotKeys,
       @Nullable String status, @Nullable List<String> resolution, @Nullable Boolean inNewCodePeriod, @Nullable Boolean onlyMine,
       @Nullable Integer owaspAsvsLevel, Set<String> pciDss32, Set<String> pciDss40, Set<String> owaspAsvs40,
       Set<String> owaspTop10For2017, Set<String> owaspTop10For2021, Set<String> stigAsdV5R3, Set<String> casa, Set<String> sansTop25, Set<String> sonarsourceSecurity,
-      Set<String> cwe, @Nullable Set<String> files, Set<String> cvss) {
+      Set<String> cwe, @Nullable Set<String> files, Set<String> cvss, List<String> searchAfter) {
       this.page = page;
       this.index = index;
       this.projectKey = projectKey;
@@ -828,6 +848,7 @@ public class SearchAction implements HotspotsWsAction {
       this.cwe = cwe;
       this.files = files;
       this.cvss = cvss;
+      this.searchAfter = searchAfter;
     }
 
     int getPage() {
@@ -921,6 +942,10 @@ public class SearchAction implements HotspotsWsAction {
     public Set<String> getFiles() {
       return files;
     }
+
+    public List<String> getSearchAfter() {
+      return searchAfter;
+    }
   }
 
   /**
@@ -956,5 +981,16 @@ public class SearchAction implements HotspotsWsAction {
       public List<String> getIssueKeys() {
           return issueKeys;
       }
+  }
+
+  static List<String> readSearchAfter(Request request) {
+    List<String> searchAfter = request.multiParam(PARAM_SEARCH_AFTER);
+    if (searchAfter.size() == 1 && searchAfter.get(0).contains(",")) {
+      return Arrays.stream(searchAfter.get(0).split(","))
+        .map(String::trim)
+        .filter(value -> !value.isEmpty())
+        .toList();
+    }
+    return searchAfter;
   }
 }
