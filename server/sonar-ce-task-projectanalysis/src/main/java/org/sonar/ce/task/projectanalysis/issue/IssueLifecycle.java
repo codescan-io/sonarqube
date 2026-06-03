@@ -32,6 +32,7 @@ import org.sonar.ce.task.projectanalysis.analysis.AnalysisMetadataHolder;
 import org.sonar.core.issue.DefaultImpact;
 import org.sonar.core.issue.DefaultIssue;
 import org.sonar.core.issue.DefaultIssueComment;
+import org.sonar.core.issue.DefaultIssueExceptionReason;
 import org.sonar.core.issue.FieldDiffs;
 import org.sonar.core.issue.IssueChangeContext;
 import org.sonar.core.util.Uuids;
@@ -147,7 +148,19 @@ public class IssueLifecycle {
 
   private static void copyChangesOfIssueFromOtherBranch(DefaultIssue raw, DefaultIssue base) {
     base.defaultIssueComments().forEach(c -> raw.addComment(copyComment(raw.key(), c)));
+    base.defaultIssueExceptionReasons().forEach(c -> raw.addExceptionReason(copyExceptionReason(raw.key(), c)));
     base.changes().forEach(c -> copyFieldDiffOfIssueFromOtherBranch(raw.key(), c).ifPresent(raw::addChange));
+  }
+
+  private static DefaultIssueExceptionReason copyExceptionReason(String issueKey, DefaultIssueExceptionReason c) {
+    DefaultIssueExceptionReason exceptionReason = new DefaultIssueExceptionReason();
+    exceptionReason.setIssueKey(issueKey);
+    exceptionReason.setKey(Uuids.create());
+    exceptionReason.setUserUuid(c.userUuid());
+    exceptionReason.setMarkdownText(c.markdownText());
+    exceptionReason.setCreatedAt(c.createdAt()).setUpdatedAt(c.updatedAt());
+    exceptionReason.setNew(true);
+    return exceptionReason;
   }
 
   /**
@@ -232,6 +245,10 @@ public class IssueLifecycle {
 
   public void addComment(DefaultIssue issue, String comment, String userUuid) {
     updater.addComment(issue, comment, getIssueChangeContextWithUser(userUuid));
+  }
+
+  public void addExceptionReason(DefaultIssue issue, String exceptionReason, String userUuid) {
+    updater.addExceptionReason(issue, exceptionReason, getIssueChangeContextWithUser(userUuid));
   }
 
   @NotNull

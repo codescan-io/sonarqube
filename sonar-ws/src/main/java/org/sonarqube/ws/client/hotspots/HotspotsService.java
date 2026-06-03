@@ -77,14 +77,15 @@ public class HotspotsService extends BaseService {
    * @see <a href="https://next.sonarqube.com/sonarqube/web_api/api/hotspots/change_status">Further information about this action online (including a response example)</a>
    * @since 8.1
    */
-  public void changeStatus(ChangeStatusRequest request) {
-    call(
+  public Hotspots.ChangeStatusWsResponse changeStatus(ChangeStatusRequest request) {
+    return call(
       new PostRequest(path("change_status"))
         .setParam("comment", request.getComment())
         .setParam("hotspot", request.getHotspot())
         .setParam("resolution", request.getResolution())
         .setParam("status", request.getStatus())
-        .setMediaType(MediaTypes.JSON)).content();
+        .setMediaType(MediaTypes.JSON),
+      Hotspots.ChangeStatusWsResponse.parser());
   }
 
   /**

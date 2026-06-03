@@ -154,23 +154,29 @@ export function getHotspotReviewHistory(hotspot: Hotspot): ReviewHistoryElement[
 
   if (hotspot.changelog && hotspot.changelog.length > 0) {
     history.push(
-      ...hotspot.changelog.map((log) => ({
-        type: ReviewHistoryType.Diff,
-        date: log.creationDate,
-        user: {
-          active: log.isUserActive,
-          avatar: log.avatar,
-          name: log.userName || log.user,
-        },
-        diffs: log.diffs,
-      })),
+      ...hotspot.changelog.map((log) => {
+        const isExceptionTransition = log.diffs.some(
+          (diff) => diff.key === 'resolution' && diff.newValue === 'EXCEPTION',
+        );
+        return {
+          type: isExceptionTransition ? ReviewHistoryType.Diff : ReviewHistoryType.Comment,
+          date: log.creationDate,
+          user: {
+            active: log.isUserActive,
+            avatar: log.avatar,
+            name: log.userName || log.user,
+          },
+          diffs: log.diffs,
+        };
+      }),
     );
   }
 
   if (hotspot.comment && hotspot.comment.length > 0) {
     history.push(
       ...hotspot.comment.map((comment) => ({
-        type: ReviewHistoryType.Comment,
+        type: comment.type === 'exception_reason' ? ReviewHistoryType.ExceptionReason : ReviewHistoryType.Comment,
+        subtype: comment.type,
         date: comment.createdAt,
         updatable: comment.updatable,
         user: {

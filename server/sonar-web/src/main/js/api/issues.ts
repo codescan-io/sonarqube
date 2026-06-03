@@ -126,8 +126,16 @@ export function setIssueTags(data: { issue: string; tags: string }): Promise<Iss
 export function setIssueTransition(data: {
   issue: string;
   transition: string;
+  issueResolutionExpiryDate?: string;
 }): Promise<IssueResponse> {
-  return postJSON('/api/issues/do_transition', data);
+  const body: Record<string, string> = {
+    issue: data.issue,
+    transition: data.transition,
+  };
+  if (data.issueResolutionExpiryDate !== undefined) {
+    body.issueResolutionExpiryDate = data.issueResolutionExpiryDate;
+  }
+  return postJSON('/api/issues/do_transition', body);
 }
 
 export function setIssueType(data: { issue: string; type: string }): Promise<IssueResponse> {

@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.sonar.api.server.ServerSide;
 import org.sonar.core.issue.DefaultIssue;
+import org.sonar.db.issue.IssueDto;
 import org.sonar.server.issue.workflow.Transition;
 import org.sonar.server.user.UserSession;
 
@@ -37,10 +38,12 @@ public class TransitionAction extends Action {
   public static final String TRANSITION_PARAMETER = "transition";
 
   private final TransitionService transitionService;
+  private final CodeIssueExceptionExpiryService codeIssueExceptionExpiryService;
 
-  public TransitionAction(TransitionService transitionService) {
+  public TransitionAction(TransitionService transitionService, CodeIssueExceptionExpiryService codeIssueExceptionExpiryService) {
     super(DO_TRANSITION_KEY);
     this.transitionService = transitionService;
+    this.codeIssueExceptionExpiryService = codeIssueExceptionExpiryService;
   }
 
   @Override
@@ -53,7 +56,18 @@ public class TransitionAction extends Action {
   public boolean execute(Map<String, Object> properties, Context context) {
     DefaultIssue issue = context.issue();
     String transition = transition(properties);
-    return canExecuteTransition(issue, transition) && transitionService.doTransition(context.issue(), context.issueChangeContext(), transition(properties));
+    if (!canExecuteTransition(issue, transition)) {
+      return false;
+    }
+    IssueDto dtoBefore = context.issueDto();
+    String previousStatus = dtoBefore.getStatus();
+    if (!transitionService.doTransition(context.issue(), context.issueChangeContext(), transition)) {
+      return false;
+    }
+    boolean hasExpiryDateParam = properties.containsKey(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
+    String expiryDateParam = (String) properties.get(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
+    codeIssueExceptionExpiryService.applyAfterTransition(issue, dtoBefore, transition, previousStatus, hasExpiryDateParam, expiryDateParam);
+    return true;
   }
 
   @Override

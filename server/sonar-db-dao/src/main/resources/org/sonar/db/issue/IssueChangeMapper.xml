@@ -75,6 +75,13 @@
     </foreach>
   </select>
 
+  <select id="selectByKey" parameterType="string" resultType="IssueChange">
+    select
+    <include refid="issueChangeColumns"/>
+    from issue_changes c
+    where c.kee=#{key,jdbcType=VARCHAR}
+  </select>
+
   <select id="selectByKeyAndType" parameterType="map" resultType="IssueChange">
     select
     <include refid="issueChangeColumns"/>

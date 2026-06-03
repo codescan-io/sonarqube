@@ -106,6 +106,7 @@ export interface Hotspot {
   updateDate: string;
   users: UserBase[];
   issueResolutionExpiryDate?:string;
+  exceptionReason?: string;
 }
 
 export interface HotspotComponent {
@@ -142,6 +143,7 @@ export interface HotspotComment {
   markdown: string;
   updatable: boolean;
   user: UserBase;
+  type?: string;
 }
 
 export interface ReviewHistoryElement {
@@ -153,12 +155,14 @@ export interface ReviewHistoryElement {
   type: ReviewHistoryType;
   updatable?: boolean;
   user: Pick<UserBase, 'active' | 'avatar' | 'name'>;
+  subtype?: string;
 }
 
 export enum ReviewHistoryType {
   Creation,
   Diff,
   Comment,
+  ExceptionReason,
 }
 
 export interface HotspotSearchResponse {
@@ -172,6 +176,7 @@ export interface HotspotSetStatusRequest {
   resolution?: HotspotResolution;
   status: HotspotStatus;
   issueResolutionExpiryDate?: string;
+  exceptionReason?: string;
 }
 
 export interface HotspotAssignRequest {

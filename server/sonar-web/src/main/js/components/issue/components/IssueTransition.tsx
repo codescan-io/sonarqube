@@ -20,6 +20,7 @@
 
 import styled from '@emotion/styled';
 import * as React from 'react';
+import { useIntl } from 'react-intl';
 import {
   Dropdown,
   DropdownMenuWrapper,
@@ -32,32 +33,73 @@ import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { useIssueCommentMutation, useIssueTransitionMutation } from '../../../queries/issues';
 import { Issue } from '../../../types/types';
 import StatusHelper from '../../shared/StatusHelper';
+import { exceptionExpiryHintForIssue } from '../exceptionExpiryDisplay';
 import { updateIssue } from '../actions';
 import { IssueTransitionOverlay } from './IssueTransitionOverlay';
 
 interface Props {
   isOpen: boolean;
-  issue: Pick<Issue, 'key' | 'resolution' | 'issueStatus' | 'transitions' | 'type' | 'actions'>;
+  issue: Pick<
+    Issue,
+    | 'key'
+    | 'resolution'
+    | 'issueStatus'
+    | 'transitions'
+    | 'type'
+    | 'actions'
+    | 'status'
+    | 'issueResolutionExpiresAt'
+  >;
   onChange: (issue: Issue) => void;
   togglePopup: (popup: string, show?: boolean) => void;
 }
 
 export default function IssueTransition(props: Readonly<Props>) {
   const { isOpen, issue, onChange, togglePopup } = props;
+  const intl = useIntl();
+  const exceptionExpiryHint = exceptionExpiryHintForIssue(intl, issue);
+
+  function renderStatusLabel(className?: string) {
+    return (
+      <span className={className ?? 'sw-flex sw-flex-col sw-items-start sw-min-w-0'}>
+        <StatusHelper className="sw-flex sw-items-center" issueStatus={issue.issueStatus} />
+        {exceptionExpiryHint !== null && (
+          <span
+            className="sw-typo-xs sw-text-subdued sw-mt-0.5 sw-truncate sw-max-w-full"
+            title={exceptionExpiryHint}
+          >
+            {exceptionExpiryHint}
+          </span>
+        )}
+      </span>
+    );
+  }
 
   const [transitioning, setTransitioning] = React.useState(false);
   const { mutateAsync: setIssueTransition } = useIssueTransitionMutation();
   const { mutateAsync: addIssueComment } = useIssueCommentMutation();
 
-  async function handleSetTransition(transition: string, comment?: string) {
+  async function handleSetTransition(
+    transition: string,
+    comment?: string,
+    issueResolutionExpiryDate?: string,
+  ) {
     setTransitioning(true);
 
     try {
+      const transitionPayload: {
+        issue: string;
+        transition: string;
+        issueResolutionExpiryDate?: string;
+      } = { issue: issue.key, transition };
+      if (issueResolutionExpiryDate !== undefined) {
+        transitionPayload.issueResolutionExpiryDate = issueResolutionExpiryDate;
+      }
       if (typeof comment === 'string' && comment.length > 0) {
-        await setIssueTransition({ issue: issue.key, transition });
+        await setIssueTransition(transitionPayload);
         await updateIssue(onChange, addIssueComment({ issue: issue.key, text: comment }));
       } else {
-        await updateIssue(onChange, setIssueTransition({ issue: issue.key, transition }));
+        await updateIssue(onChange, setIssueTransition(transitionPayload));
       }
       togglePopup('transition', false);
     } finally {
@@ -100,9 +142,7 @@ export default function IssueTransition(props: Readonly<Props>) {
             onClear={handleClose}
             isDiscreet
             className="it__issue-transition sw-px-1"
-            label={
-              <StatusHelper className="sw-flex sw-items-center" issueStatus={issue.issueStatus} />
-            }
+            label={renderStatusLabel('sw-flex sw-flex-col sw-items-start sw-min-w-0')}
             ariaLabel={translateWithParameters(
               'issue.transition.status_x_click_to_change',
               translate('issue.issue_status', issue.issueStatus),
@@ -113,7 +153,7 @@ export default function IssueTransition(props: Readonly<Props>) {
     );
   }
 
-  return <StatusHelper issueStatus={issue.issueStatus} />;
+  return renderStatusLabel();
 }
 
 const StyledDropdown = styled(Dropdown)`

@@ -36,7 +36,11 @@ export const useIssueChangelogQuery = createQueryHook((issueKey: string) => {
 export function useIssueTransitionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { issue: string; transition: string }) => setIssueTransition(data),
+    mutationFn: (data: {
+      issue: string;
+      transition: string;
+      issueResolutionExpiryDate?: string;
+    }) => setIssueTransition(data),
     onSuccess: ({ issue }) => {
       invalidateIssueChangelog(issue.key, queryClient);
     },

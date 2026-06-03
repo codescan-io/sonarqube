@@ -25,7 +25,6 @@ dependencies {
 
     api project(':server:sonar-db-dao')
     api project(':server:sonar-webserver-common')
-    api project(':server:sonar-webserver-webapi')
 
     testImplementation 'jakarta.servlet:jakarta.servlet-api'
     testImplementation 'org.junit.jupiter:junit-jupiter-api'

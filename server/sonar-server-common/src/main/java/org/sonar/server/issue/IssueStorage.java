@@ -21,6 +21,7 @@ package org.sonar.server.issue;
 
 import org.sonar.core.issue.DefaultIssue;
 import org.sonar.core.issue.DefaultIssueComment;
+import org.sonar.core.issue.DefaultIssueExceptionReason;
 import org.sonar.core.issue.FieldDiffs;
 import org.sonar.core.util.UuidFactory;
 import org.sonar.db.issue.IssueChangeDto;
@@ -31,6 +32,14 @@ public class IssueStorage {
     for (DefaultIssueComment comment : issue.defaultIssueComments()) {
       if (comment.isNew()) {
         IssueChangeDto changeDto = IssueChangeDto.of(comment, issue.projectUuid());
+        changeDto.setUuid(uuidFactory.create());
+        changeDto.setProjectUuid(issue.projectUuid());
+        mapper.insert(changeDto);
+      }
+    }
+    for (DefaultIssueExceptionReason exceptionReason : issue.defaultIssueExceptionReasons()) {
+      if (exceptionReason.isNew()) {
+        IssueChangeDto changeDto = IssueChangeDto.of(exceptionReason, issue.projectUuid());
         changeDto.setUuid(uuidFactory.create());
         changeDto.setProjectUuid(issue.projectUuid());
         mapper.insert(changeDto);

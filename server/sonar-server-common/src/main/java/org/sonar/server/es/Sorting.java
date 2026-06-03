@@ -75,8 +75,12 @@ public class Sorting {
       FieldSortBuilder sortBuilder = SortBuilders.fieldSort(field.name);
       boolean effectiveAsc = asc != field.reverse;
       sortBuilder.order(effectiveAsc ? SortOrder.ASC : SortOrder.DESC);
-      boolean effectiveMissingLast = asc == field.missingLast;
-      sortBuilder.missing(effectiveMissingLast ? "_last" : "_first");
+      if (field.missingValue != null) {
+        sortBuilder.missing(field.missingValue);
+      } else {
+        boolean effectiveMissingLast = asc == field.missingLast;
+        sortBuilder.missing(effectiveMissingLast ? "_last" : "_first");
+      }
       return sortBuilder;
     }).toList();
   }
@@ -85,6 +89,7 @@ public class Sorting {
     private final String name;
     private boolean reverse = false;
     private boolean missingLast = false;
+    private Object missingValue = null;
 
     /**
      * Default is missing first, same order as requested
@@ -98,6 +103,11 @@ public class Sorting {
      */
     public Field missingLast() {
       missingLast = true;
+      return this;
+    }
+
+    public Field missingValue(Object value) {
+      missingValue = value;
       return this;
     }
 
@@ -120,5 +130,6 @@ public class Sorting {
     public boolean isMissingLast() {
       return missingLast;
     }
+
   }
 }

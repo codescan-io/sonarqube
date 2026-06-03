@@ -205,9 +205,6 @@ public class UpdateAction implements RulesWsAction {
     }
     String description = request.param(PARAM_DESCRIPTION);
     if (description != null) {
-      if (!UrlValidatorUtil.textContainsValidUrl(description)) {
-        throw BadRequestException.create(INVALID_URL);
-      }
       update.setMarkdownDescription(description);
     }
     String severity = request.param(PARAM_SEVERITY);

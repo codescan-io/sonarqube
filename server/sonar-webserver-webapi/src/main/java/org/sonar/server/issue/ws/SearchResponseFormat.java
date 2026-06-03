@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import java.util.stream.Collectors;
 import org.sonar.api.issue.IssueStatus;
@@ -55,6 +56,10 @@ import org.sonar.server.issue.TextRangeResponseFormatter;
 import org.sonar.server.issue.index.IssueScope;
 import org.sonar.server.issue.workflow.Transition;
 import org.sonar.server.ws.MessageFormattingUtils;
+import org.sonar.server.cvss.CvssMetadataService;
+import org.sonar.server.cvss.CvssMetricEntry;
+import org.sonar.server.cvss.CvssMetricGroup;
+import org.sonar.server.cvss.CvssScoreBreakdown;
 import org.sonarqube.ws.Common;
 import org.sonarqube.ws.Common.Comment;
 import org.sonarqube.ws.Common.User;
@@ -98,6 +103,7 @@ public class SearchResponseFormat {
   private final Languages languages;
   private final TextRangeResponseFormatter textRangeFormatter;
   private final UserResponseFormatter userFormatter;
+  private final CvssMetadataService cvssMetadataService;
   private static final String REMOVED_USER_PREFIX = "sq-removed-";
 
   public SearchResponseFormat(Durations durations, Languages languages, TextRangeResponseFormatter textRangeFormatter,
@@ -106,6 +112,7 @@ public class SearchResponseFormat {
     this.languages = languages;
     this.textRangeFormatter = textRangeFormatter;
     this.userFormatter = userFormatter;
+    this.cvssMetadataService = new CvssMetadataService();
   }
 
   SearchWsResponse formatSearch(Set<SearchAdditionalField> fields, SearchResponseData data, Paging paging, Facets facets, Map<String, Object[]> issueMap,
@@ -255,6 +262,8 @@ public class SearchResponseFormat {
 
     Optional.ofNullable(dto.getCveId()).ifPresent(issueBuilder::setCveId);
 
+    Optional.ofNullable(dto.getIssueResolutionExpiresAt()).ifPresent(issueBuilder::setIssueResolutionExpiresAt);
+
     if (issueMap != null && !issueMap.isEmpty()) {
       Sort.Builder wsSort = Sort.newBuilder();
       Object[] sortValue = issueMap.get(issueBuilder.getKey());
@@ -265,6 +274,61 @@ public class SearchResponseFormat {
       }
       issueBuilder.setSort(wsSort);
     }
+
+    setCvssBreakdown(issueBuilder, dto.getRuleKey().rule());
+  }
+
+  private void setCvssBreakdown(Issue.Builder issueBuilder, String ruleKey) {
+    CvssScoreBreakdown cvss = cvssMetadataService.forRule(ruleKey);
+    if (cvss == null) {
+      return;
+    }
+
+    Issues.CvssBreakdown.Builder breakdownBuilder = Issues.CvssBreakdown.newBuilder();
+
+    // Scores
+    Issues.CvssScoreSummary.Builder scores = Issues.CvssScoreSummary.newBuilder();
+    if (cvss.getBaseScore() > 0.0) {
+      scores.setBase(cvss.getBaseScore());
+    }
+    if (cvss.getTemporalScore() > 0.0) {
+      scores.setTemporal(cvss.getTemporalScore());
+    }
+    if (cvss.getEnvironmentalScore() > 0.0) {
+      scores.setEnvironmental(cvss.getEnvironmentalScore());
+    }
+    if (cvss.getCvssScore() > 0.0) {
+      scores.setOverall(cvss.getCvssScore());
+    }
+    breakdownBuilder.setScores(scores.build());
+
+    // Metrics
+    Map<CvssMetricGroup, List<CvssMetricEntry>> metrics = cvss.getMetrics();
+    if (metrics != null && !metrics.isEmpty()) {
+      addIssueCvssMetrics(breakdownBuilder::setBase, metrics.get(CvssMetricGroup.BASE));
+      addIssueCvssMetrics(breakdownBuilder::setTemporal, metrics.get(CvssMetricGroup.TEMPORAL));
+      addIssueCvssMetrics(breakdownBuilder::setEnvironmental, metrics.get(CvssMetricGroup.ENVIRONMENTAL));
+    }
+
+    issueBuilder.setCvssBreakdown(breakdownBuilder.build());
+  }
+
+  private static void addIssueCvssMetrics(Consumer<Issues.CvssMetrics> setter, List<CvssMetricEntry> metrics) {
+    if (metrics == null || metrics.isEmpty()) {
+      return;
+    }
+
+    Issues.CvssMetrics.Builder metricsBuilder = Issues.CvssMetrics.newBuilder();
+    for (CvssMetricEntry metric : metrics) {
+      Issues.CvssMetric.Builder metricBuilder = Issues.CvssMetric.newBuilder()
+              .setName(metric.getName().getDisplayName())
+              .setValue(metric.getValue());
+      if (metric.getJustification() != null) {
+        metricBuilder.setJustification(metric.getJustification());
+      }
+      metricsBuilder.addMetrics(metricBuilder.build());
+    }
+    setter.accept(metricsBuilder.build());
   }
 
   private static void setExportIssueStatus(Builder issueBuilder, IssueDto dto) {
