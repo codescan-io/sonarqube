@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './CreateRuleSelectionModal.css';
 import CheckSvg from './icons/Check.svg';
 import ChevronRightSvg from './icons/ChevronRight.svg';
@@ -26,6 +26,7 @@ import Code2Svg from './icons/Code2.svg';
 import SparklesSvg from './icons/Sparkles.svg';
 
 interface Props {
+  aiEnabled: boolean;
   isOpen: boolean;
   onClose: () => void;
   onSelectAI: () => void;
@@ -35,8 +36,16 @@ interface Props {
 type CardSelection = 'ai' | 'xpath' | null;
 
 export default function CreateRuleSelectionModal(props: Readonly<Props>) {
-  const { isOpen, onClose, onSelectAI, onSelectXPath } = props;
+  const { aiEnabled, isOpen, onClose, onSelectAI, onSelectXPath } = props;
   const [selected, setSelected] = useState<CardSelection>(null);
+  const [showAiDisabledMessage, setShowAiDisabledMessage] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSelected(null);
+      setShowAiDisabledMessage(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -45,8 +54,13 @@ export default function CreateRuleSelectionModal(props: Readonly<Props>) {
   const handleCardClick = (card: CardSelection) => {
     setSelected(card);
     if (card === 'ai') {
+      if (!aiEnabled) {
+        setShowAiDisabledMessage(true);
+        return;
+      }
       onSelectAI();
     } else if (card === 'xpath') {
+      setShowAiDisabledMessage(false);
       onSelectXPath();
     }
   };
@@ -119,6 +133,12 @@ export default function CreateRuleSelectionModal(props: Readonly<Props>) {
               </span>
             </div>
           </div>
+
+          {showAiDisabledMessage && (
+            <div className="ai-disabled-message" role="alert">
+              Enable the AI custom rules toggle in Organization settings to use this option.
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { postJSON } from '../../../../helpers/request';
+import { postJSONBody } from '../../../../helpers/request';
 
 export interface GenerateXPathRequest {
   description: string;
@@ -36,5 +36,5 @@ export interface GenerateXPathResponse {
  * Does not create a rule — rule creation uses the standard v2 rules API.
  */
 export function generateAIXPath(request: GenerateXPathRequest): Promise<GenerateXPathResponse> {
-  return postJSON('/_codescan/ai-rules/generate-xpath', request);
+  return postJSONBody('/_codescan/ai-rules/generate-xpath', request);
 }
