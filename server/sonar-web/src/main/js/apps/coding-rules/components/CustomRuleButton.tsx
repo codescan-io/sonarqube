@@ -19,10 +19,11 @@
  */
 
 import * as React from 'react';
+import { getOrganization } from '../../../api/organizations';
 import { RuleDetails } from '../../../types/types';
 import CustomRuleFormModal from './CustomRuleFormModal';
-import CreateRuleSelectionModal from './ai-custom-rules/CreateRuleSelectionModal';
 import AIRuleWizard from './ai-custom-rules/AIRuleWizard';
+import CreateRuleSelectionModal from './ai-custom-rules/CreateRuleSelectionModal';
 
 interface Props {
   children: (props: { onClick: () => void }) => React.ReactNode;
@@ -36,6 +37,28 @@ export default function CustomRuleButton(props: Props) {
   const [selectionModalOpen, setSelectionModalOpen] = React.useState(false);
   const [xpathModalOpen, setXpathModalOpen] = React.useState(false);
   const [aiWizardOpen, setAiWizardOpen] = React.useState(false);
+  const [aiCustomRulesEnabled, setAiCustomRulesEnabled] = React.useState(false);
+
+  // AI custom rules are only available for Salesforce Metadata (sfmeta) template rules
+  const isSfMetaRule = templateRule.repo?.includes('sfmeta') ?? false;
+
+  React.useEffect(() => {
+    if (props.organization && isSfMetaRule) {
+      getOrganization(props.organization).then((org) => {
+        setAiCustomRulesEnabled(org.aiCustomRulesEnabled || false);
+      }).catch(() => {
+        setAiCustomRulesEnabled(false);
+      });
+    }
+  }, [props.organization, isSfMetaRule]);
+
+  const handleClick = () => {
+    if (isSfMetaRule) {
+      setSelectionModalOpen(true);
+    } else {
+      setXpathModalOpen(true);
+    }
+  };
 
   const handleSelectXPath = () => {
     setSelectionModalOpen(false);
@@ -49,15 +72,18 @@ export default function CustomRuleButton(props: Props) {
 
   return (
     <>
-      {props.children({ onClick: () => setSelectionModalOpen(true) })}
+      {props.children({ onClick: handleClick })}
 
-      {/* Step 1: Selection Modal */}
-      <CreateRuleSelectionModal
-        isOpen={selectionModalOpen}
-        onClose={() => setSelectionModalOpen(false)}
-        onSelectAI={handleSelectAI}
-        onSelectXPath={handleSelectXPath}
-      />
+      {/* Step 1: Selection Modal (shown for sfmeta rules; AI option gated by the org flag) */}
+      {isSfMetaRule && (
+        <CreateRuleSelectionModal
+          isOpen={selectionModalOpen}
+          aiEnabled={aiCustomRulesEnabled}
+          onClose={() => setSelectionModalOpen(false)}
+          onSelectAI={handleSelectAI}
+          onSelectXPath={handleSelectXPath}
+        />
+      )}
 
       {/* Step 2a: XPath Modal (Existing) */}
       {xpathModalOpen && (
@@ -70,17 +96,19 @@ export default function CustomRuleButton(props: Props) {
         />
       )}
 
-      {/* Step 2b: AI Rule Wizard (Define → Generate → Review) */}
-      <AIRuleWizard
-        isOpen={aiWizardOpen}
-        onClose={() => setAiWizardOpen(false)}
-        onBack={() => {
-          setAiWizardOpen(false);
-          setSelectionModalOpen(true);
-        }}
-        organization={props.organization}
-        templateRule={templateRule}
-      />
+      {/* Step 2b: AI Rule Wizard (only when AI is enabled) */}
+      {aiCustomRulesEnabled && (
+        <AIRuleWizard
+          isOpen={aiWizardOpen}
+          onClose={() => setAiWizardOpen(false)}
+          onBack={() => {
+            setAiWizardOpen(false);
+            setSelectionModalOpen(true);
+          }}
+          organization={props.organization}
+          templateRule={templateRule}
+        />
+      )}
     </>
   );
 }
