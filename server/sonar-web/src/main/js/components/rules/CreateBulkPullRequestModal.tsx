@@ -29,42 +29,25 @@ import {
   Modal,
   Spinner,
 } from '~design-system';
+import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import {
-  createCodefixPr,
-  getCodefixCreatePrDraft,
+  createBulkCodefixPr,
+  getBulkCodefixCreatePrDraft,
   type CodefixCreatePrDraft,
 } from '../../api/ai-codefix';
 import { translate } from '../../helpers/l10n';
-import { CodefixPrStatusBanner, useCodefixPrStatusQuery } from './PrStatusNotification';
 
-function parseCreatePrErrorMessage(err: unknown): Promise<string> {
-  if (!(err instanceof Response)) {
-    return Promise.resolve(translate('issues.code_fix.create_pr_modal.submit_error'));
-  }
-  return err
-    .json()
-    .then(
-      (data: { error?: string; message?: string }) =>
-        (typeof data?.error === 'string' && data.error) ||
-        (typeof data?.message === 'string' && data.message) ||
-        translate('issues.code_fix.create_pr_modal.submit_error'),
-    )
-    .catch(() => translate('issues.code_fix.create_pr_modal.submit_error'));
-}
-
-interface CreatePullRequestModalProps {
-  jobId: string;
-  issueKey: string;
+interface CreateBulkPullRequestModalProps {
+  issueKeys: string[];
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function CreatePullRequestModal({
-  jobId,
-  issueKey,
+export function CreateBulkPullRequestModal({
+  issueKeys,
   onClose,
   onSuccess,
-}: Readonly<CreatePullRequestModalProps>) {
+}: Readonly<CreateBulkPullRequestModalProps>) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = React.useState<CodefixCreatePrDraft | null>(null);
   const [loadError, setLoadError] = React.useState(false);
@@ -75,14 +58,12 @@ export function CreatePullRequestModal({
   const [prTitle, setPrTitle] = React.useState('');
   const [commitMessage, setCommitMessage] = React.useState('');
   const [description, setDescription] = React.useState('');
-  const [submitError, setSubmitError] = React.useState('');
 
   React.useEffect(() => {
     let cancelled = false;
     setLoadingDraft(true);
     setLoadError(false);
-    setSubmitError('');
-    getCodefixCreatePrDraft(jobId, issueKey)
+    getBulkCodefixCreatePrDraft(issueKeys)
       .then((d) => {
         if (!cancelled) {
           setDraft(d);
@@ -105,34 +86,37 @@ export function CreatePullRequestModal({
     return () => {
       cancelled = true;
     };
-  }, [jobId]);
+  }, [issueKeys]);
 
   const handleSubmit = React.useCallback(() => {
-    setSubmitError('');
     setSubmitting(true);
-    createCodefixPr(jobId, issueKey, {
-      sourceBranchSuffix,
-      pullRequestTitle: prTitle,
-      commitMessage,
-      pullRequestDescription: description,
+    createBulkCodefixPr({
+      issueKeys,
+      submitDto: {
+        sourceBranchSuffix,
+        pullRequestTitle: prTitle,
+        commitMessage,
+        pullRequestDescription: description,
+      },
     })
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ['codefix-fixed-file', issueKey] });
-        queryClient.invalidateQueries({ queryKey: ['codefix-status', issueKey] });
-        queryClient.invalidateQueries({ queryKey: ['codefix-get-pr-status', jobId] });
+      .then((res) => {
+        issueKeys.forEach(issueKey => {
+          queryClient.invalidateQueries({ queryKey: ['codefix-fixed-file', issueKey] });
+          queryClient.invalidateQueries({ queryKey: ['codefix-status', issueKey] });
+        });
+        if (res?.jobId) {
+          queryClient.invalidateQueries({ queryKey: ['codefix-get-pr-status', res.jobId] });
+        }
         onSuccess();
         onClose();
       })
       .catch((err: unknown) => {
-        void parseCreatePrErrorMessage(err).then(setSubmitError);
-        onClose();
-      })
-      .finally(() => {
         setSubmitting(false);
+        throwGlobalError(err);
+        onClose();
       });
   }, [
-    jobId,
-    issueKey,
+    issueKeys,
     sourceBranchSuffix,
     prTitle,
     commitMessage,
@@ -142,17 +126,8 @@ export function CreatePullRequestModal({
     queryClient,
   ]);
 
-  // After a failed submit, clear the error when the user edits any field so they can retry.
-  React.useEffect(() => {
-    setSubmitError('');
-  }, [sourceBranchSuffix, prTitle, commitMessage, description]);
-
   const canSubmit = !loadingDraft && !loadError && draft !== null && !submitting;
-  const primaryDisabled = !canSubmit || Boolean(submitError);
-
-  const prStatusQuery = useCodefixPrStatusQuery(jobId, issueKey);
-  const prStatusType = prStatusQuery.data?.type?.toLowerCase();
-  const prStatusMessage = prStatusQuery.data?.message;
+  const primaryDisabled = !canSubmit;
 
   return (
     <Modal
@@ -170,16 +145,6 @@ export function CreatePullRequestModal({
           <FlagMessage variant="warning">{translate('issues.code_fix.create_pr_modal.load_error')}</FlagMessage>
         ) : (
           <div className="sw-flex sw-flex-col sw-gap-4">
-
-            {submitError && (
-              <div className="sw-flex sw-flex-col sw-gap-2">
-                <CodefixPrStatusBanner
-                  jobId={jobId}
-                  prStatusMessage={prStatusMessage}
-                  prStatusType={prStatusType}
-                />
-              </div>
-            )}
             <FormField htmlFor="codefix-pr-branch" label={translate('issues.code_fix.create_pr_modal.branch')}>
               <div className="sw-flex sw-flex-wrap sw-items-stretch sw-gap-2 sw-w-full">
                 <span
