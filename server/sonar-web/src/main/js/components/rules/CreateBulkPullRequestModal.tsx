@@ -43,6 +43,33 @@ interface CreateBulkPullRequestModalProps {
   onSuccess: () => void;
 }
 
+interface CreatePrError {
+  message: string;
+  ctaUrl?: string;
+}
+
+function parseCreatePrErrorMessage(err: unknown): Promise<CreatePrError> {
+  if (!(err instanceof Response)) {
+    return Promise.resolve({
+      message: translate('issues.code_fix.create_pr_modal.submit_error'),
+    });
+  }
+
+  return err
+    .json()
+    .then((data: { error?: string; message?: string; ctaUrl?: string; code?: string }) => ({
+      message:
+        data?.error ||
+        data?.message ||
+        translate('issues.code_fix.create_pr_modal.submit_error'),
+      ctaUrl: data?.ctaUrl,
+      code: data?.code,
+    }))
+    .catch(() => ({
+      message: translate('issues.code_fix.create_pr_modal.submit_error'),
+    }));
+}
+
 export function CreateBulkPullRequestModal({
   issueKeys,
   onClose,
@@ -58,6 +85,7 @@ export function CreateBulkPullRequestModal({
   const [prTitle, setPrTitle] = React.useState('');
   const [commitMessage, setCommitMessage] = React.useState('');
   const [description, setDescription] = React.useState('');
+  const [submitError, setSubmitError] = React.useState<CreatePrError | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -111,9 +139,8 @@ export function CreateBulkPullRequestModal({
         onClose();
       })
       .catch((err: unknown) => {
-        setSubmitting(false);
-        throwGlobalError(err);
-        onClose();
+       void parseCreatePrErrorMessage(err).then(setSubmitError);
+       setSubmitting(false);
       });
   }, [
     issueKeys,
@@ -127,7 +154,7 @@ export function CreateBulkPullRequestModal({
   ]);
 
   const canSubmit = !loadingDraft && !loadError && draft !== null && !submitting;
-  const primaryDisabled = !canSubmit;
+  const primaryDisabled = !canSubmit || Boolean(submitError);
 
   return (
     <Modal
@@ -145,6 +172,24 @@ export function CreateBulkPullRequestModal({
           <FlagMessage variant="warning">{translate('issues.code_fix.create_pr_modal.load_error')}</FlagMessage>
         ) : (
           <div className="sw-flex sw-flex-col sw-gap-4">
+            {submitError && (
+                <FlagMessage variant="error">
+                  <div className="sw-flex sw-flex-col sw-gap-2">
+                    <span>{submitError.message}</span>
+
+                    {submitError.ctaUrl && (
+                      <a
+                        href={submitError.ctaUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="sw-text-blue-500 sw-underline"
+                      >
+                        Update GitHub App permissions
+                      </a>
+                    )}
+                  </div>
+                </FlagMessage>
+              )}
             <FormField htmlFor="codefix-pr-branch" label={translate('issues.code_fix.create_pr_modal.branch')}>
               <div className="sw-flex sw-flex-wrap sw-items-stretch sw-gap-2 sw-w-full">
                 <span
