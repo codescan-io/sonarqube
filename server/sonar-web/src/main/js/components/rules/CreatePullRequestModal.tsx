@@ -37,19 +37,29 @@ import {
 import { translate } from '../../helpers/l10n';
 import { CodefixPrStatusBanner, useCodefixPrStatusQuery } from './PrStatusNotification';
 
-function parseCreatePrErrorMessage(err: unknown): Promise<string> {
+interface CreatePrError {
+  message: string;
+  ctaUrl?: string;
+}
+
+function parseCreatePrErrorMessage(err: unknown): Promise<CreatePrError> {
   if (!(err instanceof Response)) {
-    return Promise.resolve(translate('issues.code_fix.create_pr_modal.submit_error'));
-  }
-  return err
-    .json()
-    .then(
-      (data: { error?: string; message?: string }) =>
-        (typeof data?.error === 'string' && data.error) ||
-        (typeof data?.message === 'string' && data.message) ||
-        translate('issues.code_fix.create_pr_modal.submit_error'),
-    )
-    .catch(() => translate('issues.code_fix.create_pr_modal.submit_error'));
+      return Promise.resolve({
+        message: translate('issues.code_fix.create_pr_modal.submit_error'),
+      });
+    }
+    return err
+      .json()
+      .then((data: { error?: string; message?: string; ctaUrl?: string; }) => ({
+        message:
+          data?.error ||
+          data?.message ||
+          translate('issues.code_fix.create_pr_modal.submit_error'),
+        ctaUrl: data?.ctaUrl,
+      }))
+      .catch(() => ({
+        message: translate('issues.code_fix.create_pr_modal.submit_error'),
+      }));
 }
 
 interface CreatePullRequestModalProps {
@@ -75,13 +85,14 @@ export function CreatePullRequestModal({
   const [prTitle, setPrTitle] = React.useState('');
   const [commitMessage, setCommitMessage] = React.useState('');
   const [description, setDescription] = React.useState('');
-  const [submitError, setSubmitError] = React.useState('');
+//   const [submitError, setSubmitError] = React.useState('');
+  const [submitError, setSubmitError] = React.useState<CreatePrError | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
     setLoadingDraft(true);
     setLoadError(false);
-    setSubmitError('');
+    setSubmitError(null);
     getCodefixCreatePrDraft(jobId, issueKey)
       .then((d) => {
         if (!cancelled) {
@@ -108,7 +119,7 @@ export function CreatePullRequestModal({
   }, [jobId]);
 
   const handleSubmit = React.useCallback(() => {
-    setSubmitError('');
+    setSubmitError(null);
     setSubmitting(true);
     createCodefixPr(jobId, issueKey, {
       sourceBranchSuffix,
@@ -125,7 +136,6 @@ export function CreatePullRequestModal({
       })
       .catch((err: unknown) => {
         void parseCreatePrErrorMessage(err).then(setSubmitError);
-        onClose();
       })
       .finally(() => {
         setSubmitting(false);
@@ -144,7 +154,7 @@ export function CreatePullRequestModal({
 
   // After a failed submit, clear the error when the user edits any field so they can retry.
   React.useEffect(() => {
-    setSubmitError('');
+    setSubmitError(null);
   }, [sourceBranchSuffix, prTitle, commitMessage, description]);
 
   const canSubmit = !loadingDraft && !loadError && draft !== null && !submitting;
@@ -179,6 +189,25 @@ export function CreatePullRequestModal({
                   prStatusType={prStatusType}
                 />
               </div>
+            )}
+
+          {submitError && (
+              <FlagMessage variant="error">
+                <div className="sw-flex sw-flex-col sw-gap-2">
+                  <span>{submitError.message}</span>
+
+                  {submitError.ctaUrl && (
+                    <a
+                      href={submitError.ctaUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="sw-text-blue-500 sw-underline hover:sw-text-blue-600"
+                    >
+                      Update GitHub App permissions
+                    </a>
+                  )}
+                </div>
+              </FlagMessage>
             )}
             <FormField htmlFor="codefix-pr-branch" label={translate('issues.code_fix.create_pr_modal.branch')}>
               <div className="sw-flex sw-flex-wrap sw-items-stretch sw-gap-2 sw-w-full">
