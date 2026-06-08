@@ -49,6 +49,11 @@ export interface CodefixCreatePrSubmit {
   pullRequestDescription: string;
 }
 
+export interface CodefixBulkCreatePrSubmit {
+  issueKeys: string[];
+  submitDto: CodefixCreatePrSubmit;
+}
+
 export interface CodefixStatusResponse {
   status: string;
 }
@@ -80,21 +85,26 @@ export function getCodefixQuota(organizationKey: string): Promise<{
  * so it is not callable from outside with a raw token.
  */
 export function getCodefixFixedFile(issueKey: string): Promise<CodefixFixedFileResponse> {
-  return get(`${CODEFIX_BASE}/fixed-file`, { issueKey }).then(parseJSON).catch();;
+  return get(`${CODEFIX_BASE}/fixed-file`, { issueKey }).then(parseJSON);
 }
 
-export function getCodefixCreatePrDraft(jobId: string): Promise<CodefixCreatePrDraft> {
-  return get(`${CODEFIX_BASE}/create-pr-draft`, { jobId }).then(parseJSON).catch(throwGlobalError);;
+export function getCodefixCreatePrDraft(jobId: string, issueKey?: string): Promise<CodefixCreatePrDraft> {
+  const params: Record<string, string> = { jobId };
+  if (issueKey) {
+    params.issueKey = issueKey;
+  }
+  return get(`${CODEFIX_BASE}/create-pr-draft`, params).then(parseJSON).catch(throwGlobalError);
 }
 
 export function createCodefixPr(
   jobId: string,
+  issueKey: string,
   body?: Partial<CodefixCreatePrSubmit>,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     request(`${CODEFIX_BASE}/create-pr/${encodeURIComponent(jobId)}`)
       .setMethod('POST')
-      .setData(body ?? {}, true)
+      .setData({ ...(body ?? {}), issueKey }, true)
       .submit()
       .then((response) => checkStatus(response, false))
       .then(() => resolve(), reject);
@@ -102,9 +112,28 @@ export function createCodefixPr(
 }
 
 export function getCodefixStatus(issueKey: string): Promise<CodefixStatusResponse> {
-  return get(`${CODEFIX_BASE}/get-status`, { issueKey }).then(parseJSON).catch();;
+  return get(`${CODEFIX_BASE}/get-status`, { issueKey }).then(parseJSON).catch(() => undefined as any);
 }
 
-export function getPullRequestStatus(jobId: string): Promise<Notification> {
-  return get(`${CODEFIX_BASE}/get-pr-status`, { jobId }).then(parseJSON).catch();;
+export function getPullRequestStatus(jobId: string, issueKey?: string): Promise<Notification> {
+  const params: Record<string, string> = { jobId };
+  if (issueKey) {
+    params.issueKey = issueKey;
+  }
+  return get(`${CODEFIX_BASE}/get-pr-status`, params).then(parseJSON).catch(() => undefined as any);
+}
+
+export function createBulkCodefixPr(data: CodefixBulkCreatePrSubmit): Promise<{ jobId?: string }> {
+  return postJSONBody(`${CODEFIX_BASE}/create-bulkpr`, data)
+    .then((res: any) => res ?? {})
+    .catch((err: any) => {
+      if (err instanceof SyntaxError) {
+        return {};
+      }
+      throw err;
+    });
+}
+
+export function getBulkCodefixCreatePrDraft(issueKeys: string[]): Promise<CodefixCreatePrDraft> {
+  return get(`${CODEFIX_BASE}/bulk-create-pr-draft`, { issueKeys: issueKeys.join(',') }).then(parseJSON);
 }

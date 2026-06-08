@@ -67,8 +67,8 @@ export function FixDiffTab({ branchLike, issue }: Readonly<FixDiffTabProps>) {
   const jobId = fixedFileData?.jobId;
   const incrementalId = fixedFileData?.incrementalId;
 
-  const prStatusQuery = useCodefixPrStatusQuery(jobId);
-  const prStatusType = prStatusQuery.data?.type.toLowerCase();
+  const prStatusQuery = useCodefixPrStatusQuery(jobId, issue.key);
+  const prStatusType = prStatusQuery.data?.type?.toLowerCase();
   const prStatusMessage = prStatusQuery.data?.message;
 
   const pullRequestAlreadyCreated =

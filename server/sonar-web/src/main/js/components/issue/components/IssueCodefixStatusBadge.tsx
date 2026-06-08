@@ -18,7 +18,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as React from 'react';
 import { getCodefixStatus } from '../../../api/ai-codefix';
 import { Issue } from '../../../types/types';
 
@@ -77,11 +78,14 @@ function getAiCodefixStatusDisplay(status: string): AiCodefixStatusDisplay {
 
 /** Cache status for a while to avoid repeated getStatus calls; invalidate after user actions (assign, create PR). */
 const CODEFIX_STATUS_STALE_MS = 60_000; // 1 minute
-/** When job is in progress, poll so PR created / fix generated shows without user action. */
-const CODEFIX_IN_PROGRESS_POLL_MS = 10_000; // 10 seconds
+/** When job is in progress or fix is generated, poll so scheduler-driven transitions show without user action. */
+const CODEFIX_ACTIVE_POLL_MS = 10_000; // 10 seconds
+/** FIX_GENERATED may transition to PULL_REQUEST_CREATED or FAILED via the auto scheduler — poll at scheduler interval. */
+const CODEFIX_FIX_GENERATED_POLL_MS = 30_000; // 30 seconds (matches scheduler interval)
 
 export default function AiCodefixBadge({ issue }: { issue: Issue }) {
   const hasAiFix = hasAiCodefix(issue);
+  const queryClient = useQueryClient();
   const { data: statusData, isLoading, isError } = useQuery({
     queryKey: ['codefix-status', issue.key],
     queryFn: () => getCodefixStatus(issue.key),
@@ -90,13 +94,26 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
     refetchOnWindowFocus: false,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === 'PENDING' || status === 'IN_PROGRESS'
-        ? CODEFIX_IN_PROGRESS_POLL_MS
-        : false;
+      if (status === 'PENDING' || status === 'IN_PROGRESS') {
+        return CODEFIX_ACTIVE_POLL_MS;
+      }
+      if (status === 'FIX_GENERATED') {
+        return CODEFIX_FIX_GENERATED_POLL_MS;
+      }
+      return false;
     },
   });
 
-  if (!hasAiFix || isLoading || isError || !statusData?.status) {
+  // When the issue list refreshes and codefixStatus changes, invalidate the badge cache so it re-fetches.
+  React.useEffect(() => {
+    if (issue.key && issue.codefixStatus) {
+      queryClient.invalidateQueries({ queryKey: ['codefix-status', issue.key] });
+    }
+  }, [issue.key, issue.codefixStatus, queryClient]);
+
+  const displayStatus = statusData?.status ?? issue.codefixStatus;
+
+  if (!hasAiFix || isError || !displayStatus) {
     return (
       <div className="sparkle-label sw-mr-5">
         <img src="/images/magic-wand.svg" alt="" />
@@ -105,7 +122,7 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
     );
   }
 
-  const { icon, text, textClassName } = getAiCodefixStatusDisplay(statusData.status);
+  const { icon, text, textClassName } = getAiCodefixStatusDisplay(displayStatus);
   return (
     <div className="codefix-status-label sw-mr-5">
       <img src={icon} alt="" />
