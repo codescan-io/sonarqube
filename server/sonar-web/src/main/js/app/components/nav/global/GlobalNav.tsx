@@ -28,6 +28,10 @@ import MainSonarQubeBar from './MainSonarQubeBar';
 import { Organization } from "../../../../types/types";
 import GlobalNavPlus from "./GlobalNavPlus";
 import { isNonStandardUser } from '../../../utils/userAccess';
+import { AiCreditsIndicator } from './AiCreditsIndicator';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { getCredits } from '../../../../api/ai-credits';
+import { useCurrentOrg } from '../organization/CurrentOrgContext';
 
 export interface GlobalNavProps {
   currentUser: CurrentUser;
@@ -35,9 +39,33 @@ export interface GlobalNavProps {
   location: { pathname: string };
 }
 
+export function getOrgKee() {
+  const { pathname } = useLocation();
+  const [ searchParams ] = useSearchParams();
+  const { orgKee } = useCurrentOrg();
+
+  // /organizations/beforetwo/extension/billing
+  const orgMatch = pathname.match(/\/organizations\/([^/]+)/);
+  const orgKey = orgMatch?.[1] ?? null;
+
+  // ?id=123
+  const id = searchParams.get("id");
+  if(orgKey)
+    return { orgKee: orgKey };
+
+  if(!id) 
+    return { orgKee: null };
+
+  if(orgKee)
+    return { orgKee: orgKee };
+
+  return { orgKee: null };
+}
+
 export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
-  
+  const { data } = getCredits();
+
   return (
     <MainSonarQubeBar>
       <div className="sw-flex" id="global-navigation">
@@ -49,6 +77,9 @@ export function GlobalNav(props: GlobalNavProps) {
         </div>
 
         <div className="sw-flex sw-items-center sw-ml-2">
+          <div className="sw-flex sw-items-center sw-mr-1">
+            {data && <AiCreditsIndicator data={data} />}
+          </div>
           <EmbedDocsPopupHelper />
           {isLoggedIn(currentUser) && (!isNonStandardUser(currentUser))  && (
             <div style={{ height: 36, width: 36 }} className="sw-flex sw-items-center sw-justify-center sw-mr-2">

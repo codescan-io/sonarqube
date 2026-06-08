@@ -295,3 +295,8 @@ export enum CustomEvents {
 
 export const WHITELIST_VALUE_AMAZON = "AMAZON";
 export const WHITELIST_VALUE_CODESCAN = "CODESCAN";
+
+export const COLOR_HEALTHY  = '#5d6cd0'; // indigo  
+export const COLOR_LOW      = '#c97a1a'; // amber  
+export const COLOR_CRITICAL = '#e24b4a'; // red     
+export const COLOR_BG       = '#ffffff'; // white
