@@ -203,11 +203,14 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       expiryFields.issueResolutionExpiryDate = `${yyyy}-${mm}-${dd}`;
     }
 
+    const trimmedComment = comment?.trim();
+    const isExceptionTransition = transition === IssueTransition.Exception;
     const query = pickBy(
       {
         add_tags: addTags?.join(),
         assign: assignee,
-        comment,
+        exceptionReason: isExceptionTransition ? trimmedComment : undefined,
+        comment: !isExceptionTransition ? trimmedComment : undefined,
         do_transition: transition,
         remove_tags: removeTags?.join(),
         sendNotifications: notifications,

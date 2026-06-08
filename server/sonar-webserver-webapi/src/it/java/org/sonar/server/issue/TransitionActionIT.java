@@ -67,7 +67,7 @@ public class TransitionActionIT {
   private final DefaultIssue issue = issueDto.toDefaultIssue();
   private final MapSettings mapSettings = new MapSettings();
   private final CodeIssueExceptionExpiryService codeIssueExceptionExpiryService = new CodeIssueExceptionExpiryService(System2.INSTANCE, mapSettings.asConfig());
-  private final TransitionAction action = new TransitionAction(transitionService, codeIssueExceptionExpiryService);
+  private final TransitionAction action = new TransitionAction(transitionService, codeIssueExceptionExpiryService, updater);
 
   @Before
   public void setUp() {
