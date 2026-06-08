@@ -127,6 +127,8 @@ export function setIssueTransition(data: {
   issue: string;
   transition: string;
   issueResolutionExpiryDate?: string;
+  exceptionReason?: string;
+  comment?: string;
 }): Promise<IssueResponse> {
   const body: Record<string, string> = {
     issue: data.issue,
@@ -134,6 +136,13 @@ export function setIssueTransition(data: {
   };
   if (data.issueResolutionExpiryDate !== undefined) {
     body.issueResolutionExpiryDate = data.issueResolutionExpiryDate;
+  }
+  if (data.exceptionReason !== undefined) {
+    body.exceptionReason = data.exceptionReason;
+  }
+
+  if (data.comment !== undefined) {
+    body.comment = data.comment;
   }
   return postJSON('/api/issues/do_transition', body);
 }
