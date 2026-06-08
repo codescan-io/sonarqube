@@ -176,8 +176,10 @@ export default function IssueAssignee(props: Props) {
           return;
         }
 
-        const alreadyFixed =
-          codefixStatus === 'FIX_GENERATED' || codefixStatus === 'PULL_REQUEST_CREATED';
+//         const alreadyFixed =
+//           codefixStatus === 'FIX_GENERATED' || codefixStatus === 'PULL_REQUEST_CREATED';
+
+             const alreadyFixed=false;
 
         if (!alreadyFixed && issueKey) {
           queryClient.setQueryData(['codefix-status', issueKey], { status: 'IN_PROGRESS' });
