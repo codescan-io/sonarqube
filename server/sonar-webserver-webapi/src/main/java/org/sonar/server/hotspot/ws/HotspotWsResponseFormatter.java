@@ -127,6 +127,7 @@ public class HotspotWsResponseFormatter {
       ofNullable(hotspot.getLine()).ifPresent(builder::setLine);
       builder.setMessage(nullToEmpty(hotspot.getMessage()));
       builder.addAllMessageFormattings(MessageFormattingUtils.dbMessageFormattingToWs(hotspot.parseMessageFormattings()));
+      ofNullable(hotspot.getAssigneeUuid()).ifPresent(builder::setAssignee);
       builder.setAuthor(nullToEmpty(hotspot.getAuthorLogin()));
       builder.setCreationDate(formatDateTime(hotspot.getIssueCreationDate()));
       builder.setUpdateDate(formatDateTime(hotspot.getIssueUpdateDate()));
@@ -215,6 +216,7 @@ public class HotspotWsResponseFormatter {
     private final Map<String, Object[]> sortValuesByHotspotKey;
     private final Map<String, IssueChangeDto> exceptionReasonByIssueKey = new HashMap<>();
     private final Map<String, Long> assignedDateByIssueKey = new HashMap<>();
+    private final Map<String, Object[]> sortValuesByHotspotKey;
 
     SearchResponseData(Paging paging, List<IssueDto> hotspots, Map<String, Object[]> sortValuesByHotspotKey) {
       this.paging = paging;
