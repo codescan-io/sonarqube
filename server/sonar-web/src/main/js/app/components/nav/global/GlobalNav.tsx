@@ -30,7 +30,7 @@ import GlobalNavPlus from "./GlobalNavPlus";
 import { isNonStandardUser } from '../../../utils/userAccess';
 import { AiCreditsIndicator } from './AiCreditsIndicator';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { getCredits } from '../../../../api/ai-credits';
+import { getCredits } from '../../../../api/ai-codefix';
 import { useCurrentOrg } from '../organization/CurrentOrgContext';
 
 export interface GlobalNavProps {

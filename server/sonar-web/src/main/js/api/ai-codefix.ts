@@ -26,6 +26,8 @@ import {
 } from '../helpers/request';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { Notification } from '../types/types';
+import { getOrgKee } from '../app/components/nav/global/GlobalNav';
+import { useQuery } from '@tanstack/react-query';
 
 export interface CodefixFixedFileResponse {
   jobId: string;
@@ -136,4 +138,29 @@ export function createBulkCodefixPr(data: CodefixBulkCreatePrSubmit): Promise<{ 
 
 export function getBulkCodefixCreatePrDraft(issueKeys: string[]): Promise<CodefixCreatePrDraft> {
   return get(`${CODEFIX_BASE}/bulk-create-pr-draft`, { issueKeys: issueKeys.join(',') }).then(parseJSON);
+}
+
+export function fetchCredits(orgKee: string | null){
+  return {
+    orgKee,
+    totalCredits: 1000,
+    usedCredits: 200,
+  }
+}
+
+export function getCredits(){
+  const { orgKee } = getOrgKee() as { orgKee: string | null };
+
+  return useQuery({
+    queryKey: ["credits", orgKee],
+    queryFn: async () => {
+      if (orgKee) {
+        return fetchCredits(orgKee);
+      }
+
+      return null;
+    },
+    enabled: Boolean(orgKee),
+    refetchInterval: 10 * 60 * 1000,
+  });
 }
