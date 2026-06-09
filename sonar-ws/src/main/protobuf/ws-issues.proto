@@ -171,9 +171,10 @@ message Issue {
   // Codescan customization:
   optional Sort sort = 50;
   optional string issueMarkedBy = 51;
-  optional bool aiCodeFixEnabled = 52;
-  optional int64 issueResolutionExpiresAt = 53;
-  optional string codefixStatus = 54;
+  optional int64 issueResolutionExpiresAt = 52;
+  optional CvssBreakdown cvssBreakdown = 53;
+  optional bool aiCodeFixEnabled = 54;
+  optional string codefixStatus = 55;
 }
 
 message Sort {
@@ -322,4 +323,28 @@ message ListWsResponse {
   optional sonarqube.ws.commons.Paging paging = 1;
   repeated Issue issues = 2;
   repeated Component components = 3;
+}
+
+message CvssBreakdown {
+  optional CvssScoreSummary scores = 1;
+  optional CvssMetrics base = 2;
+  optional CvssMetrics temporal = 3;
+  optional CvssMetrics environmental = 4;
+}
+
+message CvssScoreSummary {
+  optional double base = 1;
+  optional double temporal = 2;
+  optional double environmental = 3;
+  optional double overall = 4;
+}
+
+message CvssMetrics {
+  repeated CvssMetric metrics = 1;
+}
+
+message CvssMetric {
+  required string name = 1;
+  required string value = 2;
+  optional string justification = 3;
 }
