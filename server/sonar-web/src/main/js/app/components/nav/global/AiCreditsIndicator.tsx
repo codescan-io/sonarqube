@@ -33,10 +33,6 @@ export function AiCreditsIndicator({
 
   var { allocatedCredits, consumedCredits, remainingCredits } = data;
 
-  // allocatedCredits = 1000;
-  // consumedCredits = 200;
-  // remainingCredits = 800;
-
   const usedPct  = allocatedCredits > 0
     ? Math.min(100, (consumedCredits / allocatedCredits) * 100)
     : 0;
