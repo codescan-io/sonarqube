@@ -142,3 +142,26 @@ export function syncMembers(organization: string) {
 export function setMemberType(organization: String, login: String, type: String ): Promise<void | Response> {
   return post('/api/organizations/set_member_type', {organization, login, type}).catch(throwGlobalError);
 }
+
+export interface PendingInvitation {
+  id: string;
+  email: string;
+  userType: string;
+  invitedOn: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export function getPendingInvitations(data: {
+  organizationKee: string;
+  p?: number;
+  ps?: number;
+}): Promise<PageResponse<PendingInvitation>> {
+  return getJSON('/_codescan/signup/pending-invitations', data).catch(throwGlobalError);
+}

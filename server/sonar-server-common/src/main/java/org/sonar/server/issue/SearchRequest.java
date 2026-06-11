@@ -78,7 +78,7 @@ public class SearchRequest {
   private List<String> sansTop25;
   private List<String> sonarsourceSecurity;
   private List<String> cwe;
-  private String searchAfter;
+  private List<String> searchAfter;
   private String timeZone;
   private Integer owaspAsvsLevel;
   private List<String> codeVariants;
@@ -212,11 +212,11 @@ public class SearchRequest {
   }
 
   @CheckForNull
-  public String getSearchAfter() {
+  public List<String> getSearchAfter() {
     return searchAfter;
   }
 
-  public SearchRequest setSearchAfter(@Nullable String searchAfter) {
+  public SearchRequest setSearchAfter(@Nullable List<String> searchAfter) {
     this.searchAfter = searchAfter;
     return this;
   }

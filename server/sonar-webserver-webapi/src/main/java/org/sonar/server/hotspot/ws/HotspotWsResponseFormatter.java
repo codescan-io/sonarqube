@@ -133,9 +133,25 @@ public class HotspotWsResponseFormatter {
       completeHotspotLocations(hotspot, builder, searchResponseData);
       ofNullable(hotspot.getCveId()).ifPresent(builder::setCveId);
       builder.addAllComments(createIssueComments(searchResponseData, hotspot));
+      addSort(hotspot, builder, searchResponseData);
       hotspotsList.add(builder.build());
     }
     return hotspotsList;
+  }
+
+  private static void addSort(IssueDto hotspot, Hotspots.SearchWsResponse.Hotspot.Builder builder, SearchResponseData searchResponseData) {
+    Object[] sortValues = searchResponseData.getSortValues(hotspot.getKey());
+    if (sortValues == null || sortValues.length == 0) {
+      return;
+    }
+
+    Hotspots.Sort.Builder sortBuilder = Hotspots.Sort.newBuilder();
+    for (Object sortValue : sortValues) {
+      if (sortValue != null) {
+        sortBuilder.addSort(sortValue.toString());
+      }
+    }
+    builder.setSort(sortBuilder);
   }
 
   private List<Comment> createIssueComments(SearchResponseData data, IssueDto dto) {
@@ -198,10 +214,16 @@ public class HotspotWsResponseFormatter {
     private final Map<String, String> statusMarkedByByIssueKey = new HashMap<>();
     private final Map<String, IssueChangeDto> exceptionReasonByIssueKey = new HashMap<>();
     private final Map<String, Long> assignedDateByIssueKey = new HashMap<>();
+    private final Map<String, Object[]> sortValuesByHotspotKey;
 
-    SearchResponseData(Paging paging, List<IssueDto> hotspots) {
+    SearchResponseData(Paging paging, List<IssueDto> hotspots, Map<String, Object[]> sortValuesByHotspotKey) {
       this.paging = paging;
       this.hotspots = hotspots;
+      this.sortValuesByHotspotKey = sortValuesByHotspotKey;
+    }
+
+    SearchResponseData(Paging paging, List<IssueDto> hotspots) {
+      this(paging, hotspots, Map.of());
     }
 
     boolean isPresent() {
@@ -277,6 +299,11 @@ public class HotspotWsResponseFormatter {
 
     public Map<String, ComponentDto> getComponentsByUuid() {
       return componentsByUuid;
+    }
+
+    @CheckForNull
+    Object[] getSortValues(String hotspotKey) {
+      return sortValuesByHotspotKey.get(hotspotKey);
     }
     public List<UserDto> getUsers() {
       return new ArrayList<>(usersByUuid.values());
