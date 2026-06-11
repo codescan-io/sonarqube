@@ -18,36 +18,72 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import { Tooltip } from '@sonarsource/echoes-react';
-import { COLOR_BG, COLOR_HEALTHY } from '../../../../helpers/constants';
-import { getFillColor, snapToDisplayPct, buildPiePath } from '../helpers';
-import { SIZE, CX, CY, R } from '../helpers';
+import { AiCreditsSummary } from '../../../../api/ai-codefix';
+import { getArcColor, SIZE, STROKE_WIDTH, RADIUS, CX, CY, CIRCUMFERENCE } from '../helpers';
+import { COLOR_UNFILLED, COLOR_WHITE } from '../../../../helpers/constants';
 
 export interface AiCreditsIndicatorProps {
-  data?: any
+  data?: AiCreditsSummary;
 }
 
 export function AiCreditsIndicator({
   data,
 }: Readonly<AiCreditsIndicatorProps>) {
+  if (!data) { return null; }
 
-  const { totalCredits, usedCredits } = data;
+  var { allocatedCredits, consumedCredits, remainingCredits } = data;
 
-  const remaining      = Math.max(0, totalCredits - usedCredits);
-  const remainingPct   = totalCredits > 0 ? (remaining / totalCredits) * 100 : 0;
-  const fillColor      = getFillColor(remainingPct);
+  // allocatedCredits = 1000;
+  // consumedCredits = 200;
+  // remainingCredits = 800;
 
-  // Snap to one of 4 fixed visual states
-  const displayPct     = snapToDisplayPct(remainingPct);
-  const isFullCircle   = displayPct >= 100;
-  const piePath        = buildPiePath(displayPct);
+  const usedPct  = allocatedCredits > 0
+    ? Math.min(100, (consumedCredits / allocatedCredits) * 100)
+    : 0;
 
-  const textColor = displayPct >= 75 ? COLOR_BG : fillColor;
-  const tooltipLabel = `${remaining.toLocaleString()} / ${totalCredits.toLocaleString()}`;
+  const arcColor = getArcColor(usedPct);
+
+  // stroke-dashoffset controls how much of the arc is drawn clockwise from top
+  const filledLength   = (usedPct / 100) * CIRCUMFERENCE;
+  const dashOffset     = CIRCUMFERENCE - filledLength;
+
+  const tooltipContent = (
+    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+      <span
+        style={{
+          color: COLOR_WHITE,
+          fontSize: '14px',
+          fontStyle: 'normal',
+          fontWeight: 600,
+          lineHeight: '20px',
+          textAlign: 'center',
+          display: 'block',
+          width: '100%',
+        }}
+      >
+        {remainingCredits} / {allocatedCredits}
+      </span>
+      <span
+        style={{
+          color: COLOR_WHITE,
+          fontSize: '12px',
+          fontStyle: 'normal',
+          fontWeight: 400,
+          lineHeight: '20px',
+          textAlign: 'center',
+          display: 'block',
+          width: '100%',
+        }}
+      >
+        AI Credits remaining
+      </span>
+    </span>
+  );
 
   return (
-    <Tooltip content={tooltipLabel}>
+    <Tooltip content={tooltipContent}>
       <button
-        aria-label={tooltipLabel}
+        aria-label={`AI Credits: ${remainingCredits.toLocaleString()} of ${allocatedCredits.toLocaleString()} remaining`}
         style={{
           position: 'relative',
           display: 'inline-flex',
@@ -57,7 +93,7 @@ export function AiCreditsIndicator({
           height: SIZE,
           background: 'none',
           border: 'none',
-          padding: 0,
+          padding: '0 10px',    
           cursor: 'default',
           borderRadius: '50%',
           flexShrink: 0,
@@ -70,26 +106,35 @@ export function AiCreditsIndicator({
           style={{ display: 'block' }}
           width={SIZE}
         >
-          {/* White circular background */}
-          <circle cx={CX} cy={CY} fill={COLOR_BG} r={R + 1} />
-
-          {/* Filled portion */}
-          {isFullCircle
-            ? <circle cx={CX} cy={CY} fill={fillColor} r={R} />
-            : piePath && <path d={piePath} fill={fillColor} />
-          }
-
-          {/* Outer ring */}
+          {/* Grey unfilled track — full circle */}
           <circle
             cx={CX}
             cy={CY}
             fill="none"
-            r={R}
-            stroke={fillColor}
-            strokeWidth={1.5}
+            r={RADIUS}
+            stroke={COLOR_UNFILLED}
+            strokeWidth={STROKE_WIDTH}
           />
+
+          {/* Coloured filled arc — clockwise from 12 o'clock */}
+          {usedPct > 0 && (
+            <circle
+              cx={CX}
+              cy={CY}
+              fill="none"
+              r={RADIUS}
+              stroke={arcColor}
+              strokeDasharray={CIRCUMFERENCE}
+              strokeDashoffset={dashOffset}
+              strokeLinecap="round"
+              strokeWidth={STROKE_WIDTH}
+              // Rotate -90° so the arc starts at 12 o'clock (top)
+              transform={`rotate(-90, ${CX}, ${CY})`}
+            />
+          )}
         </svg>
 
+        {/* "AI" label centred inside the ring */}
         <span
           aria-hidden="true"
           style={{
@@ -97,22 +142,21 @@ export function AiCreditsIndicator({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            fontSize: 9,
-            fontWeight: 800,
-            lineHeight: 1,
-            color: textColor,
-            letterSpacing: '-0.4px',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '12px',
+            fontStyle: 'normal',
+            fontWeight: 600,
+            lineHeight: '16.5px',
+            letterSpacing: '-0.275px',
+            color: arcColor,
             userSelect: 'none',
             pointerEvents: 'none',
-            ...(displayPct === 75 && {
-              WebkitTextStroke: `0.6px ${COLOR_HEALTHY}`,
-              paintOrder: 'stroke fill',
-            }),
+            whiteSpace: 'nowrap',
           }}
         >
           AI
         </span>
       </button>
-    </Tooltip> 
+    </Tooltip>
   );
 }

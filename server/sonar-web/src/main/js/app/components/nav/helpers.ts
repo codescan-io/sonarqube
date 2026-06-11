@@ -17,50 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { COLOR_CRITICAL, COLOR_LOW, COLOR_HEALTHY } from "../../../helpers/constants";
+import { COLOR_GREEN, COLOR_PURPLE, COLOR_AMBER, COLOR_RED } from "../../../helpers/constants";
 
-export const SIZE = 26;          
-export const CX   = SIZE / 2;     
-export const CY   = SIZE / 2;     
-export const R    = SIZE / 2 - 1;
+export const SIZE         = 28;
+export const STROKE_WIDTH = 2.5;
+export const RADIUS       = (SIZE - STROKE_WIDTH) / 2;   // 12.75
+export const CX           = SIZE / 2;                     // 14
+export const CY           = SIZE / 2;                     // 14
+export const CIRCUMFERENCE = 2 * Math.PI * RADIUS;        // ≈ 80.1
 
-export function getFillColor(remainingPct: number): string {
-    if (remainingPct <= 10) { return COLOR_CRITICAL; }
-    if (remainingPct <= 25) { return COLOR_LOW; }
-    return COLOR_HEALTHY;
+export function getArcColor(usedPct: number): string {
+    if (usedPct <= 25) { return COLOR_GREEN; } 
+    if (usedPct <= 50) { return COLOR_PURPLE; } 
+    if (usedPct <= 75) { return COLOR_AMBER; } 
+    return COLOR_RED;                         
 }
 
-/**
- * Snaps the actual remaining % to one of 4 fixed visual states:
- *   > 75 %          → full circle  (100 %)
- *   > 25 % and ≤ 75 → three-quarter (75 %)
- *   > 10 % and ≤ 25 → quarter       (25 %)
- *   ≥  0 % and ≤ 10 → half-quarter  (12.5 %)
- */
-export function snapToDisplayPct(remainingPct: number): number {
-    if (remainingPct > 75)  { return 100;  }
-    if (remainingPct > 25)  { return 75;   }
-    if (remainingPct > 10)  { return 25;   }
-    return 12.5;
-}
-
-export function buildPiePath(pct: number): string | null {
-    if (pct <= 0 || pct >= 100) { return null; }
-  
-    const startAngle = -Math.PI / 2;
-    const endAngle   = startAngle + (pct / 100) * 2 * Math.PI;
-  
-    const x1 = CX + R * Math.cos(startAngle);
-    const y1 = CY + R * Math.sin(startAngle);
-    const x2 = CX + R * Math.cos(endAngle);
-    const y2 = CY + R * Math.sin(endAngle);
-  
-    const largeArc = pct > 50 ? 1 : 0;
-  
-    return [
-      `M ${CX} ${CY}`,
-      `L ${x1.toFixed(3)} ${y1.toFixed(3)}`,
-      `A ${R} ${R} 0 ${largeArc} 1 ${x2.toFixed(3)} ${y2.toFixed(3)}`,
-      'Z',
-    ].join(' ');
-}

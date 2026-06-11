@@ -26,8 +26,6 @@ import {
 } from '../helpers/request';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { Notification } from '../types/types';
-import { getOrgKee } from '../app/components/nav/global/GlobalNav';
-import { useQuery } from '@tanstack/react-query';
 
 export interface CodefixFixedFileResponse {
   jobId: string;
@@ -58,6 +56,13 @@ export interface CodefixBulkCreatePrSubmit {
 
 export interface CodefixStatusResponse {
   status: string;
+}
+
+export interface AiCreditsSummary {
+  allocatedCredits: number;
+  consumedCredits: number;
+  remainingCredits: number;
+  resetDate: string;
 }
 
 const CODEFIX_BASE = '/_codescan/codefix';
@@ -140,27 +145,6 @@ export function getBulkCodefixCreatePrDraft(issueKeys: string[]): Promise<Codefi
   return get(`${CODEFIX_BASE}/bulk-create-pr-draft`, { issueKeys: issueKeys.join(',') }).then(parseJSON);
 }
 
-export function fetchCredits(orgKee: string | null){
-  return {
-    orgKee,
-    totalCredits: 1000,
-    usedCredits: 200,
-  }
-}
-
-export function getCredits(){
-  const { orgKee } = getOrgKee() as { orgKee: string | null };
-
-  return useQuery({
-    queryKey: ["credits", orgKee],
-    queryFn: async () => {
-      if (orgKee) {
-        return fetchCredits(orgKee);
-      }
-
-      return null;
-    },
-    enabled: Boolean(orgKee),
-    refetchInterval: 10 * 60 * 1000,
-  });
+export function fetchCredits(orgKee: string | null): Promise<AiCreditsSummary>{
+  return get('/_codescan/ai/credits/summary?organizationKey=' + orgKee).then(parseJSON);
 }

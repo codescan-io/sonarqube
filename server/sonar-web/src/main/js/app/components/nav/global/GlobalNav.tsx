@@ -30,8 +30,9 @@ import GlobalNavPlus from "./GlobalNavPlus";
 import { isNonStandardUser } from '../../../utils/userAccess';
 import { AiCreditsIndicator } from './AiCreditsIndicator';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { getCredits } from '../../../../api/ai-codefix';
 import { useCurrentOrg } from '../organization/CurrentOrgContext';
+import * as React from 'react';
+import { AiCreditsSummary, fetchCredits } from '../../../../api/ai-codefix';
 
 export interface GlobalNavProps {
   currentUser: CurrentUser;
@@ -39,7 +40,7 @@ export interface GlobalNavProps {
   location: { pathname: string };
 }
 
-export function getOrgKee() {
+function getOrgKee() {
   const { pathname } = useLocation();
   const [ searchParams ] = useSearchParams();
   const { orgKee } = useCurrentOrg();
@@ -64,7 +65,21 @@ export function getOrgKee() {
 
 export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
-  const { data } = getCredits();
+  const { orgKee } = getOrgKee() as { orgKee: string | null };
+  const [creditsData, setCreditsData] = React.useState<AiCreditsSummary | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!orgKee) {
+      setCreditsData(null);
+      return;
+    }
+    setIsLoading(true);
+    fetchCredits(orgKee)
+      .then(setCreditsData)
+      .catch(() => setCreditsData(null))
+      .finally(() => setIsLoading(false));
+  }, [orgKee]); 
 
   return (
     <MainSonarQubeBar>
@@ -78,7 +93,7 @@ export function GlobalNav(props: GlobalNavProps) {
 
         <div className="sw-flex sw-items-center sw-ml-2">
           <div className="sw-flex sw-items-center sw-mr-1">
-            {data && <AiCreditsIndicator data={data} />}
+            {!isLoading && creditsData && creditsData.allocatedCredits > 0 && <AiCreditsIndicator data={creditsData} />}
           </div>
           <EmbedDocsPopupHelper />
           {isLoggedIn(currentUser) && (!isNonStandardUser(currentUser))  && (
