@@ -196,14 +196,11 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       issues.some((issue) => issueSupportsExceptionExpiryPicker(issue));
 
     const expiryFields: Record<string, string> = {};
-    if (supportsBulkExceptionExpiry) {
-      expiryFields.issueResolutionExpiryOffsetMinutes = String(new Date().getTimezoneOffset());
-      if (exceptionExpiryDate) {
-        const yyyy = exceptionExpiryDate.getFullYear();
-        const mm = String(exceptionExpiryDate.getMonth() + 1).padStart(2, '0');
-        const dd = String(exceptionExpiryDate.getDate()).padStart(2, '0');
-        expiryFields.issueResolutionExpiryDate = `${yyyy}-${mm}-${dd}`;
-      }
+    if (supportsBulkExceptionExpiry && exceptionExpiryDate) {
+      const yyyy = exceptionExpiryDate.getFullYear();
+      const mm = String(exceptionExpiryDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(exceptionExpiryDate.getDate()).padStart(2, '0');
+      expiryFields.issueResolutionExpiryDate = `${yyyy}-${mm}-${dd}`;
     }
 
     const query = pickBy(

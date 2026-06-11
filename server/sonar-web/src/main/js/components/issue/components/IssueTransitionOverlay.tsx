@@ -54,7 +54,6 @@ export type Props = {
     transition: IssueTransition,
     comment?: string,
     issueResolutionExpiryDate?: string,
-    issueResolutionExpiryOffsetMinutes?: string,
   ) => void;
 };
 
@@ -71,17 +70,9 @@ export function IssueTransitionOverlay(props: Readonly<Props>) {
   const showExceptionExpiryControls =
     selectedTransition === IssueTransition.Exception && showExceptionExpiry;
 
-  /** Same as Date.getTimezoneOffset(); sent for manual date and for auto-expiry so server anchors "today" to local civil day. */
-  function buildExpiryOffset(transition: IssueTransition): string | undefined {
-    if (transition !== IssueTransition.Exception || !showExceptionExpiry) {
-      return undefined;
-    }
-    return String(new Date().getTimezoneOffset());
-  }
-
   function selectTransition(transition: IssueTransition) {
     if (!transitionRequiresComment(transition) || !hasCommentAction) {
-      onSetTransition(transition, undefined, buildExpiryPayload(transition), buildExpiryOffset(transition));
+      onSetTransition(transition, undefined, buildExpiryPayload(transition));
     } else {
       setSelectedTransition(transition);
       setExceptionExpiryDate(undefined);
@@ -110,7 +101,6 @@ export function IssueTransitionOverlay(props: Readonly<Props>) {
         selectedTransition,
         comment,
         buildExpiryPayload(selectedTransition),
-        buildExpiryOffset(selectedTransition),
       );
     }
   }

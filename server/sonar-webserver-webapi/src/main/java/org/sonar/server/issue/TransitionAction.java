@@ -66,8 +66,7 @@ public class TransitionAction extends Action {
     }
     boolean hasExpiryDateParam = properties.containsKey(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
     String expiryDateParam = (String) properties.get(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
-    String expiryOffsetParam = (String) properties.get(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES);
-    codeIssueExceptionExpiryService.applyAfterTransition(issue, dtoBefore, transition, previousStatus, hasExpiryDateParam, expiryDateParam, expiryOffsetParam);
+    codeIssueExceptionExpiryService.applyAfterTransition(issue, dtoBefore, transition, previousStatus, hasExpiryDateParam, expiryDateParam);
     return true;
   }
 

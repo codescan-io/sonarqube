@@ -23,6 +23,8 @@ import { SafeHTMLInjection, SanitizeLevel, SubHeading } from '~design-system';
 import { translateWithParameters } from '../../../helpers/l10n';
 import { ExtendedSettingDefinition } from '../../../types/settings';
 import { getPropertyDescription, getPropertyName } from '../utils';
+import SeverityIcon from '../../../components/icon-mappers/SeverityIcon';
+import { SEVERITIES } from '../../../helpers/constants';
 
 interface Props {
   definition: ExtendedSettingDefinition;
@@ -31,10 +33,14 @@ interface Props {
 export default function DefinitionDescription({ definition }: Readonly<Props>) {
   const propertyName = getPropertyName(definition);
   const description = getPropertyDescription(definition);
+  const isSeverity = SEVERITIES.includes(propertyName.toUpperCase());
 
   return (
     <div className="sw-w-abs-300">
       <SubHeading className="sw-text-ellipsis sw-overflow-hidden" title={propertyName}>
+        {isSeverity && (
+            <SeverityIcon className="sw-mr-1" severity={propertyName.toUpperCase()} />
+        )}
         {propertyName}
       </SubHeading>
 
