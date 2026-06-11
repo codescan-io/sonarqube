@@ -31,10 +31,118 @@ export interface GenerateXPathResponse {
   aiSummary: string;
 }
 
+export interface ValidationMatch {
+  line: number;
+  column: number;
+  text: string;
+  nodeName?: string;
+  name?: string;
+  image?: string;
+  xpath: string;
+  endLine: number;
+  endColumn: number;
+}
+
+export interface ValidationError {
+  message: string;
+  line: number;
+  column: number;
+  type: string;
+  details: string;
+}
+
+export interface ValidationResult {
+  success: boolean;
+  totalMatches: number;
+  matches: ValidationMatch[];
+  errors: ValidationError[];
+  astPreview: string;
+}
+
+export interface ValidateXPathRequest {
+  xpath: string;
+  code: string;
+  language: string;
+}
+
 /**
  * Generate XPath from natural language description using AI.
  * Does not create a rule — rule creation uses the standard v2 rules API.
  */
 export function generateAIXPath(request: GenerateXPathRequest): Promise<GenerateXPathResponse> {
   return postJSONBody('/_codescan/ai-rules/generate-xpath', request);
+}
+
+/**
+ * Validate an XPath expression against a code sample.
+ * Backend expects a JSON body (XPathValidationRequest), so this uses postJSONBody.
+ */
+export function validateAIXPath(request: ValidateXPathRequest): Promise<ValidationResult> {
+  return postJSONBody('/_codescan/ai-rules/validate-xpath', request);
+}
+
+/**
+ * Split an XPath expression into multiple lines for display.
+ * Tries to break long lines at logical boundaries.
+ */
+export function splitXPath(xpath: string, maxLength = 60): string[] {
+  if (!xpath) return [''];
+  
+  // First, split by existing newlines
+  const segments = xpath.split('\n');
+  const result: string[] = [];
+
+  for (const segment of segments) {
+    if (segment.length <= maxLength) {
+      result.push(segment);
+      continue;
+    }
+
+    // Try to split long lines at logical boundaries
+    let current = segment;
+    while (current.length > maxLength) {
+      // Find a good split point
+      // Preferred: logical operators (and, or), separators (/, //, |, [)
+      
+      let splitIdx = -1;
+      
+      // Look for last logical marker before maxLength
+      const searchPart = current.substring(0, maxLength);
+      
+      // Try logical operators first (surrounded by spaces)
+      const logicMatch = searchPart.match(/.*\s+(and|or)\s+/i);
+      if (logicMatch) {
+        splitIdx = logicMatch.index! + logicMatch[0].length;
+      }
+      
+      // Try space after some common tokens
+      if (splitIdx === -1) {
+        const spaceMatch = searchPart.lastIndexOf(' ');
+        if (spaceMatch > maxLength * 0.6) {
+          splitIdx = spaceMatch + 1;
+        }
+      }
+
+      // Try logical separators / or // or [ or |
+      if (splitIdx === -1) {
+        const sepMatch = searchPart.match(/.*(\/\/|\/|\[|\|)/);
+        if (sepMatch && sepMatch.index! > 0) {
+           // Split BEFORE these
+           splitIdx = sepMatch.index!;
+        }
+      }
+
+      if (splitIdx > 0) {
+        result.push(current.substring(0, splitIdx).trimEnd());
+        current = current.substring(splitIdx).trimStart();
+      } else {
+        // Force split if no good point found
+        result.push(current.substring(0, maxLength));
+        current = current.substring(maxLength);
+      }
+    }
+    result.push(current);
+  }
+
+  return result.filter((l, i) => l.length > 0 || i === 0);
 }
