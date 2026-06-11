@@ -20,6 +20,7 @@
 
 import { useEffect, useState } from 'react';
 import './ReviewStep.css';
+import ValidateXPathModal from './ValidateXPathModal';
 import CheckLargeSvg from './icons/Check-generated.svg';
 import CheckSvg from './icons/Check.svg';
 import ChevronLeftSvg from './icons/ChevronLeft.svg';
@@ -28,6 +29,7 @@ import CopySvg from './icons/Copy.svg';
 import AiMistakesSvg from './icons/Icon-aican-make-mistakes.svg';
 import xicon from './icons/Icon-orange.svg';
 import InfoSvg from './icons/Info.svg';
+import ListChecksSvg from './icons/ListChecks.svg';
 import PencilSvg from './icons/Pencil.svg';
 import RotateCcwSvg from './icons/RotateCcw.svg';
 import SparklesSvg from './icons/Sparkles-2.svg';
@@ -38,31 +40,26 @@ import severityInfo from './icons/severity-info.svg';
 import severityMajor from './icons/severity-major.svg';
 import severityMinor from './icons/severity-minor.svg';
 
-export interface RuleData {
-  ruleName: string;
-  ruleKey: string;
-  ruleType: string;
-  severity: string;
-  message: string;
-  description: string;
-  generatedXPath: string;
-  aiSummary: string;
-}
+import { RuleData, splitXPath } from './aiRuleService';
 
 interface Props {
   ruleData: RuleData;
   onBack: () => void;
   onRegenerate: () => void;
   onActivate: (xpath: string) => void;
+  onValidate?: (xpath: string) => void;
   loading: boolean;
   hasError: boolean;
 }
 
 export default function ReviewStep(props: Readonly<Props>) {
-  const { ruleData, onBack, onRegenerate, onActivate, loading, hasError } = props;
+  const { ruleData, onBack, onRegenerate, onActivate, onValidate, loading, hasError } = props;
   const [xpathValue, setXpathValue] = useState(ruleData.generatedXPath);
   const [isEditing, setIsEditing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [showValidateModal, setShowValidateModal] = useState(false);
+
+  const ruleLanguage = ruleData.language || 'apex';
 
   useEffect(() => {
     setXpathValue(ruleData.generatedXPath);
@@ -106,9 +103,7 @@ export default function ReviewStep(props: Readonly<Props>) {
       );
     }
 
-    const lines = xpathValue ? xpathValue.split(/\s*\|\s*/).map((part, i, arr) => 
-      i < arr.length - 1 ? part + ' |' : part
-    ) : [];
+    const lines = splitXPath(xpathValue);
 
     if (lines.length === 0 || (lines.length === 1 && !lines[0])) {
       return (
@@ -273,6 +268,18 @@ export default function ReviewStep(props: Readonly<Props>) {
         </div>
         <div className="review-footer-right">
           <button
+            className="review-btn review-btn--validate"
+            onClick={() => {
+              onValidate?.(xpathValue);
+              setShowValidateModal(true);
+            }}
+            disabled={loading || hasError}
+            type="button"
+          >
+            <img src={ListChecksSvg} alt="" width="15" height="15" className="review-btn-icon" />
+            Validate
+          </button>
+          <button
             className="review-btn review-btn--primary"
             onClick={() => onActivate(xpathValue)}
             disabled={loading || hasError}
@@ -283,6 +290,14 @@ export default function ReviewStep(props: Readonly<Props>) {
           </button>
         </div>
       </div>
+
+      {showValidateModal && (
+        <ValidateXPathModal
+          xpath={xpathValue}
+          language={ruleLanguage}
+          onClose={() => setShowValidateModal(false)}
+        />
+      )}
     </div>
   );
 }

@@ -242,8 +242,8 @@
   flex-shrink: 0;
   align-self: stretch;
   border-radius: 4px;
-  border: 1px solid #EBEBEB;
-  background: #FFF;
+  border: 1px solid var(--color-border-subtle, #DDD);
+  background: var(--color-border-default, #EBEBEB);
   font-family: Inter, sans-serif;
   font-size: 12px;
   font-weight: 400;
@@ -365,8 +365,9 @@
 
 /* Code editor */
 .review-code-editor {
-  background: #1E1E2E;
-  border-radius: 8px;
+  background: #1C212E;
+  border: 1px solid #EBEBEB;
+  border-radius: 4px;
   padding: 16px;
   width: 100%;
   min-height: 200px;
@@ -383,10 +384,10 @@
   width: 100%;
   height: 100%;
   min-height: 200px;
-  background: #1E1E2E;
+  background: #1C212E;
   color: #E0E0E0;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 16px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
@@ -417,8 +418,8 @@
   font-size: 12px;
   line-height: 20px;
   color: #E0E0E0;
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
+  overflow: auto;
   flex: 1;
 }
 
@@ -555,6 +556,23 @@
   background: #F5F6FA;
 }
 
+.review-btn--validate {
+  display: flex;
+  padding: 9px 17px;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  border: 1px solid #EBEBEB;
+  background: #FFFFFF;
+  color: #637192;
+  text-align: center;
+}
+
+.review-btn--validate:hover:not(:disabled) {
+  background: #F5F6FA;
+}
+
 .review-btn--primary {
   display: flex;
   padding: 9px 17px;
@@ -586,6 +604,9 @@
 .review-btn-icon {
   width: 15px;
   height: 15px;
-  filter: brightness(0) invert(1);
   flex-shrink: 0;
+}
+
+.review-btn--primary .review-btn-icon {
+  filter: brightness(0) invert(1);
 }

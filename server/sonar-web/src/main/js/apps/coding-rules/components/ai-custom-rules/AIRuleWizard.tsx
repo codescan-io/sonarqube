@@ -112,6 +112,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
         description: values.ruleDescription,
         generatedXPath: isInvalidInput ? '' : response.generatedXPath,
         aiSummary: response.aiSummary || '',
+        language: templateRule.lang || templateRule.repo,
       });
       setGenerationError(isInvalidInput);
     } catch (error) {
@@ -125,6 +126,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
         description: values.ruleDescription,
         generatedXPath: '',
         aiSummary: '',
+        language: templateRule.lang || templateRule.repo,
       });
     }
   };
@@ -164,6 +166,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
         description: formValues.ruleDescription,
         generatedXPath: response.generatedXPath || '// XPath not generated',
         aiSummary: response.aiSummary || 'XPath generated from natural language description.',
+        language: templateRule.lang || templateRule.repo,
       });
       setGenerationError(false);
     } catch (error) {
@@ -183,6 +186,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
 
       await createRule({
         organization,
+        aiGenerated: true,
         key: `${templateRule.repo}:${formValues.ruleKey}`,
         templateKey: templateRule.key,
         name: formValues.ruleName,
