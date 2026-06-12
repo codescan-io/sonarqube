@@ -71,6 +71,8 @@ export function queueCodeFix(data: {
 export function getCodefixQuota(organizationKey: string): Promise<{
   dailyLimit: number;
   currentUsage: number;
+  remainingFixes: number;
+  moduleLicensed: boolean;
 }> {
   return get(`${CODEFIX_BASE}/quota`, { organizationKey })
     .then(parseJSON)

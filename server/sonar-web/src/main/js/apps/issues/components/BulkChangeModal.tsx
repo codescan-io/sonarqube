@@ -321,6 +321,14 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
 
           getCodefixQuota(this.props.organization.kee)
             .then((quota) => {
+              if (!quota.moduleLicensed) {
+                addGlobalErrorMessage(translate('aicodefix.module_not_licensed'));
+                return;
+              }
+              if (issuesToQueue.length > quota.remainingFixes) {
+                addGlobalErrorMessage(translate('aicodefix.insufficient_credits'));
+                return;
+              }
               if (quota.currentUsage + issuesToQueue.length > quota.dailyLimit) {
                 addGlobalErrorMessage(translate('aicodefix.daily_limit_exceeded'));
                 return;

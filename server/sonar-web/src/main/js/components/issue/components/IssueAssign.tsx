@@ -171,6 +171,14 @@ export default function IssueAssignee(props: Props) {
 
       try {
         const quota = await getCodefixQuota(organizationKey);
+        if (!quota.moduleLicensed) {
+          addGlobalErrorMessage(translate('aicodefix.module_not_licensed'));
+          return;
+        }
+        if (quota.remainingFixes < 1) {
+          addGlobalErrorMessage(translate('aicodefix.insufficient_credits'));
+          return;
+        }
         if (quota.currentUsage + 1 > quota.dailyLimit) {
           addGlobalErrorMessage(translate('aicodefix.daily_limit_exceeded'));
           return;
