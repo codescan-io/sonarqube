@@ -182,7 +182,9 @@ export default function AIRuleWizard(props: Readonly<Props>) {
         throw new Error('Organization is required to create a custom rule');
       }
 
-      const markdownDescription = `${formValues.ruleName}: ${formValues.message}`;
+      const markdownDescription = ruleData.aiSummary?.trim()
+        ? ruleData.aiSummary
+        : `${formValues.ruleName}: ${formValues.message}`;
 
       await createRule({
         organization,
