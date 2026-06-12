@@ -19,8 +19,12 @@
  */
 package org.sonar.ce.task.projectanalysis.source;
 
+import difflib.myers.DifferentiationFailedException;
+import difflib.myers.MyersDiff;
+import difflib.myers.PathNode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -256,102 +260,56 @@ public class SourceLinesDiffFinderTest {
   }
 
   /**
-   * Large fully-identical inputs (100K x 100K) — prefix trim consumes everything,
-   * Myers diff is never invoked. Verifies that identity is returned via the trim path.
+   * Equivalence guarantee: for any input whose edit distance is within the cap, the bounded
+   * diff must return EXACTLY what an uncapped {@code difflib.myers.MyersDiff} would. This
+   * fuzzes thousands of random inputs over a tiny alphabet (so matches, repeats and
+   * tie-breaks are exercised heavily) and asserts the mapping is identical to the upstream
+   * library — proving the cap introduces no behavioural side effect on normal diffs.
    */
   @Test
-  public void shouldReturnIdentityForLargeIdenticalInputsViaPrefixTrim() {
+  public void shouldMatchUpstreamMyersForEveryDiffWithinTheCap() throws DifferentiationFailedException {
+    Random random = new Random(20260612L);
+    String[] alphabet = {"a", "b", "c", "d"};
+    for (int iteration = 0; iteration < 5_000; iteration++) {
+      List<String> left = randomLines(random, alphabet, random.nextInt(40));
+      List<String> right = randomLines(random, alphabet, random.nextInt(40));
+
+      int[] actual = new SourceLinesDiffFinder().findMatchingLines(left, right);
+      int[] expected = uncappedReferenceMatchingLines(left, right);
+
+      assertThat(actual).as("iteration " + iteration + " left=" + left + " right=" + right)
+        .containsExactly(expected);
+    }
+  }
+
+  /**
+   * Large fully-identical inputs (100K x 100K): edit distance is 0, so Myers finishes on the
+   * first step and every line maps 1:1.
+   */
+  @Test
+  public void shouldMapIdentityForLargeIdenticalInputs() {
     int size = 100_000;
     List<String> database = buildLines(size, "line-");
     List<String> report = buildLines(size, "line-");
 
-    long start = System.nanoTime();
     int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
-    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
     assertThat(diff).hasSize(size);
     for (int i = 0; i < size; i++) {
       assertThat(diff[i]).as("line " + i).isEqualTo(i + 1);
     }
-    assertThat(elapsedMs).as("prefix trim must short-circuit Myers — wall time was " + elapsedMs + " ms")
-      .isLessThan(2_000L);
   }
 
   /**
-   * Large near-identical inputs (80K x 80K, 100 lines changed in the middle).
-   * Prefix and suffix together trim ~79 800 lines; Myers diff runs only on the
-   * 100x100 core. Result must be correct AND fast.
+   * Regression for the BOI / ARM EZ-Commit hang: a small scanner delta against a large,
+   * unrelated reference-branch file. The edit distance (~100 100) exceeds the cap, so the
+   * diff stops early; the files are disjoint (no common head/tail) so the fallback maps
+   * nothing and every report line is new. Without the cap this single call took ~70 s on
+   * M-series hardware and ~19 minutes on the production cloud VM. The generous time bound
+   * only guards against a re-introduced hang, not micro-performance (avoids CI flakiness).
    */
   @Test
-  public void shouldRunMyersOnSmallCoreForLargeNearIdenticalInputs() {
-    int total = 80_000;
-    int prefixLen = 39_950;
-    int divergent = 100;
-
-    List<String> database = new ArrayList<>(total);
-    List<String> report = new ArrayList<>(total);
-    for (int i = 0; i < prefixLen; i++) {
-      String shared = "shared-" + i;
-      database.add(shared);
-      report.add(shared);
-    }
-    for (int i = 0; i < divergent; i++) {
-      database.add("db-divergent-" + i);
-      report.add("rp-divergent-" + i);
-    }
-    int suffixLen = total - prefixLen - divergent;
-    for (int i = 0; i < suffixLen; i++) {
-      String shared = "tail-" + i;
-      database.add(shared);
-      report.add(shared);
-    }
-
-    long start = System.nanoTime();
-    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
-    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-
-    assertThat(diff).hasSize(total);
-    for (int i = 0; i < prefixLen; i++) {
-      assertThat(diff[i]).as("prefix line " + i).isEqualTo(i + 1);
-    }
-    for (int i = prefixLen; i < prefixLen + divergent; i++) {
-      assertThat(diff[i]).as("divergent line " + i).isZero();
-    }
-    for (int i = prefixLen + divergent; i < total; i++) {
-      assertThat(diff[i]).as("suffix line " + i).isEqualTo(i + 1);
-    }
-    assertThat(elapsedMs).as("trim should leave only a 100x100 core — wall time was " + elapsedMs + " ms")
-      .isLessThan(2_000L);
-  }
-
-  /**
-   * Asymmetric customer scenario: 30 000-line DB file vs 50-line scanner delta
-   * with no overlapping content (ARM EZ-Commit pattern). Prefix/suffix trim
-   * removes nothing; the asymmetry gate must fire and short-circuit Myers.
-   */
-  @Test
-  public void shouldShortCircuitOnAsymmetricDisjointInputs_30kVs50() {
-    List<String> database = buildLines(30_000, "db-");
-    List<String> report = buildLines(50, "rp-");
-
-    long start = System.nanoTime();
-    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
-    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-
-    assertThat(diff).hasSize(50);
-    assertThat(diff).containsOnly(0);
-    assertThat(elapsedMs).as("asymmetry gate must short-circuit Myers — wall time was " + elapsedMs + " ms")
-      .isLessThan(500L);
-  }
-
-  /**
-   * BOI worst case: 100 000-line DB file vs 100-line scanner delta with no
-   * overlapping content. Both the asymmetry gate and the cell gate apply;
-   * either is sufficient to short-circuit. Without a guard this took ~70 s
-   * on M-series hardware and ~19 minutes on the production cloud VM.
-   */
-  @Test
-  public void shouldShortCircuitOnBoiScale_100kVs100Disjoint() {
+  public void shouldStopEarlyForLargeDisjointInputs_boiScale() {
     List<String> database = buildLines(100_000, "db-");
     List<String> report = buildLines(100, "rp-");
 
@@ -361,17 +319,16 @@ public class SourceLinesDiffFinderTest {
 
     assertThat(diff).hasSize(100);
     assertThat(diff).containsOnly(0);
-    assertThat(elapsedMs).as("BOI-scale guarded call must complete fast — wall time was " + elapsedMs + " ms")
-      .isLessThan(500L);
+    assertThat(elapsedMs).as("edit-distance cap must prevent the hang — wall time was " + elapsedMs + " ms")
+      .isLessThan(10_000L);
   }
 
   /**
-   * Symmetric fully-disjoint large input (5K x 5K): trim removes nothing, ratio
-   * is 1 so the asymmetry gate does not fire, but the cell gate (5 000 x 5 000
-   * = 25 M cells > 4 M threshold) must short-circuit.
+   * Symmetric fully-disjoint large input (5K x 5K): every line differs, so the edit distance
+   * (10 000) exceeds the cap and the diff stops early; disjoint, so the fallback maps nothing.
    */
   @Test
-  public void shouldShortCircuitOnLargeSymmetricDisjointInputs() {
+  public void shouldStopEarlyForLargeSymmetricDisjointInputs() {
     List<String> database = buildLines(5_000, "db-");
     List<String> report = buildLines(5_000, "rp-");
 
@@ -381,28 +338,253 @@ public class SourceLinesDiffFinderTest {
 
     assertThat(diff).hasSize(5_000);
     assertThat(diff).containsOnly(0);
-    assertThat(elapsedMs).as("cell gate must short-circuit Myers — wall time was " + elapsedMs + " ms")
-      .isLessThan(500L);
+    assertThat(elapsedMs).as("edit-distance cap must prevent the hang — wall time was " + elapsedMs + " ms")
+      .isLessThan(10_000L);
   }
 
   /**
-   * Small asymmetric input (4K x 50) — below {@code DIFF_ASYMMETRY_MIN_SIZE} so
-   * the asymmetry gate does NOT fire, and cells (200K) are well under the cell
-   * gate. Myers must still run and produce the correct (no-match) result.
+   * The over-cap behaviour that matters for correctness (review finding #1/#2): a large file
+   * (90 000 lines) with an unchanged head and tail but a divergent middle block bigger than
+   * the cap (6 000 changed lines → D = 12 000 > 5 000). The full diff is refused, but the
+   * unchanged head and tail MUST still map 1:1 — only the divergent middle may be reported as
+   * new. Previously this whole file was reported as new, corrupting new-code / new-coverage /
+   * issue-creation-date for every unchanged line.
    */
   @Test
-  public void shouldRunMyersForSmallAsymmetricInputsBelowFloor() {
-    List<String> database = buildLines(4_000, "db-");
-    List<String> report = buildLines(50, "rp-");
+  public void shouldKeepCommonHeadAndTailWhenEditDistanceExceedsCap() {
+    int head = 42_000;
+    int changed = 6_000;
+    int tail = 42_000;
+    int total = head + changed + tail;
+
+    List<String> database = new ArrayList<>(total);
+    List<String> report = new ArrayList<>(total);
+    for (int i = 0; i < head; i++) {
+      String shared = "head-" + String.format("%07d", i);
+      database.add(shared);
+      report.add(shared);
+    }
+    for (int i = 0; i < changed; i++) {
+      database.add("db-" + String.format("%07d", i));
+      report.add("rp-" + String.format("%07d", i));
+    }
+    for (int i = 0; i < tail; i++) {
+      String shared = "tail-" + String.format("%07d", i);
+      database.add(shared);
+      report.add(shared);
+    }
+
+    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
+
+    assertThat(diff).hasSize(total);
+    for (int i = 0; i < head; i++) {
+      assertThat(diff[i]).as("head line " + i + " must map 1:1").isEqualTo(i + 1);
+    }
+    for (int i = head; i < head + changed; i++) {
+      assertThat(diff[i]).as("changed middle line " + i + " must be new").isZero();
+    }
+    for (int i = head + changed; i < total; i++) {
+      assertThat(diff[i]).as("tail line " + i + " must map 1:1").isEqualTo(i + 1);
+    }
+  }
+
+  /**
+   * Cap boundary (review finding #6). Construct an input whose edit distance is controlled
+   * exactly and whose correct mapping has interior matches that the prefix/suffix fallback
+   * would NOT recover — so Myers-success and fallback give DIFFERENT results. At D == cap the
+   * search must still complete (every interior line matched); at D == cap + 1 it must fall
+   * back (interior lines reported new). This pins the {@code dLimit = maxEditDistance + 1}
+   * off-by-one.
+   */
+  @Test
+  public void shouldRunMyersAtTheCapBoundaryAndFallBackJustAboveIt() {
+    // left = a, d1, s1, d2, s2, ... dk, sk ; right = a, s1, s2, ... sk.
+    // Only deletions of the k "d" lines, so edit distance D == k. Every "s" line matches an
+    // interior position; the fallback (common head=a, tail=sk only) cannot recover s1..s(k-1).
+    assertInterleavedDeletionDiff(SourceLinesDiffFinder.MAX_EDIT_DISTANCE, /* expectComplete = */ true);
+    assertInterleavedDeletionDiff(SourceLinesDiffFinder.MAX_EDIT_DISTANCE + 1, /* expectComplete = */ false);
+  }
+
+  private static void assertInterleavedDeletionDiff(int k, boolean expectComplete) {
+    // left  = a, d0, s0, d1, s1, ..., d(k-1), s(k-1)   (size 1 + 2k); s(i) sits at left index 2 + 2i
+    // right = a, s0, s1, ..., s(k-1)                    (size 1 + k)
+    // Only the k "d" lines are deleted, so the edit distance D == k exactly.
+    List<String> database = new ArrayList<>(1 + 2 * k);
+    List<String> report = new ArrayList<>(1 + k);
+    database.add("a");
+    report.add("a");
+    for (int i = 0; i < k; i++) {
+      database.add("d" + i);
+      database.add("s" + i);
+      report.add("s" + i);
+    }
+    int n = 1 + 2 * k;
+
+    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
+
+    assertThat(diff).hasSize(1 + k);
+    assertThat(diff[0]).as("the leading 'a' is always matched").isEqualTo(1);
+    if (expectComplete) {
+      // D == k == cap: Myers completes, so every interior s(i) maps to its exact DB line 3 + 2i.
+      for (int i = 0; i < k; i++) {
+        assertThat(diff[1 + i]).as("s" + i + " must map to its DB line").isEqualTo(3 + 2 * i);
+      }
+    } else {
+      // D == cap + 1: Myers bails. The fallback keeps the common head 'a' and the single common
+      // tail s(k-1) (== DB line n), and reports every interior s(i) as new.
+      assertThat(diff[k]).as("common tail s(k-1) mapped by suffix").isEqualTo(n);
+      for (int i = 0; i < k - 1; i++) {
+        assertThat(diff[1 + i]).as("interior s" + i + " must be new after fallback").isZero();
+      }
+    }
+  }
+
+  /**
+   * Randomised contract test for the over-cap fallback (matchCommonPrefixSuffix), which the
+   * within-cap fuzz test never reaches. Across varied head/tail sizes and unequal DB/report
+   * lengths it asserts the two invariants that matter: (1) every non-zero entry is a REAL
+   * content match (no false matches), and (2) the unchanged head and tail map 1:1 while the
+   * disjoint middle is reported as new.
+   */
+  @Test
+  public void fallbackShouldNeverProduceAFalseMatchAndMapCommonHeadAndTail() {
+    // {head, tail, leftMiddle, rightMiddle}. leftMiddle + rightMiddle > MAX_EDIT_DISTANCE so the
+    // diff always bails into the fallback; unequal middles exercise the n != m suffix arithmetic.
+    int[][] combos = {
+      {0, 0, 2_600, 2_600},
+      {30, 0, 2_600, 2_800},
+      {0, 45, 2_900, 2_600},
+      {25, 40, 2_700, 2_700},
+      {12, 70, 3_100, 2_600},
+      {64, 8, 2_600, 3_300},
+    };
+    for (int[] c : combos) {
+      assertFallbackContract(c[0], c[1], c[2], c[3]);
+    }
+  }
+
+  private static void assertFallbackContract(int head, int tail, int leftMiddle, int rightMiddle) {
+    List<String> left = new ArrayList<>(head + leftMiddle + tail);
+    List<String> right = new ArrayList<>(head + rightMiddle + tail);
+    for (int i = 0; i < head; i++) {
+      String shared = "h" + i;
+      left.add(shared);
+      right.add(shared);
+    }
+    for (int i = 0; i < leftMiddle; i++) {
+      left.add("L" + i);
+    }
+    for (int i = 0; i < rightMiddle; i++) {
+      right.add("R" + i);
+    }
+    for (int i = 0; i < tail; i++) {
+      String shared = "t" + i;
+      left.add(shared);
+      right.add(shared);
+    }
+    int n = left.size();
+    int m = right.size();
+
+    int[] diff = new SourceLinesDiffFinder().findMatchingLines(left, right);
+
+    assertThat(diff).hasSize(m);
+    // (1) no false matches: every non-zero entry points at a DB line with identical content.
+    for (int r = 0; r < m; r++) {
+      int v = diff[r];
+      if (v != 0) {
+        assertThat(v).as("match value in range, r=" + r).isBetween(1, n);
+        assertThat(left.get(v - 1)).as("match must be a real content match, r=" + r).isEqualTo(right.get(r));
+      }
+    }
+    // (2) common head and tail map 1:1; disjoint middle is new.
+    for (int i = 0; i < head; i++) {
+      assertThat(diff[i]).as("head " + i).isEqualTo(i + 1);
+    }
+    for (int t = 0; t < tail; t++) {
+      assertThat(diff[m - 1 - t]).as("tail " + t).isEqualTo(n - t);
+    }
+    for (int r = head; r < m - tail; r++) {
+      assertThat(diff[r]).as("disjoint middle " + r).isZero();
+    }
+  }
+
+  /**
+   * The case that PR #717's size-based gate broke (CD-9044): a large file (7 500 lines) with
+   * a SMALL but SCATTERED change set — one edit block near the top, another near the bottom.
+   * Its edit distance is tiny (~160), so Myers finishes quickly and maps every unchanged line
+   * 1:1; only the changed lines are reported as new. A guard that keyed off file size rather
+   * than edit distance reported the entire file as new here, re-surfacing every baseline
+   * issue in the PR.
+   */
+  @Test
+  public void shouldDiffLargeFileWithSmallScatteredChanges() {
+    int total = 7_500;
+    int topChangeAt = 100;
+    int bottomChangeAt = 7_300;
+    int changeLen = 40;
+
+    List<String> database = new ArrayList<>(total);
+    List<String> report = new ArrayList<>(total);
+    for (int i = 0; i < total; i++) {
+      boolean changed = isChanged(i, topChangeAt, bottomChangeAt, changeLen);
+      database.add("line-" + String.format("%07d", i));
+      report.add(changed ? "changed-" + String.format("%07d", i) : "line-" + String.format("%07d", i));
+    }
 
     long start = System.nanoTime();
     int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
     long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
-    assertThat(diff).hasSize(50);
-    assertThat(diff).containsOnly(0);
-    assertThat(elapsedMs).as("below floor and below cell gate — Myers must run normally, wall time was " + elapsedMs + " ms")
-      .isLessThan(5_000L);
+    assertThat(diff).hasSize(total);
+    for (int i = 0; i < total; i++) {
+      if (isChanged(i, topChangeAt, bottomChangeAt, changeLen)) {
+        assertThat(diff[i]).as("changed line " + i + " must be reported as new").isZero();
+      } else {
+        assertThat(diff[i]).as("unchanged line " + i + " must map 1:1 to its DB line").isEqualTo(i + 1);
+      }
+    }
+    assertThat(elapsedMs).as("small edit distance must let Myers run quickly — wall time was " + elapsedMs + " ms")
+      .isLessThan(2_000L);
+  }
+
+  private static boolean isChanged(int line, int topChangeAt, int bottomChangeAt, int changeLen) {
+    return (line >= topChangeAt && line < topChangeAt + changeLen)
+      || (line >= bottomChangeAt && line < bottomChangeAt + changeLen);
+  }
+
+  private static List<String> randomLines(Random random, String[] alphabet, int size) {
+    List<String> lines = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      lines.add(alphabet[random.nextInt(alphabet.length)]);
+    }
+    return lines;
+  }
+
+  /**
+   * The pre-existing (uncapped) implementation, used as the oracle for the fuzz test: a plain
+   * walk of {@code difflib.myers.MyersDiff#buildPath} with no edit-distance cap.
+   */
+  private static int[] uncappedReferenceMatchingLines(List<String> left, List<String> right) throws DifferentiationFailedException {
+    int[] index = new int[right.size()];
+    int dbLine = left.size();
+    int reportLine = right.size();
+
+    PathNode node = new MyersDiff<String>().buildPath(left, right);
+    while (node.prev != null) {
+      PathNode prevNode = node.prev;
+      if (!node.isSnake()) {
+        reportLine -= (node.j - prevNode.j);
+        dbLine -= (node.i - prevNode.i);
+      } else {
+        for (int i = node.i; i > prevNode.i; i--) {
+          index[reportLine - 1] = dbLine;
+          reportLine--;
+          dbLine--;
+        }
+      }
+      node = prevNode;
+    }
+    return index;
   }
 
   private static List<String> buildLines(int n, String prefix) {
