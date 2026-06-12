@@ -175,11 +175,7 @@ export default function IssueAssignee(props: Props) {
           addGlobalErrorMessage(translate('aicodefix.module_not_licensed'));
           return;
         }
-        if (quota.allocatedCredits === 0) {
-          addGlobalErrorMessage(translate('aicodefix.no_credits_subscription'));
-          return;
-        }
-        if (quota.consumedCredits + 1 > quota.allocatedCredits) {
+        if (quota.remainingFixes < 1) {
           addGlobalErrorMessage(translate('aicodefix.insufficient_credits'));
           return;
         }

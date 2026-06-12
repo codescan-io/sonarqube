@@ -325,11 +325,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
                 addGlobalErrorMessage(translate('aicodefix.module_not_licensed'));
                 return;
               }
-              if (quota.allocatedCredits === 0) {
-                addGlobalErrorMessage(translate('aicodefix.no_credits_subscription'));
-                return;
-              }
-              if (quota.consumedCredits + issuesToQueue.length > quota.allocatedCredits) {
+              if (issuesToQueue.length > quota.remainingFixes) {
                 addGlobalErrorMessage(translate('aicodefix.insufficient_credits'));
                 return;
               }
