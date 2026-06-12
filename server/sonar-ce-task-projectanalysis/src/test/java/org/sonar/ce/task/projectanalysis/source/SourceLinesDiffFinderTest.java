@@ -301,15 +301,13 @@ public class SourceLinesDiffFinderTest {
   }
 
   /**
-   * Regression for the BOI / ARM EZ-Commit hang: a small scanner delta against a large,
-   * unrelated reference-branch file. The edit distance (~100 100) exceeds the cap, so the
-   * diff stops early; the files are disjoint (no common head/tail) so the fallback maps
-   * nothing and every report line is new. Without the cap this single call took ~70 s on
-   * M-series hardware and ~19 minutes on the production cloud VM. The generous time bound
-   * only guards against a re-introduced hang, not micro-performance (avoids CI flakiness).
+   * Regression for the hang on a small delta against a large, unrelated file. The edit
+   * distance (~100 100) exceeds the cap, so the diff stops early; the files are disjoint
+   * (no common head/tail) so the fallback maps nothing and every report line is new. The
+   * generous time bound only guards against a re-introduced hang, not micro-performance.
    */
   @Test
-  public void shouldStopEarlyForLargeDisjointInputs_boiScale() {
+  public void shouldStopEarlyForLargeDisjointInputs() {
     List<String> database = buildLines(100_000, "db-");
     List<String> report = buildLines(100, "rp-");
 
@@ -509,12 +507,10 @@ public class SourceLinesDiffFinderTest {
   }
 
   /**
-   * The case that PR #717's size-based gate broke (CD-9044): a large file (7 500 lines) with
-   * a SMALL but SCATTERED change set — one edit block near the top, another near the bottom.
-   * Its edit distance is tiny (~160), so Myers finishes quickly and maps every unchanged line
-   * 1:1; only the changed lines are reported as new. A guard that keyed off file size rather
-   * than edit distance reported the entire file as new here, re-surfacing every baseline
-   * issue in the PR.
+   * A large file (7 500 lines) with a small but scattered change set — one edit block near the
+   * top, another near the bottom. Its edit distance is tiny (~160), so Myers finishes quickly
+   * and maps every unchanged line 1:1; only the changed lines are reported as new. A guard that
+   * keyed off file size rather than edit distance would wrongly report the entire file as new.
    */
   @Test
   public void shouldDiffLargeFileWithSmallScatteredChanges() {

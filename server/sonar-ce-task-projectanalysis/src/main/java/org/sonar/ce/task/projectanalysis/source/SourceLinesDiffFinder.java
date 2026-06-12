@@ -30,19 +30,11 @@ public class SourceLinesDiffFinder {
   private static final Logger LOG = LoggerFactory.getLogger(SourceLinesDiffFinder.class);
 
   /**
-   * Maximum Myers edit distance (number of single-line insertions + deletions) the line
-   * diff is allowed to compute. Myers' greedy algorithm walks d = 0, 1, 2, … and finishes
-   * at d = D, the actual edit distance, so its cost grows with D, not with file size: a
-   * large file with few changed lines is cheap, while two largely-unrelated files force D
-   * towards N + M and the algorithm degrades to ~O(D^2).
-   *
-   * <p>This is exactly the shape that previously hung analysis for up to ~19 minutes — a
-   * small scanner delta sent against a large, unrelated reference-branch file (ARM
-   * EZ-Commit on the Bank of Ireland instance). Capping D bounds that worst case to well
-   * under a second while leaving every realistic diff (which has a small D) completely
-   * unaffected: when the algorithm finishes within the cap the result is identical to an
-   * uncapped Myers diff. Only when D exceeds the cap do we stop early and fall back to
-   * {@link #matchCommonPrefixSuffix} (see there for why that is still correct).
+   * Maximum Myers edit distance the line diff is allowed to compute. Myers' cost grows with
+   * the edit distance D, not file size, so near-identical files stay cheap while two largely
+   * unrelated files push D towards N + M and degrade to ~O(D^2). Capping D bounds that worst
+   * case; within the cap the result is identical to an uncapped Myers diff, and beyond it we
+   * fall back to {@link #matchCommonPrefixSuffix}.
    */
   static final int MAX_EDIT_DISTANCE = 5_000;
 
@@ -51,10 +43,7 @@ public class SourceLinesDiffFinder {
 
     PathNode node = buildPathWithinEditDistance(left, right, MAX_EDIT_DISTANCE);
     if (node == null) {
-      // Edit distance exceeds the cap: a full line-level diff would be ~O(D^2) and is what
-      // previously hung analysis. We do NOT discard the whole mapping — we still match the
-      // common leading/trailing lines (which are unchanged and aligned 1:1) and leave only
-      // the divergent middle as new. See matchCommonPrefixSuffix.
+      // Edit distance exceeds the cap; fall back to matching the common prefix/suffix only.
       return matchCommonPrefixSuffix(left, right, index);
     }
 
@@ -82,18 +71,9 @@ public class SourceLinesDiffFinder {
   }
 
   /**
-   * Fallback used only when the edit distance exceeds {@link #MAX_EDIT_DISTANCE} and a full
-   * line-level diff is therefore too expensive to compute. It maps the common leading lines
-   * and the common trailing lines — which are unchanged and aligned 1:1 between the two
-   * versions — and leaves the divergent middle unmatched (= new).
-   *
-   * <p>This never produces a wrong match: a leading line {@code i} that is byte-identical in
-   * both versions IS the same line, likewise for trailing lines counted from the end. It only
-   * ever <em>under</em>-reports matches (some middle lines that a full diff might have paired
-   * are reported as new), which is the safe direction. It is strictly more accurate than
-   * treating the whole file as new: a large file with an unchanged head and tail keeps that
-   * head and tail correctly tracked, while two genuinely disjoint files (no common head/tail)
-   * still map to all-new — the correct outcome for the EZ-Commit / Bank of Ireland shape.
+   * Fallback used when the edit distance exceeds {@link #MAX_EDIT_DISTANCE}. Maps the common
+   * leading and trailing lines, which are unchanged and aligned 1:1, and leaves the divergent
+   * middle unmatched (= new). This only ever under-reports matches, never produces a wrong one.
    */
   private static int[] matchCommonPrefixSuffix(List<String> left, List<String> right, int[] index) {
     int n = left.size();
@@ -121,11 +101,8 @@ public class SourceLinesDiffFinder {
 
   /**
    * Greedy Myers shortest-edit-script search, transcribed from
-   * {@code difflib.myers.MyersDiff#buildPath} (java-diff-utils 1.3.0) with a single
-   * change: the outer loop stops once the edit distance {@code d} exceeds
-   * {@code maxEditDistance}. Reuses difflib's own {@link PathNode}/{@link DiffNode}/
-   * {@link Snake} nodes and the same diagonal bookkeeping, so for any input whose edit
-   * distance is within the cap it returns a path identical to the upstream algorithm.
+   * {@code difflib.myers.MyersDiff#buildPath} (java-diff-utils 1.3.0) with one change: the
+   * outer loop stops once the edit distance {@code d} exceeds {@code maxEditDistance}.
    *
    * @return the end {@link PathNode} of the shortest edit path, or {@code null} if no path
    *         is found within {@code maxEditDistance} edits.
@@ -136,12 +113,8 @@ public class SourceLinesDiffFinder {
 
     final int max = n + m + 1;
 
-    // The greedy search only explores diagonals k in [-d, d] for d up to the cap, so just a
-    // band of width O(maxEditDistance) around the middle diagonal is ever touched. Size the
-    // array to that band (with one slot of slack on each side) rather than to O(n + m), so a
-    // diff of a large file does not allocate a multi-MB array it never uses. The middle index
-    // is an arbitrary base offset — only the relative diagonal k matters — so this produces
-    // the exact same result as the original O(n + m)-sized array.
+    // The greedy search only explores diagonals k in [-d, d] up to the cap, so size the array
+    // to that band rather than to O(n + m) to avoid allocating a large array it never uses.
     final int dLimit = Math.min(max, maxEditDistance + 1);
     final int middle = dLimit + 1;
     final int size = 2 * middle + 1;
