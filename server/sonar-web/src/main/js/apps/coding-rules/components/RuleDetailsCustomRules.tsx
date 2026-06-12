@@ -34,6 +34,7 @@ import { translate } from '../../../helpers/l10n';
 import { getRuleUrl } from '../../../helpers/urls';
 import { useDeleteRuleMutation, useSearchRulesQuery } from '../../../queries/rules';
 import { Rule, RuleDetails } from '../../../types/types';
+import AiRuleBadge, { isAiGeneratedRule } from './ai-custom-rules/AiRuleBadge';
 import CustomRuleButton from './CustomRuleButton';
 
 interface Props {
@@ -49,7 +50,7 @@ export default function RuleDetailsCustomRules(props: Readonly<Props>) {
   const { ruleDetails, canChange, organization } = props;
   const rulesSearchParams = {
     organization,
-    f: 'name,severity,params',
+    f: 'name,severity,params,sysTags',
     template_key: ruleDetails.key,
   };
   const { isLoading: loadingRules, data } = useSearchRulesQuery(rulesSearchParams);
@@ -120,8 +121,9 @@ function RuleListItem(
   return (
     <TableRow data-rule={rule.key}>
       <ContentCell>
-        <div>
+        <div className="sw-flex sw-flex-col sw-items-start sw-gap-1">
           <Link to={getRuleUrl(rule.key, organization)}>{rule.name}</Link>
+          {isAiGeneratedRule(rule) && <AiRuleBadge />}
         </div>
       </ContentCell>
 
