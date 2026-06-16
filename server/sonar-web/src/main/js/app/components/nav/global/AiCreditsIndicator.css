@@ -50,8 +50,6 @@
   white-space: nowrap;
 }
 
-/* ── Tooltip content ───────────────────────────────────────────────────── */
-
 .ai-credits-indicator-tooltip {
   display: flex;
   flex-direction: column;
