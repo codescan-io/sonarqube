@@ -61,7 +61,8 @@ public class SearchResponseData {
   private final Map<String, BranchDto> branchesByUuid = new HashMap<>();
   private final Map<String, ProjectDto> projectsByUuid = new HashMap<>();
   private final Map<String,String> statusChangedByIssueKey = new HashMap<>();
-
+  private final Map<String, IssueChangeDto> exceptionReasonByIssueKey = new HashMap<>();
+  private final Map<String, Long> assignedDateByIssueKey = new HashMap<>();
   public SearchResponseData() {
     this.issues = List.of();
   }
@@ -229,4 +230,43 @@ public class SearchResponseData {
   UserDto getUserByUuid(@Nullable String userUuid) {
     return usersByUuid.get(userUuid);
   }
+
+  void addExceptionReasons(@Nullable List<IssueChangeDto> changes) {
+      if (changes == null) {
+            return;
+      }
+      changes.stream()
+              .filter(c -> IssueChangeDto.TYPE_EXCEPTION_REASON.equals(c.getChangeType()))
+              .forEach(c -> exceptionReasonByIssueKey.merge(c.getIssueKey(), c,
+                      (existing, current) ->
+                              current.getIssueChangeCreationDate() > existing.getIssueChangeCreationDate()
+                                      ? current
+                                      : existing
+              ));
+  }
+
+  @Nullable
+  String getExceptionReason(String issueKey) {
+        IssueChangeDto dto = exceptionReasonByIssueKey.get(issueKey);
+        return dto == null ? null : dto.getChangeData();
+    }
+
+  void addAssignedDates(@Nullable List<IssueChangeDto> changes) {
+        if (changes == null) {
+            return;
+        }
+        changes.stream()
+                .filter(c -> IssueChangeDto.TYPE_FIELD_CHANGE.equals(c.getChangeType()))
+                .filter(c -> c.getChangeData() != null && c.getChangeData().contains("assignee"))
+                .forEach(c -> assignedDateByIssueKey.merge(
+                        c.getIssueKey(),
+                        c.getIssueChangeCreationDate(),
+                        Math::max
+                ));
+    }
+
+    @Nullable
+    Long getAssignedDate(String issueKey) {
+        return assignedDateByIssueKey.get(issueKey);
+    }
 }

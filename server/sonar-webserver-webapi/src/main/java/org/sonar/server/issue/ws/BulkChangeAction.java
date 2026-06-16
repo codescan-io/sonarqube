@@ -126,6 +126,7 @@ public class BulkChangeAction implements IssuesWsAction {
 
   private static final Logger LOG = LoggerFactory.getLogger(BulkChangeAction.class);
   private static final List<String> ACTIONS_TO_DISTRIBUTE = List.of(SET_SEVERITY_KEY, SET_TYPE_KEY, DO_TRANSITION_KEY);
+  private static final String PARAM_EXCEPTION_REASON = "exceptionReason";
 
   private final System2 system2;
   private final UserSession userSession;
@@ -211,6 +212,9 @@ public class BulkChangeAction implements IssuesWsAction {
       .setSince("4.0")
       .setBooleanPossibleValues()
       .setDefaultValue("false");
+    action.createParam(PARAM_EXCEPTION_REASON)
+      .setDescription("Reason for the Exception")
+      .setRequired(false);
   }
 
   @Override
@@ -562,11 +566,30 @@ public class BulkChangeAction implements IssuesWsAction {
         transitionProps.put(TRANSITION_PARAMETER, transitionValue);
         request.getParam(PARAM_ISSUE_RESOLUTION_EXPIRY_DATE,
           v -> transitionProps.put(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE, v));
+          if (DefaultTransitions.EXCEPTION.equals(transitionValue)) {
+              request.getParam(PARAM_EXCEPTION_REASON,
+                      v -> transitionProps.put(PARAM_EXCEPTION_REASON, v));
+              request.getParam(PARAM_COMMENT,
+                      v -> {
+                          if (!transitionProps.containsKey(PARAM_EXCEPTION_REASON)) {
+                              transitionProps.put(PARAM_EXCEPTION_REASON, v);
+                          }
+                      });
+          }
         properties.put(DO_TRANSITION_KEY, transitionProps);
       });
       request.getParam(PARAM_ADD_TAGS, value -> properties.put(AddTagsAction.KEY, new HashMap<>(of(TAGS_PARAMETER, value))));
       request.getParam(PARAM_REMOVE_TAGS, value -> properties.put(RemoveTagsAction.KEY, new HashMap<>(of(TAGS_PARAMETER, value))));
-      request.getParam(PARAM_COMMENT, value -> properties.put(COMMENT_KEY, new HashMap<>(of(COMMENT_PROPERTY, value))));
+        request.getParam(PARAM_COMMENT, value -> {
+            Map<String, Object> transitionProps = properties.get(DO_TRANSITION_KEY);
+
+            boolean isExceptionTransition = transitionProps != null
+                    && DefaultTransitions.EXCEPTION.equals(transitionProps.get(TRANSITION_PARAMETER));
+
+            if (!isExceptionTransition) {
+                properties.put(COMMENT_KEY, new HashMap<>(of(COMMENT_PROPERTY, value)));
+            }
+        });
       checkAtLeastOneActionIsDefined(properties.keySet());
       return properties;
     }

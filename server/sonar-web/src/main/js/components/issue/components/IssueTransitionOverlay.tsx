@@ -52,6 +52,7 @@ export type Props = {
   onClose: () => void;
   onSetTransition: (
     transition: IssueTransition,
+    exceptionReason?: string,
     comment?: string,
     issueResolutionExpiryDate?: string,
   ) => void;
@@ -72,7 +73,7 @@ export function IssueTransitionOverlay(props: Readonly<Props>) {
 
   function selectTransition(transition: IssueTransition) {
     if (!transitionRequiresComment(transition) || !hasCommentAction) {
-      onSetTransition(transition, undefined, buildExpiryPayload(transition));
+      onSetTransition(transition, undefined, undefined, buildExpiryPayload(transition));
     } else {
       setSelectedTransition(transition);
       setExceptionExpiryDate(undefined);
@@ -99,7 +100,8 @@ export function IssueTransitionOverlay(props: Readonly<Props>) {
       }
       onSetTransition(
         selectedTransition,
-        comment,
+        selectedTransition === IssueTransition.Exception ? comment : undefined,
+        selectedTransition === IssueTransition.Exception ? undefined : comment,
         buildExpiryPayload(selectedTransition),
       );
     }
