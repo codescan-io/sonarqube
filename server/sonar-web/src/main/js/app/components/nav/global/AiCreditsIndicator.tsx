@@ -17,10 +17,12 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { Tooltip } from '@sonarsource/echoes-react';
 import { AiCreditsSummary } from '../../../../api/ai-codefix';
 import { getArcColor, SIZE, STROKE_WIDTH, RADIUS, CX, CY, CIRCUMFERENCE } from '../helpers';
-import { COLOR_UNFILLED, COLOR_WHITE } from '../../../../helpers/constants';
+import { COLOR_UNFILLED } from '../../../../helpers/constants';
+import './AiCreditsIndicator.css';
 
 export interface AiCreditsIndicatorProps {
   data?: AiCreditsSummary;
@@ -31,46 +33,22 @@ export function AiCreditsIndicator({
 }: Readonly<AiCreditsIndicatorProps>) {
   if (!data) { return null; }
 
-  var { allocatedCredits, consumedCredits, remainingCredits } = data;
+  const { allocatedCredits, consumedCredits, remainingCredits } = data;
 
-  const usedPct  = allocatedCredits > 0
+  const usedPct = allocatedCredits > 0
     ? Math.min(100, (consumedCredits / allocatedCredits) * 100)
     : 0;
 
-  const arcColor = getArcColor(usedPct);
-
-  // stroke-dashoffset controls how much of the arc is drawn clockwise from top
-  const filledLength   = (usedPct / 100) * CIRCUMFERENCE;
-  const dashOffset     = CIRCUMFERENCE - filledLength;
+  const arcColor     = getArcColor(usedPct);
+  const filledLength = (usedPct / 100) * CIRCUMFERENCE;
+  const dashOffset   = CIRCUMFERENCE - filledLength;
 
   const tooltipContent = (
-    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
-      <span
-        style={{
-          color: COLOR_WHITE,
-          fontSize: '14px',
-          fontStyle: 'normal',
-          fontWeight: 600,
-          lineHeight: '20px',
-          textAlign: 'center',
-          display: 'block',
-          width: '100%',
-        }}
-      >
+    <span className="ai-credits-indicator-tooltip">
+      <span className="ai-credits-indicator-tooltip-count">
         {remainingCredits} / {allocatedCredits}
       </span>
-      <span
-        style={{
-          color: COLOR_WHITE,
-          fontSize: '12px',
-          fontStyle: 'normal',
-          fontWeight: 400,
-          lineHeight: '20px',
-          textAlign: 'center',
-          display: 'block',
-          width: '100%',
-        }}
-      >
+      <span className="ai-credits-indicator-tooltip-label">
         AI Credits remaining
       </span>
     </span>
@@ -80,26 +58,14 @@ export function AiCreditsIndicator({
     <Tooltip content={tooltipContent}>
       <button
         aria-label={`AI Credits: ${remainingCredits.toLocaleString()} of ${allocatedCredits.toLocaleString()} remaining`}
-        style={{
-          position: 'relative',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: SIZE,
-          height: SIZE,
-          background: 'none',
-          border: 'none',
-          padding: '0 10px',    
-          cursor: 'default',
-          borderRadius: '50%',
-          flexShrink: 0,
-        }}
+        className="ai-credits-indicator-button"
+        style={{ width: SIZE, height: SIZE }}
         type="button"
       >
         <svg
           aria-hidden="true"
+          className="ai-credits-indicator-svg"
           height={SIZE}
-          style={{ display: 'block' }}
           width={SIZE}
         >
           {/* Grey unfilled track — full circle */}
@@ -124,7 +90,6 @@ export function AiCreditsIndicator({
               strokeDashoffset={dashOffset}
               strokeLinecap="round"
               strokeWidth={STROKE_WIDTH}
-              // Rotate -90° so the arc starts at 12 o'clock (top)
               transform={`rotate(-90, ${CX}, ${CY})`}
             />
           )}
@@ -133,22 +98,8 @@ export function AiCreditsIndicator({
         {/* "AI" label centred inside the ring */}
         <span
           aria-hidden="true"
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontFamily: 'Inter, sans-serif',
-            fontSize: '12px',
-            fontStyle: 'normal',
-            fontWeight: 600,
-            lineHeight: '16.5px',
-            letterSpacing: '-0.275px',
-            color: arcColor,
-            userSelect: 'none',
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap',
-          }}
+          className="ai-credits-indicator-label"
+          style={{ color: arcColor }}
         >
           AI
         </span>

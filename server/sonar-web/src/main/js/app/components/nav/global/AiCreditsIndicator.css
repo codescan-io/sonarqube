@@ -1,0 +1,84 @@
+/*
+ * SonarQube
+ * Copyright (C) 2009-2024 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+.ai-credits-indicator-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0 10px;
+  cursor: default;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ai-credits-indicator-svg {
+  display: block;
+}
+
+.ai-credits-indicator-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 16.5px;
+  letter-spacing: -0.275px;
+  user-select: none;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ── Tooltip content ───────────────────────────────────────────────────── */
+
+.ai-credits-indicator-tooltip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.ai-credits-indicator-tooltip-count {
+  color: var(--color-white-solid, #fff);
+  font-family: var(--font-family-Font-1, Inter);
+  font-size: var(--font-size-14, 14px);
+  font-style: normal;
+  font-weight: var(--font-weight-semibold, 600);
+  line-height: var(--line-height-20, 20px);
+  text-align: center;
+  display: block;
+  width: 100%;
+}
+
+.ai-credits-indicator-tooltip-label {
+  color: var(--color-white-solid, #fff);
+  font-family: var(--font-family-Font-1, Inter);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: var(--font-weight-400, 400);
+  line-height: var(--line-height-20, 20px);
+  text-align: center;
+  display: block;
+  width: 100%;
+}
