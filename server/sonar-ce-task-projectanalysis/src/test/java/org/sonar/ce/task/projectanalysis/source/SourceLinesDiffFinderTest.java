@@ -327,7 +327,9 @@ public class SourceLinesDiffFinderTest {
   /**
    * Asymmetric customer scenario: 30 000-line DB file vs 50-line scanner delta
    * with no overlapping content (ARM EZ-Commit pattern). Prefix/suffix trim
-   * removes nothing; the asymmetry gate must fire and short-circuit Myers.
+   * removes nothing; the asymmetry gate fires (ratio 600 > 100, max core
+   * >= 5 000) and returns the zero-filled index Myers itself would have
+   * produced for this purely disjoint shape.
    */
   @Test
   public void shouldShortCircuitOnAsymmetricDisjointInputs_30kVs50() {
@@ -345,10 +347,10 @@ public class SourceLinesDiffFinderTest {
   }
 
   /**
-   * BOI worst case: 100 000-line DB file vs 100-line scanner delta with no
-   * overlapping content. Both the asymmetry gate and the cell gate apply;
-   * either is sufficient to short-circuit. Without a guard this took ~70 s
-   * on M-series hardware and ~19 minutes on the production cloud VM.
+   * Bank of Ireland worst case: 100 000-line DB file vs 100-line scanner delta
+   * with no overlapping content. Asymmetry ratio 1 000 trips the gate and
+   * returns a zero-filled index. Without this guard the call ran for ~70 s on
+   * M-series hardware and ~19 minutes on the production cloud VM.
    */
   @Test
   public void shouldShortCircuitOnBoiScale_100kVs100Disjoint() {
@@ -366,61 +368,18 @@ public class SourceLinesDiffFinderTest {
   }
 
   /**
-   * Symmetric fully-disjoint large input (5K x 5K): trim removes nothing, ratio
-   * is 1 so the asymmetry gate does not fire, but the cell gate (5 000 x 5 000
-   * = 25 M cells > 4 M threshold) must short-circuit.
-   */
-  @Test
-  public void shouldShortCircuitOnLargeSymmetricDisjointInputs() {
-    List<String> database = buildLines(5_000, "db-");
-    List<String> report = buildLines(5_000, "rp-");
-
-    long start = System.nanoTime();
-    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
-    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-
-    assertThat(diff).hasSize(5_000);
-    assertThat(diff).containsOnly(0);
-    assertThat(elapsedMs).as("cell gate must short-circuit Myers — wall time was " + elapsedMs + " ms")
-      .isLessThan(500L);
-  }
-
-  /**
-   * Small asymmetric input (4K x 50) — below {@code DIFF_ASYMMETRY_MIN_SIZE} so
-   * the asymmetry gate does NOT fire. Hash overlap is zero (disjoint content),
-   * so the work-budget gate fires and the hash-matching fallback runs; result
-   * is still all-zeros because no content is shared.
-   */
-  @Test
-  public void shouldFallbackForSmallAsymmetricDisjointInputs() {
-    List<String> database = buildLines(4_000, "db-");
-    List<String> report = buildLines(50, "rp-");
-
-    long start = System.nanoTime();
-    int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
-    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-
-    assertThat(diff).hasSize(50);
-    assertThat(diff).containsOnly(0);
-    assertThat(elapsedMs).as("small disjoint inputs handled fast — wall time was " + elapsedMs + " ms")
-      .isLessThan(5_000L);
-  }
-
-  /**
-   * Regression test for the post-PR field issue: 70K-line file with a handful of
-   * lines changed at BOTH boundaries (couple at start, couple at end), middle
-   * unchanged. Prefix and suffix trim both abort at index 0 because the very
-   * first / last lines differ — so the divergent core is the full 70K x 70K.
+   * Regression test for the field issue that bounced the first iteration of the
+   * fix: a 70K-line file with a handful of lines changed at BOTH boundaries,
+   * middle unchanged. Prefix and suffix trim both abort at index 0 because the
+   * very first / last lines differ — so the divergent core is the full 70K x 70K.
    *
-   * <p>The previous cell-size gate (left.size * right.size > 4M) fired here and
+   * <p>The earlier cell-size gate (left.size * right.size > 4M) fired here and
    * returned an all-zero index, which made the PR analysis flag every issue
    * in the file (including pre-existing ones on master) as "new on this PR".
    *
-   * <p>The current D-estimate gate correctly identifies that hash overlap is
-   * ~70K (very high), edit distance is ~10, predicted work is ~1.4M ops (well
-   * under the 50M budget), and Myers runs normally — producing the correct
-   * mapping where unchanged lines point at their DB counterpart and only the
-   * truly changed lines map to 0.
+   * <p>The minimal fix keeps only the asymmetry gate; this symmetric case
+   * (ratio 1) falls through to Myers, which produces the correct LCS-based
+   * mapping in milliseconds because the actual edit distance is small.
    */
   @Test
   public void shouldRunMyersForLargeNearIdenticalWithChangesAtBothBoundaries() {
@@ -451,16 +410,13 @@ public class SourceLinesDiffFinderTest {
     long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
     assertThat(diff).hasSize(total);
-    // First `changedAtStart` report lines must be flagged as new (no DB match).
     for (int i = 0; i < changedAtStart; i++) {
       assertThat(diff[i]).as("changed-at-start report line " + i + " must be new").isZero();
     }
-    // Middle lines must map 1:1 to DB lines (1-indexed).
     for (int i = middleStart; i < middleEnd; i++) {
       assertThat(diff[i]).as("middle shared report line " + i + " must map to db line " + (i + 1))
         .isEqualTo(i + 1);
     }
-    // Last `changedAtEnd` report lines must be flagged as new.
     for (int i = middleEnd; i < total; i++) {
       assertThat(diff[i]).as("changed-at-end report line " + i + " must be new").isZero();
     }
@@ -469,36 +425,54 @@ public class SourceLinesDiffFinderTest {
   }
 
   /**
-   * Verifies that the hash-matching fallback recovers SOME mapping when content
-   * is partially shared but the overall shape is too expensive for Myers. Here:
-   * 8K-line DB and 8K-line report, fully disjoint at the boundaries, but with a
-   * common shuffled middle block — D is high enough to trip the work-budget
-   * gate, but ~half the report lines should still be paired with a DB line of
-   * matching content via the hash fallback. Crucially: not all-zeros.
+   * Larger boundary-change variant of the regression case above: 70K-line file
+   * with 100 lines changed at the start AND 100 changed at the end. Symmetric
+   * (ratio 1), so the asymmetry gate does not fire; Myers runs on the full
+   * 70K x 70K core. Actual edit distance is ~400, so Myers completes in around
+   * a second on production hardware and produces the correct mapping (200
+   * lines flagged as new, 69 800 middle lines identity-mapped).
    */
   @Test
-  public void hashFallbackShouldRecoverMatchesWhenContentIsPartiallyShared() {
-    int size = 8_000;
-    List<String> database = buildLines(size, "db-");
-    List<String> report = buildLines(size, "rp-");
-    // Inject a shared block at known DB position -> known report position.
-    for (int i = 1_000; i < 5_000; i++) {
+  public void shouldRunMyersForLargeNearIdenticalWith100ChangesAtEachBoundary() {
+    int total = 70_000;
+    int changedAtStart = 100;
+    int changedAtEnd = 100;
+
+    List<String> database = new ArrayList<>(total);
+    List<String> report = new ArrayList<>(total);
+    for (int i = 0; i < changedAtStart; i++) {
+      database.add("db-start-" + i);
+      report.add("rp-start-" + i);
+    }
+    int middleStart = changedAtStart;
+    int middleEnd = total - changedAtEnd;
+    for (int i = middleStart; i < middleEnd; i++) {
       String shared = "shared-" + i;
-      database.set(i, shared);
-      report.set(size - 1 - i, shared);
+      database.add(shared);
+      report.add(shared);
+    }
+    for (int i = 0; i < changedAtEnd; i++) {
+      database.add("db-end-" + i);
+      report.add("rp-end-" + i);
     }
 
+    long start = System.nanoTime();
     int[] diff = new SourceLinesDiffFinder().findMatchingLines(database, report);
+    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
-    assertThat(diff).hasSize(size);
-    int matched = 0;
-    for (int v : diff) {
-      if (v != 0) {
-        matched++;
-      }
+    assertThat(diff).hasSize(total);
+    for (int i = 0; i < changedAtStart; i++) {
+      assertThat(diff[i]).as("changed-at-start report line " + i + " must be new").isZero();
     }
-    assertThat(matched).as("hash fallback must recover the shared-content lines (got " + matched + " matched of " + size + ")")
-      .isGreaterThanOrEqualTo(3_500);
+    for (int i = middleStart; i < middleEnd; i++) {
+      assertThat(diff[i]).as("middle shared report line " + i + " must map to db line " + (i + 1))
+        .isEqualTo(i + 1);
+    }
+    for (int i = middleEnd; i < total; i++) {
+      assertThat(diff[i]).as("changed-at-end report line " + i + " must be new").isZero();
+    }
+    assertThat(elapsedMs).as("70K x 70K with 100/100 boundary edits — wall time was " + elapsedMs + " ms")
+      .isLessThan(10_000L);
   }
 
   private static List<String> buildLines(int n, String prefix) {
