@@ -325,11 +325,11 @@ public class SourceLinesDiffFinderTest {
   }
 
   /**
-   * Asymmetric customer scenario: 30 000-line DB file vs 50-line scanner delta
-   * with no overlapping content (ARM EZ-Commit pattern). Prefix/suffix trim
-   * removes nothing; the asymmetry gate fires (ratio 600 > 100, max core
-   * >= 5 000) and returns the zero-filled index Myers itself would have
-   * produced for this purely disjoint shape.
+   * Asymmetric input shape: 30 000-line DB file vs 50-line scanner delta with
+   * no overlapping content (ARM EZ-Commit pattern). Prefix/suffix trim removes
+   * nothing; the asymmetry gate fires (ratio 600 > 100, max core >= 5 000) and
+   * returns the zero-filled index Myers itself would have produced for this
+   * purely disjoint shape.
    */
   @Test
   public void shouldShortCircuitOnAsymmetricDisjointInputs_30kVs50() {
