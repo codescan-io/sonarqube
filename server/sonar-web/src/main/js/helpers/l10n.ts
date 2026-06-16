@@ -19,6 +19,9 @@
  */
 
 import { getIntl, getMessages } from './l10nBundle';
+import { getCachedSeverityLabel } from './severityMasking';
+
+const severityKeys = new Set<string>(['severity.BLOCKER', 'severity.CRITICAL', 'severity.MAJOR', 'severity.MINOR', 'severity.INFO']);
 
 export function hasMessage(...keys: string[]): boolean {
   const messageKey = keys.join('.');
@@ -29,6 +32,13 @@ export function hasMessage(...keys: string[]): boolean {
 export function translate(...keys: string[]): string {
   const messageKey = keys.join('.');
   const l10nMessages = getMessages();
+
+  if (severityKeys.has(messageKey)) {
+      let label = getCachedSeverityLabel(messageKey);
+      if (label) {
+        l10nMessages[messageKey] = label;
+      }
+  }
 
   if (process.env.NODE_ENV === 'development' && !l10nMessages[messageKey]) {
     // eslint-disable-next-line no-console
