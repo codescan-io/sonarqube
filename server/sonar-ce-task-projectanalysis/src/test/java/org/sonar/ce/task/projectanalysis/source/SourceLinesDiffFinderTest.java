@@ -347,13 +347,13 @@ public class SourceLinesDiffFinderTest {
   }
 
   /**
-   * Bank of Ireland worst case: 100 000-line DB file vs 100-line scanner delta
-   * with no overlapping content. Asymmetry ratio 1 000 trips the gate and
-   * returns a zero-filled index. Without this guard the call ran for ~70 s on
-   * M-series hardware and ~19 minutes on the production cloud VM.
+   * Production worst case: 100 000-line DB file vs 100-line scanner delta with
+   * no overlapping content. Asymmetry ratio 1 000 trips the gate and returns
+   * a zero-filled index. Without this guard the call ran for ~70 s on M-series
+   * hardware and ~19 minutes on the production cloud VM.
    */
   @Test
-  public void shouldShortCircuitOnBoiScale_100kVs100Disjoint() {
+  public void shouldShortCircuitOnLargeDbVsTinyDisjointReport_100kVs100() {
     List<String> database = buildLines(100_000, "db-");
     List<String> report = buildLines(100, "rp-");
 
@@ -363,7 +363,7 @@ public class SourceLinesDiffFinderTest {
 
     assertThat(diff).hasSize(100);
     assertThat(diff).containsOnly(0);
-    assertThat(elapsedMs).as("BOI-scale guarded call must complete fast — wall time was " + elapsedMs + " ms")
+    assertThat(elapsedMs).as("large-vs-tiny disjoint must complete fast — wall time was " + elapsedMs + " ms")
       .isLessThan(500L);
   }
 
