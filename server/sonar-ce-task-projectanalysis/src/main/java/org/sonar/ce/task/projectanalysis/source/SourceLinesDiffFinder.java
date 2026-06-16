@@ -22,7 +22,10 @@ package org.sonar.ce.task.projectanalysis.source;
 import difflib.myers.DifferentiationFailedException;
 import difflib.myers.MyersDiff;
 import difflib.myers.PathNode;
+import java.util.ArrayDeque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,28 +33,30 @@ public class SourceLinesDiffFinder {
   private static final Logger LOG = LoggerFactory.getLogger(SourceLinesDiffFinder.class);
 
   /**
-   * Upper bound on {@code core_left * core_right} cells of work permitted inside
-   * {@link MyersDiff#buildPath(List, List)} after common-prefix / common-suffix trimming.
-   * Myers diff cost is O(D * (N + M)); when the divergent cores are large and disjoint,
-   * D approaches N + M and the algorithm collapses to O(N^2). 4 000 000 cells caps the
-   * worst-case in-memory work at roughly 1 s on production hardware.
+   * Upper bound on the estimated Myers work {@code D_est * (core_left + core_right)} for the
+   * divergent core after prefix/suffix trimming. Myers diff cost is O(D * (N + M)) where D is
+   * the actual edit distance; estimating D from the line-hash multiset overlap lets us gate on
+   * predicted cost rather than on input size, so near-identical large files (where D is small
+   * but trim cannot help because changes sit at both boundaries) keep using Myers and produce
+   * a correct mapping.
+   *
+   * <p>5 * 10^7 keeps the worst-case allowed run under ~1 s on production hardware
+   * (~19 ns per op observed on cloud VMs) while permitting the common case of large files with
+   * a few scattered edits.
    */
-  static final long DIFF_COMPLEXITY_THRESHOLD = 4_000_000L;
+  static final long DIFF_WORK_BUDGET = 50_000_000L;
 
   /**
-   * Upper bound on {@code max(core_left, core_right) / min(core_left, core_right)} after
-   * common-prefix / common-suffix trimming. When one side is much larger than the other,
-   * the edit distance D is forced to be at least {@code |N - M|} and Myers diff has to
-   * touch ~D * (N + M) cells regardless of content. The asymmetric shape is the signature
-   * of "small scanner delta against a large reference-branch file" (e.g. ARM EZ-Commit
-   * sending 50 changed lines against a 30 000-line Salesforce metadata file).
+   * Quick-reject: when one core is much larger than the other, edit distance D is forced to be
+   * at least {@code |max - min|}, so Myers work is at least quadratic in {@code max} regardless
+   * of content. This catches the ARM EZ-Commit signature (small scanner delta against a large
+   * reference-branch file) in O(1) before the more expensive multiset overlap pass runs.
    */
   static final int DIFF_ASYMMETRY_RATIO = 100;
 
   /**
-   * Floor below which the asymmetry ratio is not enforced. For small files the absolute
-   * cost is negligible no matter the ratio (e.g. 100 x 1 has ratio 100 but completes in
-   * microseconds), so this avoids tripping the gate on trivial inputs.
+   * Floor below which the asymmetry ratio is not enforced. For small files the absolute cost is
+   * negligible no matter the ratio.
    */
   static final int DIFF_ASYMMETRY_MIN_SIZE = 5_000;
 
@@ -60,15 +65,13 @@ public class SourceLinesDiffFinder {
     int m = right.size();
     int[] index = new int[m];
 
-    // 1. Trim common prefix (cheap: equal hashes only). Prefix lines map 1:1 to DB.
+    // 1. Trim common prefix and suffix. Prefix/suffix lines map 1:1 to DB.
     int prefix = 0;
     int maxPrefix = Math.min(n, m);
     while (prefix < maxPrefix && left.get(prefix).equals(right.get(prefix))) {
       index[prefix] = prefix + 1;
       prefix++;
     }
-
-    // 2. Trim common suffix. Suffix lines map 1:1 to the tail of the DB.
     int suffix = 0;
     int maxSuffix = Math.min(n, m) - prefix;
     while (suffix < maxSuffix
@@ -80,31 +83,42 @@ public class SourceLinesDiffFinder {
     int leftCore = n - prefix - suffix;
     int rightCore = m - prefix - suffix;
 
-    // 3. If either core is empty the remaining mapping is trivially zero (no possible
-    // matches) — return what prefix/suffix already produced.
+    // 2. If either core is empty the remaining mapping is trivially zero.
     if (leftCore == 0 || rightCore == 0) {
       return index;
     }
 
-    // 4. Apply gates against the CORE sizes (not the raw inputs). We only refuse work
-    // that is *forced* to be expensive — never near-identical large files whose prefix
-    // and suffix trim away most of the bulk.
-    if ((long) leftCore * rightCore > DIFF_COMPLEXITY_THRESHOLD) {
-      LOG.warn("Skipping Myers diff: divergent core {}x{} (full input {}x{}) exceeds complexity threshold {}; treating unmatched report lines as new.",
-        leftCore, rightCore, n, m, DIFF_COMPLEXITY_THRESHOLD);
-      return index;
-    }
+    int leftCoreStart = prefix;
+    int leftCoreEnd = n - suffix;
+    int rightCoreStart = prefix;
+    int rightCoreEnd = m - suffix;
+
+    // 3. Quick-reject asymmetric cores in O(1).
     int maxCore = Math.max(leftCore, rightCore);
     int minCore = Math.min(leftCore, rightCore);
     if (maxCore >= DIFF_ASYMMETRY_MIN_SIZE && maxCore / minCore > DIFF_ASYMMETRY_RATIO) {
-      LOG.warn("Skipping Myers diff: asymmetric divergent core {}x{} (full input {}x{}, ratio {}) exceeds ratio threshold {}; treating unmatched report lines as new.",
+      LOG.warn("Skipping Myers diff: asymmetric core {}x{} (full input {}x{}, ratio {}) exceeds ratio threshold {}; falling back to hash-based line matching.",
         leftCore, rightCore, n, m, maxCore / minCore, DIFF_ASYMMETRY_RATIO);
+      fillIndexViaHashMatching(left, right, index, leftCoreStart, leftCoreEnd, rightCoreStart, rightCoreEnd);
       return index;
     }
 
-    // 5. Run Myers on the divergent cores only.
-    List<String> leftCoreList = left.subList(prefix, prefix + leftCore);
-    List<String> rightCoreList = right.subList(prefix, prefix + rightCore);
+    // 4. Estimate edit distance from line-hash multiset overlap (O(coreLeft + coreRight)).
+    // overlap <= LCS(coreLeft, coreRight); D >= (coreLeft - overlap) + (coreRight - overlap).
+    int overlap = computeMultisetOverlap(left, right, leftCoreStart, leftCoreEnd, rightCoreStart, rightCoreEnd);
+    long dEstimate = (long) (leftCore - overlap) + (rightCore - overlap);
+    long workEstimate = dEstimate * ((long) leftCore + rightCore);
+
+    if (workEstimate > DIFF_WORK_BUDGET) {
+      LOG.warn("Skipping Myers diff: estimated work {} (D_est {}, overlap {}, core {}x{}, full input {}x{}) exceeds budget {}; falling back to hash-based line matching.",
+        workEstimate, dEstimate, overlap, leftCore, rightCore, n, m, DIFF_WORK_BUDGET);
+      fillIndexViaHashMatching(left, right, index, leftCoreStart, leftCoreEnd, rightCoreStart, rightCoreEnd);
+      return index;
+    }
+
+    // 5. Run Myers on the divergent cores.
+    List<String> leftCoreList = left.subList(leftCoreStart, leftCoreEnd);
+    List<String> rightCoreList = right.subList(rightCoreStart, rightCoreEnd);
 
     int dbLine = leftCore;
     int reportLine = rightCore;
@@ -134,6 +148,56 @@ public class SourceLinesDiffFinder {
       return index;
     }
     return index;
+  }
+
+  /**
+   * Counts how many report-core lines have a matching line-hash in db-core, treated as
+   * multisets (so duplicate lines are paired one-to-one). The returned value is an upper bound
+   * on the LCS of the two cores, so {@code (coreLeft - overlap) + (coreRight - overlap)} is a
+   * lower bound on the edit distance D — which makes the resulting work estimate conservative
+   * (we never under-estimate cost). O(coreLeft + coreRight) time, O(unique hashes) space.
+   */
+  private static int computeMultisetOverlap(List<String> left, List<String> right,
+    int leftStart, int leftEndExclusive, int rightStart, int rightEndExclusive) {
+    Map<String, int[]> counts = new HashMap<>();
+    for (int i = leftStart; i < leftEndExclusive; i++) {
+      counts.computeIfAbsent(left.get(i), k -> new int[1])[0]++;
+    }
+    int overlap = 0;
+    for (int j = rightStart; j < rightEndExclusive; j++) {
+      int[] c = counts.get(right.get(j));
+      if (c != null && c[0] > 0) {
+        c[0]--;
+        overlap++;
+      }
+    }
+    return overlap;
+  }
+
+  /**
+   * Greedy hash-based fallback used when Myers diff would be too expensive on the divergent
+   * core. For each report-core line, pair it with the first remaining db-core line with the
+   * same line-hash. Does not preserve order, so the produced mapping is not an LCS — but for
+   * the consumers of this API (coverage / size / maintainability metrics, issue new-line
+   * classification, source-viewer "is this line new" marker, SCM author attribution) the
+   * relevant signal is whether a report line has *any* prior counterpart with the same
+   * content. Far better than treating every report line as new, which is what the previous
+   * zero-fill fallback did.
+   *
+   * <p>O(coreLeft + coreRight) time, O(coreLeft) space.
+   */
+  private static void fillIndexViaHashMatching(List<String> left, List<String> right, int[] index,
+    int leftStart, int leftEndExclusive, int rightStart, int rightEndExclusive) {
+    Map<String, ArrayDeque<Integer>> dbByHash = new HashMap<>();
+    for (int i = leftStart; i < leftEndExclusive; i++) {
+      dbByHash.computeIfAbsent(left.get(i), k -> new ArrayDeque<>()).add(i + 1);
+    }
+    for (int j = rightStart; j < rightEndExclusive; j++) {
+      ArrayDeque<Integer> positions = dbByHash.get(right.get(j));
+      if (positions != null && !positions.isEmpty()) {
+        index[j] = positions.pollFirst();
+      }
+    }
   }
 
 }
