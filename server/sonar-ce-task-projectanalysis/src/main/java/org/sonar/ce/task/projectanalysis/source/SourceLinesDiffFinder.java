@@ -34,8 +34,8 @@ public class SourceLinesDiffFinder {
    * of the other (and both meet {@link #DIFF_ASYMMETRY_MIN_SIZE}), edit distance D is
    * forced to be at least {@code |N - M|}, so Myers diff work is at least quadratic in
    * {@code max(N, M)} regardless of content. This shape — a small scanner delta against
-   * a large reference-branch file — is the ARM EZ-Commit signature; on the Bank of Ireland
-   * workload it produced 19-minute CE step times.
+   * a large reference-branch file — has been observed in production to produce CE step
+   * times on the order of tens of minutes.
    *
    * <p>Returning an all-zero index here is semantically equivalent to what Myers itself
    * produces for purely disjoint asymmetric inputs (no LCS, every report line is new).
@@ -75,7 +75,7 @@ public class SourceLinesDiffFinder {
       return index;
     }
 
-    // 2. Asymmetry quick-reject. Catches the BOI / EZ-Commit pathology in O(1).
+    // 2. Asymmetry quick-reject. Catches the small-delta-vs-large-DB pathology in O(1).
     int maxCore = Math.max(leftCore, rightCore);
     int minCore = Math.min(leftCore, rightCore);
     if (maxCore >= DIFF_ASYMMETRY_MIN_SIZE && maxCore / minCore > DIFF_ASYMMETRY_RATIO) {
