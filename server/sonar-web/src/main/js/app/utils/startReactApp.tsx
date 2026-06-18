@@ -107,6 +107,7 @@ import organizationsRoutes from '../../apps/organizations/routes';
 import organizationsArchiveRoutes from '../../apps/organizationsArchive/routes';
 import { Organization } from "../../types/types";
 import Home from "../components/Home";
+import { CurrentOrgContextProvider } from '../components/nav/organization/CurrentOrgContextProvider';
 
 function renderComponentRoutes() {
   return (
@@ -299,7 +300,9 @@ export default function startReactApp(
                   <Helmet titleTemplate={translate('page_title.template.default')} />
                   <StackContext>
                     <EchoesProvider>
+                      <CurrentOrgContextProvider>
                       <RouterProvider router={router} />
+                      </CurrentOrgContextProvider>
                     </EchoesProvider>
                   </StackContext>
                 </QueryClientProvider>

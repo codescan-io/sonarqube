@@ -58,6 +58,13 @@ export interface CodefixStatusResponse {
   status: string;
 }
 
+export interface AiCreditsSummary {
+  allocatedCredits: number;
+  consumedCredits: number;
+  remainingCredits: number;
+  resetDate: string;
+}
+
 const CODEFIX_BASE = '/_codescan/codefix';
 
 export function queueCodeFix(data: {
@@ -138,4 +145,8 @@ export function createBulkCodefixPr(data: CodefixBulkCreatePrSubmit): Promise<{ 
 
 export function getBulkCodefixCreatePrDraft(issueKeys: string[]): Promise<CodefixCreatePrDraft> {
   return get(`${CODEFIX_BASE}/bulk-create-pr-draft`, { issueKeys: issueKeys.join(',') }).then(parseJSON);
+}
+
+export function fetchCredits(orgKee: string | null): Promise<AiCreditsSummary>{
+  return get('/_codescan/ai/credits/summary?organizationKey=' + orgKee).then(parseJSON);
 }
