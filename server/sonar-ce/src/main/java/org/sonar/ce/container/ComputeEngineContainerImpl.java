@@ -114,7 +114,7 @@ import org.sonar.server.notification.DefaultNotificationManager;
 import org.sonar.server.notification.NotificationService;
 import org.sonar.server.notification.email.EmailNotificationChannel;
 import org.sonar.server.oauth.OAuthMicrosoftRestClient;
-import org.sonar.server.organization.BillingValidationsProxyImpl;
+import org.sonar.server.platform.billing.BillingValidationsProxyImpl;
 import org.sonar.server.permission.index.PermissionIndexer;
 import org.sonar.server.platform.DefaultNodeInformation;
 import org.sonar.server.platform.OfficialDistribution;
