@@ -37,6 +37,7 @@ import {
   useRemoveGroupMembershipMutation
 } from "../../queries/group-memberships";
 import {UserGroup} from "../../api/users";
+import { parseError } from '../../helpers/request';
 
 interface Props {
   currentUser: LoggedInUser;
@@ -120,10 +121,10 @@ function OrganizationMembers({ currentUser, organization }: Props) {
       member => {
         setMembers(members && [...members, member]);
         setPaging(paging && { ...paging, total: paging.total + 1 });
-      },
-      () => {
       }
-    );
+    ).catch(error => {
+      parseError(error);
+    });
   };
 
   const handleRemoveMember = ({ login }: OrganizationMember) => {

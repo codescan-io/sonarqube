@@ -17,18 +17,17 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.server.organization;
+package org.sonar.server.platform.billing;
 
+import org.sonar.api.ExtensionPoint;
 import org.sonar.api.ce.ComputeEngineSide;
 import org.sonar.api.server.ServerSide;
 
 /**
- * The goal of this class is to handle the 2 different use case :
- * - The billing plugin exists, the proxy will redirect method calls to the plugin
- * - No billing plugin, every methods won't do anything
+ * The billing plugin must implement this interface
  */
 @ServerSide
 @ComputeEngineSide
-public interface BillingValidationsProxy extends BillingValidations {
-
+@ExtensionPoint
+public interface BillingValidationsExtension extends BillingValidations {
 }
