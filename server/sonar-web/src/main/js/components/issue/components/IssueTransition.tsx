@@ -81,6 +81,7 @@ export default function IssueTransition(props: Readonly<Props>) {
 
   async function handleSetTransition(
     transition: string,
+    exceptionReason?: string,
     comment?: string,
     issueResolutionExpiryDate?: string,
   ) {
@@ -91,11 +92,16 @@ export default function IssueTransition(props: Readonly<Props>) {
         issue: string;
         transition: string;
         issueResolutionExpiryDate?: string;
+        exceptionReason?: string;
       } = { issue: issue.key, transition };
+
+      if (transition === 'exception' && typeof exceptionReason === 'string' && exceptionReason.length > 0) {
+        transitionPayload.exceptionReason = exceptionReason;
+      }
       if (issueResolutionExpiryDate !== undefined) {
         transitionPayload.issueResolutionExpiryDate = issueResolutionExpiryDate;
       }
-      if (typeof comment === 'string' && comment.length > 0) {
+      if (typeof comment === 'string' && comment.length > 0 && transition !== 'exception') {
         await setIssueTransition(transitionPayload);
         await updateIssue(onChange, addIssueComment({ issue: issue.key, text: comment }));
       } else {

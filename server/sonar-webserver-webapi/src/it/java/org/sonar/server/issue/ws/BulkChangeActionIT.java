@@ -825,7 +825,7 @@ public class BulkChangeActionIT {
     actions.add(new org.sonar.server.issue.AssignAction(db.getDbClient(), issueFieldsSetter));
     actions.add(new org.sonar.server.issue.SetSeverityAction(issueFieldsSetter, userSession));
     actions.add(new org.sonar.server.issue.SetTypeAction(issueFieldsSetter, userSession));
-    actions.add(new org.sonar.server.issue.TransitionAction(new TransitionService(userSession, issueWorkflow), codeIssueExceptionExpiryService));
+    actions.add(new org.sonar.server.issue.TransitionAction(new TransitionService(userSession, issueWorkflow), codeIssueExceptionExpiryService, issueFieldsSetter));
     actions.add(new org.sonar.server.issue.AddTagsAction(issueFieldsSetter));
     actions.add(new org.sonar.server.issue.RemoveTagsAction(issueFieldsSetter));
     actions.add(new org.sonar.server.issue.CommentAction(issueFieldsSetter));
