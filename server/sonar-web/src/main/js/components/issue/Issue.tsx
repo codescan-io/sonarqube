@@ -74,9 +74,10 @@ function Issue(props: Readonly<Props>) {
   const handleAssignement = useCallback(
     (login: string) => {
       if (issue.assignee !== login) {
-        updateIssue(onChange, setIssueAssignee({ issue: issue.key, assignee: login }));
+        return updateIssue(onChange, setIssueAssignee({ issue: issue.key, assignee: login }));
       }
       togglePopup('assign', false);
+      return Promise.resolve();
     },
     [issue.assignee, issue.key, onChange, togglePopup],
   );
