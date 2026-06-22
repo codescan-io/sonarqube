@@ -20,10 +20,10 @@
 
 import { useEffect, useState } from 'react';
 import './CreateRuleSelectionModal.css';
-import CheckSvg from './icons/Check.svg';
-import ChevronRightSvg from './icons/ChevronRight.svg';
-import Code2Svg from './icons/Code2.svg';
-import SparklesSvg from './icons/Sparkles.svg';
+import CheckSvg from './icons/check.svg';
+import ChevronRightSvg from './icons/chevron-right.svg';
+import Code2Svg from './icons/code-2.svg';
+import SparklesSvg from './icons/sparkles-slate.svg';
 
 interface Props {
   aiEnabled: boolean;

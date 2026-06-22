@@ -25,9 +25,9 @@ import { generateAIXPath } from './aiRuleService';
 import './AIRuleWizard.css';
 import DefineStep, { AIRuleFormValues } from './DefineStep';
 import GenerateStep from './GenerateStep';
-import CheckSvg from './icons/Check.svg';
-import ChevronRightSvg from './icons/ChevronRight.svg';
-import XSvg from './icons/X.svg';
+import CheckSvg from './icons/check.svg';
+import ChevronRightSvg from './icons/chevron-right.svg';
+import XSvg from './icons/x.svg';
 import ReviewStep, { RuleData } from './ReviewStep';
 
 type WizardStep = 'define' | 'generate' | 'review';

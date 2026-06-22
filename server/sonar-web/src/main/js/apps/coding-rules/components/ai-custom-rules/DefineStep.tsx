@@ -24,9 +24,9 @@ import IssueTypeIcon from '../../../../components/icon-mappers/IssueTypeIcon';
 import SoftwareImpactSeverityIcon from '../../../../components/icon-mappers/SoftwareImpactSeverityIcon';
 import { latinize } from '../../../../helpers/strings';
 import './DefineStep.css';
-import AlertCircleSvg from './icons/AlertCircle.svg';
-import ChevronLeftSvg from './icons/ChevronLeft.svg';
-import SparklesSvg from './icons/Sparkles-2.svg';
+import AlertCircleSvg from './icons/alert-circle.svg';
+import ChevronLeftSvg from './icons/chevron-left.svg';
+import SparklesSvg from './icons/sparkles.svg';
 
 export interface AIRuleFormValues {
   ruleName: string;

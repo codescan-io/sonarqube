@@ -21,12 +21,12 @@
 import { useState } from 'react';
 import './ValidateXPathModal.css';
 import { ValidationResult, splitXPath, validateAIXPath } from './aiRuleService';
-import ChevronRightSvg from './icons/ChevronRight.svg';
-import InfoSvg from './icons/Info.svg';
-import ListChecksSvg from './icons/ListChecks.svg';
-import LoaderSvg from './icons/Loader-anim.svg';
-import TestXpathIcon from './icons/test_xpath_Icon.svg';
-import XSvg from './icons/X.svg';
+import ChevronRightSvg from './icons/chevron-right.svg';
+import InfoSvg from './icons/info.svg';
+import ListChecksSvg from './icons/list-checks.svg';
+import LoaderSvg from './icons/loader-anim.svg';
+import TestXpathIcon from './icons/test-xpath.svg';
+import XSvg from './icons/x.svg';
 
 interface Props {
   xpath: string;
