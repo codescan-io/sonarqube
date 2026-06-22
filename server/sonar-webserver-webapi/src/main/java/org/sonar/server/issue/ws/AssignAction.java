@@ -120,9 +120,7 @@ public class AssignAction implements IssuesWsAction {
   private SearchResponseData assign(String issueKey, @Nullable String login) {
     try (DbSession dbSession = dbClient.openSession(false)) {
       IssueDto issueDto = issueFinder.getByKey(dbSession, issueKey);
-      ProjectDto projectDto = dbClient.projectDao().selectByUuid(dbSession, issueDto.getProjectUuid()).orElseThrow(
-              ()-> new IllegalStateException(format("Project with UUID %s not found for issue %s", issueDto.getProjectUuid(), issueKey))
-      );
+      ProjectDto projectDto = getProjectForIssue(dbSession, issueDto, issueKey);
       userSession.checkEntityPermission(UserRole.ISSUE_ADMIN, projectDto);
       DefaultIssue issue = issueDto.toDefaultIssue();
       UserDto user = getUser(dbSession, login);
@@ -135,7 +133,7 @@ public class AssignAction implements IssuesWsAction {
                 ruleDto.getAiCodeFixEnabled(),
                 "AI Agent can only be assigned to issues where AI CodeFix is available.");
       }
-      if (user != null && !user.getLogin().equals(AI_CODE_ASSISTANT) && !hasProjectPermission(dbSession, user.getUuid(), issueDto.getProjectUuid())) {
+      if (user != null && !user.getLogin().equals(AI_CODE_ASSISTANT) && !hasProjectPermission(dbSession, user.getUuid(), projectDto.getUuid())) {
         throw new IllegalArgumentException(
                 format("User '%s' does not have permission to be assigned issues in project '%s'", user.getLogin(),
                         projectDto.getKey()));
