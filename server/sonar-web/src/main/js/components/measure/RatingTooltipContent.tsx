@@ -31,7 +31,7 @@ import {
 } from '../../helpers/ratings';
 import { AppState } from '../../types/appstate';
 import { GlobalSettingKeys } from '../../types/settings';
-import { KNOWN_RATINGS } from './utils';
+import { KNOWN_RATINGS, RATING_SEVERITY_MAP } from './utils';
 
 export interface RatingTooltipContentProps {
   appState: AppState;
@@ -62,7 +62,7 @@ export function RatingTooltipContent(props: Readonly<RatingTooltipContentProps>)
     finalMetricKey !== 'maintainability_rating' &&
     finalMetricKey !== MetricKey.software_quality_maintainability_rating
   ) {
-    return <>{translate('metric', finalMetricKey, 'tooltip', ratingLetter)}</>;
+    return <>{translateWithParameters(`metric.${finalMetricKey}.tooltip.${ratingLetter}`, translate(`severity.${RATING_SEVERITY_MAP[ratingLetter]}`))}</>;
   }
 
   const maintainabilityGrid = getMaintainabilityGrid(settings[GlobalSettingKeys.RatingGrid] ?? '');

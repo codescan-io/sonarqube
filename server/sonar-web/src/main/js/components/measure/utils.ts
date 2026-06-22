@@ -32,6 +32,14 @@ export const KNOWN_RATINGS = [
   'maintainability_rating', // Needed to provide the label for "new_maintainability_rating"
 ];
 
+export const RATING_SEVERITY_MAP = {
+  A: 'INFO',
+  B: 'MINOR',
+  C: 'MAJOR',
+  D: 'CRITICAL',
+  E: 'BLOCKER'
+};
+
 export function enhanceMeasure(measure: Measure, metrics: Dict<Metric>): MeasureEnhanced {
   return {
     ...measure,

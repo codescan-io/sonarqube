@@ -1,0 +1,127 @@
+{
+  "ConnectedAppHighRiskScopes": {
+    "cvssScore": "8.7",
+    "baseScore": "9.9",
+    "temporalScore": "8.9",
+    "environmentalScore": "8.7",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L/E:P/RL:O/RC:C/CR:M/IR:M/AR:L/MAV:N/MAC:L/MPR:L/MUI:N/MS:C/MC:H/MI:H/MA:L",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Exploited via Salesforce REST/SOAP APIs over the internet using a misconfigured Connected App OAuth scope."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "No special conditions are required; exploitation is straightforward once a valid OAuth token is obtained."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "Attacker must obtain a valid OAuth access token for the Connected App, requiring minimal privilege."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "Once an OAuth token is issued, no further user action is needed for exploitation."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Changed (C)",
+          "justification": "The Full OAuth scope extends access beyond the Connected App boundary to the entire Salesforce organization."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "The Full scope exposes all organizational data including records, files, and metadata to unauthorized access."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "High (H)",
+          "justification": "The Full scope permits unrestricted data creation, modification, and deletion across the entire Salesforce org."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "Low (L)",
+          "justification": "Bulk API calls are possible via the Full scope, but the primary threat is data access and manipulation rather than service outage."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "OAuth token abuse techniques are publicly documented and demonstrable; no specialized weaponized tooling is required."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "Salesforce officially supports granular OAuth scope restriction; remediation is well-documented and straightforward."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "Statically confirmed by CodeScan parser; the presence of <scopes>Full</scopes> is deterministic and unambiguous."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Exploitation occurs over the internet via Salesforce OAuth APIs — mirrors base AV."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "No additional complexity in the deployed environment — mirrors base AC."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "Low (L)",
+          "justification": "A valid OAuth token is still required in any environment — mirrors base PR."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No user interaction required in any deployment context — mirrors base UI."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Changed (C)",
+          "justification": "Full scope still crosses the Connected App boundary into the entire org — mirrors base S."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "All org data remains exposed regardless of environment — mirrors base C."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "High (H)",
+          "justification": "Unrestricted data modification capability persists in all environments — mirrors base I."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "Low (L)",
+          "justification": "Bulk API abuse potential remains low impact in deployment — mirrors base A."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Connected Apps with Full OAuth scope expose organizational records and API data; while sensitive, the data is business-operational rather than classified or life-critical, warranting a medium confidentiality requirement."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "The Full scope allows data modification across the org, but the Connected App operates within standard Salesforce business workflows rather than safety-critical or regulated systems, making integrity important but not at the highest requirement level."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Low (L)",
+          "justification": "Availability is not the primary threat vector for this rule; data exposure and manipulation are the core concerns."
+        }
+      ]
+    }
+  }
+}

@@ -649,7 +649,11 @@ public class SearchAction implements IssuesWsAction {
 
   private SearchOptions createSearchOptionsFromRequest(SearchRequest request) {
     SearchOptions options = new SearchOptions();
-    options.setPage(request.getPage(), request.getPageSize());
+    if (request.getSearchAfter() != null && !request.getSearchAfter().isEmpty()) {
+      options.setLimit(request.getPageSize());
+    } else {
+      options.setPage(request.getPage(), request.getPageSize());
+    }
 
     List<String> facets = request.getFacets();
 
@@ -793,10 +797,21 @@ public class SearchAction implements IssuesWsAction {
             .setCvss(request.paramAsStrings(PARAM_CVSS))
             .setSonarsourceSecurity(request.paramAsStrings(PARAM_SONARSOURCE_SECURITY))
             .setTimeZone(request.param(PARAM_TIMEZONE))
-            .setSearchAfter(request.param(PARAM_SEARCH_AFTER))
+            .setSearchAfter(readSearchAfter(request))
             .setOrganization(request.param(PARAM_ORGANIZATION))
             .setCodeVariants(request.paramAsStrings(PARAM_CODE_VARIANTS))
             .setFixedInPullRequest(request.param(PARAM_FIXED_IN_PULL_REQUEST));
+  }
+
+  private static List<String> readSearchAfter(Request request) {
+    List<String> searchAfter = request.multiParam(PARAM_SEARCH_AFTER);
+    if (searchAfter.size() == 1 && searchAfter.get(0).contains(",")) {
+      return Arrays.stream(searchAfter.get(0).split(","))
+        .map(String::trim)
+        .filter(value -> !value.isEmpty())
+        .toList();
+    }
+    return searchAfter;
   }
 
   private void checkIfNeedIssueSync(DbSession dbSession, SearchRequest searchRequest) {

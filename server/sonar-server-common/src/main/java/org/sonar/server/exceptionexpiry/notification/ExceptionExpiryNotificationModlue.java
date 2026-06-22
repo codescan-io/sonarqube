@@ -17,14 +17,17 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { postJSON} from "../helpers/request";
-import { throwGlobalError } from "~sonar-aligned/helpers/error";
-import { getJSON } from '~sonar-aligned/helpers/request';
+package org.sonar.server.exceptionexpiry.notification;
 
-export function acceptEulaVersion(): Promise<any>{
-    return postJSON('/_codescan/eula/accept').catch(throwGlobalError);
+import org.sonar.core.platform.Module;
+
+
+public class ExceptionExpiryNotificationModlue extends Module{
+
+    @Override
+    protected void configureModule() {
+      add(
+        ExceptionExpiryNotificationHandler.class,
+        ExceptionExpiryNotificationHandler.newMetadata());
+    }
 }
-
-export function getEulaVerification(): Promise<any>{
-    return getJSON('/_codescan/eula/verify').catch(throwGlobalError);
-  }

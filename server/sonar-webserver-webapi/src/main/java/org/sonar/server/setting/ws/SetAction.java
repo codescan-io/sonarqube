@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -80,6 +81,8 @@ public class SetAction implements SettingsWsAction {
   private static final TypeToken<Map<String, String>> MAP_TYPE_TOKEN = new TypeToken<>() {
   };
   private static final Set<String> FORBIDDEN_KEYS = Set.of(GITLAB_AUTH_URL, GITHUB_API_URL, GITHUB_WEB_URL, MULTI_QUALITY_MODE_ENABLED);
+  private static final Set<String> SEVERITY_MASKING_KEYS = Set.of("codescan.severity.masking.BLOCKER", "codescan.severity.masking.CRITICAL", "codescan.severity.masking.MAJOR", "codescan.severity.masking.MINOR", "codescan.severity.masking.INFO");
+  private static final String LETTERS_ONLY_REGEX = "^[A-Za-z0-9]+$";
 
   private final PropertyDefinitions propertyDefinitions;
   private final DbClient dbClient;
@@ -285,6 +288,12 @@ public class SetAction implements SettingsWsAction {
       "Either '%s', '%s' or '%s' must be provided", PARAM_VALUE, PARAM_VALUES, PARAM_FIELD_VALUES);
     checkRequest(request.getValues().stream().allMatch(StringUtils::isNotBlank), MSG_NO_EMPTY_VALUE);
     checkRequest(request.getValue() == null || StringUtils.isNotBlank(request.getValue()), MSG_NO_EMPTY_VALUE);
+    checkRequest(isValidSeverityMasking(request), "Please provide a valid input");
+  }
+
+  private static boolean isValidSeverityMasking(SetRequest request) {
+    return !SEVERITY_MASKING_KEYS.contains(request.getKey())
+            || Pattern.matches(LETTERS_ONLY_REGEX, request.getValue());
   }
 
   private static List<String> valuesFromRequest(SetRequest request) {
