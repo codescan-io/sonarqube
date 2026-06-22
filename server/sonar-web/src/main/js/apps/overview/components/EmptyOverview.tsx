@@ -21,7 +21,7 @@
 import { Link,  Spinner } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { FlagMessage, LargeCenteredLayout, PageContentFontWrapper } from '~design-system';
-import { isBranch, isMainBranch } from '~sonar-aligned/helpers/branch-like';
+import { isBranch, isMainBranch, isPullRequest } from '~sonar-aligned/helpers/branch-like';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { getScannableProjects } from '../../../api/components';
 import withCurrentUserContext from '../../../app/components/current-user/withCurrentUserContext';
@@ -81,7 +81,7 @@ export function EmptyOverview(props: Readonly<EmptyOverviewProps>) {
         </FlagMessage>
       </LargeCenteredLayout>
     );
-  } else if (!isBranch(branchLike)) {
+  } else if (!isBranch(branchLike) && !isPullRequest(branchLike)) {
     return null;
   }
 
