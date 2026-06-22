@@ -20,7 +20,7 @@
 import * as React from 'react';
 import Tooltip from '../../../../components/controls/Tooltip';
 import { translate } from '../../../../helpers/l10n';
-import AiRulesSvg from './icons/Icon-aican-make-mistakes.svg';
+import AiSparkleSvg from './icons/sparkle-ai.svg';
 
 /**
  * Reserved system tag the backend attaches to a custom rule whose XPath was
@@ -58,7 +58,7 @@ export default function AiRuleBadge({ className }: Readonly<{ className?: string
           lineHeight: '18px',
         }}
       >
-        <img src={AiRulesSvg} alt="" width="12" height="12" aria-hidden />
+        <img src={AiSparkleSvg} alt="" width="12" height="12" aria-hidden />
         {translate('coding_rules.ai_generated')}
       </span>
     </Tooltip>

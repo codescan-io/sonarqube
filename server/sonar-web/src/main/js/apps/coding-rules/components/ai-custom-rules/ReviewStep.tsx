@@ -21,18 +21,18 @@
 import { useEffect, useState } from 'react';
 import './ReviewStep.css';
 import ValidateXPathModal from './ValidateXPathModal';
-import CheckLargeSvg from './icons/Check-generated.svg';
-import CheckSvg from './icons/Check.svg';
-import ChevronLeftSvg from './icons/ChevronLeft.svg';
-import Code2Svg from './icons/Code2.svg';
-import CopySvg from './icons/Copy.svg';
-import AiMistakesSvg from './icons/Icon-aican-make-mistakes.svg';
-import xicon from './icons/Icon-orange.svg';
-import InfoSvg from './icons/Info.svg';
-import ListChecksSvg from './icons/ListChecks.svg';
-import PencilSvg from './icons/Pencil.svg';
-import RotateCcwSvg from './icons/RotateCcw.svg';
-import SparklesSvg from './icons/Sparkles-2.svg';
+import CheckLargeSvg from './icons/check-generated.svg';
+import CheckSvg from './icons/check.svg';
+import ChevronLeftSvg from './icons/chevron-left.svg';
+import Code2Svg from './icons/code-2.svg';
+import CopySvg from './icons/copy.svg';
+import XOrangeSvg from './icons/x-orange.svg';
+import InfoSvg from './icons/info.svg';
+import ListChecksSvg from './icons/list-checks.svg';
+import PencilSvg from './icons/pencil.svg';
+import RotateCcwSvg from './icons/rotate-ccw.svg';
+import SparklesSvg from './icons/sparkles.svg';
+import AiSparkleSvg from './icons/sparkle-ai.svg';
 import copied from './icons/copied.svg';
 import severityBlocker from './icons/severity-blocker.svg';
 import severityCritical from './icons/severity-critical.svg';
@@ -140,7 +140,7 @@ export default function ReviewStep(props: Readonly<Props>) {
         {/* Success/Error Banner */}
         {hasError ? (
           <div className="review-banner review-banner--error">
-            <img src={xicon} alt="" className="review-banner-icon" width="14" height="14" />
+            <img src={XOrangeSvg} alt="" className="review-banner-icon" width="14" height="14" />
             <span className="review-banner-text">
               <strong>Rule generation failed.</strong> Check your description and click Regenerate to create the rule again.
             </span>
@@ -246,7 +246,7 @@ export default function ReviewStep(props: Readonly<Props>) {
                 <span>This XPath expression is editable. Changes here will be traced back to your original description in the audit log.</span>
               </div>
               <div className="review-info-msg review-info-msg--warning">
-                <img src={AiMistakesSvg} alt="" width="13" height="13" className="review-info-msg-icon" />
+                <img src={AiSparkleSvg} alt="" width="13" height="13" className="review-info-msg-icon" />
                 <span>AI can make mistakes. Please review and verify generated rules before applying them.</span>
               </div>
             </div>

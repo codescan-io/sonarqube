@@ -20,9 +20,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import './GenerateStep.css';
-import Check from './icons/Check.svg';
-import CheckLoadingSvg from './icons/CheckLoading.svg';
-import SparklesLoadingSvg from './icons/Sparkles-loading-page.svg';
+import Check from './icons/check.svg';
+import CheckLoadingSvg from './icons/check-loading.svg';
+import SparklesLoadingSvg from './icons/sparkles-loading.svg';
 
 interface Props {
   ruleName: string;

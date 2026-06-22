@@ -25,7 +25,7 @@ import { RULE_TYPES } from '../../../../helpers/constants';
 import { translate } from '../../../../helpers/l10n';
 import { latinize } from '../../../../helpers/strings';
 import { SeveritySelect } from '../SeveritySelect';
-import SparklesSvg from './icons/Sparkles-2.svg';
+import SparklesSvg from './icons/sparkles.svg';
 
 interface Props {
   isOpen: boolean;

@@ -21,7 +21,7 @@ import { Button, ButtonVariety, Modal, ModalSize, Text } from '@sonarsource/echo
 import { useEffect, useState } from 'react';
 import { FlagMessage, FormField, InputTextArea } from '~design-system';
 import './ReviewActivateScreen.css';
-import SparklesSvg from './icons/Sparkles-2.svg';
+import SparklesSvg from './icons/sparkles.svg';
 
 export interface RuleData {
   ruleName: string;

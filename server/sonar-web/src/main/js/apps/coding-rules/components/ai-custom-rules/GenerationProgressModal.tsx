@@ -22,8 +22,8 @@ import { Modal, Text } from '@sonarsource/echoes-react';
 import { useEffect, useState } from 'react';
 import { Spinner } from '~design-system';
 import './GenerationProgressModal.css';
-import SparklesSvg from './icons/Sparkles-2.svg';
-import CheckSvg from './icons/Check.svg';
+import SparklesSvg from './icons/sparkles.svg';
+import CheckSvg from './icons/check.svg';
 
 interface Props {
   isOpen: boolean;
