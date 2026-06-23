@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { replaceEqualDeep, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as React from 'react';
 import { getCodefixStatus } from '../../../api/ai-codefix';
 import { Issue } from '../../../types/types';
@@ -85,20 +85,31 @@ const CODEFIX_FIX_GENERATED_POLL_MS = 30_000; // 30 seconds (matches scheduler i
 
 export default function AiCodefixBadge({ issue }: { issue: Issue }) {
   const hasAiFix = hasAiCodefix(issue);
+  const assignedToAi =
+    issue.assignee === AI_CODE_ASSISTANT_ASSIGNEE || issue.assigneeLogin === AI_CODE_ASSISTANT_ASSIGNEE;
   const queryClient = useQueryClient();
-  const { data: statusData, isLoading, isError } = useQuery({
+  const { data: statusData, isError } = useQuery({
     queryKey: ['codefix-status', issue.key],
     queryFn: () => getCodefixStatus(issue.key),
     enabled: hasAiFix && Boolean(issue.key),
     staleTime: CODEFIX_STATUS_STALE_MS,
     refetchOnWindowFocus: false,
+    structuralSharing: (oldData, newData) => {
+      if (newData && !newData.status && oldData?.status) {
+        return oldData;
+      }
+      return replaceEqualDeep(oldData, newData);
+    },
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
+      const status = query.state.data?.status || issue.codefixStatus;
       if (status === 'PENDING' || status === 'IN_PROGRESS') {
         return CODEFIX_ACTIVE_POLL_MS;
       }
       if (status === 'FIX_GENERATED') {
         return CODEFIX_FIX_GENERATED_POLL_MS;
+      }
+      if (!status && assignedToAi) {
+        return CODEFIX_ACTIVE_POLL_MS;
       }
       return false;
     },
@@ -111,7 +122,7 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
     }
   }, [issue.key, issue.codefixStatus, queryClient]);
 
-  const displayStatus = statusData?.status ?? issue.codefixStatus;
+  const displayStatus = statusData?.status || issue.codefixStatus;
 
   if (!hasAiFix || isError || !displayStatus) {
     return (
