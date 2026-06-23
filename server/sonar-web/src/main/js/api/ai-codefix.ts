@@ -77,12 +77,25 @@ export interface UserAiCredits {
 
 const CODEFIX_BASE = '/_codescan/codefix';
 
+const EMPTY_CODEFIX_STATUS: CodefixStatusResponse = { status: '' };
+
+function isNotFoundResponse(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'status' in error && (error as Response).status === 404;
+}
+
 export function queueCodeFix(data: {
     organizationKey: string;
     projectKey: string;
     issueKeys: string[];
 }): Promise<void> {
-  return postJSONBody(`${CODEFIX_BASE}/queue`, data);
+  return new Promise((resolve, reject) => {
+    request(`${CODEFIX_BASE}/queue`)
+      .setMethod('POST')
+      .setData(data, true)
+      .submit()
+      .then((response) => checkStatus(response, false))
+      .then(() => resolve(), reject);
+  });
 }
 
 export function getCodefixQuota(organizationKey: string): Promise<{
@@ -131,7 +144,14 @@ export function createCodefixPr(
 }
 
 export function getCodefixStatus(issueKey: string): Promise<CodefixStatusResponse> {
-  return get(`${CODEFIX_BASE}/get-status`, { issueKey }).then(parseJSON).catch(() => undefined as any);
+  return get(`${CODEFIX_BASE}/get-status`, { issueKey })
+    .then(parseJSON)
+    .catch((error) => {
+      if (isNotFoundResponse(error)) {
+        return EMPTY_CODEFIX_STATUS;
+      }
+      return Promise.reject(error);
+    });
 }
 
 export function getPullRequestStatus(jobId: string, issueKey?: string): Promise<Notification> {
