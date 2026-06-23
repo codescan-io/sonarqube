@@ -121,7 +121,7 @@ public class SearchResponseLoader {
     Map<String, IssueChangeDto> latestByIssueKey = new HashMap<>();
     for (IssueChangeDto dto : changes) {
        String changeData = dto.getChangeData();
-       if (changeData == null || !(changeData.startsWith(FIELD_STATUS) || changeData.startsWith(FIELD_RESOLUTION ))) {
+       if (changeData == null || !(changeData.contains(FIELD_STATUS) || changeData.contains(FIELD_RESOLUTION ))) {
          continue;
        }
 
