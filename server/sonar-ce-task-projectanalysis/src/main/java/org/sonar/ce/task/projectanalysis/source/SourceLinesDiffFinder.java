@@ -19,121 +19,155 @@
  */
 package org.sonar.ce.task.projectanalysis.source;
 
-import difflib.myers.DifferentiationFailedException;
-import difflib.myers.MyersDiff;
 import difflib.myers.PathNode;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SourceLinesDiffFinder {
-  private static final Logger LOG = LoggerFactory.getLogger(SourceLinesDiffFinder.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SourceLinesDiffFinder.class);
 
-  /**
-   * Upper bound on {@code core_left * core_right} cells of work permitted inside
-   * {@link MyersDiff#buildPath(List, List)} after common-prefix / common-suffix trimming.
-   * Myers diff cost is O(D * (N + M)); when the divergent cores are large and disjoint,
-   * D approaches N + M and the algorithm collapses to O(N^2). 4 000 000 cells caps the
-   * worst-case in-memory work at roughly 1 s on production hardware.
-   */
-  static final long DIFF_COMPLEXITY_THRESHOLD = 4_000_000L;
+    /**
+     * Hard ceiling on the work performed by a single Myers diff, in units of one diagonal
+     * step or one line comparison inside {@link BoundedMyersDiff}. Myers cost is
+     * O(D * (N + M)); on fully disjoint inputs D = N + M and the search degenerates to
+     * O((N + M)^2) — unbounded, this took ~19 minutes on a 100k-line Salesforce profile
+     * in production. 16M units is roughly 50-300 ms on production hardware, and matches
+     * the de-facto allowance of the previous 4M-cell grid gate (a 2000x2000 disjoint core
+     * sat exactly on that gate and costs ~16M steps).
+     *
+     * <p>The budget is enforced in two complementary ways:
+     * <ul>
+     *   <li>up-front: the edit distance D is at least |N - M|, and before a search can
+     *       terminate at depth D it must fully execute depths 0..D-1 — that is
+     *       D * (D + 1) / 2 diagonal iterations, each charging at least one work unit
+     *       (the terminating iteration itself returns before charging). So when
+     *       |N - M| * (|N - M| + 1) / 2 already exceeds the budget, the in-flight counter
+     *       is guaranteed to trip first and the search is skipped without starting
+     *       (the asymmetric "small scanner delta vs large reference-branch file" shape
+     *       lands here). Note the bound is triangular, NOT D^2: a D^2 gate would also
+     *       skip affordable diffs in the band where D^2/2 &le; budget &lt; D^2, e.g. a
+     *       ~5000-line block inserted into an otherwise similar file;</li>
+     *   <li>in-flight: otherwise the search runs and gives up once it has actually spent the
+     *       budget ({@link BoundedMyersDiff#buildPath} returns {@code null}).</li>
+     * </ul>
+     *
+     * <p>Unlike a gate estimated from the N*M grid size, this never refuses a cheap diff:
+     * a 100k-line file with a handful of changed lines completes well within budget no
+     * matter where in the file the changes sit, even when prefix/suffix trimming removes
+     * nothing. When the budget is hit, unmatched report lines are conservatively treated
+     * as new.
+     */
+    static final long MYERS_WORK_BUDGET = 16_000_000L;
 
-  /**
-   * Upper bound on {@code max(core_left, core_right) / min(core_left, core_right)} after
-   * common-prefix / common-suffix trimming. When one side is much larger than the other,
-   * the edit distance D is forced to be at least {@code |N - M|} and Myers diff has to
-   * touch ~D * (N + M) cells regardless of content. The asymmetric shape is the signature
-   * of "small scanner delta against a large reference-branch file" (e.g. ARM EZ-Commit
-   * sending 50 changed lines against a 30 000-line Salesforce metadata file).
-   */
-  static final int DIFF_ASYMMETRY_RATIO = 100;
+    public int[] findMatchingLines(List<String> left, List<String> right) {
+        long startNanos = System.nanoTime();
+        int n = left.size();
+        int m = right.size();
+        int[] index = new int[m];
 
-  /**
-   * Floor below which the asymmetry ratio is not enforced. For small files the absolute
-   * cost is negligible no matter the ratio (e.g. 100 x 1 has ratio 100 but completes in
-   * microseconds), so this avoids tripping the gate on trivial inputs.
-   */
-  static final int DIFF_ASYMMETRY_MIN_SIZE = 5_000;
+        LOG.info("[MyersDiff] findMatchingLines start: left(DB/previous)={} lines, right(report/current)={} lines, workBudget={}",
+                n, m, MYERS_WORK_BUDGET);
 
-  public int[] findMatchingLines(List<String> left, List<String> right) {
-    int n = left.size();
-    int m = right.size();
-    int[] index = new int[m];
-
-    // 1. Trim common prefix (cheap: equal hashes only). Prefix lines map 1:1 to DB.
-    int prefix = 0;
-    int maxPrefix = Math.min(n, m);
-    while (prefix < maxPrefix && left.get(prefix).equals(right.get(prefix))) {
-      index[prefix] = prefix + 1;
-      prefix++;
-    }
-
-    // 2. Trim common suffix. Suffix lines map 1:1 to the tail of the DB.
-    int suffix = 0;
-    int maxSuffix = Math.min(n, m) - prefix;
-    while (suffix < maxSuffix
-      && left.get(n - 1 - suffix).equals(right.get(m - 1 - suffix))) {
-      index[m - 1 - suffix] = n - suffix;
-      suffix++;
-    }
-
-    int leftCore = n - prefix - suffix;
-    int rightCore = m - prefix - suffix;
-
-    // 3. If either core is empty the remaining mapping is trivially zero (no possible
-    // matches) — return what prefix/suffix already produced.
-    if (leftCore == 0 || rightCore == 0) {
-      return index;
-    }
-
-    // 4. Apply gates against the CORE sizes (not the raw inputs). We only refuse work
-    // that is *forced* to be expensive — never near-identical large files whose prefix
-    // and suffix trim away most of the bulk.
-    if ((long) leftCore * rightCore > DIFF_COMPLEXITY_THRESHOLD) {
-      LOG.warn("Skipping Myers diff: divergent core {}x{} (full input {}x{}) exceeds complexity threshold {}; treating unmatched report lines as new.",
-        leftCore, rightCore, n, m, DIFF_COMPLEXITY_THRESHOLD);
-      return index;
-    }
-    int maxCore = Math.max(leftCore, rightCore);
-    int minCore = Math.min(leftCore, rightCore);
-    if (maxCore >= DIFF_ASYMMETRY_MIN_SIZE && maxCore / minCore > DIFF_ASYMMETRY_RATIO) {
-      LOG.warn("Skipping Myers diff: asymmetric divergent core {}x{} (full input {}x{}, ratio {}) exceeds ratio threshold {}; treating unmatched report lines as new.",
-        leftCore, rightCore, n, m, maxCore / minCore, DIFF_ASYMMETRY_RATIO);
-      return index;
-    }
-
-    // 5. Run Myers on the divergent cores only.
-    List<String> leftCoreList = left.subList(prefix, prefix + leftCore);
-    List<String> rightCoreList = right.subList(prefix, prefix + rightCore);
-
-    int dbLine = leftCore;
-    int reportLine = rightCore;
-    try {
-      PathNode node = new MyersDiff<String>().buildPath(leftCoreList, rightCoreList);
-
-      while (node.prev != null) {
-        PathNode prevNode = node.prev;
-
-        if (!node.isSnake()) {
-          // additions
-          reportLine -= (node.j - prevNode.j);
-          // removals
-          dbLine -= (node.i - prevNode.i);
-        } else {
-          // matches — translate core positions back into full-input coordinates
-          for (int i = node.i; i > prevNode.i; i--) {
-            index[prefix + reportLine - 1] = prefix + dbLine;
-            reportLine--;
-            dbLine--;
-          }
+        // 1. Trim common prefix. Prefix lines map 1:1 to DB.
+        int prefix = 0;
+        int maxPrefix = Math.min(n, m);
+        while (prefix < maxPrefix && left.get(prefix).equals(right.get(prefix))) {
+            index[prefix] = prefix + 1;
+            prefix++;
         }
-        node = prevNode;
-      }
-    } catch (DifferentiationFailedException e) {
-      LOG.error("Error finding matching lines", e);
-      return index;
+
+        // 2. Trim common suffix. Suffix lines map 1:1 to the tail of the DB.
+        int suffix = 0;
+        int maxSuffix = Math.min(n, m) - prefix;
+        while (suffix < maxSuffix
+                && left.get(n - 1 - suffix).equals(right.get(m - 1 - suffix))) {
+            index[m - 1 - suffix] = n - suffix;
+            suffix++;
+        }
+
+        int leftCore = n - prefix - suffix;
+        int rightCore = m - prefix - suffix;
+        LOG.info("[MyersDiff] trimmed: prefix={}, suffix={}, divergent cores {}x{}", prefix, suffix, leftCore, rightCore);
+
+        // 3. If either core is empty the remaining mapping is trivially zero (no possible
+        // matches) — return what prefix/suffix already produced.
+        if (leftCore == 0 || rightCore == 0) {
+            logResult(index, "resolved by prefix/suffix trim", startNanos);
+            return index;
+        }
+
+        // 4. Up-front budget check. The edit distance is at least |leftCore - rightCore|
+        // (you cannot do fewer edits than the size difference). Before BoundedMyersDiff can
+        // terminate at depth D it fully executes depths 0..D-1 — D * (D + 1) / 2 iterations,
+        // each charging at least one work unit — so when that triangular floor alone exceeds
+        // the budget, the in-flight counter is mathematically guaranteed to trip and the
+        // search can be skipped without starting. This is exactly conservative: if the floor
+        // fits the budget, the search runs and decides for itself (a D^2 gate here would
+        // wrongly skip affordable diffs whose cost lies between D^2/2 and D^2).
+        long minEditDistance = Math.abs((long) rightCore - leftCore);
+        if (minEditDistance * (minEditDistance + 1) / 2 > MYERS_WORK_BUDGET) {
+            LOG.warn("[MyersDiff] Skipping Myers diff: divergent core {}x{} (full input {}x{}) forces edit distance >= {}, "
+                            + "search is guaranteed to exceed work budget {}; treating unmatched report lines as new",
+                    leftCore, rightCore, n, m, minEditDistance, MYERS_WORK_BUDGET);
+            logResult(index, "skipped up-front (forced edit distance too large)", startNanos);
+            return index;
+        }
+
+        // 5. Run budget-bounded Myers on the divergent cores only.
+        PathNode node = BoundedMyersDiff.buildPath(
+                left.subList(prefix, prefix + leftCore),
+                right.subList(prefix, prefix + rightCore),
+                MYERS_WORK_BUDGET);
+        if (node == null) {
+            LOG.warn("[MyersDiff] Giving up on Myers diff: divergent core {}x{} (full input {}x{}) exhausted work budget {}; "
+                            + "treating unmatched report lines as new",
+                    leftCore, rightCore, n, m, MYERS_WORK_BUDGET);
+            logResult(index, "gave up in-flight (work budget exhausted)", startNanos);
+            return index;
+        }
+
+        // 6. Walk the path backwards, translating core positions back into full-input coordinates.
+        int dbLine = leftCore;
+        int reportLine = rightCore;
+        while (node.prev != null) {
+            PathNode prevNode = node.prev;
+
+            if (!node.isSnake()) {
+                // additions
+                reportLine -= node.j - prevNode.j;
+                // removals
+                dbLine -= node.i - prevNode.i;
+            } else {
+                // matches
+                for (int i = node.i; i > prevNode.i; i--) {
+                    index[prefix + reportLine - 1] = prefix + dbLine;
+                    reportLine--;
+                    dbLine--;
+                }
+            }
+            node = prevNode;
+        }
+        logResult(index, "completed", startNanos);
+        return index;
     }
-    return index;
-  }
+
+    private static void logResult(int[] index, String outcome, long startNanos) {
+        int matched = 0;
+        for (int value : index) {
+            if (value > 0) {
+                matched++;
+            }
+        }
+        LOG.info("[MyersDiff] findMatchingLines end ({}): total={}, matched={}, new={}, elapsedMs={}",
+                outcome, index.length, matched, index.length - matched, (System.nanoTime() - startNanos) / 1_000_000L);
+        if (LOG.isTraceEnabled()) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < index.length; i++) {
+                sb.append('[').append(i).append("]=").append(index[i]).append(' ');
+            }
+            LOG.trace("[MyersDiff] index contents (reportLineIdx=dbLineNo): {}", sb);
+        }
+    }
 
 }
