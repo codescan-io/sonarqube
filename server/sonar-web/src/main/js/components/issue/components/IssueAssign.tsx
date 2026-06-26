@@ -180,7 +180,7 @@ export default function IssueAssignee(props: Props) {
           return;
         }
         if (quota.currentUsage + 1 > quota.dailyLimit) {
-          addGlobalErrorMessage(translate('aicodefix.daily_limit_exceeded'));
+          addGlobalErrorMessage(translateWithParameters('aicodefix.daily_limit_exceeded', quota.dailyLimit));
           return;
         }
 

@@ -330,7 +330,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
                 return;
               }
               if (quota.currentUsage + issuesToQueue.length > quota.dailyLimit) {
-                addGlobalErrorMessage(translate('aicodefix.daily_limit_exceeded'));
+                addGlobalErrorMessage(translateWithParameters('aicodefix.daily_limit_exceeded', quota.dailyLimit));
                 return;
               }
               return queueCodeFix({
