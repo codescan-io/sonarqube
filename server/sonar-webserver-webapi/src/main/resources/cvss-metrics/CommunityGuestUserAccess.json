@@ -1,0 +1,127 @@
+{
+  "CommunityGuestUserAccess": {
+    "cvssScore": "9.5",
+    "baseScore": "10.0",
+    "temporalScore": "9.5",
+    "environmentalScore": "9.5",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H/E:X/RL:O/RC:C",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Experience Cloud communities are internet-facing; the guest endpoint is reachable remotely over the network."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "No special conditions, timing, or reconnaissance required; the attacker simply accesses the exposed data."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "Guest users are unauthenticated; no privileges are needed, which is the entire premise of the rule."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "The attacker acts alone; no victim action is required."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Changed (C)",
+          "justification": "Unauthenticated guest access reaches org-level objects, fields, and Apex beyond the intended public boundary, crossing the security authority of the guest profile."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Sensitive object and field-level data is exposed to anonymous users."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "High (H)",
+          "justification": "Create/edit/delete object permissions allow unauthorized data modification."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "High (H)",
+          "justification": "Delete-level access can remove records, impacting data availability."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Not Defined (X)",
+          "justification": "No exploit-code intelligence is specified; exploitation is trivial via direct access, so this defaults to the worst case."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "A clear, low-effort fix exists: tighten the Guest User Profile permissions (~15 min remediation effort)."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The static scanner deterministically confirms the misconfiguration."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Not Defined (X)",
+          "justification": "No deployment-specific context provided; inherits Base value Network (N)."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Not Defined (X)",
+          "justification": "No deployment-specific context provided; inherits Base value Low (L)."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "Not Defined (X)",
+          "justification": "No deployment-specific context provided; inherits Base value None (N)."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "Not Defined (X)",
+          "justification": "No deployment-specific context provided; inherits Base value None (N)."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Not Defined (X)",
+          "justification": "No deployment-specific context provided; inherits Base value Changed (C)."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "Not Defined (X)",
+          "justification": "No deployment-specific context provided; inherits Base value High (H)."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "Not Defined (X)",
+          "justification": "No deployment-specific context provided; inherits Base value High (H)."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "Not Defined (X)",
+          "justification": "No deployment-specific context provided; inherits Base value High (H)."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "Not Defined (X)",
+          "justification": "No org-specific data-sensitivity context provided; set to High if exposed objects hold regulated data."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "Not Defined (X)",
+          "justification": "No org-specific context provided; adjust based on the integrity requirements of affected data."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Not Defined (X)",
+          "justification": "No org-specific context provided; adjust based on the availability requirements of affected data."
+        }
+      ]
+    }
+  }
+}
