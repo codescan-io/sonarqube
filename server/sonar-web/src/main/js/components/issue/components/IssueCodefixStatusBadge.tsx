@@ -62,6 +62,13 @@ function getAiCodefixStatusDisplay(status: string): AiCodefixStatusDisplay {
       textClassName: 'pull-request-text',
     };
   }
+  if (s === 'NOT_SUPPORTED') {
+    return {
+      icon: '/images/warning.svg',
+      text: 'AI Fix is not supported',
+      textClassName: 'warning-text',
+    };
+  }
   if (s === 'FAILED') {
     return {
       icon: '/images/warning.svg',
