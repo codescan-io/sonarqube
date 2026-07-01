@@ -38,6 +38,7 @@ const RULES_ENDPOINT = '/api/v2/clean-code-policy/rules';
 
 export interface CreateRuleData {
   organization: string;
+  aiGenerated?: boolean;
   cleanCodeAttribute?: CleanCodeAttribute;
   impacts: SoftwareImpact[];
   key: string;

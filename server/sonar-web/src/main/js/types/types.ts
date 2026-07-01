@@ -22,11 +22,11 @@ import { ComponentBase, ComponentQualifier } from '~sonar-aligned/types/componen
 import { RuleDescriptionSection } from '../apps/coding-rules/rule';
 import { DocTitleKey } from '../helpers/doc-links';
 import {
-  CleanCodeAttribute,
-  CleanCodeAttributeCategory,
-  SoftwareImpact,
-  SoftwareImpactSeverity,
-  SoftwareQuality,
+    CleanCodeAttribute,
+    CleanCodeAttributeCategory,
+    SoftwareImpact,
+    SoftwareImpactSeverity,
+    SoftwareQuality,
 } from './clean-code-taxonomy';
 import { MessageFormatting, RawIssue } from './issues';
 import { NewCodeDefinitionType } from './new-code-definition';
@@ -919,6 +919,7 @@ export interface OrganizationBase {
   description?: string;
   url?: string;
   inviteUsersEnabled: boolean;
+  aiCustomRulesEnabled?: boolean;
 }
 
 export interface OrganizationMember extends UserActive {
