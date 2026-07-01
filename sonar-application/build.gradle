@@ -374,7 +374,7 @@ assemble.dependsOn cleanLocalUnzippedDir
 
 artifacts { zip zip }
 
-artifactoryPublish.skip = !deployCommunity
+ext.publishToCodeArtifact = deployCommunity
 
 def bomFile = layout.buildDirectory.file('reports/bom.json')
 cyclonedxBom {

@@ -26,7 +26,7 @@ tasks.withType(License).configureEach { licenseTask ->
   licenseTask.mustRunAfter(tasks.named("generateJsonSchema2Pojo"))
 }
 
-artifactoryPublish.skip = false
+ext.publishToCodeArtifact = true
 
 // Used by core plugins
 publishing {

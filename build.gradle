@@ -9,8 +9,6 @@ plugins {
   id "com.github.hierynomus.license-report" version "0.16.1" apply false
   id 'com.gradleup.shadow' version '8.3.3' apply false
   id 'com.google.protobuf' version '0.8.19' apply false
-  // dont update com.jfrog.artifactory, new version contains a bug
-  id 'com.jfrog.artifactory' version '5.2.5'
   id "de.undercouch.download" version "5.6.0" apply false
   id 'io.spring.dependency-management' version '1.1.6'
   id "org.cyclonedx.bom" version "1.10.0" apply false
@@ -35,8 +33,24 @@ boolean enableBom = System.getenv('CI') == "true" && (isMainBranch) ||
   System.getProperty("bom") != null ||
   gradle.startParameter.taskNames.findAll({ it.matches(".*:($bomTasks)") })
 
+ext {
+  codeartifactReleaseUrl = 'https://autorabit-artifacts-domain-261140574810.d.codeartifact.us-east-1.amazonaws.com/maven/autorabit-libs-release/'
+  codeartifactSnapshotUrl = 'https://autorabit-artifacts-domain-261140574810.d.codeartifact.us-east-1.amazonaws.com/maven/autorabit-libs-snapshot/'
+}
+
+def codeartifactRepositoryUrl(project) {
+  def configuredUrl = System.getenv('CODEARTIFACT_REPOSITORY_URL')
+  if (configuredUrl) {
+    return configuredUrl
+  }
+  return project.version.toString().endsWith('SNAPSHOT') ? codeartifactSnapshotUrl : codeartifactReleaseUrl
+}
+
+def codeartifactAuthToken() {
+  System.getenv('CODEARTIFACT_AUTH_TOKEN') ?: ''
+}
+
 allprojects {
-  apply plugin: 'com.jfrog.artifactory'
   apply plugin: 'maven-publish'
 
   ext.versionInSources = version
@@ -134,11 +148,10 @@ allprojects {
     }
 
     maven {
-      def autorabitRepository = System.env.'ARTIFACTORY_CODESCAN_REPO' ?: (project.hasProperty('artifactoryRepo') ? project.getProperty('artifactoryRepo') : 'libs-release')
-      url "https://artifactory.autorabit.com/artifactory/${autorabitRepository}"
+      url codeartifactRepositoryUrl(project)
       credentials {
-         username = System.env.'ARTIFACTORY_USER' ?: (project.hasProperty('artifactoryUsername') ? project.getProperty('artifactoryUsername') : '')
-         password = System.env.'ARTIFACTORY_PWD' ?: (project.hasProperty('artifactoryPassword') ? project.getProperty('artifactoryPassword') : '')
+        username = 'aws'
+        password = codeartifactAuthToken()
       }
     }
     mavenLocal()
@@ -150,39 +163,6 @@ allprojects {
 
   task allDependencies {
     dependsOn 'dependencies'
-  }
-
-  artifactory {
-    clientConfig.setIncludeEnvVars(false)
-    clientConfig.setEnvVarsExcludePatterns('*pass*,*psw*,*secret*,*MAVEN_CMD_LINE_ARGS*,sun.java.command,*token*,*login*,*key*,*signing*,*auth*,*pwd*')
-    contextUrl = System.getenv('ARTIFACTORY_URL') ?: 'https://artifactory.autorabit.com/artifactory/'
-    publish {
-      repository {
-        repoKey = System.env.'ARTIFACTORY_CODESCAN_REPO' ?: (project.hasProperty('artifactoryRepo') ? project.getProperty('artifactoryRepo') : 'libs-release')
-        username = System.env.'ARTIFACTORY_USER' ?: (project.hasProperty('artifactoryUsername') ? project.getProperty('artifactoryUsername') : '')
-        password = System.env.'ARTIFACTORY_PWD' ?: (project.hasProperty('artifactoryPassword') ? project.getProperty('artifactoryPassword') : '')
-      }
-      defaults {
-        properties = [
-            'build.name': 'codescan-cloud',
-            'build.number': System.getenv('BUILD_NUMBER'),
-            'pr.branch.target': System.getenv('GITHUB_BASE_BRANCH'),
-            'pr.number': System.getenv('PULL_REQUEST'),
-            'vcs.branch': ghBranch,
-            'vcs.revision': System.getenv('GIT_SHA1'),
-            'version': version
-        ]
-        publications('mavenJava')
-        publishPom = true
-        publishIvy = false
-      }
-    }
-    clientConfig.info.setBuildName('codescan-cloud')
-    clientConfig.info.setBuildNumber(System.getenv('BUILD_NUMBER'))
-    // Define the artifacts to be deployed to https://binaries.sonarsource.com on releases
-    clientConfig.info.addEnvironmentProperty('ARTIFACTS_TO_PUBLISH', "${project.group}:codescan-application:zip")
-    // The name of this variable is important because it's used by the delivery process when extracting version from Artifactory build info.
-    clientConfig.info.addEnvironmentProperty('PROJECT_VERSION', "${version}")
   }
 }
 
@@ -207,8 +187,7 @@ subprojects {
   apply plugin: 'idea'
   apply plugin: 'signing'
 
-  // do not deploy to Artifactory by default
-  artifactoryPublish.skip = true
+  ext.publishToCodeArtifact = false
 
   compileJava.options.encoding = "UTF-8"
   compileTestJava.options.encoding = "UTF-8"
@@ -753,6 +732,20 @@ subprojects {
         }
       }
     }
+    repositories {
+      maven {
+        name = 'codeartifact'
+        url = uri(codeartifactRepositoryUrl(project))
+        credentials {
+          username = 'aws'
+          password = codeartifactAuthToken()
+        }
+      }
+    }
+  }
+
+  tasks.withType(PublishToMavenRepository).configureEach {
+    onlyIf { codeartifactAuthToken() && project.ext.publishToCodeArtifact }
   }
 
   tasks.withType(Test) {
@@ -803,14 +796,16 @@ subprojects {
     def signingPassword = findProperty("signingPassword")
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     required {
-      return isMainBranch && gradle.taskGraph.hasTask(":artifactoryPublish")
+      def publishingToCodeArtifact = gradle.taskGraph.allTasks.any { it.name == 'publish' }
+      return isMainBranch && publishingToCodeArtifact
     }
     sign publishing.publications
   }
 
   tasks.withType(Sign) {
     onlyIf {
-      return !artifactoryPublish.skip && isMainBranch && gradle.taskGraph.hasTask(":artifactoryPublish")
+      def publishingToCodeArtifact = gradle.taskGraph.allTasks.any { it.name == 'publish' }
+      return project.ext.publishToCodeArtifact && isMainBranch && publishingToCodeArtifact
     }
   }
 }
