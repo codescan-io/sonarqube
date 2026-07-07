@@ -47,6 +47,7 @@ public class DefaultIssue extends AbstractDefaultIssue<DefaultIssue> implements 
   private Double gap;
   private Severity overriddenSeverity;
   private boolean quickFixAvailable = false;
+  private boolean aiFixSupported = true;
   private String ruleDescriptionContextKey;
   private List<String> codeVariants;
 
@@ -93,6 +94,12 @@ public class DefaultIssue extends AbstractDefaultIssue<DefaultIssue> implements 
   }
 
   @Override
+  public DefaultIssue setAiFixSupported(boolean aiFixSupported) {
+    this.aiFixSupported = aiFixSupported;
+    return this;
+  }
+
+  @Override
   public NewQuickFix newQuickFix() {
     return new NoOpNewQuickFix();
   }
@@ -122,6 +129,11 @@ public class DefaultIssue extends AbstractDefaultIssue<DefaultIssue> implements 
   @Override
   public boolean isQuickFixAvailable() {
     return quickFixAvailable;
+  }
+
+  @Override
+  public boolean isAiFixSupported() {
+    return aiFixSupported;
   }
 
   @Override
