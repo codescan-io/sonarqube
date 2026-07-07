@@ -37,7 +37,7 @@ interface Props {
   canAssign: boolean;
   isOpen: boolean;
   issue: Pick<Issue, 'assignee' | 'assigneeActive' | 'assigneeAvatar' | 'assigneeName' | 'assigneeLogin' | 'aiCodeFixEnabled' | 'key' | 'projectKey' | 'projectOrganization' | 'organization' | 'codefixStatus'>;
-  onAssign: (login: string) => void;
+  onAssign: (login: string) => void | Promise<void>;
   togglePopup: (popup: string, show?: boolean) => void;
 }
 
@@ -180,7 +180,7 @@ export default function IssueAssignee(props: Props) {
           return;
         }
         if (quota.currentUsage + 1 > quota.dailyLimit) {
-          addGlobalErrorMessage(translate('aicodefix.daily_limit_exceeded'));
+          addGlobalErrorMessage(translateWithParameters('aicodefix.daily_limit_exceeded', quota.dailyLimit));
           return;
         }
 
@@ -191,7 +191,7 @@ export default function IssueAssignee(props: Props) {
           queryClient.setQueryData(['codefix-status', issueKey], { status: 'IN_PROGRESS' });
         }
 
-        props.onAssign(userOption.value);
+        await Promise.resolve(props.onAssign(userOption.value));
 
         if (!alreadyFixed) {
           await queueCodeFix({
