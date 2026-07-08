@@ -18,11 +18,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { Theme, themeColor, themeShadow } from '~design-system';
 
 interface StyledHeaderProps {
   headerHeight: number;
+  isSticky?: boolean;
   theme?: Theme;
 }
 
@@ -30,39 +32,47 @@ export const PSEUDO_SHADOW_HEIGHT = 16;
 
 // Box-shadow on scroll source: https://codepen.io/StijnDeWitt/pen/LryNxa
 export const StyledHeader = styled.div<StyledHeaderProps>`
-  position: sticky;
-  top: -${PSEUDO_SHADOW_HEIGHT}px;
-  z-index: 1;
-  -webkit-backface-visibility: hidden;
+  ${({ headerHeight, isSticky = true, theme }) =>
+    isSticky
+      ? css`
+          position: sticky;
+          top: -${PSEUDO_SHADOW_HEIGHT}px;
+          z-index: 1;
+          -webkit-backface-visibility: hidden;
+          & > div {
+            position: sticky;
+            top: 0;
+            margin-top: -${PSEUDO_SHADOW_HEIGHT}px;
+            z-index: 3;
+          }
+          &:before {
+            content: '';
+            display: block;
+            height: ${PSEUDO_SHADOW_HEIGHT}px;
+            position: sticky;
+            top: calc(${headerHeight}px - ${PSEUDO_SHADOW_HEIGHT}px);
+            box-shadow: ${themeShadow('sm')({ theme: theme as Theme })};
+          }
+          &:after {
+            content: '';
+            display: block;
+            height: ${PSEUDO_SHADOW_HEIGHT}px;
+            position: sticky;
+            background: linear-gradient(
+              ${themeColor('backgroundSecondary')({ theme: theme as Theme })} 10%,
+              rgba(255, 255, 255, 0.8) 50%,
+              rgba(255, 255, 255, 0.4) 70%,
+              transparent
+            );
+            top: 0;
+            z-index: 2;
+          }
+        `
+      : null}
+
   & > div {
-    position: sticky;
-    top: 0;
-    margin-top: -${PSEUDO_SHADOW_HEIGHT}px;
     box-sizing: border-box;
     background-color: ${themeColor('backgroundSecondary')};
-    z-index: 3;
-  }
-  &:before {
-    content: '';
-    display: block;
-    height: ${PSEUDO_SHADOW_HEIGHT}px;
-    position: sticky;
-    top: ${({ headerHeight }) => `calc(${headerHeight}px - ${PSEUDO_SHADOW_HEIGHT}px)`};
-    box-shadow: ${themeShadow('sm')};
-  }
-  &:after {
-    content: '';
-    display: block;
-    height: ${PSEUDO_SHADOW_HEIGHT}px;
-    position: sticky;
-    background: linear-gradient(
-      ${themeColor('backgroundSecondary')} 10%,
-      rgba(255, 255, 255, 0.8) 50%,
-      rgba(255, 255, 255, 0.4) 70%,
-      transparent
-    );
-    top: 0;
-    z-index: 2;
   }
 `;
 

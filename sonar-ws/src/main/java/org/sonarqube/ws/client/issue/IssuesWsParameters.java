@@ -80,7 +80,6 @@ public class IssuesWsParameters {
   public static final String PARAM_SET_TYPE = "set_type";
   public static final String PARAM_DO_TRANSITION = "do_transition";
   public static final String PARAM_ISSUE_RESOLUTION_EXPIRY_DATE = "issueResolutionExpiryDate";
-  public static final String PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES = "issueResolutionExpiryOffsetMinutes";
   public static final String PARAM_ADD_TAGS = "add_tags";
   public static final String PARAM_REMOVE_TAGS = "remove_tags";
   public static final String PARAM_SEND_NOTIFICATIONS = "sendNotifications";

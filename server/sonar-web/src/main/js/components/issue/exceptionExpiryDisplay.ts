@@ -31,14 +31,15 @@ export function resolveIssueExpiryMillis(raw: number | string | bigint | undefin
 }
 
 /**
- * Whole civil calendar days from local "today" to the instant's local calendar date.
- * Aligns with manual expiry stored using browser `getTimezoneOffset()` on the server.
+ * Whole calendar days from "today" (UTC) to the instant's UTC calendar date.
+ * Aligns with manual / auto exception expiry stored as UTC start-of-day on the server
+ * (same convention as the security-hotspot exception expiry).
  */
 export function calendarLocalCivilDaysUntil(expiresAtMs: number): number {
   const end = new Date(expiresAtMs);
   const start = new Date();
-  const endDay = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
-  const startDay = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const endDay = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+  const startDay = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
   return Math.round((endDay - startDay) / 86_400_000);
 }
 
