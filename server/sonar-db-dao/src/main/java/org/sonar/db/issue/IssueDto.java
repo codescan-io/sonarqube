@@ -85,6 +85,7 @@ public final class IssueDto implements Serializable {
   private long createdAt;
   private long updatedAt;
   private boolean quickFixAvailable;
+  private boolean aiFixSupported = true;
   private boolean isNewCodeReferenceIssue;
   private String ruleDescriptionContextKey;
   private boolean prioritizedRule;
@@ -166,6 +167,7 @@ public final class IssueDto implements Serializable {
       .setIssueUpdateDate(issue.updateDate())
       .setSelectedAt(issue.selectedAt())
       .setQuickFixAvailable(issue.isQuickFixAvailable())
+      .setAiFixSupported(issue.isAiFixSupported())
       .setIsNewCodeReferenceIssue(issue.isNewCodeReferenceIssue())
       .setCodeVariants(issue.codeVariants())
       .setCleanCodeAttribute(issue.getCleanCodeAttribute())
@@ -221,6 +223,7 @@ public final class IssueDto implements Serializable {
       .setIssueUpdateDate(issue.updateDate())
       .setSelectedAt(issue.selectedAt())
       .setQuickFixAvailable(issue.isQuickFixAvailable())
+      .setAiFixSupported(issue.isAiFixSupported())
       .setIsNewCodeReferenceIssue(issue.isNewCodeReferenceIssue())
       .setCodeVariants(issue.codeVariants())
       .setCleanCodeAttribute(issue.getCleanCodeAttribute())
@@ -777,6 +780,15 @@ public final class IssueDto implements Serializable {
     return this;
   }
 
+  public boolean isAiFixSupported() {
+    return aiFixSupported;
+  }
+
+  public IssueDto setAiFixSupported(boolean aiFixSupported) {
+    this.aiFixSupported = aiFixSupported;
+    return this;
+  }
+
   public boolean isNewCodeReferenceIssue() {
     return isNewCodeReferenceIssue;
   }
@@ -951,6 +963,7 @@ public final class IssueDto implements Serializable {
     issue.setLocations(parseLocations());
     issue.setIsFromExternalRuleEngine(isExternal);
     issue.setQuickFixAvailable(quickFixAvailable);
+    issue.setAiFixSupported(aiFixSupported);
     issue.setIsNewCodeReferenceIssue(isNewCodeReferenceIssue);
     issue.setCodeVariants(getCodeVariants());
     issue.setCleanCodeAttribute(cleanCodeAttribute);

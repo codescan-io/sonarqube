@@ -89,6 +89,7 @@ message Issue {
   optional bool is_prioritized_rule = 51;
   optional string cve_id = 52;
   optional int64 issue_resolution_expires_at = 53;
+  optional bool ai_fix_supported = 54;
 }
 
 message Comment {
