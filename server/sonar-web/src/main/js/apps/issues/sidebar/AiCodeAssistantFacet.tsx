@@ -18,12 +18,16 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import classNames from 'classnames';
 import { without } from 'lodash';
 import { useIntl } from 'react-intl';
 import { FacetBox, FacetItem } from '~design-system';
+import { AiCodefixIconKind, AiCodefixStatusIcon } from '../../../components/icons/AiCodefixStatusIcon';
 import { IssueCodefixStatus } from '../../../types/issues';
 import { formatFacetStat } from '../utils';
+import './AiCodeAssistantFacet.css';
 import { FacetItemsList } from './FacetItemsList';
+import { ListStyleFacetFooter } from './ListStyleFacetFooter';
 import { CommonProps } from './SimpleListStyleFacet';
 
 const PROPERTY = 'issueCodefixStatuses';
@@ -35,6 +39,7 @@ export const AI_CODEFIX_STATUSES: IssueCodefixStatus[] = [
   IssueCodefixStatus.AiFixGenerated,
   IssueCodefixStatus.PullRequestCreated,
   IssueCodefixStatus.AiFixFailed,
+  IssueCodefixStatus.AiFixNotSupported,
 ];
 
 const STATUS_LABEL_IDS: Record<IssueCodefixStatus, string> = {
@@ -43,6 +48,16 @@ const STATUS_LABEL_IDS: Record<IssueCodefixStatus, string> = {
   [IssueCodefixStatus.AiFixFailed]: 'issues.facet.ai_code_assistant.ai_fix_failed',
   [IssueCodefixStatus.AiFixInProgress]: 'issues.facet.ai_code_assistant.ai_fix_in_progress',
   [IssueCodefixStatus.PullRequestCreated]: 'issues.facet.ai_code_assistant.pull_request_created',
+  [IssueCodefixStatus.AiFixNotSupported]: 'issues.facet.ai_code_assistant.ai_fix_not_supported',
+};
+
+const STATUS_ICON_KINDS: Record<IssueCodefixStatus, AiCodefixIconKind> = {
+  [IssueCodefixStatus.AiFixAvailable]: 'available',
+  [IssueCodefixStatus.AiFixGenerated]: 'generated',
+  [IssueCodefixStatus.AiFixFailed]: 'failed',
+  [IssueCodefixStatus.AiFixInProgress]: 'in-progress',
+  [IssueCodefixStatus.PullRequestCreated]: 'pull-request',
+  [IssueCodefixStatus.AiFixNotSupported]: 'not-supported',
 };
 
 interface Props extends CommonProps {
@@ -61,6 +76,7 @@ export function AiCodeAssistantFacet(props: Readonly<Props>) {
       [IssueCodefixStatus.AiFixFailed]: 'AI Fix Failed',
       [IssueCodefixStatus.AiFixInProgress]: 'AI Fix in Progress',
       [IssueCodefixStatus.PullRequestCreated]: 'Pull Request Created',
+      [IssueCodefixStatus.AiFixNotSupported]: 'AI Fix not supported',
     };
     const defaultMessage = defaultMessages[status];
     const msg = intl.formatMessage({ id, defaultMessage });
@@ -69,7 +85,7 @@ export function AiCodeAssistantFacet(props: Readonly<Props>) {
 
   return (
     <FacetBox
-      className="it__search-navigator-facet-box it__search-navigator-facet-header"
+      className="it__search-navigator-facet-box it__search-navigator-facet-header ai-code-assistant-facet"
       count={issueCodefixStatuses.length}
       countLabel={intl.formatMessage(
         { id: 'x_selected' },
@@ -90,13 +106,30 @@ export function AiCodeAssistantFacet(props: Readonly<Props>) {
         {AI_CODEFIX_STATUSES.map((item) => {
           const active = issueCodefixStatuses.includes(item);
           const stat = stats[item];
+          const label = getStatusLabel(item);
 
           return (
             <FacetItem
               active={active}
               className="it__search-navigator-facet"
               key={item}
-              name={getStatusLabel(item)}
+              name={
+                <span className="ai-code-assistant-facet-item">
+                  <span
+                    className={classNames(
+                      'ai-code-assistant-facet-icon',
+                      `ai-code-assistant-facet-icon--${STATUS_ICON_KINDS[item]}`,
+                    )}
+                  >
+                    <AiCodefixStatusIcon
+                      kind={STATUS_ICON_KINDS[item]}
+                      size={item === IssueCodefixStatus.AiFixInProgress ? 18 : 12}
+                    />
+                  </span>
+                  <span className="ai-code-assistant-facet-text">{label}</span>
+                </span>
+              }
+              tooltip={label}
               onClick={(itemValue: IssueCodefixStatus, multiple) => {
                 if (multiple) {
                   props.onChange({
@@ -116,6 +149,12 @@ export function AiCodeAssistantFacet(props: Readonly<Props>) {
           );
         })}
       </FacetItemsList>
+
+      <ListStyleFacetFooter
+        nbShown={AI_CODEFIX_STATUSES.length}
+        showMore={() => {}}
+        total={AI_CODEFIX_STATUSES.length}
+      />
     </FacetBox>
   );
 }
