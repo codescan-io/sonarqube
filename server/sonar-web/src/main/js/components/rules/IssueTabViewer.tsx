@@ -388,56 +388,63 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
 
     return (
       <ScreenPositionHelper>
-        {({ top }) => (
-          <div
-            style={{
-              height: `calc(100vh - ${top + 20 + LAYOUT_FOOTER_HEIGHT}px)`,
-            }}
-            className="sw-overflow-y-auto"
-          >
-            <StyledHeader
-              headerHeight={this.headerNode?.clientHeight ?? 0}
-              className="sw-z-issue-header"
-            >
-              <div className="sw-p-6 sw-pb-4" ref={(node) => (this.headerNode = node)}>
-                <IssueHeader
-                  issue={issue}
-                  ruleDetails={ruleDetails}
-                  branchLike={fillBranchLike(issue.branch, issue.pullRequest)}
-                  onIssueChange={this.props.onIssueChange}
-                  organization={issue.organization}
-                />
-                <ToggleButton
-                  role="tablist"
-                  value={selectedTab.key}
-                  options={tabs}
-                  onChange={this.handleSelectTabs}
-                />
-              </div>
-            </StyledHeader>
+        {({ top }) => {
+          const headerHeight = this.headerNode?.clientHeight ?? 0;
+          const availableHeight = window.innerHeight - (top + 20 + LAYOUT_FOOTER_HEIGHT);
+          const isHeaderSticky = headerHeight > 0 && headerHeight < availableHeight;
+
+          return (
             <div
-              className="sw-flex sw-flex-col sw-px-6"
-              role="tabpanel"
-              aria-labelledby={`tab-${selectedTab.key}`}
-              id={`tabpanel-${selectedTab.key}`}
+              style={{
+                height: `calc(100vh - ${top + 20 + LAYOUT_FOOTER_HEIGHT}px)`,
+              }}
+              className="sw-overflow-y-auto"
             >
-              {tabs
-                .filter((t) => t.key === selectedTab.key)
-                .map((tab) => (
-                  <div
-                    className={classNames({
-                      'sw-hidden': tab.key !== selectedTab.key,
-                    })}
-                    key={tab.key}
-                  >
-                    <TabSelectorContext.Provider value={this.handleSelectTabs}>
-                      {tab.content}
-                    </TabSelectorContext.Provider>
-                  </div>
-                ))}
+              <StyledHeader
+                headerHeight={headerHeight}
+                isSticky={isHeaderSticky}
+                className="sw-z-issue-header"
+              >
+                <div className="sw-p-6 sw-pb-4" ref={(node) => (this.headerNode = node)}>
+                  <IssueHeader
+                    issue={issue}
+                    ruleDetails={ruleDetails}
+                    branchLike={fillBranchLike(issue.branch, issue.pullRequest)}
+                    onIssueChange={this.props.onIssueChange}
+                    organization={issue.organization}
+                  />
+                  <ToggleButton
+                    role="tablist"
+                    value={selectedTab.key}
+                    options={tabs}
+                    onChange={this.handleSelectTabs}
+                  />
+                </div>
+              </StyledHeader>
+              <div
+                className="sw-flex sw-flex-col sw-px-6"
+                role="tabpanel"
+                aria-labelledby={`tab-${selectedTab.key}`}
+                id={`tabpanel-${selectedTab.key}`}
+              >
+                {tabs
+                  .filter((t) => t.key === selectedTab.key)
+                  .map((tab) => (
+                    <div
+                      className={classNames({
+                        'sw-hidden': tab.key !== selectedTab.key,
+                      })}
+                      key={tab.key}
+                    >
+                      <TabSelectorContext.Provider value={this.handleSelectTabs}>
+                        {tab.content}
+                      </TabSelectorContext.Provider>
+                    </div>
+                  ))}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        }}
       </ScreenPositionHelper>
     );
   }
