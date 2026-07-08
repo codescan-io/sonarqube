@@ -223,8 +223,13 @@ public class SearchResponseFormat {
     if (dto.getType() != RuleType.SECURITY_HOTSPOT.getDbConstant()) {
       issueBuilder.setSeverity(Common.Severity.valueOf(dto.getSeverity()));
     }
-    ofNullable(data.getUserByUuid(dto.getAssigneeUuid())).ifPresent(assignee -> issueBuilder.setAssignee(assignee.getLogin()));
-
+    ofNullable(data.getUserByUuid(dto.getAssigneeUuid())).ifPresent(user -> {issueBuilder.setAssignee(user.getLogin());String assignedTo = user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getLogin();issueBuilder.setAssignedTo(assignedTo);
+    ofNullable(data.getAssignedDate(dto.getKey())).ifPresent(date -> issueBuilder.setAssignedDate(DateUtils.formatDateTime(new Date(date))));});
+    boolean hasActiveException = "EXCEPTION".equals(dto.getResolution());
+    if (hasActiveException) {
+          ofNullable(dto.getIssueResolutionExpiresAt()).ifPresent(issueBuilder::setIssueResolutionExpiresAt);
+          ofNullable(data.getExceptionReason(dto.getKey())).ifPresent(issueBuilder::setExceptionReason);
+    }
     ofNullable(emptyToNull(dto.getResolution())).ifPresent(issueBuilder::setResolution);
     issueBuilder.setStatus(dto.getStatus());
     setExportIssueStatus(issueBuilder, dto);

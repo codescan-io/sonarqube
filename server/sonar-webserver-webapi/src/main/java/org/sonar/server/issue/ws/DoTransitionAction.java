@@ -37,6 +37,7 @@ import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.server.issue.CodeIssueExceptionExpiryService;
+import org.sonar.server.issue.IssueFieldsSetter;
 import org.sonar.server.issue.IssueFinder;
 import org.sonar.server.issue.TransitionService;
 import org.sonar.server.pushapi.issues.IssueChangeEventService;
@@ -52,6 +53,9 @@ import static org.sonar.db.component.BranchType.BRANCH;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.ACTION_DO_TRANSITION;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_TRANSITION;
+import static org.apache.commons.lang3.StringUtils.trimToNull;
+import static org.sonar.api.issue.Issue.RESOLUTION_EXCEPTION;
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class DoTransitionAction implements IssuesWsAction {
 
@@ -64,10 +68,13 @@ public class DoTransitionAction implements IssuesWsAction {
   private final OperationResponseWriter responseWriter;
   private final System2 system2;
   private final CodeIssueExceptionExpiryService codeIssueExceptionExpiryService;
+  private final IssueFieldsSetter issueFieldsSetter;
+  private static final String PARAM_EXCEPTION_REASON = "exceptionReason";
+  private static final String PARAM_COMMENT = "comment";
 
   public DoTransitionAction(DbClient dbClient, UserSession userSession, IssueChangeEventService issueChangeEventService,
     IssueFinder issueFinder, IssueUpdater issueUpdater, TransitionService transitionService,
-    OperationResponseWriter responseWriter, System2 system2, CodeIssueExceptionExpiryService codeIssueExceptionExpiryService) {
+    OperationResponseWriter responseWriter, System2 system2, CodeIssueExceptionExpiryService codeIssueExceptionExpiryService, IssueFieldsSetter issueFieldsSetter) {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.issueChangeEventService = issueChangeEventService;
@@ -77,6 +84,7 @@ public class DoTransitionAction implements IssuesWsAction {
     this.responseWriter = responseWriter;
     this.system2 = system2;
     this.codeIssueExceptionExpiryService = codeIssueExceptionExpiryService;
+    this.issueFieldsSetter = issueFieldsSetter;
   }
 
   @Override
@@ -120,14 +128,15 @@ public class DoTransitionAction implements IssuesWsAction {
       .setPossibleValues(DefaultTransitions.ALL);
     action.createParam(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE)
       .setDescription("Optional expiry date (YYYY-MM-DD) when transition is 'exception' on a code issue (not security hotspot). "
+        + "The civil date is stored as UTC start-of-day, matching the security-hotspot exception expiry behavior. "
         + "When omitted, instance auto-expiry by severity may apply if enabled. When sent empty, expiry is cleared and auto-expiry is skipped.")
       .setExampleValue("2026-12-31")
       .setRequired(false);
-    action.createParam(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES)
-      .setDescription("Optional: JavaScript Date.getTimezoneOffset() from the browser. "
-        + "With a non-blank " + CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE + ", the civil date is stored as start-of-day in that offset. "
-        + "When the date is omitted and instance auto-expiry applies, the offset anchors \"today\" so the configured day count matches the UI countdown in the user's timezone; when omitted, UTC calendar is used.")
-      .setExampleValue("420")
+    action.createParam(PARAM_EXCEPTION_REASON)
+      .setDescription("Reason for the Exception")
+      .setRequired(false);
+    action.createParam(PARAM_COMMENT)
+      .setDescription("Optional comment text")
       .setRequired(false);
   }
 
@@ -149,10 +158,23 @@ public class DoTransitionAction implements IssuesWsAction {
     String previousStatus = issueDto.getStatus();
     boolean hasExpiryDateParam = request.hasParam(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
     String expiryDateParam = request.param(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
-    String expiryOffsetMinutesParam = request.param(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES);
     if (transitionService.doTransition(defaultIssue, context, transitionKey)) {
-      codeIssueExceptionExpiryService.applyAfterTransition(defaultIssue, issueDto, transitionKey, previousStatus, hasExpiryDateParam, expiryDateParam,
-        expiryOffsetMinutesParam);
+      codeIssueExceptionExpiryService.applyAfterTransition(defaultIssue, issueDto, transitionKey, previousStatus, hasExpiryDateParam, expiryDateParam);
+      String exceptionReason = trimToNull(request.param(PARAM_EXCEPTION_REASON));
+      String comment = trimToNull(request.param(PARAM_COMMENT));
+        if (DefaultTransitions.EXCEPTION.equals(transitionKey) && RESOLUTION_EXCEPTION.equals(defaultIssue.resolution())) { // ADDED
+            if (exceptionReason == null) {
+                exceptionReason = comment;
+                comment = null;
+        }
+        checkArgument(exceptionReason != null,
+                    "Parameter '%s' or '%s' must be specified when transition is '%s'",
+                    PARAM_EXCEPTION_REASON, PARAM_COMMENT, DefaultTransitions.EXCEPTION);
+            issueFieldsSetter.addExceptionReason(defaultIssue, exceptionReason, context);
+        }
+        if (comment != null) {
+            issueFieldsSetter.addComment(defaultIssue, comment, context);
+        }
       BranchDto branch = issueUpdater.getBranch(session, defaultIssue);
       SearchResponseData response = issueUpdater.saveIssueAndPreloadSearchResponseData(session, issueDto, defaultIssue, context, branch);
 

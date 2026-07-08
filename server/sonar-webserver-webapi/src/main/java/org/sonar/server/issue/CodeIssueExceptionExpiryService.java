@@ -21,7 +21,6 @@ package org.sonar.server.issue;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Locale;
 import java.util.Set;
@@ -37,7 +36,9 @@ import org.sonar.core.issue.DefaultIssue;
 import org.sonar.db.issue.IssueDto;
 
 /**
- * Code issue (non-hotspot) exception resolution expiry: manual YMD + optional offset, or instance auto-expiry by severity.
+ * Code issue (non-hotspot) exception resolution expiry: manual YMD, or instance auto-expiry by severity.
+ * Civil dates are always anchored to UTC start-of-day to align with security-hotspot exception expiry
+ * (see {@code ChangeStatusAction} and {@code HotspotExceptionExpiryJob}).
  * Used by {@code api/issues/do_transition} and bulk transition ({@code TransitionAction}).
  */
 @ServerSide
@@ -45,8 +46,6 @@ public class CodeIssueExceptionExpiryService {
 
   /** HTTP / bulk action map key; same as {@code api/issues/do_transition}. */
   public static final String PARAM_ISSUE_RESOLUTION_EXPIRY_DATE = "issueResolutionExpiryDate";
-  /** JS {@code Date.getTimezoneOffset()} when anchoring civil dates (manual and auto-expiry). */
-  public static final String PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES = "issueResolutionExpiryOffsetMinutes";
 
   /** @see io.codescan.cloud.DeveloperPlugin#KEY_ISSUE_EXCEPTION_AUTO_EXPIRY_ENABLED */
   private static final String KEY_ISSUE_EXCEPTION_AUTO_EXPIRY_ENABLED = "codescan.cloud.issue.exception.autoAssignExpiry.enabled";
@@ -68,7 +67,7 @@ public class CodeIssueExceptionExpiryService {
   }
 
   public void applyAfterTransition(DefaultIssue issue, IssueDto dtoBeforeTransition, String transitionKey, String previousStatus,
-    boolean hasExpiryDateParam, @Nullable String expiryDateParam, @Nullable String expiryOffsetMinutesParam) {
+    boolean hasExpiryDateParam, @Nullable String expiryDateParam) {
     if (dtoBeforeTransition.getType() == RuleType.SECURITY_HOTSPOT.getDbConstant()) {
       return;
     }
@@ -80,7 +79,7 @@ public class CodeIssueExceptionExpiryService {
     if (Issue.RESOLUTION_EXCEPTION.equals(issue.resolution())
       && DefaultTransitions.EXCEPTION.equals(transitionKey)
       && STATUSES_ELIGIBLE_FOR_EXCEPTION_EXPIRY.contains(previousStatus)) {
-      Long expiry = resolveCodeIssueExceptionExpiry(dtoBeforeTransition, hasExpiryDateParam, expiryDateParam, expiryOffsetMinutesParam);
+      Long expiry = resolveCodeIssueExceptionExpiry(dtoBeforeTransition, hasExpiryDateParam, expiryDateParam);
       issue.setIssueResolutionExpiresAt(expiry);
       issue.setChanged(true);
       return;
@@ -100,10 +99,9 @@ public class CodeIssueExceptionExpiryService {
   }
 
   @Nullable
-  private Long resolveCodeIssueExceptionExpiry(IssueDto issueDto, boolean hasExpiryDateParam, @Nullable String expiryDateParam,
-    @Nullable String expiryOffsetMinutesParam) {
+  private Long resolveCodeIssueExceptionExpiry(IssueDto issueDto, boolean hasExpiryDateParam, @Nullable String expiryDateParam) {
     if (StringUtils.isNotBlank(expiryDateParam)) {
-      return manualExpiryDateToEpochMillis(expiryDateParam.trim(), expiryOffsetMinutesParam);
+      return manualExpiryDateToEpochMillis(expiryDateParam.trim());
     }
     if (hasExpiryDateParam) {
       return null;
@@ -115,7 +113,7 @@ public class CodeIssueExceptionExpiryService {
     if (days <= 0) {
       return null;
     }
-    return autoAssignExpiryAtStartOfUserLocalDay(days, expiryOffsetMinutesParam);
+    return utcStartOfDayAfterDaysFromNowUtc(days);
   }
 
   private boolean isIssueExceptionAutoExpiryEnabled() {
@@ -144,22 +142,6 @@ public class CodeIssueExceptionExpiryService {
     };
   }
 
-  private long autoAssignExpiryAtStartOfUserLocalDay(int days, @Nullable String offsetMinutesRaw) {
-    Instant now = Instant.ofEpochMilli(system2.now());
-    if (StringUtils.isBlank(offsetMinutesRaw)) {
-      return utcStartOfDayAfterDaysFromNowUtc(days);
-    }
-    try {
-      int offsetMinutes = Integer.parseInt(offsetMinutesRaw.trim());
-      ZoneOffset zoneOffset = ZoneOffset.ofTotalSeconds(Math.negateExact(offsetMinutes) * 60);
-      LocalDate userToday = now.atZone(zoneOffset).toLocalDate();
-      LocalDate expiryDate = userToday.plusDays(days);
-      return expiryDate.atTime(LocalTime.MIDNIGHT).atOffset(zoneOffset).toInstant().toEpochMilli();
-    } catch (RuntimeException ignored) {
-      return utcStartOfDayAfterDaysFromNowUtc(days);
-    }
-  }
-
   private long utcStartOfDayAfterDaysFromNowUtc(int days) {
     LocalDate d = Instant.ofEpochMilli(system2.now())
       .atZone(ZoneOffset.UTC)
@@ -168,17 +150,7 @@ public class CodeIssueExceptionExpiryService {
     return d.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
   }
 
-  private static long manualExpiryDateToEpochMillis(String ymd, @Nullable String offsetMinutesRaw) {
-    LocalDate d = LocalDate.parse(ymd);
-    if (StringUtils.isBlank(offsetMinutesRaw)) {
-      return d.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
-    }
-    try {
-      int offsetMinutes = Integer.parseInt(offsetMinutesRaw.trim());
-      ZoneOffset zoneOffset = ZoneOffset.ofTotalSeconds(Math.negateExact(offsetMinutes) * 60);
-      return d.atTime(LocalTime.MIDNIGHT).atOffset(zoneOffset).toInstant().toEpochMilli();
-    } catch (RuntimeException ignored) {
-      return d.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
-    }
+  private static long manualExpiryDateToEpochMillis(String ymd) {
+    return LocalDate.parse(ymd).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
   }
 }

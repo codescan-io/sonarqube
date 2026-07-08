@@ -113,11 +113,11 @@ public class DoTransitionActionIT {
     new WebIssueStorage(system2, dbClient, new DefaultRuleFinder(dbClient, mock(RuleDescriptionFormatter.class)), issueIndexer, new SequenceUuidFactory()),
     mock(NotificationManager.class), issueChangePostProcessor, issuesChangesSerializer);
   private ArgumentCaptor<SearchResponseData> preloadedSearchResponseDataCaptor = ArgumentCaptor.forClass(SearchResponseData.class);
-
+  private final IssueFieldsSetter issueFieldsSetter = mock(IssueFieldsSetter.class);
   private final CodeIssueExceptionExpiryService codeIssueExceptionExpiryService = new CodeIssueExceptionExpiryService(system2, mapSettings.asConfig());
 
   private WsAction underTest = new DoTransitionAction(dbClient, userSession, issueChangeEventService,
-    new IssueFinder(dbClient, userSession), issueUpdater, transitionService, responseWriter, system2, codeIssueExceptionExpiryService);
+    new IssueFinder(dbClient, userSession), issueUpdater, transitionService, responseWriter, system2, codeIssueExceptionExpiryService, issueFieldsSetter);
   private WsActionTester tester = new WsActionTester(underTest);
 
   @Before
