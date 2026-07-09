@@ -19,8 +19,10 @@
  */
 
 import { replaceEqualDeep, useQuery, useQueryClient } from '@tanstack/react-query';
+import classNames from 'classnames';
 import * as React from 'react';
 import { getCodefixStatus } from '../../../api/ai-codefix';
+import { AiCodefixIconKind, AiCodefixStatusIcon } from '../../icons/AiCodefixStatusIcon';
 import { Issue } from '../../../types/types';
 
 const AI_CODE_ASSISTANT_ASSIGNEE = 'ai-code-assistant';
@@ -34,7 +36,7 @@ function hasAiCodefix(issue: Issue): boolean {
 }
 
 type AiCodefixStatusDisplay = {
-  icon: string;
+  kind: AiCodefixIconKind;
   text: string;
   textClassName: string;
 };
@@ -43,41 +45,41 @@ function getAiCodefixStatusDisplay(status: string): AiCodefixStatusDisplay {
   const s = (status || '').toUpperCase();
   if (s === 'PENDING' || s === 'IN_PROGRESS') {
     return {
-      icon: '/images/spinner.svg',
+      kind: 'in-progress',
       text: 'AI Fix in Progress',
       textClassName: 'spinner-text',
     };
   }
   if (s === 'FIX_GENERATED') {
     return {
-      icon: '/images/lightning.svg',
+      kind: 'generated',
       text: 'AI Fix Generated',
       textClassName: 'lightning-text',
     };
   }
   if (s === 'PULL_REQUEST_CREATED') {
     return {
-      icon: '/images/pull-request.svg',
+      kind: 'pull-request',
       text: 'Pull Request Created',
       textClassName: 'pull-request-text',
     };
   }
-  if (s === 'NOT_SUPPORTED') {
-    return {
-      icon: '/images/warning.svg',
-      text: 'AI Fix is not supported',
-      textClassName: 'warning-text',
-    };
-  }
   if (s === 'FAILED') {
     return {
-      icon: '/images/warning.svg',
+      kind: 'failed',
       text: 'AI Fix Failed',
       textClassName: 'warning-text',
     };
   }
+  if (s === 'NOT_SUPPORTED') {
+    return {
+      kind: 'not-supported',
+      text: 'AI Fix not supported',
+      textClassName: 'not-supported-text',
+    };
+  }
   return {
-    icon: '/images/magic-wand.svg',
+    kind: 'available',
     text: 'AI Fix Available',
     textClassName: 'magic-wand-text',
   };
@@ -133,18 +135,18 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
 
   if (!hasAiFix || isError || !displayStatus) {
     return (
-      <div className="sparkle-label sw-mr-5">
-        <img src="/images/magic-wand.svg" alt="" />
-        <span className="status-text magic-wand-text">AI Fix Available</span>
+      <div className="sparkle-label sw-mr-5 magic-wand-text">
+        <AiCodefixStatusIcon kind="available" />
+        <span className="status-text">AI Fix Available</span>
       </div>
     );
   }
 
-  const { icon, text, textClassName } = getAiCodefixStatusDisplay(displayStatus);
+  const { kind, text, textClassName } = getAiCodefixStatusDisplay(displayStatus);
   return (
-    <div className="codefix-status-label sw-mr-5">
-      <img src={icon} alt="" />
-      <span className={`status-text ${textClassName}`}>{text}</span>
+    <div className={classNames('codefix-status-label sw-mr-5', textClassName)}>
+      <AiCodefixStatusIcon kind={kind} spinning={kind === 'in-progress'} />
+      <span className="status-text">{text}</span>
     </div>
   );
 }

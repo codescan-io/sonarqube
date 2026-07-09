@@ -18,56 +18,20 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-.ai-assistant-icon {
-  width: 18px;
-  height: 18px;
+.ai-codefix-status-icon {
   flex-shrink: 0;
 }
 
-.sparkle-label,
-.codefix-status-label {
-  display: inline-flex;
-  align-items: center;
+.ai-codefix-status-icon--spin {
+  transform-origin: center;
+  animation: ai-codefix-status-spin 1s linear infinite;
 }
 
-.sparkle-label img,
-.codefix-status-label img {
-  flex-shrink: 0;
-}
-
-.status-text {
-  font-weight: 500;
-  padding-left: 3px;
-}
-
-.magic-wand-text .status-text {
-  font-size: 14px;
-  font-style: normal;
-  font-weight: 600;
-  line-height: 20px;
-  text-transform: capitalize;
-}
-
-.magic-wand-text {
-    color: #008223;
-}
-
-.spinner-text {
-    color: #767676;
-}
-
-.warning-text {
-    color: #D92D20;
-}
-
-.lightning-text {
-    color: #3665EF;
-}
-
-.pull-request-text {
-    color: #A222A0;
-}
-
-.not-supported-text {
-    color: #F5B840;
+@keyframes ai-codefix-status-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

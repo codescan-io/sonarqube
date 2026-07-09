@@ -179,7 +179,7 @@ export function CreatePullRequestModal({
         ) : loadError ? (
           <FlagMessage variant="warning">{translate('issues.code_fix.create_pr_modal.load_error')}</FlagMessage>
         ) : (
-          <div className="sw-flex sw-flex-col sw-gap-4">
+          <div className="sw-flex sw-flex-col">
 
             {submitError && (
               <div className="sw-flex sw-flex-col sw-gap-2">
@@ -223,10 +223,18 @@ export function CreatePullRequestModal({
                   {draft?.branchNamePrefix}
                 </span>
                 <div
-                  className="sw-flex sw-flex-1 sw-items-center sw-gap-2 sw-min-w-[120px] sw-px-3 sw-py-1 sw-rounded-2 sw-border"
-                  style={{ borderColor: 'var(--color-azure-82, #C5CDDF)', background: '#fff' }}
+                  className="sw-flex sw-items-center sw-gap-2 sw-px-3"
+                  style={{
+                    border: '1px solid var(--echoes-color-border-bold, #C5CDDF)',
+                    borderRadius: 'var(--echoes-border-radius-400, 8px)',
+                    background: 'var(--echoes-color-background-default, #FFF)',
+                    color: 'var(--echoes-color-text-default, #3E4357)',
+                    width: 150,
+                    height: 32,
+                    fontSize: 14,
+                  }}
                 >
-                  <img src="/images/branch-icon.svg" alt="" height={18} width={18} />
+                  <img src="/images/branch-icon.svg" alt="" height={16} width={16} />
                   <InputField
                     className="sw-flex-1"
                     id="codefix-pr-branch"
@@ -235,6 +243,14 @@ export function CreatePullRequestModal({
                     type="text"
                     maxLength={20}
                     value={sourceBranchSuffix}
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      padding: 0,
+                      width: '100%',
+                      height: '100%',
+                      background: 'transparent',
+                    }}
                   />
                 </div>
               </div>

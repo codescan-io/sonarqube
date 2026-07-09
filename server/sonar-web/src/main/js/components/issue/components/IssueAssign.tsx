@@ -45,6 +45,9 @@ const minSearchLength = 2;
 
 const UNASSIGNED = { value: '', label: translate('unassigned') };
 
+const AI_ASSISTANT_VALUE = 'ai-code-assistant';
+const AI_ASSISTANT_LABEL = 'AI Code Assistant';
+
 const renderAvatar = (name?: string, avatar?: string) => (
   <Avatar hash={avatar} name={name} size="xs" className="sw-my-1" />
 );
@@ -86,26 +89,35 @@ export default function IssueAssignee(props: Props) {
       ...(aiEnabled && props.issue.aiCodeFixEnabled
         ? [
             {
-              value: "ai-code-assistant",
-              label: "Ai Code Assistant",
-              Icon: <img src="/images/ai-assistant.svg" alt="Ai Code Assistant" />
+              value: AI_ASSISTANT_VALUE,
+              label: AI_ASSISTANT_LABEL,
+              Icon: (
+                <img
+                  className="ai-assistant-icon"
+                  src="/images/ai-assistant.svg"
+                  alt={AI_ASSISTANT_LABEL}
+                />
+              ),
             }
           ]
         : [])
-    ], [defaultOptions, aiEnabled]); 
+    ], [defaultOptions, aiEnabled]);
 
-    const controlLabel = assinedUser ? (() => {
-      const icon =
-        assinedUser === "Ai Code Assistant"
-          ? <img src="/images/ai-assistant.svg" />
-          : renderAvatar(assinedUser, assigneeAvatar);
-    
-      return (
-        <>
-          {icon} {assinedUser}
-        </>
-      );
-    })() : (
+    const isAiAssistant =
+      assignee === AI_ASSISTANT_VALUE ||
+      assinedUser === AI_ASSISTANT_LABEL ||
+      assinedUser === 'Ai Code Assistant';
+
+    const controlLabel = assinedUser ? (
+      <span className="sw-flex sw-items-center sw-gap-1">
+        {isAiAssistant ? (
+          <img className="ai-assistant-icon" src="/images/ai-assistant.svg" alt={AI_ASSISTANT_LABEL} />
+        ) : (
+          renderAvatar(assinedUser, assigneeAvatar)
+        )}
+        <span className="sw-truncate">{isAiAssistant ? AI_ASSISTANT_LABEL : assinedUser}</span>
+      </span>
+    ) : (
       UNASSIGNED.label
     );
     

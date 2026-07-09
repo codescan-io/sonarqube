@@ -84,6 +84,7 @@ export enum IssueCodefixStatus {
   AiFixNotSupported = 'AI_FIX_NOT_SUPPORTED',
   AiFixInProgress = 'AI_FIX_IN_PROGRESS',
   PullRequestCreated = 'PULL_REQUEST_CREATED',
+  AiFixNotSupported = 'AI_FIX_NOT_SUPPORTED',
 }
 
 /**
