@@ -211,6 +211,10 @@ public class IssueLifecycle {
     copyFields(raw, base);
     base.changes().forEach(raw::addChange);
 
+    if (raw.isAiFixSupported() != base.isAiFixSupported()) {
+      raw.setChanged(true);
+    }
+
     if (base.manualSeverity()) {
       raw.setManualSeverity(true);
       raw.setSeverity(base.severity());
