@@ -200,7 +200,9 @@ function OrganizationMembers({ currentUser, organization }: Props) {
                 total={paging.total}
               />
             )}
-            <PendingInvitations organization={organization} />
+            {organization.inviteUsersEnabled && (
+              <PendingInvitations organization={organization} />
+            )}
           </>
         )}
     </div>
