@@ -71,13 +71,6 @@ function getAiCodefixStatusDisplay(status: string): AiCodefixStatusDisplay {
       textClassName: 'warning-text',
     };
   }
-  if (s === 'NOT_SUPPORTED') {
-    return {
-      kind: 'not-supported',
-      text: 'AI Fix not supported',
-      textClassName: 'not-supported-text',
-    };
-  }
   return {
     kind: 'available',
     text: 'AI Fix Available',
