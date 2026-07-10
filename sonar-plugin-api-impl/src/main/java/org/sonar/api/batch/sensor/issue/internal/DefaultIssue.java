@@ -47,7 +47,7 @@ public class DefaultIssue extends AbstractDefaultIssue<DefaultIssue> implements 
   private Double gap;
   private Severity overriddenSeverity;
   private boolean quickFixAvailable = false;
-  private boolean aiFixSupported = true;
+  private String variableType = null;
   private String ruleDescriptionContextKey;
   private List<String> codeVariants;
 
@@ -94,8 +94,8 @@ public class DefaultIssue extends AbstractDefaultIssue<DefaultIssue> implements 
   }
 
   @Override
-  public DefaultIssue setAiFixSupported(boolean aiFixSupported) {
-    this.aiFixSupported = aiFixSupported;
+  public DefaultIssue setVariableType(@Nullable String variableType) {
+    this.variableType = variableType;
     return this;
   }
 
@@ -132,8 +132,8 @@ public class DefaultIssue extends AbstractDefaultIssue<DefaultIssue> implements 
   }
 
   @Override
-  public boolean isAiFixSupported() {
-    return aiFixSupported;
+  public String getVariableType() {
+    return variableType;
   }
 
   @Override
