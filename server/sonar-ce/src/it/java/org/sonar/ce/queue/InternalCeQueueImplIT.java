@@ -553,9 +553,9 @@ public class InternalCeQueueImplIT {
 
   @Test
   public void cancelAll_pendings_and_in_progress() {
-    CeTask inProgressTask = submit(CeTaskTypes.REPORT, newProjectDto("PROJECT_1"));
-    CeTask pendingTask1 = submit(CeTaskTypes.REPORT, newProjectDto("PROJECT_2"));
-    CeTask pendingTask2 = submit(CeTaskTypes.REPORT, newProjectDto("PROJECT_3"));
+    CeTask inProgressTask = submit(CeTaskTypes.REPORT, newProject("PROJECT_1"));
+    CeTask pendingTask1 = submit(CeTaskTypes.REPORT, newProject("PROJECT_2"));
+    CeTask pendingTask2 = submit(CeTaskTypes.REPORT, newProject("PROJECT_3"));
     underTest.peek(WORKER_UUID_2, true);
 
     int canceledCount = underTest.cancelAll(false);

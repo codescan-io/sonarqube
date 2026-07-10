@@ -248,14 +248,11 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       issues.some((issue) => issueSupportsExceptionExpiryPicker(issue));
 
     const expiryFields: Record<string, string> = {};
-    if (supportsBulkExceptionExpiry) {
-      expiryFields.issueResolutionExpiryOffsetMinutes = String(new Date().getTimezoneOffset());
-      if (exceptionExpiryDate) {
-        const yyyy = exceptionExpiryDate.getFullYear();
-        const mm = String(exceptionExpiryDate.getMonth() + 1).padStart(2, '0');
-        const dd = String(exceptionExpiryDate.getDate()).padStart(2, '0');
-        expiryFields.issueResolutionExpiryDate = `${yyyy}-${mm}-${dd}`;
-      }
+    if (supportsBulkExceptionExpiry && exceptionExpiryDate) {
+      const yyyy = exceptionExpiryDate.getFullYear();
+      const mm = String(exceptionExpiryDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(exceptionExpiryDate.getDate()).padStart(2, '0');
+      expiryFields.issueResolutionExpiryDate = `${yyyy}-${mm}-${dd}`;
     }
 
     if (assignee === 'ai-code-assistant') {
@@ -283,11 +280,14 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       }
     }
 
+    const trimmedComment = comment?.trim();
+    const isExceptionTransition = transition === IssueTransition.Exception;
     const query = pickBy(
       {
         add_tags: addTags?.join(),
         assign: assignee,
-        comment,
+        exceptionReason: isExceptionTransition ? trimmedComment : undefined,
+        comment: !isExceptionTransition ? trimmedComment : undefined,
         do_transition: transition,
         remove_tags: removeTags?.join(),
         sendNotifications: notifications,

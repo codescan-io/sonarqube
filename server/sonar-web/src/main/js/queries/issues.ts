@@ -40,7 +40,6 @@ export function useIssueTransitionMutation() {
       issue: string;
       transition: string;
       issueResolutionExpiryDate?: string;
-      issueResolutionExpiryOffsetMinutes?: string;
     }) => setIssueTransition(data),
     onSuccess: ({ issue }) => {
       invalidateIssueChangelog(issue.key, queryClient);
