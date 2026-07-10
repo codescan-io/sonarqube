@@ -207,7 +207,7 @@ message Issue {
   repeated MessageFormatting msgFormatting = 10;
   repeated string codeVariants = 11;
   repeated Impact overridenImpacts = 12;
-  bool aiFixSupported = 13;
+  optional string variableType = 13;
 }
 
 message ExternalIssue {

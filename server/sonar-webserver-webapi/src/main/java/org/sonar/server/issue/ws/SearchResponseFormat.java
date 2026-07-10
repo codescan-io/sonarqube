@@ -106,6 +106,10 @@ public class SearchResponseFormat {
   private final UserResponseFormatter userFormatter;
   private final CvssMetadataService cvssMetadataService;
   private static final String REMOVED_USER_PREFIX = "sq-removed-";
+  // Variable-naming rules that carry an issue_ai_metadata variableType. AI code-fix is not offered
+  // when one of these is raised on an instance/class field (variableType == INSTANCE).
+  private static final Set<String> VARIABLE_NAMING_RULE_KEYS = Set.of("ShortVariable", "LongVariable", "VariableNamingConventions");
+  private static final String VARIABLE_TYPE_INSTANCE = "INSTANCE";
 
   public SearchResponseFormat(Durations durations, Languages languages, TextRangeResponseFormatter textRangeFormatter,
     UserResponseFormatter userFormatter) {
@@ -191,7 +195,11 @@ public class SearchResponseFormat {
   private void addMandatoryFieldsToIssueBuilder(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data, Map<String, Object[]> issueMap, boolean showAuthor) {
     issueBuilder.setKey(dto.getKey());
     issueBuilder.setType(Common.RuleType.forNumber(dto.getType()));
-    boolean aiCodeFixEnabled = data.getRulesByUuid().get(dto.getRuleUuid()).getAiCodeFixEnabled();
+    String variableType = dto.getVariableType();
+    boolean suppressAiFix = VARIABLE_NAMING_RULE_KEYS.contains(dto.getRuleKey().rule())
+              && (variableType == null || VARIABLE_TYPE_INSTANCE.equals(variableType));
+    boolean aiCodeFixEnabled = data.getRulesByUuid().get(dto.getRuleUuid()).getAiCodeFixEnabled()
+              && !suppressAiFix;
 
     CleanCodeAttribute cleanCodeAttribute = dto.getEffectiveCleanCodeAttribute();
     if (cleanCodeAttribute != null) {

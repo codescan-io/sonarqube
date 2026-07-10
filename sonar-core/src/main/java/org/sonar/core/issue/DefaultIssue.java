@@ -134,7 +134,7 @@ public class DefaultIssue implements Issue, Trackable, org.sonar.api.ce.measure.
   private Long selectedAt = null;
 
   private boolean quickFixAvailable = false;
-  private boolean aiFixSupported = true;
+  private String variableType = null;
   private boolean isNewCodeReferenceIssue = false;
 
   // true if the issue is no longer new in its branch
@@ -601,12 +601,12 @@ public class DefaultIssue implements Issue, Trackable, org.sonar.api.ce.measure.
     return this;
   }
 
-  public boolean isAiFixSupported() {
-    return aiFixSupported;
+  public String getVariableType() {
+    return variableType;
   }
 
-  public DefaultIssue setAiFixSupported(boolean aiFixSupported) {
-    this.aiFixSupported = aiFixSupported;
+  public DefaultIssue setVariableType(@Nullable String variableType) {
+    this.variableType = variableType;
     return this;
   }
 

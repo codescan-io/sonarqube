@@ -41,7 +41,7 @@
     i.project_uuid as projectUuid,
     i.issue_type as type,
     i.quick_fix_available as quickFixAvailable,
-    i.ai_fix_supported as aiFixSupported,
+    i.issue_ai_metadata as issueAiMetadata,
     i.code_variants as codeVariantsString,
     i.prioritized_rule as prioritizedRule,
     i.codefix_status as codefixStatus,
@@ -154,7 +154,7 @@
     INSERT INTO issues (kee, rule_uuid, severity, manual_severity,
     message, message_formattings, line, locations, gap, effort, status, tags, rule_description_context_key,
     resolution, checksum, assignee, author_login, issue_creation_date, issue_update_date,
-    issue_close_date, created_at, updated_at, component_uuid, project_uuid, issue_type, quick_fix_available, ai_fix_supported, code_variants,
+    issue_close_date, created_at, updated_at, component_uuid, project_uuid, issue_type, quick_fix_available, issue_ai_metadata, code_variants,
     clean_code_attribute, prioritized_rule, issue_resolution_expires_at)
     VALUES (
     #{kee,jdbcType=VARCHAR},
@@ -176,7 +176,7 @@
     #{createdAt,jdbcType=BIGINT}, #{updatedAt,jdbcType=BIGINT},
     #{componentUuid,jdbcType=VARCHAR}, #{projectUuid,jdbcType=VARCHAR}, #{type,jdbcType=INTEGER},
     #{quickFixAvailable, jdbcType=BOOLEAN},
-    #{aiFixSupported, jdbcType=BOOLEAN},
+    #{issueAiMetadata, jdbcType=VARCHAR},
     #{codeVariantsString,jdbcType=VARCHAR},
     #{effectiveCleanCodeAttribute,jdbcType=VARCHAR},
     #{prioritizedRule,jdbcType=BOOLEAN},
