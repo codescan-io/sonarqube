@@ -240,7 +240,7 @@
     clean_code_attribute=#{effectiveCleanCodeAttribute,jdbcType=VARCHAR},
     prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN},
     codefix_status=#{codefixStatus,jdbcType=VARCHAR},
-    ai_fix_supported=#{aiFixSupported,jdbcType=BOOLEAN},
+    issue_ai_metadata=#{issueAiMetadata,jdbcType=VARCHAR},
     issue_resolution_expires_at=#{issueResolutionExpiresAt,jdbcType=BIGINT}
     where kee = #{kee}
   </update>
@@ -276,7 +276,7 @@
     clean_code_attribute=#{effectiveCleanCodeAttribute,jdbcType=VARCHAR},
     prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN},
     codefix_status=#{codefixStatus,jdbcType=VARCHAR},
-    ai_fix_supported=#{aiFixSupported,jdbcType=BOOLEAN},
+    issue_ai_metadata=#{issueAiMetadata,jdbcType=VARCHAR},
     issue_resolution_expires_at=#{issueResolutionExpiresAt,jdbcType=BIGINT}
     where kee = #{kee} and updated_at &lt;= #{selectedAt}
   </update>
