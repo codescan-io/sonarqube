@@ -22,6 +22,7 @@ package org.sonar.ce.task.projectanalysis.issue;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import java.util.Date;
+import java.util.Objects;
 import java.util.Optional;
 import javax.inject.Inject;
 import org.jetbrains.annotations.NotNull;
@@ -211,7 +212,7 @@ public class IssueLifecycle {
     copyFields(raw, base);
     base.changes().forEach(raw::addChange);
 
-    if (raw.isAiFixSupported() != base.isAiFixSupported()) {
+    if (!Objects.equals(raw.getVariableType(), base.getVariableType())) {
       raw.setChanged(true);
     }
 
