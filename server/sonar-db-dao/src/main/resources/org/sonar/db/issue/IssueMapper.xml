@@ -134,6 +134,12 @@
     cve.id as cveId,
   </sql>
 
+  <!-- Variable-naming rules that carry an issue_ai_metadata variableType; AI code-fix is not offered
+       when raised on an instance field (variableType == INSTANCE) or when no variable type is known. -->
+  <sql id="aiFixVariableNamingRuleKeys">
+    'ShortVariable', 'LongVariable', 'VariableNamingConventions'
+  </sql>
+
   <resultMap id="issueResultMap" type="Issue" autoMapping="true">
     <id property="kee" column="kee"/>
 
@@ -397,7 +403,15 @@
       c.qualifier,
       i.code_variants as codeVariants,
       i.prioritized_rule as prioritizedRule,
-      COALESCE(i.codefix_status, CASE WHEN r.ai_code_fix_enabled = true THEN 'AVAILABLE' END) as codefixStatus,
+      i.issue_ai_metadata as issueAiMetadata,
+      COALESCE(i.codefix_status,
+        CASE WHEN r.ai_code_fix_enabled = true
+              AND (
+                r.plugin_rule_key not in (<include refid="aiFixVariableNamingRuleKeys"/>)
+                OR (i.issue_ai_metadata is not null
+                    AND i.issue_ai_metadata not like '%"variableType":"INSTANCE"%')
+              )
+             THEN 'AVAILABLE' END) as codefixStatus,
       <include refid="issueImpactsColumns"/>
       <include refid="ruleDefaultImpactsColumns"/>
       <include refid="issuesDependencyColumns"/>
