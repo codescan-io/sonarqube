@@ -31,6 +31,7 @@ import java.util.Properties;
 import java.util.Set;
 import javax.sql.DataSource;
 import org.apache.commons.lang3.StringUtils;
+import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.config.internal.Settings;
@@ -40,9 +41,11 @@ import org.sonar.db.profiling.NullConnectionInterceptor;
 import org.sonar.db.profiling.ProfiledConnectionInterceptor;
 import org.sonar.db.profiling.ProfiledDataSource;
 import org.sonar.process.logging.LogbackHelper;
+import software.amazon.jdbc.PropertyDefinition;
 
 import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
+import static org.sonar.process.ProcessProperties.Property.JDBC_AUTH_METHOD;
 import static org.sonar.process.ProcessProperties.Property.JDBC_EMBEDDED_PORT;
 import static org.sonar.process.ProcessProperties.Property.JDBC_MAX_IDLE_TIMEOUT;
 import static org.sonar.process.ProcessProperties.Property.JDBC_MAX_KEEP_ALIVE_TIME;
@@ -113,6 +116,7 @@ public class DefaultDatabase implements Database {
   private ProfiledDataSource datasource;
   private Dialect dialect;
   private Properties properties;
+  private DbAuthMethod dbAuthMethod;
 
   public DefaultDatabase(LogbackHelper logbackHelper, Settings settings) {
     this.logbackHelper = logbackHelper;
@@ -140,7 +144,14 @@ public class DefaultDatabase implements Database {
 
     String jdbcUrl = properties.getProperty(JDBC_URL.getKey());
     dialect = DialectUtils.find(properties.getProperty(SONAR_JDBC_DIALECT), jdbcUrl);
-    properties.setProperty(SONAR_JDBC_DRIVER, dialect.getDefaultDriverClassName());
+
+    if (DbAuthMethod.IAM.value().equals(settings.getString(JDBC_AUTH_METHOD.getKey()))) {
+      LOG.info("Using IAM DB Authentication");
+      dbAuthMethod = DbAuthMethod.IAM;
+    } else {
+      LOG.info("Using Standard DB Authentication");
+      dbAuthMethod = DbAuthMethod.STANDARD;
+    }
   }
 
   private void initDataSource() {
@@ -151,12 +162,29 @@ public class DefaultDatabase implements Database {
   }
 
   private HikariDataSource createHikariDataSource() {
+    setJdbcDriverIfRequired();
     HikariConfig config = new HikariConfig(extractCommonsHikariProperties(properties));
+    setIamHikariConfigProperties(config);
+
     if (!dialect.getConnectionInitStatements().isEmpty()) {
       config.setConnectionInitSql(dialect.getConnectionInitStatements().get(0));
     }
     config.setConnectionTestQuery(dialect.getValidationQuery());
     return new HikariDataSource(config);
+  }
+
+  private void setJdbcDriverIfRequired() {
+    if (dbAuthMethod == DbAuthMethod.STANDARD) {
+      properties.setProperty(SONAR_JDBC_DRIVER, dialect.getDefaultDriverClassName());
+    }
+  }
+
+  private void setIamHikariConfigProperties(HikariConfig config) {
+    if (dbAuthMethod == DbAuthMethod.IAM) {
+      config.setJdbcUrl(convertToAwsJdbcUrl(properties.getProperty(JDBC_URL.getKey())));
+      config.addDataSourceProperty("targetDataSourceClassName", PGSimpleDataSource.class.getName());
+      config.addDataSourceProperty(PropertyDefinition.PLUGINS.name, DbAuthMethod.IAM.value());
+    }
   }
 
   private void checkConnection() {
@@ -252,9 +280,31 @@ public class DefaultDatabase implements Database {
     return StringUtils.removeStart(key, SONAR_JDBC);
   }
 
+  public static String convertToAwsJdbcUrl(String originalUrl) {
+    // Convert standard JDBC URL to AWS JDBC wrapper URL
+    if (originalUrl.startsWith("jdbc:postgresql://")) {
+      return "jdbc:aws-wrapper:" + originalUrl.substring(5);
+    }
+    return originalUrl;
+  }
+
   @Override
   public String toString() {
     return format("Database[%s]", properties != null ? properties.getProperty(JDBC_URL.getKey()) : "?");
+  }
+
+  public enum DbAuthMethod {
+    IAM("iam"),
+    STANDARD("standard");
+
+    private final String authMethod;
+    DbAuthMethod(String authMethod) {
+      this.authMethod = authMethod;
+    }
+
+    public String value() {
+      return authMethod;
+    }
   }
 
   public Settings getSettings() {
