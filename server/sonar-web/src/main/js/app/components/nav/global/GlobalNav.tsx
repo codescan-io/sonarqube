@@ -29,10 +29,7 @@ import { Organization } from "../../../../types/types";
 import GlobalNavPlus from "./GlobalNavPlus";
 import { isNonStandardUser } from '../../../utils/userAccess';
 import { AiCreditsIndicator } from './AiCreditsIndicator';
-import { useLocation, useSearchParams } from 'react-router-dom';
-import { useCurrentOrg } from '../organization/CurrentOrgContext';
-import * as React from 'react';
-import { AiCreditsSummary, fetchCredits } from '../../../../api/ai-codefix';
+import { useAiCreditsContext } from '../../ai-credits/AiCreditsContext';
 
 export interface GlobalNavProps {
   currentUser: CurrentUser;
@@ -40,46 +37,9 @@ export interface GlobalNavProps {
   location: { pathname: string };
 }
 
-function getOrgKee() {
-  const { pathname } = useLocation();
-  const [ searchParams ] = useSearchParams();
-  const { orgKee } = useCurrentOrg();
-
-  // /organizations/beforetwo/extension/billing
-  const orgMatch = pathname.match(/\/organizations\/([^/]+)/);
-  const orgKey = orgMatch?.[1] ?? null;
-
-  // ?id=123
-  const id = searchParams.get("id");
-  if(orgKey)
-    return { orgKee: orgKey };
-
-  if(!id) 
-    return { orgKee: null };
-
-  if(orgKee)
-    return { orgKee: orgKee };
-
-  return { orgKee: null };
-}
-
 export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
-  const { orgKee } = getOrgKee() as { orgKee: string | null };
-  const [creditsData, setCreditsData] = React.useState<AiCreditsSummary | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!orgKee) {
-      setCreditsData(null);
-      return;
-    }
-    setIsLoading(true);
-    fetchCredits(orgKee)
-      .then(setCreditsData)
-      .catch(() => setCreditsData(null))
-      .finally(() => setIsLoading(false));
-  }, [orgKee]); 
+  const { creditsData, isLoading } = useAiCreditsContext();
 
   return (
     <MainSonarQubeBar>
