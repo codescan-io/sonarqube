@@ -88,8 +88,8 @@ const defaultOptionsWithAi = React.useMemo((): Option[] => {
       ? [
           {
             value: "ai-code-assistant",
-            label: "Ai Code Assistant",
-            Icon: <img src='/images/ai-assistant.svg'/>
+            label: "AI Code Assistant",
+            Icon: <img className="ai-assistant-icon" src='/images/ai-assistant.svg' alt="AI Code Assistant" />
           }
         ]
       : [])
