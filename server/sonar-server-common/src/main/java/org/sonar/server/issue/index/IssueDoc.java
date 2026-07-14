@@ -253,6 +253,16 @@ public class IssueDoc extends BaseDoc {
     return this;
   }
 
+  @CheckForNull
+  public String getIssueAiMetadata() {
+    return getNullableField(IssueIndexDefinition.FIELD_ISSUE_AI_METADATA);
+  }
+
+  public IssueDoc setIssueAiMetadata(@Nullable String s) {
+    setField(IssueIndexDefinition.FIELD_ISSUE_AI_METADATA, s);
+    return this;
+  }
+
   public IssueDoc setAssigneeUuid(@Nullable String s) {
     setField(IssueIndexDefinition.FIELD_ISSUE_ASSIGNEE_UUID, s);
     return this;

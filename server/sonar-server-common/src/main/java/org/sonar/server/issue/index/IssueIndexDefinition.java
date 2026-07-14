@@ -89,6 +89,7 @@ public class IssueIndexDefinition implements IndexDefinition {
   public static final String FIELD_ISSUE_STATUS = "status";
   public static final String FIELD_ISSUE_NEW_STATUS = "issueStatus";
   public static final String FIELD_ISSUE_CODEFIX_STATUS = "codefixStatus";
+  public static final String FIELD_ISSUE_AI_METADATA = "issueAiMetadata";
   public static final String FIELD_ISSUE_TAGS = "tags";
   public static final String FIELD_ISSUE_TYPE = "type";
   public static final String FIELD_ISSUE_PCI_DSS_32 = "pciDss-3.2";
@@ -171,6 +172,7 @@ public class IssueIndexDefinition implements IndexDefinition {
     mapping.keywordFieldBuilder(FIELD_ISSUE_RESOLUTION).disableNorms().build();
     mapping.keywordFieldBuilder(FIELD_ISSUE_NEW_STATUS).disableNorms().build();
     mapping.keywordFieldBuilder(FIELD_ISSUE_CODEFIX_STATUS).disableNorms().build();
+    mapping.keywordFieldBuilder(FIELD_ISSUE_AI_METADATA).disableNorms().build();
     mapping.keywordFieldBuilder(FIELD_ISSUE_RULE_UUID).disableNorms().build();
     mapping.keywordFieldBuilder(FIELD_ISSUE_SEVERITY).disableNorms().build();
     mapping.createByteField(FIELD_ISSUE_SEVERITY_VALUE);
