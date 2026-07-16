@@ -921,6 +921,14 @@ export interface OrganizationBase {
   inviteUsersEnabled: boolean;
 }
 
+export interface OrganizationBillingDetails {
+  status?: string;
+  // Omitted by the backend (@JsonInclude(NON_NULL)) when the DB column is null, which is
+  // how the backend itself defines a trial (BillingService#isTrialBilling).
+  subscriptionId?: string | null;
+  trialEnds?: number;
+}
+
 export interface OrganizationMember extends UserActive {
   groupCount?: number;
   type: string;

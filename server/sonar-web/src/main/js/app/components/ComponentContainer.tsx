@@ -45,6 +45,7 @@ import withAvailableFeatures, {
   WithAvailableFeaturesProps,
 } from './available-features/withAvailableFeatures';
 import { ComponentContext } from './componentContext/ComponentContext';
+import { useCurrentOrganizationKey } from './current-organization/CurrentOrganizationKeyContext';
 import ComponentNav from './nav/component/ComponentNav';
 import { getOrganization, getOrganizationNavigation } from "../../api/organizations";
 import { ComponentQualifier } from "~sonar-aligned/types/component";
@@ -65,6 +66,8 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
   const router = useRouter();
 
   const intl = useIntl();
+
+  const { setOrganizationKey } = useCurrentOrganizationKey();
 
   const [comparisonBranchesEnabled, setComparisonBranchesEnabled] = React.useState<boolean>();
   const [organization, setOrganization] = React.useState<Organization>();
@@ -188,6 +191,14 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
       fetchProjectBindingErrors(component);
     }
   }, [component, fetchStatus, fetchProjectBindingErrors]);
+
+  // Expose the component's organization to the global navigation, which lives above the
+  // component route tree and cannot read it from the URL on project pages.
+  React.useEffect(() => {
+    if (component?.organization) {
+      setOrganizationKey(component.organization);
+    }
+  }, [component?.organization, setOrganizationKey]);
 
   // Refetch status when tasks in progress/current task have changed
   // Or refetch component based on computeHasUpdatedTasks

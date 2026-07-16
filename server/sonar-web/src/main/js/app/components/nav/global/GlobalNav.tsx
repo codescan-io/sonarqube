@@ -20,6 +20,7 @@
 
 import EmbedDocsPopupHelper from '../../../../components/embed-docs-modal/EmbedDocsPopupHelper';
 import { CurrentUser, isLoggedIn } from '../../../../types/users';
+import { useCurrentOrganizationKey } from '../../current-organization/CurrentOrganizationKeyContext';
 import withCurrentUserContext from '../../current-user/withCurrentUserContext';
 import GlobalSearch from '../../global-search/GlobalSearch';
 import GlobalNavMenu from './GlobalNavMenu';
@@ -27,6 +28,7 @@ import { GlobalNavUser } from './GlobalNavUser';
 import MainSonarQubeBar from './MainSonarQubeBar';
 import { Organization } from "../../../../types/types";
 import GlobalNavPlus from "./GlobalNavPlus";
+import TrialStatusPill from './TrialStatusPill';
 import { isNonStandardUser } from '../../../utils/userAccess';
 
 export interface GlobalNavProps {
@@ -37,7 +39,10 @@ export interface GlobalNavProps {
 
 export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
-  
+  const { organizationKey } = useCurrentOrganizationKey();
+
+  const showTrialPill = isLoggedIn(currentUser) && !isNonStandardUser(currentUser);
+
   return (
     <MainSonarQubeBar>
       <div className="sw-flex" id="global-navigation">
@@ -49,6 +54,7 @@ export function GlobalNav(props: GlobalNavProps) {
         </div>
 
         <div className="sw-flex sw-items-center sw-ml-2">
+          {showTrialPill && <TrialStatusPill organizationKey={organizationKey} />}
           <EmbedDocsPopupHelper />
           {isLoggedIn(currentUser) && (!isNonStandardUser(currentUser))  && (
             <div style={{ height: 36, width: 36 }} className="sw-flex sw-items-center sw-justify-center sw-mr-2">
