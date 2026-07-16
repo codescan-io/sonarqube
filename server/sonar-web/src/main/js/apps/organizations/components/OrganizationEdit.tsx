@@ -27,6 +27,9 @@ import { toggleInviteUsersVisibility, updateOrganization } from '../../../api/or
 import { whenLoggedIn } from '../../../components/hoc/whenLoggedIn';
 import { translate } from '../../../helpers/l10n';
 import { Organization } from '../../../types/types';
+import { AppState } from '../../../types/appstate';
+import { useAppState } from '../../../app/components/app-state/withAppStateContext';
+import { WHITELIST_VALUE_CODESCAN } from '../../../helpers/constants';
 import OrganizationAvatarUrlInput from '../../create/components/OrganizationAvatarUrlInput';
 import OrganizationDescriptionInput from '../../create/components/OrganizationDescriptionInput';
 import OrganizationNameInput from '../../create/components/OrganizationNameInput';
@@ -39,6 +42,7 @@ import InstanceMessage from 'src/main/js/components/common/InstanceMessage';
 
 interface Props {
   organization: Organization;
+  appState: AppState;
 }
 
 interface State {
@@ -221,18 +225,20 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
             </form>
           </div>
         </Card>
-        <Card className='sw-mt-4 sw-mb-4'>
-          <div className="boxed-group boxed-group-inner">
-            <h2 className="boxed-title">{translate('organization.disable_invite_users')}</h2>
-            <p className="big-spacer-bottom width-50 sw-my-8">
-              <InstanceMessage message={translate('organization.disable_invite_users.description')} />
-            </p>
-            <Switch
-              value={!this.state.inviteUsersEnabled}
-              onChange={() => this.handleSwitchChange()}
-            />
-          </div>
-        </Card>
+        {organization.actions && organization.actions.admin && this.props.appState.whiteLabel === WHITELIST_VALUE_CODESCAN && (
+          <Card className='sw-mt-4 sw-mb-4'>
+            <div className="boxed-group boxed-group-inner">
+              <h2 className="boxed-title">{translate('organization.disable_invite_users')}</h2>
+              <p className="big-spacer-bottom width-50 sw-my-8">
+                <InstanceMessage message={translate('organization.disable_invite_users.description')} />
+              </p>
+              <Switch
+                value={!this.state.inviteUsersEnabled}
+                onChange={() => this.handleSwitchChange()}
+              />
+            </div>
+          </Card>
+        )}
         
 
         {showDelete && <OrganizationArchive />}
@@ -241,4 +247,9 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
   }
 }
 
-export default whenLoggedIn(withOrganizationContext(OrganizationEdit));
+function OrganizationEditWrapper(props: Props) {
+  const appState = useAppState();
+  return <OrganizationEdit {...props} appState={appState} />;
+}
+
+export default whenLoggedIn(withOrganizationContext(OrganizationEditWrapper));

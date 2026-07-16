@@ -135,6 +135,7 @@ class SearchActionIT {
   private static final String PARAM_SONARSOURCE_SECURITY = "sonarsourceSecurity";
   private static final String PARAM_CWE = "cwe";
   private static final String PARAM_FILES = "files";
+  private static final String PARAM_SEARCH_AFTER = "searchAfter";
 
   private static final Random RANDOM = new Random();
   private static final int ONE_MINUTE = 60_000;
@@ -174,6 +175,7 @@ class SearchActionIT {
     WebService.Param sansTop25Param = actionTester.getDef().param(PARAM_SANS_TOP_25);
     WebService.Param sonarsourceSecurityParam = actionTester.getDef().param(PARAM_SONARSOURCE_SECURITY);
     WebService.Param filesParam = actionTester.getDef().param(PARAM_FILES);
+    WebService.Param searchAfterParam = actionTester.getDef().param(PARAM_SEARCH_AFTER);
 
     assertThat(actionTester.getDef().isInternal()).isFalse();
     assertThat(onlyMineParam).isNotNull();
@@ -198,6 +200,8 @@ class SearchActionIT {
     assertThat(sonarsourceSecurityParam).isNotNull();
     assertThat(sonarsourceSecurityParam.isRequired()).isFalse();
     assertThat(filesParam).isNotNull();
+    assertThat(searchAfterParam).isNotNull();
+    assertThat(searchAfterParam.isRequired()).isFalse();
   }
 
   @Test
@@ -1381,6 +1385,40 @@ class SearchActionIT {
     int pageSize = 1 + new Random().nextInt(100);
 
     verifyPaging(project, file, rule, total, pageSize);
+  }
+
+  @Test
+  void search_after_returns_next_hotspot_and_bypasses_standard_10000_limit() {
+    ProjectData projectData = dbTester.components().insertPublicProject();
+    ComponentDto project = projectData.getMainBranchComponent();
+
+    userSessionRule.registerProjects(projectData.getProjectDto());
+    indexPermissions();
+    ComponentDto file = dbTester.components().insertComponent(newFileDto(project));
+    RuleDto rule = newRule(SECURITY_HOTSPOT);
+    List<IssueDto> hotspots = IntStream.rangeClosed(1, 3)
+      .mapToObj(i -> dbTester.issues().insertHotspot(rule, project, file, t -> t.setLine(i).setKee("hotspot_" + i)))
+      .collect(toList());
+    indexIssues();
+
+    SearchWsResponse firstPage = newRequest(project)
+      .setParam("ps", "1")
+      .executeProtobuf(SearchWsResponse.class);
+
+    assertThat(firstPage.getHotspotsList()).hasSize(1);
+    assertThat(firstPage.getHotspots(0).getKey()).isEqualTo(hotspots.get(0).getKey());
+    assertThat(firstPage.getHotspots(0).getSort().getSortList()).isNotEmpty();
+
+    SearchWsResponse secondPage = newRequest(project)
+      .setParam("p", "10001")
+      .setParam("ps", "1")
+      .setMultiParam(PARAM_SEARCH_AFTER, firstPage.getHotspots(0).getSort().getSortList())
+      .executeProtobuf(SearchWsResponse.class);
+
+    assertThat(secondPage.getHotspotsList()).hasSize(1);
+    assertThat(secondPage.getHotspots(0).getKey()).isEqualTo(hotspots.get(1).getKey());
+    assertThat(secondPage.getPaging().getPageIndex()).isEqualTo(10001);
+    assertThat(secondPage.getPaging().getPageSize()).isOne();
   }
 
   private void verifyPaging(ComponentDto project, ComponentDto file, RuleDto rule, int total, int pageSize) {

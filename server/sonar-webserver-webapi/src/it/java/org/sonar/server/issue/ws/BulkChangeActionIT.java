@@ -28,6 +28,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.impl.utils.TestSystem2;
 import org.sonar.api.issue.IssueStatus;
 import org.sonar.api.rules.RuleType;
@@ -46,6 +47,7 @@ import org.sonar.db.user.UserDto;
 import org.sonar.server.es.EsTester;
 import org.sonar.server.exceptions.UnauthorizedException;
 import org.sonar.server.issue.Action;
+import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.IssueFieldsSetter;
 import org.sonar.server.issue.TestIssueChangePostProcessor;
 import org.sonar.server.issue.TransitionService;
@@ -108,6 +110,8 @@ public class BulkChangeActionIT {
   private static long NOW = 2_000_000_000_000L;
 
   private System2 system2 = new TestSystem2().setNow(NOW);
+  private final MapSettings mapSettings = new MapSettings();
+  private final CodeIssueExceptionExpiryService codeIssueExceptionExpiryService = new CodeIssueExceptionExpiryService(system2, mapSettings.asConfig());
 
   @Rule
   public DbTester db = DbTester.create(system2);
@@ -817,10 +821,11 @@ public class BulkChangeActionIT {
   }
 
   private void addActions() {
+    actions.clear();
     actions.add(new org.sonar.server.issue.AssignAction(db.getDbClient(), issueFieldsSetter));
     actions.add(new org.sonar.server.issue.SetSeverityAction(issueFieldsSetter, userSession));
     actions.add(new org.sonar.server.issue.SetTypeAction(issueFieldsSetter, userSession));
-    actions.add(new org.sonar.server.issue.TransitionAction(new TransitionService(userSession, issueWorkflow)));
+    actions.add(new org.sonar.server.issue.TransitionAction(new TransitionService(userSession, issueWorkflow), codeIssueExceptionExpiryService, issueFieldsSetter));
     actions.add(new org.sonar.server.issue.AddTagsAction(issueFieldsSetter));
     actions.add(new org.sonar.server.issue.RemoveTagsAction(issueFieldsSetter));
     actions.add(new org.sonar.server.issue.CommentAction(issueFieldsSetter));

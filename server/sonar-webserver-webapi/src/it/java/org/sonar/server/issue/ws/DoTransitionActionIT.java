@@ -24,6 +24,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.impl.utils.TestSystem2;
 import org.sonar.api.rules.RuleType;
 import org.sonar.api.server.ws.Request;
@@ -40,6 +41,7 @@ import org.sonar.server.es.EsTester;
 import org.sonar.server.exceptions.ForbiddenException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.exceptions.UnauthorizedException;
+import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.IssueFieldsSetter;
 import org.sonar.server.issue.IssueFinder;
 import org.sonar.server.issue.TestIssueChangePostProcessor;
@@ -67,11 +69,15 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.sonar.api.issue.Issue.RESOLUTION_EXCEPTION;
 import static org.sonar.api.issue.Issue.STATUS_CONFIRMED;
 import static org.sonar.api.issue.Issue.STATUS_OPEN;
+import static org.sonar.api.issue.Issue.STATUS_REOPENED;
+import static org.sonar.api.issue.Issue.STATUS_RESOLVED;
 import static org.sonar.api.rule.Severity.MAJOR;
 import static org.sonar.api.rules.RuleType.CODE_SMELL;
 import static org.sonar.api.web.UserRole.CODEVIEWER;
+import static org.sonar.api.web.UserRole.ISSUE_ADMIN;
 import static org.sonar.api.web.UserRole.USER;
 import static org.sonar.db.component.ComponentTesting.newFileDto;
 import static org.sonar.db.issue.IssueTesting.newIssue;
@@ -81,6 +87,8 @@ public class DoTransitionActionIT {
   private static final long NOW = 999_776_888L;
 
   private System2 system2 = new TestSystem2().setNow(NOW);
+
+  private final MapSettings mapSettings = new MapSettings();
 
   @Rule
   public DbTester db = DbTester.create(system2);
@@ -105,14 +113,18 @@ public class DoTransitionActionIT {
     new WebIssueStorage(system2, dbClient, new DefaultRuleFinder(dbClient, mock(RuleDescriptionFormatter.class)), issueIndexer, new SequenceUuidFactory()),
     mock(NotificationManager.class), issueChangePostProcessor, issuesChangesSerializer);
   private ArgumentCaptor<SearchResponseData> preloadedSearchResponseDataCaptor = ArgumentCaptor.forClass(SearchResponseData.class);
+  private final IssueFieldsSetter issueFieldsSetter = mock(IssueFieldsSetter.class);
+  private final CodeIssueExceptionExpiryService codeIssueExceptionExpiryService = new CodeIssueExceptionExpiryService(system2, mapSettings.asConfig());
 
   private WsAction underTest = new DoTransitionAction(dbClient, userSession, issueChangeEventService,
-    new IssueFinder(dbClient, userSession), issueUpdater, transitionService, responseWriter, system2);
+    new IssueFinder(dbClient, userSession), issueUpdater, transitionService, responseWriter, system2, codeIssueExceptionExpiryService, issueFieldsSetter);
   private WsActionTester tester = new WsActionTester(underTest);
 
   @Before
   public void setUp() {
     workflow.start();
+    mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.enabled", "false");
+    mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.major", "0");
   }
 
   @Test
@@ -236,6 +248,67 @@ public class DoTransitionActionIT {
   public void fail_if_not_authenticated() {
     assertThatThrownBy(() -> call("ISSUE_KEY", "confirm"))
       .isInstanceOf(UnauthorizedException.class);
+  }
+
+  @Test
+  public void exception_transition_from_open_sets_auto_expiry_when_enabled() {
+    mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.enabled", "true");
+    mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.major", "7");
+
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto rule = db.rules().insertIssueRule();
+    IssueDto issue = db.issues().insertIssue(rule, project, file,
+      i -> i.setStatus(STATUS_OPEN).setResolution(null).setType(CODE_SMELL).setSeverity(MAJOR));
+    userSession.logIn(db.users().insertUser()).addProjectPermission(USER, project, file).addProjectPermission(ISSUE_ADMIN, project, file);
+
+    call(issue.getKey(), "exception");
+
+    IssueDto reloaded = db.getDbClient().issueDao().selectByKey(db.getSession(), issue.getKey()).get();
+    assertThat(reloaded.getResolution()).isEqualTo(RESOLUTION_EXCEPTION);
+    assertThat(reloaded.getStatus()).isEqualTo(STATUS_RESOLVED);
+    assertThat(reloaded.getIssueResolutionExpiresAt()).isNotNull();
+  }
+
+  @Test
+  public void reopen_transition_clears_issue_resolution_expires_at_after_exception() {
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto rule = db.rules().insertIssueRule();
+    long expiry = NOW + 86_400_000L;
+    IssueDto issue = db.issues().insertIssue(rule, project, file,
+      i -> i.setStatus(STATUS_RESOLVED).setResolution(RESOLUTION_EXCEPTION).setType(CODE_SMELL).setIssueResolutionExpiresAt(expiry));
+    userSession.logIn(db.users().insertUser()).addProjectPermission(USER, project, file);
+
+    call(issue.getKey(), "reopen");
+
+    IssueDto reloaded = db.getDbClient().issueDao().selectByKey(db.getSession(), issue.getKey()).get();
+    assertThat(reloaded.getStatus()).isEqualTo(STATUS_REOPENED);
+    assertThat(reloaded.getResolution()).isNull();
+    assertThat(reloaded.getIssueResolutionExpiresAt()).isNull();
+  }
+
+  @Test
+  public void exception_transition_from_open_respects_manual_expiry_date() {
+    mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.enabled", "true");
+    mapSettings.setProperty("codescan.cloud.issue.exception.autoAssignExpiry.major", "7");
+
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto rule = db.rules().insertIssueRule();
+    IssueDto issue = db.issues().insertIssue(rule, project, file,
+      i -> i.setStatus(STATUS_OPEN).setResolution(null).setType(CODE_SMELL).setSeverity(MAJOR));
+    userSession.logIn(db.users().insertUser()).addProjectPermission(USER, project, file).addProjectPermission(ISSUE_ADMIN, project, file);
+
+    TestRequest request = tester.newRequest();
+    request.setParam("issue", issue.getKey());
+    request.setParam("transition", "exception");
+    request.setParam("issueResolutionExpiryDate", "2030-06-15");
+    request.execute();
+
+    IssueDto reloaded = db.getDbClient().issueDao().selectByKey(db.getSession(), issue.getKey()).get();
+    assertThat(reloaded.getIssueResolutionExpiresAt())
+      .isEqualTo(java.time.LocalDate.parse("2030-06-15").atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli());
   }
 
   private TestResponse call(@Nullable String issueKey, @Nullable String transition) {

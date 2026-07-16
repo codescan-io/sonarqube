@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import java.util.stream.Collectors;
 import org.sonar.api.issue.IssueStatus;
@@ -55,6 +56,10 @@ import org.sonar.server.issue.TextRangeResponseFormatter;
 import org.sonar.server.issue.index.IssueScope;
 import org.sonar.server.issue.workflow.Transition;
 import org.sonar.server.ws.MessageFormattingUtils;
+import org.sonar.server.cvss.CvssMetadataService;
+import org.sonar.server.cvss.CvssMetricEntry;
+import org.sonar.server.cvss.CvssMetricGroup;
+import org.sonar.server.cvss.CvssScoreBreakdown;
 import org.sonarqube.ws.Common;
 import org.sonarqube.ws.Common.Comment;
 import org.sonarqube.ws.Common.User;
@@ -90,6 +95,7 @@ import static org.sonar.server.issue.ws.SearchAdditionalField.COMMENTS;
 import static org.sonar.server.issue.ws.SearchAdditionalField.RULE_DESCRIPTION_CONTEXT_KEY;
 import static org.sonar.server.issue.ws.SearchAdditionalField.TRANSITIONS;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ASSIGNEES;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE_CODEFIX_STATUSES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_RULES;
 
 public class SearchResponseFormat {
@@ -98,6 +104,7 @@ public class SearchResponseFormat {
   private final Languages languages;
   private final TextRangeResponseFormatter textRangeFormatter;
   private final UserResponseFormatter userFormatter;
+  private final CvssMetadataService cvssMetadataService;
   private static final String REMOVED_USER_PREFIX = "sq-removed-";
 
   public SearchResponseFormat(Durations durations, Languages languages, TextRangeResponseFormatter textRangeFormatter,
@@ -106,6 +113,7 @@ public class SearchResponseFormat {
     this.languages = languages;
     this.textRangeFormatter = textRangeFormatter;
     this.userFormatter = userFormatter;
+    this.cvssMetadataService = new CvssMetadataService();
   }
 
   SearchWsResponse formatSearch(Set<SearchAdditionalField> fields, SearchResponseData data, Paging paging, Facets facets, Map<String, Object[]> issueMap,
@@ -183,6 +191,7 @@ public class SearchResponseFormat {
   private void addMandatoryFieldsToIssueBuilder(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data, Map<String, Object[]> issueMap, boolean showAuthor) {
     issueBuilder.setKey(dto.getKey());
     issueBuilder.setType(Common.RuleType.forNumber(dto.getType()));
+    boolean aiCodeFixEnabled = data.getRulesByUuid().get(dto.getRuleUuid()).getAiCodeFixEnabled();
 
     CleanCodeAttribute cleanCodeAttribute = dto.getEffectiveCleanCodeAttribute();
     if (cleanCodeAttribute != null) {
@@ -200,20 +209,27 @@ public class SearchResponseFormat {
     ComponentDto component = data.getComponentByUuid(dto.getComponentUuid());
     issueBuilder.setOrganization(data.getOrganizationKey(component.getOrganizationUuid()));
     issueBuilder.setComponent(component.getKey());
+    issueBuilder.setAiCodeFixEnabled(aiCodeFixEnabled);
     setBranchOrPr(component, issueBuilder, data);
     ComponentDto branch = data.getComponentByUuid(dto.getProjectUuid());
     if (branch != null) {
       issueBuilder.setProject(branch.getKey());
     }
     issueBuilder.setRule(dto.getRuleKey().toString());
+    ofNullable(dto.getCodefixStatus()).ifPresent(issueBuilder::setCodefixStatus);
     if (dto.isExternal()) {
       issueBuilder.setExternalRuleEngine(engineNameFrom(dto.getRuleKey()));
     }
     if (dto.getType() != RuleType.SECURITY_HOTSPOT.getDbConstant()) {
       issueBuilder.setSeverity(Common.Severity.valueOf(dto.getSeverity()));
     }
-    ofNullable(data.getUserByUuid(dto.getAssigneeUuid())).ifPresent(assignee -> issueBuilder.setAssignee(assignee.getLogin()));
-
+    ofNullable(data.getUserByUuid(dto.getAssigneeUuid())).ifPresent(user -> {issueBuilder.setAssignee(user.getLogin());String assignedTo = user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getLogin();issueBuilder.setAssignedTo(assignedTo);
+    ofNullable(data.getAssignedDate(dto.getKey())).ifPresent(date -> issueBuilder.setAssignedDate(DateUtils.formatDateTime(new Date(date))));});
+    boolean hasActiveException = "EXCEPTION".equals(dto.getResolution());
+    if (hasActiveException) {
+          ofNullable(dto.getIssueResolutionExpiresAt()).ifPresent(issueBuilder::setIssueResolutionExpiresAt);
+          ofNullable(data.getExceptionReason(dto.getKey())).ifPresent(issueBuilder::setExceptionReason);
+    }
     ofNullable(emptyToNull(dto.getResolution())).ifPresent(issueBuilder::setResolution);
     issueBuilder.setStatus(dto.getStatus());
     setExportIssueStatus(issueBuilder, dto);
@@ -255,6 +271,8 @@ public class SearchResponseFormat {
 
     Optional.ofNullable(dto.getCveId()).ifPresent(issueBuilder::setCveId);
 
+    Optional.ofNullable(dto.getIssueResolutionExpiresAt()).ifPresent(issueBuilder::setIssueResolutionExpiresAt);
+
     if (issueMap != null && !issueMap.isEmpty()) {
       Sort.Builder wsSort = Sort.newBuilder();
       Object[] sortValue = issueMap.get(issueBuilder.getKey());
@@ -265,6 +283,61 @@ public class SearchResponseFormat {
       }
       issueBuilder.setSort(wsSort);
     }
+
+    setCvssBreakdown(issueBuilder, dto.getRuleKey().rule());
+  }
+
+  private void setCvssBreakdown(Issue.Builder issueBuilder, String ruleKey) {
+    CvssScoreBreakdown cvss = cvssMetadataService.forRule(ruleKey);
+    if (cvss == null) {
+      return;
+    }
+
+    Issues.CvssBreakdown.Builder breakdownBuilder = Issues.CvssBreakdown.newBuilder();
+
+    // Scores
+    Issues.CvssScoreSummary.Builder scores = Issues.CvssScoreSummary.newBuilder();
+    if (cvss.getBaseScore() > 0.0) {
+      scores.setBase(cvss.getBaseScore());
+    }
+    if (cvss.getTemporalScore() > 0.0) {
+      scores.setTemporal(cvss.getTemporalScore());
+    }
+    if (cvss.getEnvironmentalScore() > 0.0) {
+      scores.setEnvironmental(cvss.getEnvironmentalScore());
+    }
+    if (cvss.getCvssScore() > 0.0) {
+      scores.setOverall(cvss.getCvssScore());
+    }
+    breakdownBuilder.setScores(scores.build());
+
+    // Metrics
+    Map<CvssMetricGroup, List<CvssMetricEntry>> metrics = cvss.getMetrics();
+    if (metrics != null && !metrics.isEmpty()) {
+      addIssueCvssMetrics(breakdownBuilder::setBase, metrics.get(CvssMetricGroup.BASE));
+      addIssueCvssMetrics(breakdownBuilder::setTemporal, metrics.get(CvssMetricGroup.TEMPORAL));
+      addIssueCvssMetrics(breakdownBuilder::setEnvironmental, metrics.get(CvssMetricGroup.ENVIRONMENTAL));
+    }
+
+    issueBuilder.setCvssBreakdown(breakdownBuilder.build());
+  }
+
+  private static void addIssueCvssMetrics(Consumer<Issues.CvssMetrics> setter, List<CvssMetricEntry> metrics) {
+    if (metrics == null || metrics.isEmpty()) {
+      return;
+    }
+
+    Issues.CvssMetrics.Builder metricsBuilder = Issues.CvssMetrics.newBuilder();
+    for (CvssMetricEntry metric : metrics) {
+      Issues.CvssMetric.Builder metricBuilder = Issues.CvssMetric.newBuilder()
+              .setName(metric.getName().getDisplayName())
+              .setValue(metric.getValue());
+      if (metric.getJustification() != null) {
+        metricBuilder.setJustification(metric.getJustification());
+      }
+      metricsBuilder.addMetrics(metricBuilder.build());
+    }
+    setter.accept(metricsBuilder.build());
   }
 
   private static void setExportIssueStatus(Builder issueBuilder, IssueDto dto) {
@@ -374,6 +447,7 @@ public class SearchResponseFormat {
     if (lang != null) {
       builder.setLangName(lang.getName());
     }
+    builder.setAiCodeFixEnabled(rule.getAiCodeFixEnabled());
     return builder;
   }
 
@@ -454,12 +528,36 @@ public class SearchResponseFormat {
       .filter(f -> !f.equals(FACET_ASSIGNED_TO_ME))
       .filter(f -> !f.equals(PARAM_ASSIGNEES))
       .filter(f -> !f.equals(PARAM_RULES))
+      .filter(f -> !f.equals(PARAM_ISSUE_CODEFIX_STATUSES))
       .forEach(f -> computeStandardFacet(wsFacets, facets, f));
     computeAssigneesFacet(wsFacets, facets, data);
     computeAssignedToMeFacet(wsFacets, facets, data);
     computeRulesFacet(wsFacets, facets, data);
     computeProjectsFacet(wsFacets, facets, data);
+    computeCodefixStatusFacet(wsFacets, facets);
     wsSearch.setFacets(wsFacets.build());
+  }
+
+  /**
+   * Codefix status facet: ES stores backend values (AVAILABLE, PENDING, IN_PROGRESS, ...).
+   * Map to frontend values (AI_FIX_AVAILABLE, AI_FIX_IN_PROGRESS, ...). AI_FIX_IN_PROGRESS = PENDING + IN_PROGRESS.
+   */
+  private static void computeCodefixStatusFacet(Common.Facets.Builder wsFacets, Facets facets) {
+    LinkedHashMap<String, Long> facet = facets.get(PARAM_ISSUE_CODEFIX_STATUSES);
+    if (facet == null) {
+      return;
+    }
+    Common.Facet.Builder wsFacet = wsFacets.addFacetsBuilder();
+    wsFacet.setProperty(PARAM_ISSUE_CODEFIX_STATUSES);
+     Map<String, List<String>> frontendToBackends = SearchAction.CODEFIX_STATUS_FRONTEND_TO_BACKEND;
+    for (String frontendValue : SearchAction.CODEFIX_STATUS_FRONTEND_VALUES) {
+      List<String> backendValues = frontendToBackends.get(frontendValue);
+      long count = backendValues != null
+        ? backendValues.stream().mapToLong(b -> facet.getOrDefault(b, 0L)).sum()
+        : 0L;
+      wsFacet.addValuesBuilder().setVal(frontendValue).setCount(count).build();
+    }
+    wsFacet.build();
   }
 
   private static void computeStandardFacet(Common.Facets.Builder wsFacets, Facets facets, String facetKey) {

@@ -19,27 +19,34 @@
  */
 
 import * as React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Options, SingleValue } from 'react-select';
-import { LabelValueSelectOption, PopupZLevel, SearchSelectDropdown } from '~design-system';
+import { LabelValueSelectOption, PopupZLevel, SearchSelectDropdown, addGlobalErrorMessage } from '~design-system';
+import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getUsers } from '../../../api/users';
 import { CurrentUserContext } from '../../../app/components/current-user/CurrentUserContext';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { Issue } from '../../../types/types';
 import { RestUser, isLoggedIn, isUserActive } from '../../../types/users';
 import Avatar from '../../ui/Avatar';
+import { isAiAssistantEnabled } from 'src/main/js/api/settings';
+import { getCodefixQuota, queueCodeFix } from '../../../api/ai-codefix';
 
 interface Props {
   organization: string;
   canAssign: boolean;
   isOpen: boolean;
-  issue: Pick<Issue, 'assignee' | 'assigneeActive' | 'assigneeAvatar' | 'assigneeName' | 'projectOrganization' | 'organization'>;
-  onAssign: (login: string) => void;
+  issue: Pick<Issue, 'assignee' | 'assigneeActive' | 'assigneeAvatar' | 'assigneeName' | 'assigneeLogin' | 'aiCodeFixEnabled' | 'key' | 'projectKey' | 'projectOrganization' | 'organization' | 'codefixStatus'>;
+  onAssign: (login: string) => void | Promise<void>;
   togglePopup: (popup: string, show?: boolean) => void;
 }
 
 const minSearchLength = 2;
 
 const UNASSIGNED = { value: '', label: translate('unassigned') };
+
+const AI_ASSISTANT_VALUE = 'ai-code-assistant';
+const AI_ASSISTANT_LABEL = 'AI Code Assistant';
 
 const renderAvatar = (name?: string, avatar?: string) => (
   <Avatar hash={avatar} name={name} size="xs" className="sw-my-1" />
@@ -53,9 +60,10 @@ export default function IssueAssignee(props: Props) {
 
   const assinedUser = assigneeName ?? assignee;
   const { currentUser } = React.useContext(CurrentUserContext);
-
+  const queryClient = useQueryClient();
+  const [aiEnabled, setAiEnabled] = React.useState(false);
+  
   const allowCurrentUserSelection = isLoggedIn(currentUser) && currentUser?.login !== assigneeLogin;
-
   const defaultOptions = allowCurrentUserSelection
     ? [
         UNASSIGNED,
@@ -67,13 +75,52 @@ export default function IssueAssignee(props: Props) {
       ]
     : [UNASSIGNED];
 
-  const controlLabel = assinedUser ? (
-    <>
-      {renderAvatar(assinedUser, assigneeAvatar)} {assinedUser}
-    </>
-  ) : (
-    UNASSIGNED.label
-  );
+    React.useEffect(() => {
+      async function checkAiEnabled() {
+        const projectKey = props.issue.projectKey || "";
+        const enabled = await isAiAssistantEnabled(projectKey);
+        setAiEnabled(enabled);
+      }
+  
+      checkAiEnabled();
+    }, [props.issue.projectKey]);
+    const defaultOptionsWithAi = React.useMemo(() => [
+      ...defaultOptions,
+      ...(aiEnabled && props.issue.aiCodeFixEnabled
+        ? [
+            {
+              value: AI_ASSISTANT_VALUE,
+              label: AI_ASSISTANT_LABEL,
+              Icon: (
+                <img
+                  className="ai-assistant-icon"
+                  src="/images/ai-assistant.svg"
+                  alt={AI_ASSISTANT_LABEL}
+                />
+              ),
+            }
+          ]
+        : [])
+    ], [defaultOptions, aiEnabled]);
+
+    const isAiAssistant =
+      assignee === AI_ASSISTANT_VALUE ||
+      assinedUser === AI_ASSISTANT_LABEL ||
+      assinedUser === 'Ai Code Assistant';
+
+    const controlLabel = assinedUser ? (
+      <span className="sw-flex sw-items-center sw-gap-1">
+        {isAiAssistant ? (
+          <img className="ai-assistant-icon" src="/images/ai-assistant.svg" alt={AI_ASSISTANT_LABEL} />
+        ) : (
+          renderAvatar(assinedUser, assigneeAvatar)
+        )}
+        <span className="sw-truncate">{isAiAssistant ? AI_ASSISTANT_LABEL : assinedUser}</span>
+      </span>
+    ) : (
+      UNASSIGNED.label
+    );
+    
 
   const toggleAssign = (open?: boolean) => {
     props.togglePopup('assign', open);
@@ -123,7 +170,63 @@ export default function IssueAssignee(props: Props) {
     return <span className="sw-flex sw-items-center sw-gap-1">{translate('unassigned')}</span>;
   };
 
-  const handleAssign = (userOption: SingleValue<LabelValueSelectOption<string>>) => {
+  const handleAssign = async (userOption: SingleValue<LabelValueSelectOption<string>>) => {
+    if (userOption?.value === 'ai-code-assistant') {
+      const {
+        key: issueKey,
+        organization: organizationKey,
+        projectKey,
+        codefixStatus,
+      } = props.issue;
+
+      handleClose();
+
+      try {
+        const quota = await getCodefixQuota(organizationKey);
+        if (!quota.moduleLicensed) {
+          addGlobalErrorMessage(translate('aicodefix.module_not_licensed'));
+          return;
+        }
+        if (quota.remainingFixes < 1) {
+          addGlobalErrorMessage(translate('aicodefix.insufficient_credits'));
+          return;
+        }
+        if (quota.currentUsage + 1 > quota.dailyLimit) {
+          addGlobalErrorMessage(translateWithParameters('aicodefix.daily_limit_exceeded', quota.dailyLimit));
+          return;
+        }
+
+        const alreadyFixed =
+          codefixStatus === 'FIX_GENERATED' || codefixStatus === 'PULL_REQUEST_CREATED';
+
+        if (!alreadyFixed && issueKey) {
+          queryClient.setQueryData(['codefix-status', issueKey], { status: 'IN_PROGRESS' });
+        }
+
+        await Promise.resolve(props.onAssign(userOption.value));
+
+        if (!alreadyFixed) {
+          await queueCodeFix({
+            organizationKey,
+            projectKey: projectKey ?? '',
+            issueKeys: issueKey ? [issueKey] : [],
+          });
+          if (issueKey) {
+            setTimeout(() => {
+              queryClient.invalidateQueries({ queryKey: ['codefix-status', issueKey] });
+            }, 4000);
+          }
+        }
+      } catch (error) {
+        if (issueKey) {
+          queryClient.removeQueries({ queryKey: ['codefix-status', issueKey] });
+        }
+        throwGlobalError(error);
+      }
+
+      return;
+    }
+
     if (userOption) {
       props.onAssign(userOption.value);
     }
@@ -143,7 +246,7 @@ export default function IssueAssignee(props: Props) {
             ? translateWithParameters('issue.assign.assigned_to_x_click_to_change', assinedUser)
             : translate('issue.assign.unassigned_click_to_assign')
         }
-        defaultOptions={defaultOptions}
+        defaultOptions={defaultOptionsWithAi}
         onChange={handleAssign}
         loadOptions={handleSearchAssignees}
         menuIsOpen={props.isOpen}

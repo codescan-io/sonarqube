@@ -67,6 +67,7 @@ import org.sonar.core.platform.SpringComponentContainer;
 import org.sonar.server.ai.code.assurance.AiCodeAssuranceEntitlement;
 import org.sonar.server.ai.code.assurance.AiCodeAssuranceVerifier;
 import org.sonar.server.analysis.notification.AnalysisFailureNotificationHandler;
+import org.sonar.server.exceptionexpiry.notification.ExceptionExpiryNotificationHandler;
 import org.sonar.server.authentication.AuthenticationModule;
 import org.sonar.server.authentication.DefaultAdminCredentialsVerifierImpl;
 import org.sonar.server.authentication.DefaultAdminCredentialsVerifierNotificationHandler;
@@ -136,6 +137,7 @@ import org.sonar.server.feature.ws.FeatureWsModule;
 import org.sonar.server.hotspot.ws.HotspotsWsModule;
 import org.sonar.server.issue.AddTagsAction;
 import org.sonar.server.issue.AssignAction;
+import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.CommentAction;
 import org.sonar.server.issue.IssueChangePostProcessorImpl;
 import org.sonar.server.issue.PrioritizedRulesFeature;
@@ -391,6 +393,7 @@ public class PlatformLevel4 extends PlatformLevel {
       org.sonar.server.rule.ws.CreateAction.class,
       org.sonar.server.rule.ws.DeleteAction.class,
       org.sonar.server.rule.ws.ListAction.class,
+      org.sonar.server.rule.ws.UpdateAiCodeFixAction.class,
       TagsAction.class,
       RuleMapper.class,
       RulesResponseFormatter.class,
@@ -524,10 +527,15 @@ public class PlatformLevel4 extends PlatformLevel {
       SetTypeAction.class,
       SetSeverityAction.class,
       CommentAction.class,
+      CodeIssueExceptionExpiryService.class,
       TransitionAction.class,
       AddTagsAction.class,
       RemoveTagsAction.class,
       IssueChangePostProcessorImpl.class,
+
+      // Exception Expiry
+      ExceptionExpiryNotificationHandler.class,
+      ExceptionExpiryNotificationHandler.newMetadata(),
 
       // hotspots
       new HotspotsWsModule(),

@@ -25,8 +25,10 @@ import java.util.Date;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.issue.Issue;
 import org.sonar.api.rules.RuleType;
+import org.sonar.api.utils.System2;
 import org.sonar.core.issue.DefaultIssue;
 import org.sonar.core.util.Uuids;
 import org.sonar.db.component.BranchDto;
@@ -61,13 +63,17 @@ public class TransitionActionIT {
   private final IssueWorkflow workflow = new IssueWorkflow(new FunctionExecutor(updater), updater);
   private final TransitionService transitionService = new TransitionService(userSession, workflow);
   private final Action.Context context = mock(Action.Context.class);
-  private final DefaultIssue issue = newIssue().toDefaultIssue();
-  private final TransitionAction action = new TransitionAction(transitionService);
+  private final IssueDto issueDto = newIssue();
+  private final DefaultIssue issue = issueDto.toDefaultIssue();
+  private final MapSettings mapSettings = new MapSettings();
+  private final CodeIssueExceptionExpiryService codeIssueExceptionExpiryService = new CodeIssueExceptionExpiryService(System2.INSTANCE, mapSettings.asConfig());
+  private final TransitionAction action = new TransitionAction(transitionService, codeIssueExceptionExpiryService, updater);
 
   @Before
   public void setUp() {
     workflow.start();
     when(context.issue()).thenReturn(issue);
+    when(context.issueDto()).thenReturn(issueDto);
     when(context.issueChangeContext()).thenReturn(issueChangeContextByUserBuilder(new Date(), "user_uuid").build());
   }
 

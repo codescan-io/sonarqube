@@ -21,12 +21,14 @@
 import { HighlightRing } from '~design-system';
 import { IssueActions } from '../../../types/issues';
 import { Issue } from '../../../types/types';
+import AiCodefixBadge from './IssueCodefixStatusBadge';
 import IssueAssign from './IssueAssign';
 import IssueTags from './IssueTags';
 import IssueTransition from './IssueTransition';
 import SonarLintBadge from './SonarLintBadge';
 
 interface Props {
+  showAiAssistantBadge?: boolean;
   canSetTags?: boolean;
   currentPopup?: string;
   issue: Issue;
@@ -77,6 +79,9 @@ export default function IssueActionsBar(props: Readonly<Props>) {
             onAssign={onAssign}
           />
         </li>
+        {props.showAiAssistantBadge && (
+          <AiCodefixBadge issue={props.issue} />
+        )}
 
         {showTags && (
           <li>

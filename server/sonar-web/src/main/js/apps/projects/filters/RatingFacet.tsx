@@ -29,6 +29,7 @@ import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { useStandardExperienceModeQuery } from '../../../queries/mode';
 import { Facet } from '../types';
 import RangeFacetBase from './RangeFacetBase';
+import { SEVERITIES } from '../../../helpers/constants';
 
 interface Props {
   facet?: Facet;
@@ -116,7 +117,7 @@ function RatingOption({
       <span className="sw-ml-2">
         {intl.formatMessage({
           id: `projects.facets.rating_option.${propertyWithoutPrefix}${isStandardMode && isSecurityOrReliability ? '.legacy' : ''}.${option}`,
-        })}
+        }, {severity: translate(`severity.${SEVERITIES[5-option]}`)})}
       </span>
     </Spinner>
   );

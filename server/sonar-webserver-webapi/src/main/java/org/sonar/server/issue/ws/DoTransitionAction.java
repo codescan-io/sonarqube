@@ -36,6 +36,8 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.issue.IssueDto;
+import org.sonar.server.issue.CodeIssueExceptionExpiryService;
+import org.sonar.server.issue.IssueFieldsSetter;
 import org.sonar.server.issue.IssueFinder;
 import org.sonar.server.issue.TransitionService;
 import org.sonar.server.pushapi.issues.IssueChangeEventService;
@@ -51,6 +53,9 @@ import static org.sonar.db.component.BranchType.BRANCH;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.ACTION_DO_TRANSITION;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_TRANSITION;
+import static org.apache.commons.lang3.StringUtils.trimToNull;
+import static org.sonar.api.issue.Issue.RESOLUTION_EXCEPTION;
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class DoTransitionAction implements IssuesWsAction {
 
@@ -62,10 +67,14 @@ public class DoTransitionAction implements IssuesWsAction {
   private final TransitionService transitionService;
   private final OperationResponseWriter responseWriter;
   private final System2 system2;
+  private final CodeIssueExceptionExpiryService codeIssueExceptionExpiryService;
+  private final IssueFieldsSetter issueFieldsSetter;
+  private static final String PARAM_EXCEPTION_REASON = "exceptionReason";
+  private static final String PARAM_COMMENT = "comment";
 
   public DoTransitionAction(DbClient dbClient, UserSession userSession, IssueChangeEventService issueChangeEventService,
     IssueFinder issueFinder, IssueUpdater issueUpdater, TransitionService transitionService,
-    OperationResponseWriter responseWriter, System2 system2) {
+    OperationResponseWriter responseWriter, System2 system2, CodeIssueExceptionExpiryService codeIssueExceptionExpiryService, IssueFieldsSetter issueFieldsSetter) {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.issueChangeEventService = issueChangeEventService;
@@ -74,6 +83,8 @@ public class DoTransitionAction implements IssuesWsAction {
     this.transitionService = transitionService;
     this.responseWriter = responseWriter;
     this.system2 = system2;
+    this.codeIssueExceptionExpiryService = codeIssueExceptionExpiryService;
+    this.issueFieldsSetter = issueFieldsSetter;
   }
 
   @Override
@@ -87,6 +98,7 @@ public class DoTransitionAction implements IssuesWsAction {
       .setSince("3.6")
       .setChangelog(
         new Change("10.8", "The response fields 'severity' and 'type' are not deprecated anymore."),
+        new Change("10.8", "Optional parameter 'issueResolutionExpiryDate' (YYYY-MM-DD) is supported when transition is 'exception' for code issues."),
         new Change("10.8", format("Possible values '%s' and '%s' for response field 'severity' of 'impacts' have been added.", Severity.INFO.name(), Severity.BLOCKER.name())),
         new Change("10.4", "The transitions '%s' and '%s' are deprecated. Please use '%s' instead. The transition '%s' is deprecated too. "
           .formatted(DefaultTransitions.WONT_FIX, DefaultTransitions.CONFIRM, DefaultTransitions.ACCEPT, DefaultTransitions.UNCONFIRM)),
@@ -114,6 +126,18 @@ public class DoTransitionAction implements IssuesWsAction {
       .setDescription("Transition")
       .setRequired(true)
       .setPossibleValues(DefaultTransitions.ALL);
+    action.createParam(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE)
+      .setDescription("Optional expiry date (YYYY-MM-DD) when transition is 'exception' on a code issue (not security hotspot). "
+        + "The civil date is stored as UTC start-of-day, matching the security-hotspot exception expiry behavior. "
+        + "When omitted, instance auto-expiry by severity may apply if enabled. When sent empty, expiry is cleared and auto-expiry is skipped.")
+      .setExampleValue("2026-12-31")
+      .setRequired(false);
+    action.createParam(PARAM_EXCEPTION_REASON)
+      .setDescription("Reason for the Exception")
+      .setRequired(false);
+    action.createParam(PARAM_COMMENT)
+      .setDescription("Optional comment text")
+      .setRequired(false);
   }
 
   @Override
@@ -122,16 +146,35 @@ public class DoTransitionAction implements IssuesWsAction {
     String issue = request.mandatoryParam(PARAM_ISSUE);
     try (DbSession dbSession = dbClient.openSession(false)) {
       IssueDto issueDto = issueFinder.getByKey(dbSession, issue);
-      SearchResponseData preloadedSearchResponseData = doTransition(dbSession, issueDto, request.mandatoryParam(PARAM_TRANSITION));
+      SearchResponseData preloadedSearchResponseData = doTransition(dbSession, issueDto, request.mandatoryParam(PARAM_TRANSITION), request);
       responseWriter.write(issue, preloadedSearchResponseData, request, response, true);
     }
   }
 
-  private SearchResponseData doTransition(DbSession session, IssueDto issueDto, String transitionKey) {
+  private SearchResponseData doTransition(DbSession session, IssueDto issueDto, String transitionKey, Request request) {
     DefaultIssue defaultIssue = issueDto.toDefaultIssue();
     IssueChangeContext context = issueChangeContextByUserBuilder(new Date(system2.now()), userSession.getUuid()).withRefreshMeasures().build();
     transitionService.checkTransitionPermission(transitionKey, defaultIssue);
+    String previousStatus = issueDto.getStatus();
+    boolean hasExpiryDateParam = request.hasParam(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
+    String expiryDateParam = request.param(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
     if (transitionService.doTransition(defaultIssue, context, transitionKey)) {
+      codeIssueExceptionExpiryService.applyAfterTransition(defaultIssue, issueDto, transitionKey, previousStatus, hasExpiryDateParam, expiryDateParam);
+      String exceptionReason = trimToNull(request.param(PARAM_EXCEPTION_REASON));
+      String comment = trimToNull(request.param(PARAM_COMMENT));
+        if (DefaultTransitions.EXCEPTION.equals(transitionKey) && RESOLUTION_EXCEPTION.equals(defaultIssue.resolution())) { // ADDED
+            if (exceptionReason == null) {
+                exceptionReason = comment;
+                comment = null;
+        }
+        checkArgument(exceptionReason != null,
+                    "Parameter '%s' or '%s' must be specified when transition is '%s'",
+                    PARAM_EXCEPTION_REASON, PARAM_COMMENT, DefaultTransitions.EXCEPTION);
+            issueFieldsSetter.addExceptionReason(defaultIssue, exceptionReason, context);
+        }
+        if (comment != null) {
+            issueFieldsSetter.addComment(defaultIssue, comment, context);
+        }
       BranchDto branch = issueUpdater.getBranch(session, defaultIssue);
       SearchResponseData response = issueUpdater.saveIssueAndPreloadSearchResponseData(session, issueDto, defaultIssue, context, branch);
 

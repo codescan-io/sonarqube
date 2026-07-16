@@ -61,6 +61,7 @@ import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.issue.Action;
 import org.sonar.server.issue.ActionContext;
 import org.sonar.server.issue.AddTagsAction;
+import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.AssignAction;
 import org.sonar.server.issue.IssueChangePostProcessor;
 import org.sonar.server.issue.RemoveTagsAction;
@@ -115,6 +116,7 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ASSIGN;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_COMMENT;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_DO_TRANSITION;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUES;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_REMOVE_TAGS;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SEND_NOTIFICATIONS;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SET_SEVERITY;
@@ -124,6 +126,7 @@ public class BulkChangeAction implements IssuesWsAction {
 
   private static final Logger LOG = LoggerFactory.getLogger(BulkChangeAction.class);
   private static final List<String> ACTIONS_TO_DISTRIBUTE = List.of(SET_SEVERITY_KEY, SET_TYPE_KEY, DO_TRANSITION_KEY);
+  private static final String PARAM_EXCEPTION_REASON = "exceptionReason";
 
   private final System2 system2;
   private final UserSession userSession;
@@ -157,6 +160,8 @@ public class BulkChangeAction implements IssuesWsAction {
         "Requires authentication.")
       .setSince("3.7")
       .setChangelog(
+        new Change("10.8", "Optional parameter '" + PARAM_ISSUE_RESOLUTION_EXPIRY_DATE + "' is supported with '" + PARAM_DO_TRANSITION
+          + "' when transition is 'exception' for code issues (same semantics as api/issues/do_transition)."),
         new Change("10.8", format("The parameters '%s' and '%s' are not deprecated anymore.", PARAM_SET_SEVERITY, PARAM_SET_TYPE)),
         new Change("10.4", ("Transitions '%s' and '%s' are now deprecated. Use transition '%s' instead. " +
           "The transition '%s' is deprecated too.").formatted(WONT_FIX, CONFIRM, ACCEPT, UNCONFIRM)),
@@ -189,6 +194,10 @@ public class BulkChangeAction implements IssuesWsAction {
       .setDescription("Transition")
       .setExampleValue(REOPEN)
       .setPossibleValues(DefaultTransitions.ALL);
+    action.createParam(PARAM_ISSUE_RESOLUTION_EXPIRY_DATE)
+      .setDescription("Optional with " + PARAM_DO_TRANSITION + " when transition is 'exception' on code issues. Same as api/issues/do_transition.")
+      .setExampleValue("2026-12-31")
+      .setRequired(false);
     action.createParam(PARAM_ADD_TAGS)
       .setDescription("Add tags")
       .setExampleValue("security,java8");
@@ -203,6 +212,9 @@ public class BulkChangeAction implements IssuesWsAction {
       .setSince("4.0")
       .setBooleanPossibleValues()
       .setDefaultValue("false");
+    action.createParam(PARAM_EXCEPTION_REASON)
+      .setDescription("Reason for the Exception")
+      .setRequired(false);
   }
 
   @Override
@@ -263,7 +275,19 @@ public class BulkChangeAction implements IssuesWsAction {
             && request.getParam("assign").isPresent()
             ? request.getParam("assign").getValue()
             : null;
+    if ("ai-code-assistant".equals(assigneeLogin)) {
+      checkArgument(
+              bulkChangeData.issues.size() <= 10,
+              "You can assign a maximum of 10 issues to the AI Agent in a single bulk action.");
 
+      boolean hasAnyRuleWithoutAiCodeFix = bulkChangeData.issues.stream()
+              .map(issue -> bulkChangeData.rulesByKey.get(issue.ruleKey()))
+              .anyMatch(rule -> rule == null || !rule.getAiCodeFixEnabled());
+
+      checkArgument(
+              !hasAnyRuleWithoutAiCodeFix,
+              "AI Agent can only be assigned to issues where AI CodeFix is available.");
+    }
     UserDto assigneeUser = null;
     if (assigneeLogin != null && !assigneeLogin.isEmpty()) {
       assigneeUser = dbClient.userDao()
@@ -296,7 +320,7 @@ public class BulkChangeAction implements IssuesWsAction {
             );
 
     if (assigneeUser!=null && assigneeUser.getUuid() != null && !hasProjectPermission(dbSession, assigneeUser.getUuid(),
-            projectUuid)) {
+            projectUuid) && !assigneeUser.getLogin().equals("ai-code-assistant")) {
       throw new IllegalArgumentException(
               format("User '%s' does not have permission to be assigned issues in project '%s'",
                       assigneeUser.getLogin(),
@@ -549,10 +573,35 @@ public class BulkChangeAction implements IssuesWsAction {
       request.getParam(PARAM_ASSIGN, value -> properties.put(AssignAction.ASSIGN_KEY, new HashMap<>(of(ASSIGNEE_PARAMETER, value))));
       request.getParam(PARAM_SET_SEVERITY, value -> properties.put(SET_SEVERITY_KEY, new HashMap<>(of(SEVERITY_PARAMETER, value))));
       request.getParam(PARAM_SET_TYPE, value -> properties.put(SET_TYPE_KEY, new HashMap<>(of(TYPE_PARAMETER, value))));
-      request.getParam(PARAM_DO_TRANSITION, value -> properties.put(DO_TRANSITION_KEY, new HashMap<>(of(TRANSITION_PARAMETER, value))));
+      request.getParam(PARAM_DO_TRANSITION, transitionValue -> {
+        Map<String, Object> transitionProps = new HashMap<>();
+        transitionProps.put(TRANSITION_PARAMETER, transitionValue);
+        request.getParam(PARAM_ISSUE_RESOLUTION_EXPIRY_DATE,
+          v -> transitionProps.put(CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE, v));
+          if (DefaultTransitions.EXCEPTION.equals(transitionValue)) {
+              request.getParam(PARAM_EXCEPTION_REASON,
+                      v -> transitionProps.put(PARAM_EXCEPTION_REASON, v));
+              request.getParam(PARAM_COMMENT,
+                      v -> {
+                          if (!transitionProps.containsKey(PARAM_EXCEPTION_REASON)) {
+                              transitionProps.put(PARAM_EXCEPTION_REASON, v);
+                          }
+                      });
+          }
+        properties.put(DO_TRANSITION_KEY, transitionProps);
+      });
       request.getParam(PARAM_ADD_TAGS, value -> properties.put(AddTagsAction.KEY, new HashMap<>(of(TAGS_PARAMETER, value))));
       request.getParam(PARAM_REMOVE_TAGS, value -> properties.put(RemoveTagsAction.KEY, new HashMap<>(of(TAGS_PARAMETER, value))));
-      request.getParam(PARAM_COMMENT, value -> properties.put(COMMENT_KEY, new HashMap<>(of(COMMENT_PROPERTY, value))));
+        request.getParam(PARAM_COMMENT, value -> {
+            Map<String, Object> transitionProps = properties.get(DO_TRANSITION_KEY);
+
+            boolean isExceptionTransition = transitionProps != null
+                    && DefaultTransitions.EXCEPTION.equals(transitionProps.get(TRANSITION_PARAMETER));
+
+            if (!isExceptionTransition) {
+                properties.put(COMMENT_KEY, new HashMap<>(of(COMMENT_PROPERTY, value)));
+            }
+        });
       checkAtLeastOneActionIsDefined(properties.keySet());
       return properties;
     }

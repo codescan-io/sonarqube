@@ -188,7 +188,7 @@ public class CreateAction implements RulesWsAction {
       ruleWsSupport.checkQProfileAdminPermission(organization);
 
       try {
-        NewCustomRule newCustomRule = toNewCustomRule(request);
+        NewCustomRule newCustomRule = toNewCustomRule(request).setOrganizationKey(organization.getKey());
         RuleInformation customRule = ruleService.createCustomRule(newCustomRule, dbSession);
         writeResponse(dbSession, request, response, customRule.ruleDto(), customRule.params());
       } catch (ReactivationException e) {

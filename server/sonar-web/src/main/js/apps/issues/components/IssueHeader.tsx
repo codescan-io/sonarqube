@@ -92,13 +92,14 @@ export default class IssueHeader extends React.PureComponent<Props, State> {
   handleAssignement = (login: string) => {
     const { issue } = this.props;
     if (issue.assignee !== login) {
-      updateIssue(
+      return updateIssue(
         this.props.onIssueChange,
         // eslint-disable-next-line local-rules/no-api-imports
         setIssueAssignee({ issue: issue.key, assignee: login }),
       );
     }
     this.handleIssuePopupToggle('assign', false);
+    return Promise.resolve();
   };
 
   handleSeverityChange = (
