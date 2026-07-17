@@ -62,6 +62,7 @@ public final class IndexedIssueDto {
   private String codeVariants = null;
   private boolean prioritizedRule = false;
   private String codefixStatus = null;
+  private String issueAiMetadata = null;
 
   private Set<ImpactDto> impacts = new HashSet<>();
   private Set<ImpactDto> ruleDefaultImpacts = new HashSet<>();
@@ -361,6 +362,16 @@ public final class IndexedIssueDto {
 
   public IndexedIssueDto setCodefixStatus(@Nullable String codefixStatus) {
     this.codefixStatus = codefixStatus;
+    return this;
+  }
+
+  @CheckForNull
+  public String getIssueAiMetadata() {
+    return issueAiMetadata;
+  }
+
+  public IndexedIssueDto setIssueAiMetadata(@Nullable String issueAiMetadata) {
+    this.issueAiMetadata = issueAiMetadata;
     return this;
   }
 }

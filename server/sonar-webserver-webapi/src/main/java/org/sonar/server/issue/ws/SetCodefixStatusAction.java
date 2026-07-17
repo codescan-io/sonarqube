@@ -54,8 +54,7 @@ public class SetCodefixStatusAction implements IssuesWsAction {
   private final IssueUpdater issueUpdater;
   private final UserSession userSession;
   private final System2 system2;
-  private static final Set<String> VALID_STATUS = new HashSet<>(Set.of("PENDING", "IN_PROGRESS", "FIX_GENERATED", "PULL_REQUEST_CREATED", "FAILED"));
-
+    private static final Set<String> VALID_STATUS = new HashSet<>(Set.of("PENDING", "IN_PROGRESS", "FIX_GENERATED", "PULL_REQUEST_CREATED", "FAILED", "NOT_SUPPORTED"));
   public SetCodefixStatusAction(DbClient dbClient, IssueFinder issueFinder, IssueUpdater issueUpdater,
     UserSession userSession, System2 system2) {
     this.dbClient = dbClient;
@@ -78,7 +77,7 @@ public class SetCodefixStatusAction implements IssuesWsAction {
       .setDescription("Issue key")
       .setRequired(true);
     action.createParam(PARAM_ISSUE_CODEFIX_STATUSES)
-      .setDescription("Codefix status (e.g. PENDING, IN_PROGRESS, FIX_GENERATED, PULL_REQUEST_CREATED, FAILED, AVAILABLE)")
+            .setDescription("Codefix status (e.g. PENDING, IN_PROGRESS, FIX_GENERATED, PULL_REQUEST_CREATED, FAILED, NOT_SUPPORTED, AVAILABLE)")
       .setRequired(true);
   }
 

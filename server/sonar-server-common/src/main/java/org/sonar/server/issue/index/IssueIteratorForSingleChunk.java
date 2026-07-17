@@ -154,6 +154,7 @@ class IssueIteratorForSingleChunk implements IssueIterator {
     String codeVariants = indexedIssueDto.getCodeVariants();
     doc.setCodeVariants(STRING_LIST_SPLITTER.splitToList(codeVariants == null ? "" : codeVariants));
     doc.setPrioritizedRule(indexedIssueDto.isPrioritizedRule());
+    doc.setIssueAiMetadata(indexedIssueDto.getIssueAiMetadata());
     return doc;
 
   }
