@@ -20,7 +20,6 @@
 
 import EmbedDocsPopupHelper from '../../../../components/embed-docs-modal/EmbedDocsPopupHelper';
 import { CurrentUser, isLoggedIn } from '../../../../types/users';
-import { useCurrentOrganizationKey } from '../../current-organization/CurrentOrganizationKeyContext';
 import withCurrentUserContext from '../../current-user/withCurrentUserContext';
 import GlobalSearch from '../../global-search/GlobalSearch';
 import GlobalNavMenu from './GlobalNavMenu';
@@ -39,7 +38,6 @@ export interface GlobalNavProps {
 
 export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
-  const { organizationKey } = useCurrentOrganizationKey();
 
   const showTrialPill = isLoggedIn(currentUser) && !isNonStandardUser(currentUser);
 
@@ -54,7 +52,7 @@ export function GlobalNav(props: GlobalNavProps) {
         </div>
 
         <div className="sw-flex sw-items-center sw-ml-2">
-          {showTrialPill && <TrialStatusPill organizationKey={organizationKey} />}
+          {showTrialPill && <TrialStatusPill />}
           <EmbedDocsPopupHelper />
           {isLoggedIn(currentUser) && (!isNonStandardUser(currentUser))  && (
             <div style={{ height: 36, width: 36 }} className="sw-flex sw-items-center sw-justify-center sw-mr-2">

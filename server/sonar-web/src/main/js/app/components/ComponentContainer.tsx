@@ -47,7 +47,7 @@ import withAvailableFeatures, {
 import { ComponentContext } from './componentContext/ComponentContext';
 import { useCurrentOrganizationKey } from './current-organization/CurrentOrganizationKeyContext';
 import ComponentNav from './nav/component/ComponentNav';
-import { getOrganization, getOrganizationNavigation } from "../../api/organizations";
+import { getOrganization, getOrganizationBillingDetails, getOrganizationNavigation } from "../../api/organizations";
 import { ComponentQualifier } from "~sonar-aligned/types/component";
 import { Feature } from "../../types/features";
 import { getValues } from '../../api/settings';
@@ -67,7 +67,7 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
 
   const intl = useIntl();
 
-  const { setOrganizationKey } = useCurrentOrganizationKey();
+  const { setOrganizationKey, setBilling } = useCurrentOrganizationKey();
 
   const [comparisonBranchesEnabled, setComparisonBranchesEnabled] = React.useState<boolean>();
   const [organization, setOrganization] = React.useState<Organization>();
@@ -110,6 +110,11 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
         ]);
         setOrganization({ ...organization, ...navigation });
         setComparisonBranchesEnabled(settings[0]?.value === "true");
+
+        const billingOrganization = component.organization;
+        getOrganizationBillingDetails(billingOrganization)
+          .then((details) => setBilling({ organizationKey: billingOrganization, details }))
+          .catch(() => undefined);
       } catch (e) {
         if (e instanceof Response && e.status === HttpStatus.Forbidden) {
           handleRequiredAuthorization();

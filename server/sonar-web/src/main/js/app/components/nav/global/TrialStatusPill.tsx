@@ -19,8 +19,8 @@
  */
 
 import styled from '@emotion/styled';
+import { useCurrentOrganizationKey } from '../../current-organization/CurrentOrganizationKeyContext';
 import { translate, translateWithParameters } from '../../../../helpers/l10n';
-import { useOrganizationBillingDetailsQuery } from '../../../../queries/billing';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -87,21 +87,16 @@ export function getTrialPillState(
   };
 }
 
-interface Props {
-  organizationKey?: string;
-}
+export default function TrialStatusPill() {
+  const { organizationKey, billing } = useCurrentOrganizationKey();
 
-export default function TrialStatusPill({ organizationKey }: Readonly<Props>) {
-  const { data } = useOrganizationBillingDetailsQuery(
-    { organization: organizationKey ?? '' },
-    { enabled: Boolean(organizationKey) },
-  );
-
-  if (!data) {
+  // Only use billing that belongs to the org currently in view, so we never render
+  // one org's trial for another while navigation is in flight.
+  if (!organizationKey || billing?.organizationKey !== organizationKey) {
     return null;
   }
 
-  const state = getTrialPillState(data.trialEnds, data.subscriptionId, Date.now());
+  const state = getTrialPillState(billing.details.trialEnds, billing.details.subscriptionId, Date.now());
 
   if (!state) {
     return null;

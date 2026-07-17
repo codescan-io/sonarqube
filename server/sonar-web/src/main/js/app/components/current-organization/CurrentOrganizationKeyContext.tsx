@@ -21,32 +21,38 @@
 import { noop } from 'lodash';
 import * as React from 'react';
 import { useLocation } from 'react-router-dom';
+import { getOrganizationBillingDetails } from '../../../api/organizations';
+import { OrganizationBillingDetails } from '../../../types/types';
+
+/** Billing details tagged with the org they belong to, so consumers never show one org's data for another. */
+export interface CurrentOrganizationBilling {
+  details: OrganizationBillingDetails;
+  organizationKey: string;
+}
 
 interface CurrentOrganizationKeyContextShape {
+  billing?: CurrentOrganizationBilling;
   organizationKey?: string;
+  refreshBilling: () => void;
+  setBilling: (billing?: CurrentOrganizationBilling) => void;
   setOrganizationKey: (organizationKey?: string) => void;
 }
 
-/**
- * Exposes the organization the user is currently looking at to components (such as the
- * global navigation) that render *above* the organization/component route tree and so
- * cannot rely on route params or the component context.
- *
- * The key is resolved from the URL for organization-scoped pages
- * (`/organizations/:organizationKey/...`). For project/component pages
- * (`/dashboard?id=...`, `/project/issues?id=...`, ...) the URL carries the component key
- * rather than the organization, so `ComponentContainer` feeds the resolved organization
- * back through `setOrganizationKey`.
- */
+
 export const CurrentOrganizationKeyContext =
   React.createContext<CurrentOrganizationKeyContextShape>({
+    billing: undefined,
     organizationKey: undefined,
+    refreshBilling: noop,
+    setBilling: noop,
     setOrganizationKey: noop,
   });
 
 export function useCurrentOrganizationKey(): CurrentOrganizationKeyContextShape {
   return React.useContext(CurrentOrganizationKeyContext);
 }
+
+export const BILLING_UPDATED_EVENT = 'codescan:billing-updated';
 
 const ORGANIZATION_PATH_RE = /^\/organizations\/([^/]+)/;
 
@@ -55,6 +61,7 @@ export default function CurrentOrganizationKeyProvider({
 }: Readonly<{ children: React.ReactNode }>) {
   const { pathname, search } = useLocation();
   const [organizationKey, setOrganizationKey] = React.useState<string | undefined>();
+  const [billing, setBilling] = React.useState<CurrentOrganizationBilling | undefined>();
 
   React.useEffect(() => {
     const match = ORGANIZATION_PATH_RE.exec(pathname);
@@ -72,9 +79,27 @@ export default function CurrentOrganizationKeyProvider({
     }
   }, [pathname, search]);
 
+  const refreshBilling = React.useCallback(() => {
+    if (!organizationKey) {
+      return;
+    }
+
+    const key = organizationKey;
+    getOrganizationBillingDetails(key)
+      .then((details) => setBilling({ organizationKey: key, details }))
+      .catch(() => {
+        /* non-billable org or transient error → leave the banner as-is */
+      });
+  }, [organizationKey]);
+
+  React.useEffect(() => {
+    window.addEventListener(BILLING_UPDATED_EVENT, refreshBilling);
+    return () => window.removeEventListener(BILLING_UPDATED_EVENT, refreshBilling);
+  }, [refreshBilling]);
+
   const value = React.useMemo(
-    () => ({ organizationKey, setOrganizationKey }),
-    [organizationKey],
+    () => ({ billing, organizationKey, refreshBilling, setBilling, setOrganizationKey }),
+    [billing, organizationKey, refreshBilling],
   );
 
   return (

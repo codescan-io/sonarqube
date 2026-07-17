@@ -25,6 +25,7 @@ import { translate } from "../../../helpers/l10n";
 import { Organization } from "../../../types/types";
 import { NavBarTabLink, NavBarTabs } from "~design-system";
 import { getProfilesPath } from "../../quality-profiles/utils";
+import { useCurrentOrganizationKey } from '../../../app/components/current-organization/CurrentOrganizationKeyContext';
 
 interface OwnProps {
   location: { pathname: string };
@@ -33,6 +34,7 @@ interface OwnProps {
 
 export default function OrganizationNavigationMenu({ location, organization }: OwnProps) {
   const { actions = {} } = organization;
+  const { billing } = useCurrentOrganizationKey();
   return (
     <NavBarTabs>
       <NavBarTabLink to={`/organizations/${organization.kee}/projects`} text={translate('projects')} />
@@ -49,7 +51,11 @@ export default function OrganizationNavigationMenu({ location, organization }: O
       <NavBarTabLink to={`/organizations/${organization.kee}/members`} text={translate('organization.members.page')} />
       <OrganizationNavigationExtensions location={location} organization={organization}/>
       {actions.admin && (
-        <OrganizationNavigationAdministration location={location} organization={organization}/>
+        <OrganizationNavigationAdministration
+          billing={billing?.details}
+          location={location}
+          organization={organization}
+        />
       )}
     </NavBarTabs>
   );
