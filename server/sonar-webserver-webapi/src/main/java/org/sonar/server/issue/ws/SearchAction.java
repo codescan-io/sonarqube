@@ -477,7 +477,7 @@ public class SearchAction implements IssuesWsAction {
       .setExampleValue("%s,%S".formatted(IssueStatus.ACCEPTED, IssueStatus.FIXED))
       .setSince("10.4");
     action.createParam(PARAM_ISSUE_CODEFIX_STATUSES)
-      .setDescription("Comma-separated list of codefix statuses to filter by (backend values: AVAILABLE, PENDING, IN_PROGRESS, FIX_GENERATED, PULL_REQUEST_CREATED, FAILED).")
+            .setDescription("Comma-separated list of codefix statuses to filter by (backend values: AVAILABLE, PENDING, IN_PROGRESS, FIX_GENERATED, PULL_REQUEST_CREATED, FAILED, NOT_SUPPORTED).")
       .setExampleValue("PENDING,IN_PROGRESS")
       .setSince("10.7");
     action.createParam(PARAM_ORGANIZATION)
@@ -722,7 +722,7 @@ public class SearchAction implements IssuesWsAction {
     "IN_PROGRESS",
     "FIX_GENERATED",
     "PULL_REQUEST_CREATED",
-    "FAILED");
+    "FAILED","NOT_SUPPORTED" );
 
   /** Frontend values returned in API and used in filter params. Order defines facet display order. */
   public static final List<String> CODEFIX_STATUS_FRONTEND_VALUES = List.of(
@@ -730,7 +730,8 @@ public class SearchAction implements IssuesWsAction {
     "AI_FIX_IN_PROGRESS",
     "AI_FIX_GENERATED",
     "PULL_REQUEST_CREATED",
-    "AI_FIX_FAILED");
+    "AI_FIX_FAILED",
+          "AI_FIX_NOT_SUPPORTED");
 
   /** Map backend (storage) → frontend (API/UI). */
   public static final Map<String, String> CODEFIX_STATUS_BACKEND_TO_FRONTEND = Map.of(
@@ -739,7 +740,8 @@ public class SearchAction implements IssuesWsAction {
     "IN_PROGRESS", "AI_FIX_IN_PROGRESS",
     "FIX_GENERATED", "AI_FIX_GENERATED",
     "PULL_REQUEST_CREATED", "PULL_REQUEST_CREATED",
-    "FAILED", "AI_FIX_FAILED");
+    "FAILED", "AI_FIX_FAILED",
+          "NOT_SUPPORTED", "AI_FIX_NOT_SUPPORTED");
 
   /** Frontend → backend(s). Used when formatting facet response (backend counts → frontend buckets). */
   public static final Map<String, List<String>> CODEFIX_STATUS_FRONTEND_TO_BACKEND = Map.of(
@@ -747,7 +749,8 @@ public class SearchAction implements IssuesWsAction {
     "AI_FIX_IN_PROGRESS", List.of("PENDING", "IN_PROGRESS"),
     "AI_FIX_GENERATED", List.of("FIX_GENERATED"),
     "PULL_REQUEST_CREATED", List.of("PULL_REQUEST_CREATED"),
-    "AI_FIX_FAILED", List.of("FAILED"));
+    "AI_FIX_FAILED", List.of("FAILED"),
+          "AI_FIX_NOT_SUPPORTED", List.of("NOT_SUPPORTED")      );
 
   private static Collection<String> enumToStringCollection(Enum<?>... enumValues) {
     return Arrays.stream(enumValues).map(Enum::name).toList();

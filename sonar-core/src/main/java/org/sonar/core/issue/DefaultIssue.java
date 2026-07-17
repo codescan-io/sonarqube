@@ -134,6 +134,7 @@ public class DefaultIssue implements Issue, Trackable, org.sonar.api.ce.measure.
   private Long selectedAt = null;
 
   private boolean quickFixAvailable = false;
+  private String variableType = null;
   private boolean isNewCodeReferenceIssue = false;
 
   // true if the issue is no longer new in its branch
@@ -597,6 +598,15 @@ public class DefaultIssue implements Issue, Trackable, org.sonar.api.ce.measure.
 
   public DefaultIssue setQuickFixAvailable(boolean quickFixAvailable) {
     this.quickFixAvailable = quickFixAvailable;
+    return this;
+  }
+
+  public String getVariableType() {
+    return variableType;
+  }
+
+  public DefaultIssue setVariableType(@Nullable String variableType) {
+    this.variableType = variableType;
     return this;
   }
 
