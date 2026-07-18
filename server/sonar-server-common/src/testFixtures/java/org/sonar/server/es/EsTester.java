@@ -80,6 +80,7 @@ import org.elasticsearch.join.ParentJoinPlugin;
 import org.elasticsearch.node.InternalSettingsPreparer;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeValidationException;
+import org.elasticsearch.painless.PainlessPlugin;
 import org.elasticsearch.reindex.ReindexPlugin;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -511,6 +512,8 @@ public class EsTester extends ExternalResource implements AfterEachCallback {
       ImmutableList.of(
         CommonAnalysisPlugin.class,
         ReindexPlugin.class,
+        // painless enables inline scripts for update_by_query (ES data migrations); real ES bundles it
+        PainlessPlugin.class,
         // Netty4Plugin provides http and tcp transport
         Netty4Plugin.class,
         // install ParentJoin plugin required to create field of type "join"
