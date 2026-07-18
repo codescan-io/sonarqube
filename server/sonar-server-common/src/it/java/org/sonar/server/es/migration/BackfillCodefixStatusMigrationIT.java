@@ -24,7 +24,6 @@ import com.google.gson.JsonParser;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
@@ -71,7 +70,7 @@ public class BackfillCodefixStatusMigrationIT {
     Optional<String> taskId = underTest.execute(db.getSession());
     assertThat(taskId).isPresent();
     waitForTaskCompletion(taskId.get());
-    es.client().refresh(new RefreshRequest(IssueIndexDefinition.DESCRIPTOR.getName()));
+    es.client().refresh(IssueIndexDefinition.DESCRIPTOR);
 
     Map<String, String> statuses = codefixStatusByKey();
     assertThat(statuses.get("issue1")).isEqualTo("AVAILABLE");

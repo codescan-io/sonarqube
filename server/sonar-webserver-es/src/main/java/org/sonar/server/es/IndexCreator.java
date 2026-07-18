@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.indices.CreateIndexRequest;
@@ -176,17 +177,17 @@ public class IndexCreator implements Startable {
    * Additive mapping changes (new fields) merge into the live index without a rebuild, preserving existing
    * documents and leaving the {@code initialized} flags untouched (so {@code IndexerStartupTask} does NOT
    * re-run a full indexing). ES rejects incompatible merges (changed field types/analyzers) with an
-   * exception, which falls back to delete + recreate. Only the mapping is merged in place, never settings;
-   * a differing shard count can never be applied in place, so the in-place path is skipped in that case.
+   * exception, which falls back to delete + recreate.
+   *
+   * <p>Only the <b>mapping</b> is merged in place, never settings. Structural settings that cannot be changed
+   * on a live index (number of shards / replicas) are compared first, and any difference forces the
+   * delete + recreate path. Other setting changes (analyzers, refresh_interval, ...) are NOT applied by this
+   * path either, so such a change must be shipped alongside a manual index rebuild.
    */
   private boolean tryInPlaceMappingUpdate(BuiltIndex<?> index) {
     String indexName = index.getMainType().getIndex().getName();
     try {
-      String currentShards = client.getSettings(new GetSettingsRequest().indices(indexName))
-        .getSetting(indexName, "index.number_of_shards");
-      String targetShards = index.getSettings().get("index.number_of_shards");
-      if (targetShards != null && !targetShards.equals(currentShards)) {
-        LOGGER.info("Index [{}]: shard count changed ({} -> {}), in-place update not possible", indexName, currentShards, targetShards);
+      if (structuralSettingsDiffer(index, indexName)) {
         return false;
       }
       AcknowledgedResponse response = client.putMapping(new PutMappingRequest(indexName).source(index.getAttributes()));
@@ -200,6 +201,24 @@ public class IndexCreator implements Startable {
       LOGGER.info("Index [{}]: in-place mapping update not possible ({}), falling back to recreate", indexName, e.getMessage());
       return false;
     }
+  }
+
+  /**
+   * Whether a structural index setting that cannot be applied to a live index (number of shards or replicas)
+   * differs between the definition and the running index. Both are always-present integer settings, so the
+   * comparison is exact and never spuriously forces a rebuild on an unchanged redeploy.
+   */
+  private boolean structuralSettingsDiffer(BuiltIndex<?> index, String indexName) {
+    GetSettingsResponse liveSettings = client.getSettings(new GetSettingsRequest().indices(indexName));
+    for (String key : new String[] {"index.number_of_shards", "index.number_of_replicas"}) {
+      String target = index.getSettings().get(key);
+      String current = liveSettings.getSetting(indexName, key);
+      if (target != null && !target.equals(current)) {
+        LOGGER.info("Index [{}]: setting {} changed ({} -> {}), in-place update not possible", indexName, key, current, target);
+        return true;
+      }
+    }
+    return false;
   }
 
   private boolean hasDefinitionChange(BuiltIndex<?> index) {
