@@ -129,6 +129,7 @@ import org.sonar.server.es.RecoveryIndexer;
 import org.sonar.server.es.metadata.EsDbCompatibilityImpl;
 import org.sonar.server.es.metadata.MetadataIndexDefinition;
 import org.sonar.server.es.metadata.MetadataIndexImpl;
+import org.sonar.server.esmigration.ws.EsMigrationsWsModule;
 import org.sonar.server.extension.CoreExtensionBootstraper;
 import org.sonar.server.extension.CoreExtensionStopper;
 import org.sonar.server.favorite.FavoriteModule;
@@ -320,7 +321,6 @@ public class PlatformLevel4 extends PlatformLevel {
     addIfStartupLeader(
       IndexCreator.class,
       MetadataIndexDefinition.class,
-      MetadataIndexImpl.class,
       EsDbCompatibilityImpl.class);
 
     // addIfCluster(new NodeHealthModule());
@@ -337,6 +337,9 @@ public class PlatformLevel4 extends PlatformLevel {
       SettingsChangeNotifier.class,
       ServerWs.class,
       IndexDefinitions.class,
+      // MetadataIndexImpl must exist on every web node (not just the startup leader): EsDataMigrationEngine
+      // reads/writes migration state through it. It is a stateless wrapper over EsClient, safe everywhere.
+      MetadataIndexImpl.class,
       WebAnalyticsLoaderImpl.class,
       new MonitoringWsModule(),
       DefaultBranchNameResolver.class,
@@ -421,6 +424,7 @@ public class PlatformLevel4 extends PlatformLevel {
       ActionDeprecationLoggerInterceptor.class,
       WebServiceEngine.class,
       new WebServicesWsModule(),
+      new EsMigrationsWsModule(),
       SonarLintConnectionFilter.class,
       WebServiceFilter.class,
       WebServiceReroutingFilter.class,
