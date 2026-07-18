@@ -75,26 +75,57 @@ public class IndexCreatorTest {
   }
 
   @Test
-  public void recreate_index_on_definition_changes() {
-    // v1
+  public void update_mapping_in_place_when_definition_change_is_additive() {
+    // v1: key(keyword) + updatedAt(date)
     run(new FakeIndexDefinition());
 
-    IndexMainType fakeIndexType = main(Index.simple("fakes"), "fake");
+    IndexMainType fakeIndexType = FakeIndexDefinition.INDEX_TYPE;
     String id = "1";
-    es.client().index(new IndexRequest(fakeIndexType.getIndex().getName()).id(id).source(new FakeDoc().getFields())
+    // index a doc whose fields are all already mapped (no dynamic field), so the merged mapping stays deterministic
+    es.client().index(new IndexRequest(fakeIndexType.getIndex().getName()).id(id).source(Map.of("key", "foo"))
       .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE));
     assertThat(es.client().get(new GetRequest(fakeIndexType.getIndex().getName()).id(id)).isExists()).isTrue();
+    // simulate completed startup indexing
+    metadataIndex.setInitialized(fakeIndexType, true);
+    String hashV1 = metadataIndex.getHash(fakeIndexType.getIndex()).orElse(null);
 
-    // v2
+    // v2 = v1 + newField(integer): additive -> merged in place, docs preserved
+    logTester.clear();
     run(new FakeIndexDefinitionV2());
 
+    // doc survives (no delete + recreate)
+    assertThat(es.client().get(new GetRequest(fakeIndexType.getIndex().getName()).id(id)).isExists()).isTrue();
+    // mapping now contains the new field
     Map<String, MappingMetadata> mappings = mappings();
     MappingMetadata mapping = mappings.get("fakes");
     assertThat(countMappingFields(mapping)).isEqualTo(3);
     assertThat(field(mapping, "updatedAt")).containsEntry("type", "date");
     assertThat(field(mapping, "newField")).containsEntry("type", "integer");
+    // hash updated to v2
+    assertThat(metadataIndex.getHash(fakeIndexType.getIndex()).orElse(null)).isNotNull().isNotEqualTo(hashV1);
+    // initialized preserved -> IndexerStartupTask does NOT re-run a full indexing
+    assertThat(metadataIndex.getInitialized(fakeIndexType)).isTrue();
+    assertThat(logTester.logs(Level.INFO)).anyMatch(l -> l.contains("in place"));
+    assertThat(logTester.logs(Level.INFO)).noneMatch(l -> l.contains("Delete Elasticsearch index fakes"));
+  }
 
-    assertThat(es.client().get(new GetRequest(fakeIndexType.getIndex().getName()).id(id)).isExists()).isFalse();
+  @Test
+  public void recreate_index_when_definition_change_is_incompatible() {
+    // v1: updatedAt is a date
+    run(new FakeIndexDefinition());
+    putFakeDocument();
+    metadataIndex.setInitialized(FakeIndexDefinition.INDEX_TYPE, true);
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isOne();
+
+    // changing updatedAt to integer is an incompatible mapping change -> ES rejects the in-place merge
+    logTester.clear();
+    run(new FakeIndexDefinitionChangedType());
+
+    // index dropped and recreated empty
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isZero();
+    // initialized reset -> IndexerStartupTask re-runs full indexing
+    assertThat(metadataIndex.getInitialized(FakeIndexDefinition.INDEX_TYPE)).isFalse();
+    assertThat(logTester.logs(Level.INFO)).anyMatch(l -> l.contains("Delete Elasticsearch index fakes"));
   }
 
   @Test
@@ -254,6 +285,18 @@ public class IndexCreatorTest {
         .keywordFieldBuilder("key").build()
         .createDateTimeField("updatedAt")
         .createIntegerField("newField");
+    }
+  }
+
+  private static class FakeIndexDefinitionChangedType implements IndexDefinition {
+    @Override
+    public void define(IndexDefinitionContext context) {
+      Index index = Index.simple("fakes");
+      NewRegularIndex newIndex = context.create(index, SETTINGS_CONFIGURATION);
+      // updatedAt was a dateTime field in v1; redefining it as an integer is an incompatible change
+      newIndex.createTypeMapping(IndexType.main(index, "fake"))
+        .keywordFieldBuilder("key").build()
+        .createIntegerField("updatedAt");
     }
   }
 }

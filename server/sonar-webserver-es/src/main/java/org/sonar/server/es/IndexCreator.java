@@ -163,9 +163,43 @@ public class IndexCreator implements Startable {
   private void updateIndex(BuiltIndex<?> index) {
     String indexName = index.getMainType().getIndex().getName();
 
+    if (tryInPlaceMappingUpdate(index)) {
+      return;
+    }
+
     LOGGER.info("Delete Elasticsearch index {} (structure changed)", indexName);
     deleteIndex(indexName);
     createIndex(index, true);
+  }
+
+  /**
+   * Additive mapping changes (new fields) merge into the live index without a rebuild, preserving existing
+   * documents and leaving the {@code initialized} flags untouched (so {@code IndexerStartupTask} does NOT
+   * re-run a full indexing). ES rejects incompatible merges (changed field types/analyzers) with an
+   * exception, which falls back to delete + recreate. Only the mapping is merged in place, never settings;
+   * a differing shard count can never be applied in place, so the in-place path is skipped in that case.
+   */
+  private boolean tryInPlaceMappingUpdate(BuiltIndex<?> index) {
+    String indexName = index.getMainType().getIndex().getName();
+    try {
+      String currentShards = client.getSettings(new GetSettingsRequest().indices(indexName))
+        .getSetting(indexName, "index.number_of_shards");
+      String targetShards = index.getSettings().get("index.number_of_shards");
+      if (targetShards != null && !targetShards.equals(currentShards)) {
+        LOGGER.info("Index [{}]: shard count changed ({} -> {}), in-place update not possible", indexName, currentShards, targetShards);
+        return false;
+      }
+      AcknowledgedResponse response = client.putMapping(new PutMappingRequest(indexName).source(index.getAttributes()));
+      if (!response.isAcknowledged()) {
+        return false;
+      }
+      metadataIndex.setHash(index.getMainType().getIndex(), IndexDefinitionHash.of(index));
+      LOGGER.info("Updated mapping of index [{}] in place (structure change was additive)", indexName);
+      return true;
+    } catch (Exception e) {
+      LOGGER.info("Index [{}]: in-place mapping update not possible ({}), falling back to recreate", indexName, e.getMessage());
+      return false;
+    }
   }
 
   private boolean hasDefinitionChange(BuiltIndex<?> index) {
