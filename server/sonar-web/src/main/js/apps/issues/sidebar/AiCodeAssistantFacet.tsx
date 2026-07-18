@@ -39,7 +39,6 @@ export const AI_CODEFIX_STATUSES: IssueCodefixStatus[] = [
   IssueCodefixStatus.AiFixGenerated,
   IssueCodefixStatus.PullRequestCreated,
   IssueCodefixStatus.AiFixFailed,
-  IssueCodefixStatus.AiFixNotSupported
 ];
 
 const STATUS_LABEL_IDS: Record<IssueCodefixStatus, string> = {
@@ -48,7 +47,6 @@ const STATUS_LABEL_IDS: Record<IssueCodefixStatus, string> = {
   [IssueCodefixStatus.AiFixFailed]: 'issues.facet.ai_code_assistant.ai_fix_failed',
   [IssueCodefixStatus.AiFixInProgress]: 'issues.facet.ai_code_assistant.ai_fix_in_progress',
   [IssueCodefixStatus.PullRequestCreated]: 'issues.facet.ai_code_assistant.pull_request_created',
-  [IssueCodefixStatus.AiFixNotSupported]: 'issues.facet.ai_code_assistant.ai_fix_not_supported',
 };
 
 const STATUS_ICON_KINDS: Record<IssueCodefixStatus, AiCodefixIconKind> = {
@@ -75,7 +73,6 @@ export function AiCodeAssistantFacet(props: Readonly<Props>) {
       [IssueCodefixStatus.AiFixFailed]: 'AI Fix Failed',
       [IssueCodefixStatus.AiFixInProgress]: 'AI Fix in Progress',
       [IssueCodefixStatus.PullRequestCreated]: 'Pull Request Created',
-      [IssueCodefixStatus.AiFixNotSupported]: 'AI Fix is not supported',
     };
     const defaultMessage = defaultMessages[status];
     const msg = intl.formatMessage({ id, defaultMessage });
