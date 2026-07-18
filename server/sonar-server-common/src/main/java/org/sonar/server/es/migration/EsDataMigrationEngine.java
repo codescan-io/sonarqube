@@ -124,21 +124,36 @@ public class EsDataMigrationEngine {
 
   /** Polls {@code GET /_tasks/{id}}; transitions RUNNING -> COMPLETED/FAILED and persists, or enriches progress. */
   private EsDataMigrationState refreshFromEsTask(EsDataMigrationState state) {
-    JsonObject task = JsonParser.parseString(esClient.getTaskAsJson(state.getTaskId())).getAsJsonObject();
-    if (!task.get("completed").getAsBoolean()) {
-      // still running: surface live progress without transitioning
-      JsonObject progress = task.getAsJsonObject("task").getAsJsonObject("status");
-      state.setDetail("in progress: updated=" + progress.get("updated") + " of total=" + progress.get("total"));
+    try {
+      JsonObject task = JsonParser.parseString(esClient.getTaskAsJson(state.getTaskId())).getAsJsonObject();
+      if (!task.get("completed").getAsBoolean()) {
+        // still running: surface live progress without transitioning
+        JsonObject progress = task.getAsJsonObject("task").getAsJsonObject("status");
+        state.setDetail("in progress: updated=" + progress.get("updated") + " of total=" + progress.get("total"));
+        return state;
+      }
+      Status status;
+      String detail;
+      if (task.has("error")) {
+        // a task that finished by throwing carries a top-level "error" and no "response"
+        status = Status.FAILED;
+        detail = "task error: " + task.get("error");
+      } else {
+        JsonObject response = task.getAsJsonObject("response");
+        boolean hasFailures = response.has("failures") && !response.getAsJsonArray("failures").isEmpty();
+        status = hasFailures ? Status.FAILED : Status.COMPLETED;
+        detail = "updated=" + response.get("updated") + ", versionConflicts=" + response.get("version_conflicts")
+          + (hasFailures ? (", failures=" + response.getAsJsonArray("failures")) : "");
+      }
+      EsDataMigrationState done = newState(state.getVersion(), status, state.getTaskId(), detail);
+      persist(done);
+      return done;
+    } catch (Exception e) {
+      // never let a transient ES/parse error escape to the WS action or wedge the state at RUNNING
+      LOGGER.warn("Could not refresh ES data migration {} from task {}", state.getVersion(), state.getTaskId(), e);
+      state.setDetail("could not read task status: " + e.getMessage());
       return state;
     }
-    JsonObject response = task.getAsJsonObject("response");
-    boolean hasFailures = response.has("failures") && !response.getAsJsonArray("failures").isEmpty();
-    Status status = hasFailures ? Status.FAILED : Status.COMPLETED;
-    String detail = "updated=" + response.get("updated") + ", versionConflicts=" + response.get("version_conflicts")
-      + (hasFailures ? (", failures=" + response.getAsJsonArray("failures")) : "");
-    EsDataMigrationState done = newState(state.getVersion(), status, state.getTaskId(), detail);
-    persist(done);
-    return done;
   }
 
   private EsDataMigration getMigration(long version) {
