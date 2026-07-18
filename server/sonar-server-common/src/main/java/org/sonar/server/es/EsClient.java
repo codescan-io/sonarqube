@@ -83,8 +83,10 @@ import org.elasticsearch.client.indices.GetIndexResponse;
 import org.elasticsearch.client.indices.GetMappingsRequest;
 import org.elasticsearch.client.indices.GetMappingsResponse;
 import org.elasticsearch.client.indices.PutMappingRequest;
+import org.elasticsearch.client.tasks.TaskSubmissionResponse;
 import org.elasticsearch.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.common.Priority;
+import org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import org.jetbrains.annotations.NotNull;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -249,6 +251,26 @@ public class EsClient implements Closeable {
 
   public GetMappingsResponse getMapping(GetMappingsRequest getMappingsRequest) {
     return execute(() -> restHighLevelClient.indices().getMapping(getMappingsRequest, RequestOptions.DEFAULT));
+  }
+
+  /**
+   * Submits an update_by_query as an asynchronous ES task (wait_for_completion=false) and returns the
+   * task submission response. Use {@link #getTaskAsJson(String)} to poll the task for completion/progress.
+   */
+  public TaskSubmissionResponse submitUpdateByQueryTask(UpdateByQueryRequest request) {
+    return execute(() -> restHighLevelClient.submitUpdateByQueryTask(request, RequestOptions.DEFAULT));
+  }
+
+  /**
+   * Raw JSON of {@code GET /_tasks/{taskId}}. Used to poll completion/progress of long-running
+   * update_by_query tasks submitted with wait_for_completion=false (see {@link #submitUpdateByQueryTask}).
+   */
+  public String getTaskAsJson(String taskId) {
+    return execute(() -> {
+      Request request = new Request("GET", "/_tasks/" + taskId);
+      Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
+      return EntityUtils.toString(response.getEntity());
+    });
   }
 
   @Override
