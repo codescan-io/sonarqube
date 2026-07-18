@@ -121,6 +121,7 @@ public class EsDbCompatibilityImplTest {
   private static class TestMetadataIndex implements MetadataIndex {
     private final Map<Index, String> hashes = new HashMap<>();
     private final Map<IndexType, Boolean> initializeds = new HashMap<>();
+    private final Map<Long, String> esDataMigrationStates = new HashMap<>();
     @CheckForNull
     private String dbVendor = null;
 
@@ -152,6 +153,16 @@ public class EsDbCompatibilityImplTest {
     @Override
     public void setDbMetadata(String vendor) {
       this.dbVendor = vendor;
+    }
+
+    @Override
+    public Optional<String> getEsDataMigrationState(long version) {
+      return Optional.ofNullable(esDataMigrationStates.get(version));
+    }
+
+    @Override
+    public void setEsDataMigrationState(long version, String stateJson) {
+      esDataMigrationStates.put(version, stateJson);
     }
   }
 }
