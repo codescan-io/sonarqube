@@ -1,0 +1,81 @@
+/*
+ * SonarQube
+ * Copyright (C) 2009-2024 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+.trial-status-pill {
+  display: flex;
+  height: 30px;
+  padding: 4px 10px;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid;
+  border-radius: var(--radius-pill, 10000px);
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+/*
+ * Icons are rendered from .svg files via CSS masks so they inherit the pill's per-variant
+ * color (background-color: currentColor), the same way the inline SVGs did with
+ * fill="currentColor". The .svg supplies the shape; the color comes from the variant.
+ */
+.trial-status-pill__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.trial-status-pill__icon--clock {
+  -webkit-mask-image: url('./trial-clock.svg');
+  mask-image: url('./trial-clock.svg');
+}
+
+.trial-status-pill__icon--warning {
+  -webkit-mask-image: url('./trial-warning.svg');
+  mask-image: url('./trial-warning.svg');
+}
+
+.trial-status-pill--warning {
+  border-color: var(--color-status-warning-border, #fadc79);
+  background: var(--color-status-warning-bg, #fcf5e4);
+  color: var(--color-status-warning-text, #8c5e1e);
+}
+
+.trial-status-pill--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: var(--color-status-error, #d92d20);
+}
+
+.trial-status-pill--neutral {
+  border-color: var(--color-text-tertiary, #a6adc2);
+  background: #f3f4f6;
+  color: var(--color-text-chart-label, #5f666c);
+}
