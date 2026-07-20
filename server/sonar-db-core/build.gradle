@@ -17,6 +17,7 @@ dependencies {
   api 'org.slf4j:slf4j-api'
   api 'org.sonarsource.api.plugin:sonar-plugin-api'
   api 'org.postgresql:postgresql'
+  api 'software.amazon.jdbc:aws-advanced-jdbc-wrapper'
   api project(':server:sonar-process')
   api project(':sonar-plugin-api-impl')
 
