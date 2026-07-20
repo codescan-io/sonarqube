@@ -252,6 +252,7 @@ public class IssuesService extends BaseService {
         .setParam("severities", request.getSeverities() == null ? null : request.getSeverities().stream().collect(Collectors.joining(",")))
         .setParam("inNewCodePeriod", request.isInNewCodePeriod())
         .setParam("statuses", request.getStatuses() == null ? null : request.getStatuses().stream().collect(Collectors.joining(",")))
+        .setParam("issueStatuses", request.getIssueStatuses() == null ? null : request.getIssueStatuses().stream().collect(Collectors.joining(",")))
         .setParam("tags", request.getTags() == null ? null : request.getTags().stream().collect(Collectors.joining(",")))
         .setParam("types", request.getTypes() == null ? null : request.getTypes().stream().collect(Collectors.joining(","))),
       SearchWsResponse.parser());
