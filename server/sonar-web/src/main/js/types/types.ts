@@ -923,8 +923,6 @@ export interface OrganizationBase {
 
 export interface OrganizationBillingDetails {
   status?: string;
-  // Omitted by the backend (@JsonInclude(NON_NULL)) when the DB column is null, which is
-  // how the backend itself defines a trial (BillingService#isTrialBilling).
   subscriptionId?: string | null;
   trialEnds?: number;
 }
