@@ -79,7 +79,7 @@ export default function OrganizationNavigationAdministration({ billing, location
             .filter((e) => organization.inviteUsersEnabled || e.key !== 'developer/invite_users')
             .filter(
               (e) =>
-                e.key !== BILLING_PAGE_KEY || hasPaidSubscription || canSeeAdministration
+                e.key !== BILLING_PAGE_KEY || (canSeeAdministration && !hasPaidSubscription),
             )
             .map((extension) => (
               <DropdownMenu.ItemLink
