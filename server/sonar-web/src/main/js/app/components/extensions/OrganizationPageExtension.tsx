@@ -73,7 +73,7 @@ function OrganizationPageExtension(props: OrganizationPageExtensionProps) {
     const hasPaidSubscription =
       subscriptionId !== undefined && subscriptionId !== null && subscriptionId !== '';
 
-    if (!canSeeAdministration || hasPaidSubscription) {
+    if (!(canSeeAdministration || hasPaidSubscription)) {
       return <Navigate to={`/organizations/${organization.kee}/projects`} replace={true} />;
     }
   }

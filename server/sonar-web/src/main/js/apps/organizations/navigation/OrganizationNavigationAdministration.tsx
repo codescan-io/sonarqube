@@ -56,7 +56,7 @@ export default function OrganizationNavigationAdministration({ billing, location
     ((appState.canAdmin && (currentUser as LoggedInUser).groups.includes('sonar-administrators')) ||
       (!appState.canAdmin && appState.canCustomerAdmin));
 
-  // Hide the billing page once the organization is on a paid subscription.
+  // Whether the organization is on a paid (non-trial) subscription.
   const subscriptionId = billing?.subscriptionId;
   const hasPaidSubscription =
     subscriptionId !== undefined && subscriptionId !== null && subscriptionId !== '';
