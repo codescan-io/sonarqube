@@ -38,12 +38,14 @@ import org.sonar.server.issue.index.IssueIndexDefinition;
 
 /**
  * Backfills {@code issues.codefixStatus = AVAILABLE} for issues whose rule has {@code ai_code_fix_enabled=true}
- * (excluding the 3 variable-naming rules) and that do not already carry the field. Runs as an ES-side
- * {@code update_by_query} so it does not touch the DB scroll/reindex path. Idempotent: the {@code must_not exists}
- * clause means a re-run only touches docs still missing the field.
+ * and that do not already carry the field. Runs as an ES-side {@code update_by_query} so it does not touch the
+ * DB scroll/reindex path. Idempotent: the {@code must_not exists} clause means a re-run only touches docs still
+ * missing the field.
  *
- * <p>The backfill snapshots {@code ai_code_fix_enabled} at run time; rules toggled later do not retroactively
- * update old docs (same limitation as the existing per-issue indexing).
+ * <p>Unlike {@code IssueMapper#scrollIssuesForIndexation}, this deliberately does NOT narrow variable-naming
+ * rules by {@code variableType}; it over-marks every enabled-rule issue as AVAILABLE and lets the service/UI
+ * layer filter on read (see {@code SearchResponseFormat} suppressAiFix). The backfill snapshots
+ * {@code ai_code_fix_enabled} at run time; rules toggled later do not retroactively update old docs.
  */
 @ServerSide
 public class BackfillCodefixStatusMigration implements EsDataMigration {
@@ -96,9 +98,9 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
   }
 
   /**
-   * Idempotent selection: only docs of the given rules that are still missing the field. The terms clause on
-   * ruleUuid also excludes authorization parent docs (they have no ruleUuid). Mirrors the COALESCE/CASE in
-   * IssueMapper#scrollIssuesForIndexation for pre-existing issues (whose issue_ai_metadata is always null).
+   * Idempotent selection: only docs of the given (all enabled) rules that are still missing the field. The
+   * terms clause on ruleUuid also excludes authorization parent docs (they have no ruleUuid). Naming-rule /
+   * variableType narrowing is deferred to the service/UI layer, so this marks every enabled-rule issue AVAILABLE.
    */
   private static BoolQueryBuilder buildQuery(List<String> ruleUuids) {
     return QueryBuilders.boolQuery()

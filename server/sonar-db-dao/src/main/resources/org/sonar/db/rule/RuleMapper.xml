@@ -781,16 +781,13 @@
   </select>
 
   <!-- Rule uuids eligible for the codefixStatus ES backfill (BackfillCodefixStatusMigration #2026071801).
-       Must stay consistent with IssueMapper#scrollIssuesForIndexation and its aiFixVariableNamingRuleKeys
-       fragment (org.sonar.db.issue.IssueMapper.xml:139-141): the variable-naming rules require per-issue
-       issue_ai_metadata, which pre-existing issues never have, so they are excluded here. The 3 literals are
-       inlined because that <sql> fragment lives in the IssueMapper namespace and cannot be included across
-       mapper namespaces. -->
+       Marks EVERY ai_code_fix_enabled rule as eligible. The naming-rule / variableType!=INSTANCE narrowing
+       that IssueMapper#scrollIssuesForIndexation applies is intentionally NOT done here: the backfill
+       over-marks AVAILABLE and the service/UI layer filters on read (see SearchResponseFormat suppressAiFix). -->
   <select id="selectAiCodeFixBackfillRuleUuids" resultType="string">
     select r.uuid
     from rules r
     where r.ai_code_fix_enabled = ${_true}
-      and r.plugin_rule_key not in ('ShortVariable', 'LongVariable', 'VariableNamingConventions')
   </select>
 
   <select id="selectRules">

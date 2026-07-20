@@ -56,7 +56,7 @@ public class BackfillCodefixStatusMigrationIT {
   public void execute_sets_available_only_for_enabled_rule_issues_missing_the_field() throws Exception {
     RuleDto enabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true));
     RuleDto disabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(false));
-    // enabled but a variable-naming rule -> excluded by the DAO select (covers the SQL exclusion here too)
+    // enabled variable-naming rule -> now ALSO marked AVAILABLE (naming/variableType narrowing deferred to service/UI)
     RuleDto namingRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setRuleKey(RuleKey.of("pmd", "ShortVariable")));
 
     es.putDocuments(TYPE_ISSUE,
@@ -65,7 +65,7 @@ public class BackfillCodefixStatusMigrationIT {
       newDoc().setKey("issue3").setProjectUuid(PROJECT_UUID).setRuleUuid(enabledRule.getUuid()).setCodefixStatus("FIX_GENERATED"),
       newDoc().setKey("issue4").setProjectUuid(PROJECT_UUID).setRuleUuid(namingRule.getUuid()));
 
-    assertThat(underTest.estimate(db.getSession())).isEqualTo(1);
+    assertThat(underTest.estimate(db.getSession())).isEqualTo(2);
 
     Optional<String> taskId = underTest.execute(db.getSession());
     assertThat(taskId).isPresent();
@@ -76,7 +76,7 @@ public class BackfillCodefixStatusMigrationIT {
     assertThat(statuses.get("issue1")).isEqualTo("AVAILABLE");
     assertThat(statuses.get("issue2")).isNull();
     assertThat(statuses.get("issue3")).isEqualTo("FIX_GENERATED");
-    assertThat(statuses.get("issue4")).isNull();
+    assertThat(statuses.get("issue4")).isEqualTo("AVAILABLE");
   }
 
   @Test
