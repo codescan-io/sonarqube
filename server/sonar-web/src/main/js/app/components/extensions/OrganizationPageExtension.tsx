@@ -24,12 +24,7 @@ import { withOrganizationContext } from "../../../apps/organizations/Organizatio
 import { withRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { Organization } from "../../../types/types";
 import { getOrganization } from "../../../api/organizations";
-import { Navigate, useParams } from "react-router-dom";
-import { AppStateContext } from "../app-state/AppStateContext";
-import { useCurrentUser } from "../current-user/CurrentUserContext";
-import { useCurrentOrganizationKey } from "../current-organization/CurrentOrganizationKeyContext";
-import { LoggedInUser } from "../../../types/users";
-import { BILLING_PAGE_KEY } from "../../../apps/organizations/navigation/OrganizationNavigationAdministration";
+import { useParams } from "react-router-dom";
 
 interface OrganizationPageExtensionProps {
   organization: Organization;
@@ -39,10 +34,7 @@ function OrganizationPageExtension(props: OrganizationPageExtensionProps) {
 
   const { extensionKey, pluginKey } = useParams();
   const { organization } = props;
-  const appState = React.useContext(AppStateContext);
-  const { currentUser } = useCurrentUser();
-  const { billing } = useCurrentOrganizationKey();
-
+  
   const refreshOrganization = () => {
     return props.organization && getOrganization(organization.kee);
   };
@@ -57,28 +49,7 @@ function OrganizationPageExtension(props: OrganizationPageExtensionProps) {
     pages = pages.concat(organization.adminPages);
   }
 
-  const requestedKey = `${pluginKey}/${extensionKey}`;
-
-  // The billing page must obey the same visibility rules as its Administration menu entry,
-  // so it can't be reached by typing the URL directly (see OrganizationNavigationAdministration).
-  if (requestedKey === BILLING_PAGE_KEY) {
-    const canSeeAdministration =
-      currentUser.isLoggedIn &&
-      ((appState.canAdmin && (currentUser as LoggedInUser).groups.includes('sonar-administrators')) ||
-        (!appState.canAdmin && appState.canCustomerAdmin));
-
-    // Only trust billing that belongs to the org currently in view.
-    const subscriptionId =
-      billing?.organizationKey === organization.kee ? billing.details.subscriptionId : undefined;
-    const hasPaidSubscription =
-      subscriptionId !== undefined && subscriptionId !== null && subscriptionId !== '';
-
-    if (!canSeeAdministration || hasPaidSubscription) {
-      return <Navigate to={`/organizations/${organization.kee}/projects`} replace={true} />;
-    }
-  }
-
-  const extension = pages.find(p => p.key === requestedKey);
+  const extension = pages.find(p => p.key === `${pluginKey}/${extensionKey}`);
   return extension ? (
     <Extension
       extension={extension}
