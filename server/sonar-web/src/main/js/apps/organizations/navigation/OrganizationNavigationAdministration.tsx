@@ -20,7 +20,10 @@
 import { DropdownMenu } from '@sonarsource/echoes-react';
 import { NavBarTabLink } from '~design-system';
 import * as React from 'react';
+import { AppStateContext } from '../../../app/components/app-state/AppStateContext';
+import { useCurrentUser } from '../../../app/components/current-user/CurrentUserContext';
 import { translate } from '../../../helpers/l10n';
+import { LoggedInUser } from '../../../types/users';
 import { Organization, OrganizationBillingDetails } from '../../../types/types';
 
 interface Props {
@@ -38,8 +41,24 @@ const ADMIN_PATHS = [
   'webhooks',
 ];
 
-export default function OrganizationNavigationAdministration({ location, organization }: Props) {
+export const BILLING_PAGE_KEY = 'billing/billing';
+
+export default function OrganizationNavigationAdministration({ billing, location, organization }: Props) {
   const { adminPages = [] } = organization;
+  const appState = React.useContext(AppStateContext);
+  const { currentUser } = useCurrentUser();
+
+  // Same condition that gates the global-nav "Administration" button (see GlobalNavMenu):
+  // only root users in the 'sonar-administrators' group, and customer-admin users.
+  const canSeeAdministration =
+    currentUser.isLoggedIn &&
+    ((appState.canAdmin && (currentUser as LoggedInUser).groups.includes('sonar-administrators')) ||
+      (!appState.canAdmin && appState.canCustomerAdmin));
+
+  const subscriptionId = billing?.subscriptionId;
+  const hasPaidSubscription =
+    subscriptionId !== undefined && subscriptionId !== null && subscriptionId !== '';
+
   const adminPathsWithExtensions = adminPages.map((e) => `extension/${e.key}`).concat(ADMIN_PATHS);
   const adminActive = adminPathsWithExtensions.some((path) =>
     location.pathname.endsWith(`organizations/${organization.kee}/${path}`),
@@ -54,15 +73,21 @@ export default function OrganizationNavigationAdministration({ location, organiz
             {translate('organization.settings')}
           </DropdownMenu.ItemLink>
 
-          {adminPages.filter(e=> organization.inviteUsersEnabled || e.key!=="developer/invite_users").map((extension) => (
-            <DropdownMenu.ItemLink
-              isMatchingFullPath
-              to={`/organizations/${organization.kee}/extension/${extension.key}`}
-              key={extension.key}
-            >
-              {extension.name}
-            </DropdownMenu.ItemLink>
-          ))}
+          {adminPages
+            .filter((e) => organization.inviteUsersEnabled || e.key !== 'developer/invite_users')
+            .filter(
+              (e) =>
+                e.key !== BILLING_PAGE_KEY || hasPaidSubscription || canSeeAdministration
+            )
+            .map((extension) => (
+              <DropdownMenu.ItemLink
+                isMatchingFullPath
+                to={`/organizations/${organization.kee}/extension/${extension.key}`}
+                key={extension.key}
+              >
+                {extension.name}
+              </DropdownMenu.ItemLink>
+            ))}
 
           <DropdownMenu.ItemLink
             isMatchingFullPath
