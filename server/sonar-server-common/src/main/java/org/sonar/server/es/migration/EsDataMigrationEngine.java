@@ -148,15 +148,18 @@ public class EsDataMigrationEngine {
         JsonObject response = task.getAsJsonObject("response");
         boolean hasFailures = response.has("failures") && !response.getAsJsonArray("failures").isEmpty();
         status = hasFailures ? Status.FAILED : Status.COMPLETED;
-        detail = "updated=" + response.get("updated") + ", versionConflicts=" + response.get("version_conflicts")
+        // "took" is the ES-measured update_by_query execution time, in millis
+        detail = "took=" + response.get("took") + "ms, updated=" + response.get("updated")
+          + ", versionConflicts=" + response.get("version_conflicts")
           + (hasFailures ? (", failures=" + response.getAsJsonArray("failures")) : "");
       }
       EsDataMigrationState done = newState(state.getVersion(), status, state.getTaskId(), detail);
       persist(done);
+      long wallClockMs = system2.now() - state.getUpdatedAt();
       if (status == Status.FAILED) {
-        LOGGER.error("ES data migration {} failed (task {}): {}", done.getVersion(), done.getTaskId(), detail);
+        LOGGER.error("ES data migration {} failed (task {}) after {} ms: {}", done.getVersion(), done.getTaskId(), wallClockMs, detail);
       } else {
-        LOGGER.info("ES data migration {} completed (task {}): {}", done.getVersion(), done.getTaskId(), detail);
+        LOGGER.info("ES data migration {} completed (task {}) in {} ms wall-clock: {}", done.getVersion(), done.getTaskId(), wallClockMs, detail);
       }
       return done;
     } catch (Exception e) {

@@ -168,9 +168,12 @@ public class IndexCreator implements Startable {
       return;
     }
 
+    long startedAt = System.currentTimeMillis();
     LOGGER.info("Delete Elasticsearch index {} (structure changed)", indexName);
     deleteIndex(indexName);
     createIndex(index, true);
+    LOGGER.info("Recreated index [{}] in {} ms (full rebuild - documents will be re-indexed by IndexerStartupTask)",
+      indexName, System.currentTimeMillis() - startedAt);
   }
 
   /**
@@ -186,6 +189,7 @@ public class IndexCreator implements Startable {
    */
   private boolean tryInPlaceMappingUpdate(BuiltIndex<?> index) {
     String indexName = index.getMainType().getIndex().getName();
+    long startedAt = System.currentTimeMillis();
     try {
       if (structuralSettingsDiffer(index, indexName)) {
         return false;
@@ -195,7 +199,8 @@ public class IndexCreator implements Startable {
         return false;
       }
       metadataIndex.setHash(index.getMainType().getIndex(), IndexDefinitionHash.of(index));
-      LOGGER.info("Updated mapping of index [{}] in place (structure change was additive)", indexName);
+      LOGGER.info("Updated mapping of index [{}] in place in {} ms (structure change was additive, no rebuild)",
+        indexName, System.currentTimeMillis() - startedAt);
       return true;
     } catch (Exception e) {
       LOGGER.info("Index [{}]: in-place mapping update not possible ({}), falling back to recreate", indexName, e.getMessage());
