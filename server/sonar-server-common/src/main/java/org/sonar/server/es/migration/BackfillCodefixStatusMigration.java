@@ -94,6 +94,15 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
     // concurrent issue updates win and carry fresh values, so proceed past version conflicts
     request.setConflicts("proceed");
     request.setSlices(AbstractBulkByScrollRequest.AUTO_SLICES);
+    // larger scroll batches -> fewer scroll/bulk round-trips (default is 1000). Trades a higher per-batch,
+    // per-slice heap footprint (batchSize x #slices docs in flight) for throughput on a large issues index.
+    request.setBatchSize(10_000);
+    // no throttling -> maximum throughput. This is already the default; set explicitly for intent. NB the Java
+    // client rejects the REST "-1" sentinel here (setRequestsPerSecond(<=0) throws) - unlimited is POSITIVE_INFINITY.
+    request.setRequestsPerSecond(Float.POSITIVE_INFINITY);
+    // do not force a refresh of the issues index when the task completes; the backfilled values become visible
+    // on the index's normal refresh cycle (also the default, kept explicit).
+    request.setRefresh(false);
     return Optional.of(esClient.submitUpdateByQueryTask(request).getTask());
   }
 

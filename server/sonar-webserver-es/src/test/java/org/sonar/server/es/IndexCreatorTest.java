@@ -129,6 +129,27 @@ public class IndexCreatorTest {
   }
 
   @Test
+  public void recreate_index_when_only_a_setting_changed() {
+    // v1: 1 shard
+    run(new FakeIndexDefinition());
+    putFakeDocument();
+    metadataIndex.setInitialized(FakeIndexDefinition.INDEX_TYPE, true);
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isOne();
+
+    // v2: identical mapping, but a different shard count -> a setting cannot merge in place -> delete + recreate
+    // (the change is applied via a full rebuild, not silently skipped while the hash advances)
+    logTester.clear();
+    run(new FakeIndexDefinitionMoreShards());
+
+    // index dropped and recreated empty
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isZero();
+    // initialized reset -> IndexerStartupTask re-runs full indexing
+    assertThat(metadataIndex.getInitialized(FakeIndexDefinition.INDEX_TYPE)).isFalse();
+    assertThat(logTester.logs(Level.INFO)).anyMatch(l -> l.contains("Delete Elasticsearch index fakes"));
+    assertThat(logTester.logs(Level.INFO)).noneMatch(l -> l.contains("in place"));
+  }
+
+  @Test
   public void mark_all_non_existing_index_types_as_uninitialized() {
     Index fakesIndex = Index.simple("fakes");
     Index fakersIndex = Index.simple("fakers");
@@ -285,6 +306,19 @@ public class IndexCreatorTest {
         .keywordFieldBuilder("key").build()
         .createDateTimeField("updatedAt")
         .createIntegerField("newField");
+    }
+  }
+
+  private static class FakeIndexDefinitionMoreShards implements IndexDefinition {
+    @Override
+    public void define(IndexDefinitionContext context) {
+      Index index = Index.simple("fakes");
+      // same mapping as FakeIndexDefinition, but 2 shards instead of 1 (a setting that cannot change in place)
+      SettingsConfiguration twoShards = newBuilder(new MapSettings().asConfig()).setDefaultNbOfShards(2).build();
+      NewRegularIndex newIndex = context.create(index, twoShards);
+      newIndex.createTypeMapping(IndexType.main(index, "fake"))
+        .keywordFieldBuilder("key").build()
+        .createDateTimeField("updatedAt");
     }
   }
 
