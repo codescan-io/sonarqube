@@ -20,7 +20,6 @@
 
 import styled from '@emotion/styled';
 import { Spinner } from '@sonarsource/echoes-react';
-import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useIntl } from 'react-intl';
 import {
@@ -31,7 +30,6 @@ import {
   themeBorder,
   themeColor,
 } from '~design-system';
-import { getCodefixStatus } from '../../../api/ai-codefix';
 import ScreenPositionHelper from '../../../components/common/ScreenPositionHelper';
 import { AiCodeFixTab } from '../../../components/rules/AiCodeFixTab';
 import { FixDiffTab } from '../../../components/rules/FixDiffTab';
@@ -49,7 +47,6 @@ import IssuesSourceViewer from './IssuesSourceViewer';
 
 const AI_CODE_ASSISTANT_ASSIGNEE = 'ai-code-assistant';
 
-const CODEFIX_STATUS_NOT_SUPPORTED = 'NOT_SUPPORTED';
 function hasAiCodefix(issue: Issue): boolean {
   return (
     issue.assignee === AI_CODE_ASSISTANT_ASSIGNEE ||
@@ -99,44 +96,6 @@ export default function IssueDetails({
   const { data: ruleData, isLoading: isLoadingRule } = useRuleDetailsQuery({ key: openIssue.rule, organization: openIssue.organization});
   const openRuleDetails = ruleData?.rule;
 
-  const isAiCodefixIssue = hasAiCodefix(openIssue);
-  const [liveCodefixStatus, setLiveCodefixStatus] = useState<string | undefined>(
-    openIssue.codefixStatus,
-  );
-
-  useEffect(() => {
-    setLiveCodefixStatus(openIssue.codefixStatus);
-  }, [openIssue.key, openIssue.codefixStatus]);
-
-  useEffect(() => {
-    if (!isAiCodefixIssue || !openIssue.key) {
-      return undefined;
-    }
-
-    let active = true;
-    const fetchStatus = () => {
-      getCodefixStatus(openIssue.key).then((res) => {
-        if (active && res?.status) {
-          setLiveCodefixStatus(res.status);
-        }
-      });
-    };
-
-    fetchStatus();
-
-    const current = (liveCodefixStatus ?? '').toUpperCase();
-    const jobRunning = current === '' || current === 'PENDING' || current === 'IN_PROGRESS';
-    const interval = jobRunning ? setInterval(fetchStatus, 8000) : undefined;
-
-    return () => {
-      active = false;
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [isAiCodefixIssue, openIssue.key, liveCodefixStatus]);
-
-  const showFixDiffTab = isAiCodefixIssue && liveCodefixStatus !== CODEFIX_STATUS_NOT_SUPPORTED;
   const intl = useIntl();
 
   const warning = !canBrowseAllChildProjects && isPortfolioLike(qualifier) && (
@@ -241,7 +200,7 @@ export default function IssueDetails({
                             />
                           }
                           fixDiffContent={
-                            showFixDiffTab
+                            hasAiCodefix(openIssue)
                               ? (
                                   <FixDiffTab
                                     branchLike={fillBranchLike(openIssue.branch, openIssue.pullRequest)}
