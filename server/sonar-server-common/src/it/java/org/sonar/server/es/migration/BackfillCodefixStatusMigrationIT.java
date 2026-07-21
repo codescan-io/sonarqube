@@ -91,7 +91,9 @@ public class BackfillCodefixStatusMigrationIT {
 
   private void waitForTaskCompletion(String taskId) throws InterruptedException {
     for (int i = 0; i < 200; i++) {
-      JsonObject task = JsonParser.parseString(es.client().getTaskAsJson(taskId)).getAsJsonObject();
+      String taskJson = es.client().getTaskIfExists(taskId)
+        .orElseThrow(() -> new IllegalStateException("update_by_query task " + taskId + " no longer exists"));
+      JsonObject task = JsonParser.parseString(taskJson).getAsJsonObject();
       if (task.get("completed").getAsBoolean()) {
         return;
       }
