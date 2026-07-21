@@ -48,12 +48,10 @@ export default function OrganizationNavigationAdministration({ billing, location
   const appState = React.useContext(AppStateContext);
   const { currentUser } = useCurrentUser();
 
-  // Same condition that gates the global-nav "Administration" button (see GlobalNavMenu):
-  // only root users in the 'sonar-administrators' group, and customer-admin users.
+
   const canSeeAdministration =
     currentUser.isLoggedIn &&
-    ((appState.canAdmin && (currentUser as LoggedInUser).groups.includes('sonar-administrators')) ||
-      (!appState.canAdmin && appState.canCustomerAdmin));
+    ((appState.canAdmin) || (!appState.canAdmin && appState.canCustomerAdmin));
 
   const subscriptionId = billing?.subscriptionId;
   const hasPaidSubscription =

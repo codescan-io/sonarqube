@@ -62,8 +62,7 @@ function OrganizationPageExtension(props: OrganizationPageExtensionProps) {
   if (requestedKey === BILLING_PAGE_KEY) {
     const canSeeAdministration =
       currentUser.isLoggedIn &&
-      ((appState.canAdmin && (currentUser as LoggedInUser).groups.includes('sonar-administrators')) ||
-        (!appState.canAdmin && appState.canCustomerAdmin));
+      ((appState.canAdmin) || (!appState.canAdmin && appState.canCustomerAdmin));
 
     const subscriptionId =
       billing?.organizationKey === organization.kee ? billing.details.subscriptionId : undefined;
