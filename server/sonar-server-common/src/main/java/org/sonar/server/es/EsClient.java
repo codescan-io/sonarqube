@@ -31,6 +31,7 @@ import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import javax.net.ssl.SSLContext;
@@ -73,6 +74,7 @@ import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.client.Response;
+import org.elasticsearch.client.ResponseException;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
@@ -271,6 +273,27 @@ public class EsClient implements Closeable {
       Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
       return EntityUtils.toString(response.getEntity());
     });
+  }
+
+  /**
+   * Raw JSON of {@code GET /_tasks/{taskId}}, or {@link Optional#empty()} when ES no longer knows the task
+   * (HTTP 404 — e.g. the node running an async task restarted before its result was stored, or the result
+   * was evicted). Any other error is propagated. Lets callers distinguish a permanently gone task from a
+   * transient failure, rather than treating both the same.
+   */
+  public Optional<String> getTaskIfExists(String taskId) {
+    try {
+      Request request = new Request("GET", "/_tasks/" + taskId);
+      Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
+      return Optional.of(EntityUtils.toString(response.getEntity()));
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        return Optional.empty();
+      }
+      throw new ElasticsearchException("Fail to get ES task " + taskId, e);
+    } catch (IOException e) {
+      throw new ElasticsearchException("Fail to get ES task " + taskId, e);
+    }
   }
 
   @Override

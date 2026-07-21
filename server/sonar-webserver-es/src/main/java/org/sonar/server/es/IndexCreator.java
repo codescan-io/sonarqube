@@ -182,16 +182,16 @@ public class IndexCreator implements Startable {
    * re-run a full indexing). ES rejects incompatible merges (changed field types/analyzers) with an
    * exception, which falls back to delete + recreate.
    *
-   * <p>Only the <b>mapping</b> is merged in place, never settings. Structural settings that cannot be changed
-   * on a live index (number of shards / replicas) are compared first, and any difference forces the
-   * delete + recreate path. Other setting changes (analyzers, refresh_interval, ...) are NOT applied by this
-   * path either, so such a change must be shipped alongside a manual index rebuild.
+   * <p>Only the <b>mapping</b> is merged in place, never settings. Any difference in a declared index setting
+   * (number of shards / replicas, analyzers, refresh_interval, ...) forces the delete + recreate path instead,
+   * so setting changes are still applied — via a full rebuild rather than in place. The in-place path is
+   * therefore taken only for a pure additive-mapping change with otherwise identical settings.
    */
   private boolean tryInPlaceMappingUpdate(BuiltIndex<?> index) {
     String indexName = index.getMainType().getIndex().getName();
     long startedAt = System.currentTimeMillis();
     try {
-      if (structuralSettingsDiffer(index, indexName)) {
+      if (settingsDiffer(index, indexName)) {
         return false;
       }
       AcknowledgedResponse response = client.putMapping(new PutMappingRequest(indexName).source(index.getAttributes()));
@@ -209,17 +209,20 @@ public class IndexCreator implements Startable {
   }
 
   /**
-   * Whether a structural index setting that cannot be applied to a live index (number of shards or replicas)
-   * differs between the definition and the running index. Both are always-present integer settings, so the
-   * comparison is exact and never spuriously forces a rebuild on an unchanged redeploy.
+   * Whether any index setting declared by the definition differs from the running index. Unlike an additive
+   * mapping, a settings change (shards/replicas, analyzers, refresh_interval, ...) cannot be merged into a live
+   * index, so ANY declared-setting difference forces the delete + recreate path — which reapplies the full
+   * definition — rather than silently keeping the old settings. Only keys present in the definition are
+   * compared, so ES-supplied defaults never spuriously force a rebuild on an unchanged redeploy.
    */
-  private boolean structuralSettingsDiffer(BuiltIndex<?> index, String indexName) {
+  private boolean settingsDiffer(BuiltIndex<?> index, String indexName) {
     GetSettingsResponse liveSettings = client.getSettings(new GetSettingsRequest().indices(indexName));
-    for (String key : new String[] {"index.number_of_shards", "index.number_of_replicas"}) {
-      String target = index.getSettings().get(key);
-      String current = liveSettings.getSetting(indexName, key);
-      if (target != null && !target.equals(current)) {
-        LOGGER.info("Index [{}]: setting {} changed ({} -> {}), in-place update not possible", indexName, key, current, target);
+    Settings target = index.getSettings();
+    for (String key : target.keySet()) {
+      String targetValue = target.get(key);
+      String currentValue = liveSettings.getSetting(indexName, key);
+      if (targetValue != null && !targetValue.equals(currentValue)) {
+        LOGGER.info("Index [{}]: setting {} changed ({} -> {}), in-place update not possible", indexName, key, currentValue, targetValue);
         return true;
       }
     }

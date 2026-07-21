@@ -20,6 +20,7 @@
 package org.sonar.server.es.migration;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.util.Arrays;
@@ -49,6 +50,9 @@ public class EsDataMigrationEngine {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EsDataMigrationEngine.class);
   private static final Gson GSON = new Gson();
+  // The metadata "value" field is a keyword: keep the persisted state well under Lucene's ~32KB doc-values
+  // per-term limit so persist() can never throw on an oversized detail and leave the state stuck at RUNNING.
+  private static final int MAX_DETAIL_LENGTH = 8000;
 
   private final DbClient dbClient;
   private final EsClient esClient;
@@ -82,18 +86,25 @@ public class EsDataMigrationEngine {
   }
 
   /**
-   * Submits the migration. {@code force} allows re-running a COMPLETED/FAILED migration. Synchronized so two
-   * concurrent submissions on the same node cannot both launch a task; the underlying query is idempotent, so
-   * a cross-node race is at worst a duplicate no-op task.
+   * Submits the migration. {@code force} allows re-running a migration in any state: COMPLETED, FAILED, or a
+   * RUNNING one that got wedged (e.g. because its ES task was lost to a node restart). A forced re-run submits
+   * a fresh task and overwrites the tracked task id. Synchronized so two concurrent submissions on the same
+   * node cannot both launch a task; the underlying query is idempotent, so a cross-node race — or a forced
+   * re-run over a task that is genuinely still running — is at worst a duplicate no-op task.
    */
   public synchronized EsDataMigrationState run(long version, boolean force) {
     EsDataMigration migration = getMigration(version);
     EsDataMigrationState current = status(version);
-    if (current.getStatus() == Status.RUNNING) {
-      throw new IllegalStateException("ES data migration " + version + " is already running (task " + current.getTaskId() + ")");
-    }
-    if (current.getStatus() == Status.COMPLETED && !force) {
-      throw new IllegalStateException("ES data migration " + version + " already completed. Use force to re-run.");
+    if (!force) {
+      // IllegalArgumentException (not IllegalStateException) so the WebService maps these client-recoverable
+      // conditions to HTTP 400 rather than 500 (see WebServiceEngine).
+      if (current.getStatus() == Status.RUNNING) {
+        throw new IllegalArgumentException("ES data migration " + version + " is already running (task " + current.getTaskId()
+          + "). Use force to re-run.");
+      }
+      if (current.getStatus() == Status.COMPLETED) {
+        throw new IllegalArgumentException("ES data migration " + version + " already completed. Use force to re-run.");
+      }
     }
     try (DbSession dbSession = dbClient.openSession(false)) {
       LOGGER.info("Starting ES data migration {} ({}){}", version, migration.description(), force ? " [forced re-run]" : "");
@@ -131,7 +142,19 @@ public class EsDataMigrationEngine {
   /** Polls {@code GET /_tasks/{id}}; transitions RUNNING -> COMPLETED/FAILED and persists, or enriches progress. */
   private EsDataMigrationState refreshFromEsTask(EsDataMigrationState state) {
     try {
-      JsonObject task = JsonParser.parseString(esClient.getTaskAsJson(state.getTaskId())).getAsJsonObject();
+      Optional<String> taskJson = esClient.getTaskIfExists(state.getTaskId());
+      if (taskJson.isEmpty()) {
+        // ES no longer knows the task (e.g. the node running the async update_by_query restarted before its
+        // result was stored, or the result was evicted). It can neither be polled nor resumed, so fail the
+        // migration rather than leaving it wedged at RUNNING forever; an admin can re-run it with force=true.
+        String detail = "task " + state.getTaskId()
+          + " no longer exists on the cluster (node restart or evicted result); re-run with force=true";
+        EsDataMigrationState failed = newState(state.getVersion(), Status.FAILED, state.getTaskId(), detail);
+        persist(failed);
+        LOGGER.error("ES data migration {} failed: {}", state.getVersion(), detail);
+        return failed;
+      }
+      JsonObject task = JsonParser.parseString(taskJson.get()).getAsJsonObject();
       if (!task.get("completed").getAsBoolean()) {
         // still running: surface live progress without transitioning
         JsonObject progress = task.getAsJsonObject("task").getAsJsonObject("status");
@@ -146,12 +169,15 @@ public class EsDataMigrationEngine {
         detail = "task error: " + task.get("error");
       } else {
         JsonObject response = task.getAsJsonObject("response");
-        boolean hasFailures = response.has("failures") && !response.getAsJsonArray("failures").isEmpty();
+        JsonArray failures = response.has("failures") ? response.getAsJsonArray("failures") : new JsonArray();
+        boolean hasFailures = !failures.isEmpty();
         status = hasFailures ? Status.FAILED : Status.COMPLETED;
-        // "took" is the ES-measured update_by_query execution time, in millis
+        // "took" is the ES-measured update_by_query execution time, in millis. Only summarize the failures
+        // (count + first, truncated): the raw array can hold ~1000 entries and would blow the metadata field's
+        // size limit, so persist() would throw and the terminal state would never be recorded (stuck RUNNING).
         detail = "took=" + response.get("took") + "ms, updated=" + response.get("updated")
           + ", versionConflicts=" + response.get("version_conflicts")
-          + (hasFailures ? (", failures=" + response.getAsJsonArray("failures")) : "");
+          + (hasFailures ? (", failures=" + failures.size() + " (first: " + truncate(failures.get(0).toString(), 500) + ")") : "");
       }
       EsDataMigrationState done = newState(state.getVersion(), status, state.getTaskId(), detail);
       persist(done);
@@ -187,8 +213,16 @@ public class EsDataMigrationEngine {
       .setVersion(version)
       .setStatus(status)
       .setTaskId(taskId)
-      .setDetail(detail)
+      .setDetail(truncate(detail, MAX_DETAIL_LENGTH))
       .setUpdatedAt(system2.now());
+  }
+
+  @Nullable
+  private static String truncate(@Nullable String value, int maxLength) {
+    if (value == null || value.length() <= maxLength) {
+      return value;
+    }
+    return value.substring(0, maxLength) + "... [truncated]";
   }
 
   private static EsDataMigrationState withDescription(EsDataMigrationState state, EsDataMigration migration) {
