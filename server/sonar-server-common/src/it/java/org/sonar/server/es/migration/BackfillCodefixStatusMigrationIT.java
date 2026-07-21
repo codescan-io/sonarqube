@@ -31,6 +31,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.Rule;
 import org.junit.Test;
 import org.sonar.api.rule.RuleKey;
+import org.sonar.api.rule.RuleStatus;
 import org.sonar.db.DbTester;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.server.es.EsClient;
@@ -58,12 +59,15 @@ public class BackfillCodefixStatusMigrationIT {
     RuleDto disabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(false));
     // enabled variable-naming rule -> now ALSO marked AVAILABLE (naming/variableType narrowing deferred to service/UI)
     RuleDto namingRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setRuleKey(RuleKey.of("pmd", "ShortVariable")));
+    // REMOVED rule: the enabled flag may linger, but its issues must NOT be over-marked -> excluded by the backfill SQL
+    RuleDto removedRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setStatus(RuleStatus.REMOVED));
 
     es.putDocuments(TYPE_ISSUE,
       newDoc().setKey("issue1").setProjectUuid(PROJECT_UUID).setRuleUuid(enabledRule.getUuid()),
       newDoc().setKey("issue2").setProjectUuid(PROJECT_UUID).setRuleUuid(disabledRule.getUuid()),
       newDoc().setKey("issue3").setProjectUuid(PROJECT_UUID).setRuleUuid(enabledRule.getUuid()).setCodefixStatus("FIX_GENERATED"),
-      newDoc().setKey("issue4").setProjectUuid(PROJECT_UUID).setRuleUuid(namingRule.getUuid()));
+      newDoc().setKey("issue4").setProjectUuid(PROJECT_UUID).setRuleUuid(namingRule.getUuid()),
+      newDoc().setKey("issue5").setProjectUuid(PROJECT_UUID).setRuleUuid(removedRule.getUuid()));
 
     assertThat(underTest.estimate(db.getSession())).isEqualTo(2);
 
@@ -77,6 +81,7 @@ public class BackfillCodefixStatusMigrationIT {
     assertThat(statuses.get("issue2")).isNull();
     assertThat(statuses.get("issue3")).isEqualTo("FIX_GENERATED");
     assertThat(statuses.get("issue4")).isEqualTo("AVAILABLE");
+    assertThat(statuses.get("issue5")).isNull();
   }
 
   @Test
