@@ -66,7 +66,7 @@ public class RunAction implements EsMigrationsWsAction {
   @Override
   public void handle(Request request, Response response) throws Exception {
     userSession.checkIsSystemAdministrator();
-    long version = Long.parseLong(request.mandatoryParam(PARAM_VERSION));
+    long version = EsMigrationsWs.parseVersion(request.mandatoryParam(PARAM_VERSION));
     if (request.mandatoryParamAsBoolean(PARAM_DRY_RUN)) {
       long estimate = engine.estimate(version);
       try (JsonWriter json = response.newJsonWriter()) {

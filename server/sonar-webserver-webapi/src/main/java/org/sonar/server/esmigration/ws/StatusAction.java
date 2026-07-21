@@ -55,7 +55,7 @@ public class StatusAction implements EsMigrationsWsAction {
   @Override
   public void handle(Request request, Response response) throws Exception {
     userSession.checkIsSystemAdministrator();
-    long version = Long.parseLong(request.mandatoryParam(PARAM_VERSION));
+    long version = EsMigrationsWs.parseVersion(request.mandatoryParam(PARAM_VERSION));
     EsDataMigrationState state = engine.status(version);
     try (JsonWriter json = response.newJsonWriter()) {
       EsMigrationsWs.writeState(json, state);

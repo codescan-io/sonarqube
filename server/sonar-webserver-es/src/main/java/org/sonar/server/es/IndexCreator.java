@@ -198,14 +198,25 @@ public class IndexCreator implements Startable {
       if (!response.isAcknowledged()) {
         return false;
       }
-      metadataIndex.setHash(index.getMainType().getIndex(), IndexDefinitionHash.of(index));
-      LOGGER.info("Updated mapping of index [{}] in place in {} ms (structure change was additive, no rebuild)",
-        indexName, System.currentTimeMillis() - startedAt);
-      return true;
     } catch (Exception e) {
       LOGGER.info("Index [{}]: in-place mapping update not possible ({}), falling back to recreate", indexName, e.getMessage());
       return false;
     }
+
+    // At this point the mapping has been merged and the existing documents are preserved: the in-place update
+    // has succeeded and MUST be treated as committed. Persisting the new definition hash below is only
+    // bookkeeping; if it fails it is harmless and self-healing (next startup sees the stale hash, re-runs the
+    // idempotent merge and retries the hash write). It must therefore never fall through to the destructive
+    // delete + recreate path, which would throw away a live index over a failed metadata write.
+    try {
+      metadataIndex.setHash(index.getMainType().getIndex(), IndexDefinitionHash.of(index));
+    } catch (Exception e) {
+      LOGGER.warn("Index [{}]: mapping merged in place but persisting the new definition hash failed; "
+        + "it will be retried on next startup", indexName, e);
+    }
+    LOGGER.info("Updated mapping of index [{}] in place in {} ms (structure change was additive, no rebuild)",
+      indexName, System.currentTimeMillis() - startedAt);
+    return true;
   }
 
   /**

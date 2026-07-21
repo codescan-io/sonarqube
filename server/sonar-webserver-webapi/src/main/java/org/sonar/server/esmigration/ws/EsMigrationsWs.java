@@ -44,6 +44,19 @@ public class EsMigrationsWs implements WebService {
     controller.done();
   }
 
+  /**
+   * Parses the {@code version} parameter as a long. A non-numeric value is a client mistake, so it is mapped
+   * to an {@link IllegalArgumentException} (HTTP 400) rather than escaping as a {@link NumberFormatException}
+   * (HTTP 500).
+   */
+  static long parseVersion(String rawVersion) {
+    try {
+      return Long.parseLong(rawVersion);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("'version' must be a number, got: " + rawVersion);
+    }
+  }
+
   /** Serializes a single migration state as a JSON object; shared by list/run/status actions. */
   static void writeState(JsonWriter json, EsDataMigrationState state) {
     json.beginObject()
