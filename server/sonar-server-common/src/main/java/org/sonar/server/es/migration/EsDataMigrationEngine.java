@@ -96,10 +96,16 @@ public class EsDataMigrationEngine {
       throw new IllegalStateException("ES data migration " + version + " already completed. Use force to re-run.");
     }
     try (DbSession dbSession = dbClient.openSession(false)) {
+      LOGGER.info("Starting ES data migration {} ({}){}", version, migration.description(), force ? " [forced re-run]" : "");
       Optional<String> taskId = migration.execute(dbSession);
-      EsDataMigrationState state = taskId
-        .map(id -> newState(version, Status.RUNNING, id, null))
-        .orElseGet(() -> newState(version, Status.COMPLETED, null, "nothing to do"));
+      EsDataMigrationState state;
+      if (taskId.isPresent()) {
+        state = newState(version, Status.RUNNING, taskId.get(), null);
+        LOGGER.info("ES data migration {} submitted as ES task {}", version, taskId.get());
+      } else {
+        state = newState(version, Status.COMPLETED, null, "nothing to do");
+        LOGGER.info("ES data migration {} completed: nothing to do", version);
+      }
       persist(state);
       return withDescription(state, migration);
     } catch (Exception e) {
@@ -147,6 +153,11 @@ public class EsDataMigrationEngine {
       }
       EsDataMigrationState done = newState(state.getVersion(), status, state.getTaskId(), detail);
       persist(done);
+      if (status == Status.FAILED) {
+        LOGGER.error("ES data migration {} failed (task {}): {}", done.getVersion(), done.getTaskId(), detail);
+      } else {
+        LOGGER.info("ES data migration {} completed (task {}): {}", done.getVersion(), done.getTaskId(), detail);
+      }
       return done;
     } catch (Exception e) {
       // never let a transient ES/parse error escape to the WS action or wedge the state at RUNNING
