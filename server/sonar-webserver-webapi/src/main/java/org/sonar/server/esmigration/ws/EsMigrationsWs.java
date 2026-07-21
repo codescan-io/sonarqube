@@ -20,6 +20,7 @@
 package org.sonar.server.esmigration.ws;
 
 import java.util.Arrays;
+import java.util.Date;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.utils.text.JsonWriter;
 import org.sonar.server.es.migration.EsDataMigrationState;
@@ -51,7 +52,7 @@ public class EsMigrationsWs implements WebService {
       .prop("status", state.getStatus() == null ? null : state.getStatus().name())
       .prop("taskId", state.getTaskId())
       .prop("detail", state.getDetail())
-      .prop("updatedAt", state.getUpdatedAt())
+      .propDateTime("updatedAt", new Date(state.getUpdatedAt()))
       .endObject();
   }
 }
