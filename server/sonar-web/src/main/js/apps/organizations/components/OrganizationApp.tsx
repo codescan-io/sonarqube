@@ -22,7 +22,8 @@ import { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useParams } from 'react-router-dom';
 import { OrganizationContextProps } from "../OrganizationContext";
 import { Organization } from "../../../types/types";
-import { getOrganization, getOrganizationNavigation } from "../../../api/organizations";
+import { getOrganization, getOrganizationBillingDetails, getOrganizationNavigation } from "../../../api/organizations";
+import { useCurrentOrganizationKey } from '../../../app/components/current-organization/CurrentOrganizationKeyContext';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { Helmet } from "react-helmet-async";
 import Suggestions from "../../../components/embed-docs-modal/Suggestions";
@@ -53,6 +54,7 @@ const OrganizationApp: React.FC<OrganizationAppProps> = ({  userOrganizations, l
   const portalAnchor = React.useRef<Element | null>(null);
   const [organization, setOrganization] = useState<Organization>();
   const {setIsNotStandardOrg, currentUser} = useCurrentUser();
+  const { setBilling } = useCurrentOrganizationKey();
   const navigate = useNavigate();
   // Set portal anchor on mount
   useEffect(() => {
@@ -79,6 +81,10 @@ const OrganizationApp: React.FC<OrganizationAppProps> = ({  userOrganizations, l
             }
           }
         ).catch(throwGlobalError);
+
+        getOrganizationBillingDetails(organizationKey)
+          .then((details) => setBilling({ organizationKey, details }))
+          .catch(() => undefined);
       }
     }
   }, [organizationKey]);

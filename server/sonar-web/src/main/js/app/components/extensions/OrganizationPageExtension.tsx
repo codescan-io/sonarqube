@@ -24,7 +24,12 @@ import { withOrganizationContext } from "../../../apps/organizations/Organizatio
 import { withRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { Organization } from "../../../types/types";
 import { getOrganization } from "../../../api/organizations";
-import { useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
+import { AppStateContext } from "../app-state/AppStateContext";
+import { useCurrentUser } from "../current-user/CurrentUserContext";
+import { useCurrentOrganizationKey } from "../current-organization/CurrentOrganizationKeyContext";
+import { LoggedInUser } from "../../../types/users";
+import { BILLING_PAGE_KEY } from "../../../apps/organizations/navigation/OrganizationNavigationAdministration";
 
 interface OrganizationPageExtensionProps {
   organization: Organization;
@@ -34,7 +39,10 @@ function OrganizationPageExtension(props: OrganizationPageExtensionProps) {
 
   const { extensionKey, pluginKey } = useParams();
   const { organization } = props;
-  
+  const appState = React.useContext(AppStateContext);
+  const { currentUser } = useCurrentUser();
+  const { billing } = useCurrentOrganizationKey();
+
   const refreshOrganization = () => {
     return props.organization && getOrganization(organization.kee);
   };
@@ -49,7 +57,24 @@ function OrganizationPageExtension(props: OrganizationPageExtensionProps) {
     pages = pages.concat(organization.adminPages);
   }
 
-  const extension = pages.find(p => p.key === `${pluginKey}/${extensionKey}`);
+  const requestedKey = `${pluginKey}/${extensionKey}`;
+
+  if (requestedKey === BILLING_PAGE_KEY) {
+    const canSeeAdministration =
+      currentUser.isLoggedIn &&
+      ((appState.canAdmin) || (!appState.canAdmin && appState.canCustomerAdmin));
+
+    const subscriptionId =
+      billing?.organizationKey === organization.kee ? billing.details.subscriptionId : undefined;
+    const hasPaidSubscription =
+      subscriptionId !== undefined && subscriptionId !== null && subscriptionId !== '';
+
+    if (!(canSeeAdministration || hasPaidSubscription)) {
+      return <Navigate to={`/organizations/${organization.kee}/projects`} replace={true} />;
+    }
+  }
+
+  const extension = pages.find(p => p.key === requestedKey);
   return extension ? (
     <Extension
       extension={extension}
