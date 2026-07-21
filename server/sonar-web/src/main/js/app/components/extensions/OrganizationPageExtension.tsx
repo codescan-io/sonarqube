@@ -28,7 +28,6 @@ import { Navigate, useParams } from "react-router-dom";
 import { AppStateContext } from "../app-state/AppStateContext";
 import { useCurrentUser } from "../current-user/CurrentUserContext";
 import { useCurrentOrganizationKey } from "../current-organization/CurrentOrganizationKeyContext";
-import { LoggedInUser } from "../../../types/users";
 import { BILLING_PAGE_KEY } from "../../../apps/organizations/navigation/OrganizationNavigationAdministration";
 
 interface OrganizationPageExtensionProps {
