@@ -23,7 +23,6 @@ import * as React from 'react';
 import { AppStateContext } from '../../../app/components/app-state/AppStateContext';
 import { useCurrentUser } from '../../../app/components/current-user/CurrentUserContext';
 import { translate } from '../../../helpers/l10n';
-import { LoggedInUser } from '../../../types/users';
 import { Organization, OrganizationBillingDetails } from '../../../types/types';
 
 interface Props {
