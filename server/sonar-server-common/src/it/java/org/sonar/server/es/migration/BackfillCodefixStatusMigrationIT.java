@@ -41,9 +41,12 @@ import org.sonar.server.issue.index.IssueIteratorFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.sonar.db.component.ComponentTesting.newFileDto;
+import static org.sonar.server.issue.IssueDocTesting.newDoc;
 import static org.sonar.server.issue.index.IssueIndexDefinition.TYPE_ISSUE;
 
 public class BackfillCodefixStatusMigrationIT {
+
+  private static final String PROJECT_UUID = "project-uuid";
 
   @Rule
   public EsTester es = EsTester.create();
@@ -52,7 +55,7 @@ public class BackfillCodefixStatusMigrationIT {
 
   private final IssueIndexer issueIndexer = new IssueIndexer(es.client(), db.getDbClient(),
     new IssueIteratorFactory(db.getDbClient()), null);
-  private final BackfillCodefixStatusMigration underTest = new BackfillCodefixStatusMigration(db.getDbClient(), issueIndexer);
+  private final BackfillCodefixStatusMigration underTest = new BackfillCodefixStatusMigration(db.getDbClient(), issueIndexer, es.client());
 
   @Test
   public void execute_reindexes_only_ai_fix_rule_issues_with_the_canonical_codefixStatus() {
@@ -72,9 +75,6 @@ public class BackfillCodefixStatusMigrationIT {
     IssueDto onEnabledPreset = db.issues().insert(enabledRule, project, file, t -> t.setCodefixStatus("FIX_GENERATED"));
     IssueDto onNaming = db.issues().insert(namingRule, project, file);
     IssueDto onRemoved = db.issues().insert(removedRule, project, file);
-
-    // enabled(2) + naming(1); disabled and removed are out of scope
-    assertThat(underTest.estimate(db.getSession())).isEqualTo(3);
 
     EsDataMigrationExecution execution = underTest.execute(db.getSession());
     assertThat(execution.asyncTaskId()).isEmpty();
@@ -106,6 +106,25 @@ public class BackfillCodefixStatusMigrationIT {
     assertThat(execution.detail()).contains("nothing to do");
     es.client().refresh(IssueIndexDefinition.DESCRIPTOR);
     assertThat(codefixStatusByKey()).isEmpty();
+  }
+
+  @Test
+  public void estimate_counts_index_docs_of_enabled_rules_from_elasticsearch() {
+    RuleDto enabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true));
+    RuleDto disabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(false));
+    RuleDto namingRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setRuleKey(RuleKey.of("pmd", "ShortVariable")));
+    RuleDto removedRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setStatus(RuleStatus.REMOVED));
+
+    // docs already live in the index (issues are indexed at analysis time; the backfill only refreshes a field)
+    es.putDocuments(TYPE_ISSUE,
+      newDoc().setKey("i1").setProjectUuid(PROJECT_UUID).setRuleUuid(enabledRule.getUuid()),
+      newDoc().setKey("i2").setProjectUuid(PROJECT_UUID).setRuleUuid(enabledRule.getUuid()),
+      newDoc().setKey("i3").setProjectUuid(PROJECT_UUID).setRuleUuid(namingRule.getUuid()),
+      newDoc().setKey("i4").setProjectUuid(PROJECT_UUID).setRuleUuid(disabledRule.getUuid()),
+      newDoc().setKey("i5").setProjectUuid(PROJECT_UUID).setRuleUuid(removedRule.getUuid()));
+
+    // enabled(2) + naming(1); disabled and removed rules are out of scope
+    assertThat(underTest.estimate(db.getSession())).isEqualTo(3);
   }
 
   private Map<String, String> codefixStatusByKey() {

@@ -113,11 +113,6 @@ public class IssueDao implements Dao {
     return mapper(dbSession).selectIssueKeysForCodefixBackfill(afterKey, pagination);
   }
 
-  /** Counts the issues {@link #selectIssueKeysForCodefixBackfill} would return (side-effect free, for the dry-run estimate). */
-  public long countIssuesForCodefixBackfill(DbSession dbSession) {
-    return mapper(dbSession).countIssuesForCodefixBackfill();
-  }
-
   public void insert(DbSession session, IssueDto dto) {
     mapper(session).insert(dto);
     insertIssueImpacts(session, dto);

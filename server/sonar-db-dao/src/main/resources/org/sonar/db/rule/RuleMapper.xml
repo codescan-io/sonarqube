@@ -780,6 +780,17 @@
     <include refid="org.sonar.db.common.Common.pagination"/>
   </select>
 
+  <!-- Rule uuids eligible for the codefixStatus ES backfill (BackfillCodefixStatusMigration #2026071801): every
+       non-removed ai_code_fix_enabled rule. Used only to terms-filter the fast ES doc-count that backs the
+       migration's dry-run estimate (the actual reindex selects issue keys from IssueMapper). REMOVED rules are
+       excluded so issues of deleted rules are not counted. -->
+  <select id="selectAiCodeFixBackfillRuleUuids" resultType="string">
+    select r.uuid
+    from rules r
+    where r.ai_code_fix_enabled = ${_true}
+      and r.status != 'REMOVED'
+  </select>
+
   <select id="selectRules">
     select r.uuid from rules r
     <include refid="queryList"/>

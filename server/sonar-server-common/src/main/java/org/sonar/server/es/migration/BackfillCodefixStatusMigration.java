@@ -20,12 +20,18 @@
 package org.sonar.server.es.migration;
 
 import java.util.List;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.server.ServerSide;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.Pagination;
+import org.sonar.server.es.EsClient;
+import org.sonar.server.issue.index.IssueIndexDefinition;
 import org.sonar.server.issue.index.IssueIndexer;
 
 /**
@@ -66,10 +72,12 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
 
   private final DbClient dbClient;
   private final IssueIndexer issueIndexer;
+  private final EsClient esClient;
 
-  public BackfillCodefixStatusMigration(DbClient dbClient, IssueIndexer issueIndexer) {
+  public BackfillCodefixStatusMigration(DbClient dbClient, IssueIndexer issueIndexer, EsClient esClient) {
     this.dbClient = dbClient;
     this.issueIndexer = issueIndexer;
+    this.esClient = esClient;
   }
 
   @Override
@@ -84,7 +92,14 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
 
   @Override
   public long estimate(DbSession dbSession) {
-    return dbClient.issueDao().countIssuesForCodefixBackfill(dbSession);
+    List<String> ruleUuids = dbClient.ruleDao().selectAiCodeFixBackfillRuleUuids(dbSession);
+    if (ruleUuids.isEmpty()) {
+      return 0;
+    }
+    // Fast dry-run count: ask Elasticsearch how many issue docs belong to these rules. It can differ from DB count
+    SearchRequest request = EsClient.prepareSearch(IssueIndexDefinition.TYPE_ISSUE.getMainType())
+      .source(new SearchSourceBuilder().query(estimateQuery(ruleUuids)).size(0).trackTotalHits(true));
+    return esClient.search(request).getHits().getTotalHits().value;
   }
 
   @Override
@@ -100,9 +115,8 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
       issueIndexer.indexByKeys(keys);
       reindexed += keys.size();
       afterKey = keys.get(keys.size() - 1);
-      // Release the DB read snapshot between pages: reindexing a page is slow (many ES round-trips), so holding a
-      // single transaction open across the whole backfill would pin the DB's cleanup horizon (e.g. block VACUUM)
-      // for its entire duration. Safe to commit — the migration only reads from the DB.
+      // Release the DB read snapshot between pages: reindexing a page is slow (many ES round-trips)
+      // Safe to commit — the migration only reads from the DB.
       dbSession.commit();
       LOGGER.info("ES data migration {}: reindexed {} issue(s) so far", VERSION, reindexed);
       if (keys.size() < REINDEX_PAGE_SIZE) {
@@ -113,5 +127,15 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
       return EsDataMigrationExecution.completed("nothing to do: no issues on ai_code_fix_enabled rules");
     }
     return EsDataMigrationExecution.completed("reindexed " + reindexed + " issue(s) from DB");
+  }
+
+  /**
+   * Matches issue docs of the given (enabled, non-removed) rules. The terms clause on ruleUuid also excludes
+   * authorization parent docs, which carry no ruleUuid. No codefixStatus narrowing: execute() reindexes every
+   * in-scope issue, so the estimate counts the same coarse set.
+   */
+  private static BoolQueryBuilder estimateQuery(List<String> ruleUuids) {
+    return QueryBuilders.boolQuery()
+      .filter(QueryBuilders.termsQuery(IssueIndexDefinition.FIELD_ISSUE_RULE_UUID, ruleUuids));
   }
 }
