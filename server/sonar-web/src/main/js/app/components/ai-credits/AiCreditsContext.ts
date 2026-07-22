@@ -23,11 +23,13 @@ import { AiCreditsSummary } from '../../../api/ai-codefix';
 export interface AiCreditsContextInterface {
   creditsData: AiCreditsSummary | null;
   isLoading: boolean;
+  showCredits: boolean;
 }
 
 export const AiCreditsContext = React.createContext<AiCreditsContextInterface>({
   creditsData: null,
   isLoading: false,
+  showCredits: false,
 });
 
 export function useAiCreditsContext() {
