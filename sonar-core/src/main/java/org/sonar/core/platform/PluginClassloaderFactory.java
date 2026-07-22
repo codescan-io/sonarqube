@@ -147,6 +147,16 @@ public class PluginClassloaderFactory {
         // required for some internal SonarSource plugins (billing, orchestrator, ...)
         "org/sonar/server/platform/",
 
+        // member-removal extension point implemented by the CodeScan billing plugin.
+        // Exposed by exact class name so the neighbouring BillingValidations extension point in the same
+        // package stays isolated in the plugin classloader (it is not enabled in every deployment).
+        "org/sonar/server/organization/OrganizationMemberRemovalExtension.class",
+        "org/sonar/server/organization/OrganizationMemberRemovalExtension$Organization.class",
+        "org/sonar/server/organization/OrganizationMemberRemovalExtension$User.class",
+
+        // JDBC driver required by the CodeScan billing plugin's DBConnectionManager (raw JDBC access)
+        "org/postgresql/",
+
         // required for commercial plugins at SonarSource
         "com/sonarsource/plugins/license/api/")
 
