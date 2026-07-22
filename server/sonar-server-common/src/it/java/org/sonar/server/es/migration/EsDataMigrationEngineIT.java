@@ -48,7 +48,8 @@ public class EsDataMigrationEngineIT {
   private final MetadataIndexImpl metadataIndex = new MetadataIndexImpl(es.client());
 
   private EsDataMigrationEngine newEngine(EsDataMigration... migrations) {
-    return new EsDataMigrationEngine(db.getDbClient(), es.client(), metadataIndex, System2.INSTANCE, migrations);
+    // direct (synchronous) executor so the background run completes inline -> deterministic assertions
+    return new EsDataMigrationEngine(db.getDbClient(), es.client(), metadataIndex, System2.INSTANCE, Runnable::run, migrations);
   }
 
   @Test
@@ -62,23 +63,29 @@ public class EsDataMigrationEngineIT {
   }
 
   @Test
-  public void run_with_no_work_marks_completed_immediately() {
+  public void run_returns_running_immediately_then_completes_in_background() {
     EsDataMigrationEngine engine = newEngine(fakeMigration(1L, EsDataMigrationExecution.completed("nothing to do")));
+    // run() returns immediately with RUNNING ("indexing started"); the work runs on the background executor,
+    // which is synchronous in the test, so it has already finished by the time we poll status()
     EsDataMigrationState state = engine.run(1L, false);
-    assertThat(state.getStatus()).isEqualTo(EsDataMigrationState.Status.COMPLETED);
+    assertThat(state.getStatus()).isEqualTo(EsDataMigrationState.Status.RUNNING);
+    assertThat(state.getDetail()).isEqualTo("indexing started");
+
+    EsDataMigrationState done = engine.status(1L);
+    assertThat(done.getStatus()).isEqualTo(EsDataMigrationState.Status.COMPLETED);
     // a completed run records how long it took
-    assertThat(state.getDurationMs()).isNotNull().isGreaterThanOrEqualTo(0L);
-    assertThat(engine.status(1L).getStatus()).isEqualTo(EsDataMigrationState.Status.COMPLETED);
+    assertThat(done.getDurationMs()).isNotNull().isGreaterThanOrEqualTo(0L);
   }
 
   @Test
   public void run_refuses_completed_migration_without_force() {
     EsDataMigrationEngine engine = newEngine(fakeMigration(1L, EsDataMigrationExecution.completed("nothing to do")));
-    engine.run(1L, false);
+    engine.run(1L, false); // completes synchronously via the direct executor
     // completed-without-force is a client-recoverable condition -> IllegalArgumentException (HTTP 400), not 500
     assertThatThrownBy(() -> engine.run(1L, false)).isInstanceOf(IllegalArgumentException.class);
-    // force allows re-run
-    assertThat(engine.run(1L, true).getStatus()).isEqualTo(EsDataMigrationState.Status.COMPLETED);
+    // force allows re-run: run() returns RUNNING, the background work then completes
+    assertThat(engine.run(1L, true).getStatus()).isEqualTo(EsDataMigrationState.Status.RUNNING);
+    assertThat(engine.status(1L).getStatus()).isEqualTo(EsDataMigrationState.Status.COMPLETED);
   }
 
   @Test
@@ -90,12 +97,11 @@ public class EsDataMigrationEngineIT {
   public void status_transitions_running_async_migration_to_completed() {
     EsClient esClientMock = mock(EsClient.class);
     EsDataMigrationEngine engine = new EsDataMigrationEngine(db.getDbClient(), esClientMock, metadataIndex, System2.INSTANCE,
-      fakeMigration(1L, EsDataMigrationExecution.async("task-1")));
+      Runnable::run, fakeMigration(1L, EsDataMigrationExecution.async("task-1")));
 
     EsDataMigrationState running = engine.run(1L, false);
     assertThat(running.getStatus()).isEqualTo(EsDataMigrationState.Status.RUNNING);
-    assertThat(running.getTaskId()).isEqualTo("task-1");
-    // still running: duration is only recorded once the task is polled to a terminal state
+    // run() returns before the background task records the ES task id; duration is only set at a terminal state
     assertThat(running.getDurationMs()).isNull();
 
     when(esClientMock.getTaskIfExists("task-1")).thenReturn(Optional.of(
@@ -113,7 +119,7 @@ public class EsDataMigrationEngineIT {
   public void status_keeps_async_migration_running_and_surfaces_progress_until_task_completes() {
     EsClient esClientMock = mock(EsClient.class);
     EsDataMigrationEngine engine = new EsDataMigrationEngine(db.getDbClient(), esClientMock, metadataIndex, System2.INSTANCE,
-      fakeMigration(1L, EsDataMigrationExecution.async("task-1")));
+      Runnable::run, fakeMigration(1L, EsDataMigrationExecution.async("task-1")));
     engine.run(1L, false);
 
     when(esClientMock.getTaskIfExists("task-1")).thenReturn(Optional.of(
@@ -130,7 +136,7 @@ public class EsDataMigrationEngineIT {
   public void status_fails_async_migration_when_task_no_longer_exists() {
     EsClient esClientMock = mock(EsClient.class);
     EsDataMigrationEngine engine = new EsDataMigrationEngine(db.getDbClient(), esClientMock, metadataIndex, System2.INSTANCE,
-      fakeMigration(1L, EsDataMigrationExecution.async("task-1")));
+      Runnable::run, fakeMigration(1L, EsDataMigrationExecution.async("task-1")));
     engine.run(1L, false);
 
     when(esClientMock.getTaskIfExists("task-1")).thenReturn(Optional.empty());

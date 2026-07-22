@@ -19,6 +19,7 @@
  */
 package org.sonar.server.es.migration;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -28,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
@@ -58,18 +61,35 @@ public class EsDataMigrationEngine {
   private final EsClient esClient;
   private final MetadataIndex metadataIndex;
   private final System2 system2;
+  private final Executor executor;
   private final Map<Long, EsDataMigration> migrationsByVersion;
 
   public EsDataMigrationEngine(DbClient dbClient, EsClient esClient, MetadataIndex metadataIndex,
     System2 system2, EsDataMigration... migrations) {
+    this(dbClient, esClient, metadataIndex, system2, newBackgroundExecutor(), migrations);
+  }
+
+  @VisibleForTesting
+  EsDataMigrationEngine(DbClient dbClient, EsClient esClient, MetadataIndex metadataIndex,
+    System2 system2, Executor executor, EsDataMigration... migrations) {
     this.dbClient = dbClient;
     this.esClient = esClient;
     this.metadataIndex = metadataIndex;
     this.system2 = system2;
+    this.executor = executor;
     this.migrationsByVersion = Arrays.stream(migrations)
       .collect(Collectors.toMap(EsDataMigration::version, m -> m, (a, b) -> {
         throw new IllegalStateException("Duplicate ES data migration version: " + a.version());
       }, TreeMap::new));
+  }
+
+  /** Single daemon thread: migrations run one at a time, off the request thread, and never block JVM shutdown. */
+  private static Executor newBackgroundExecutor() {
+    return Executors.newSingleThreadExecutor(r -> {
+      Thread t = new Thread(r, "es-data-migration");
+      t.setDaemon(true);
+      return t;
+    });
   }
 
   /** One entry per registered migration, ordered by version; RUNNING entries are refreshed from their ES task. */
@@ -99,34 +119,41 @@ public class EsDataMigrationEngine {
       // IllegalArgumentException (not IllegalStateException) so the WebService maps these client-recoverable
       // conditions to HTTP 400 rather than 500 (see WebServiceEngine).
       if (current.getStatus() == Status.RUNNING) {
-        throw new IllegalArgumentException("ES data migration " + version + " is already running (task " + current.getTaskId()
-          + "). Use force to re-run.");
+        throw new IllegalArgumentException("ES data migration " + version + " is already running. Use force to re-run.");
       }
       if (current.getStatus() == Status.COMPLETED) {
         throw new IllegalArgumentException("ES data migration " + version + " already completed. Use force to re-run.");
       }
     }
+    // Persist RUNNING up front, then run the (potentially long) migration on a background thread.
     long startedAt = system2.now();
+    EsDataMigrationState running = newState(version, Status.RUNNING, null, "indexing started");
+    persist(running);
+    LOGGER.info("Starting ES data migration {} ({}){}", version, migration.description(), force ? " [forced re-run]" : "");
+    executor.execute(() -> runToCompletion(version, migration, startedAt));
+    return withDescription(running, migration);
+  }
+
+  /**
+   * Runs the migration off the request thread and persists its terminal state. If execute() instead submits an
+   * asynchronous ES task, the state stays RUNNING with that task id so status() polls it to completion. A crash
+   * here leaves the state at RUNNING; it can be re-run with force (the migration is idempotent).
+   */
+  private void runToCompletion(long version, EsDataMigration migration, long startedAt) {
     try (DbSession dbSession = dbClient.openSession(false)) {
-      LOGGER.info("Starting ES data migration {} ({}){}", version, migration.description(), force ? " [forced re-run]" : "");
       EsDataMigrationExecution execution = migration.execute(dbSession);
-      EsDataMigrationState state;
       if (execution.asyncTaskId().isPresent()) {
-        // async task still running: duration is recorded later, when status() polls it to a terminal state
-        state = newState(version, Status.RUNNING, execution.asyncTaskId().get(), null);
+        persist(newState(version, Status.RUNNING, execution.asyncTaskId().get(), null));
         LOGGER.info("ES data migration {} submitted as ES task {}", version, execution.asyncTaskId().get());
       } else {
         long durationMs = system2.now() - startedAt;
-        state = newState(version, Status.COMPLETED, null, execution.detail()).setDurationMs(durationMs);
+        persist(newState(version, Status.COMPLETED, null, execution.detail()).setDurationMs(durationMs));
         LOGGER.info("ES data migration {} completed in {} ms: {}", version, durationMs, execution.detail());
       }
-      persist(state);
-      return withDescription(state, migration);
     } catch (Exception e) {
-      LOGGER.error("ES data migration {} failed to start", version, e);
-      EsDataMigrationState state = newState(version, Status.FAILED, null, e.getMessage()).setDurationMs(system2.now() - startedAt);
-      persist(state);
-      return withDescription(state, migration);
+      long durationMs = system2.now() - startedAt;
+      LOGGER.error("ES data migration {} failed", version, e);
+      persist(newState(version, Status.FAILED, null, e.getMessage()).setDurationMs(durationMs));
     }
   }
 
