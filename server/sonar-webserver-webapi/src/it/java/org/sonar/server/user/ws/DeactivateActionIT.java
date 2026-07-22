@@ -49,6 +49,7 @@ import org.sonar.server.common.avatar.AvatarResolver;
 import org.sonar.server.common.management.ManagedInstanceChecker;
 import org.sonar.server.common.user.UserAnonymizer;
 import org.sonar.server.common.user.UserDeactivator;
+import org.sonar.server.organization.OrganizationMemberRemovalProxy;
 import org.sonar.server.common.user.service.UserService;
 import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.ForbiddenException;
@@ -84,7 +85,7 @@ public class DeactivateActionIT {
   private final DbClient dbClient = db.getDbClient();
   private final DbSession dbSession = db.getSession();
   private final UserAnonymizer userAnonymizer = new UserAnonymizer(db.getDbClient(), () -> "anonymized");
-  private final UserDeactivator userDeactivator = new UserDeactivator(dbClient, userAnonymizer);
+  private final UserDeactivator userDeactivator = new UserDeactivator(dbClient, userAnonymizer, mock(OrganizationMemberRemovalProxy.class));
   private final ManagedInstanceChecker managedInstanceChecker = mock(ManagedInstanceChecker.class);
   private final IdentityProviderRepository identityProviderRepository = mock();
   private final UserService userService = new UserService(dbClient, mock(AvatarResolver.class), mock(ManagedInstanceService.class), managedInstanceChecker, userDeactivator,

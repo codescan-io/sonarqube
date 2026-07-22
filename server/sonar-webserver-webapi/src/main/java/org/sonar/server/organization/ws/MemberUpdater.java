@@ -29,6 +29,8 @@ import static org.sonar.db.permission.OrganizationPermission.ADMINISTER;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
@@ -38,18 +40,25 @@ import org.sonar.db.user.UserDto;
 import org.sonar.db.user.UserGroupDto;
 import org.sonar.server.organization.BillingValidations;
 import org.sonar.server.organization.BillingValidationsProxy;
+import org.sonar.server.organization.OrganizationMemberRemovalExtension;
+import org.sonar.server.organization.OrganizationMemberRemovalProxy;
 import org.sonar.server.usergroups.DefaultGroupFinder;
 
 public class MemberUpdater {
 
+  private static final Logger LOG = LoggerFactory.getLogger(MemberUpdater.class);
+
   private final DbClient dbClient;
   private final DefaultGroupFinder defaultGroupFinder;
   private final BillingValidationsProxy billingValidations;
+  private final OrganizationMemberRemovalProxy memberRemoval;
 
-  public MemberUpdater(DbClient dbClient, DefaultGroupFinder defaultGroupFinder, BillingValidationsProxy billingValidations) {
+  public MemberUpdater(DbClient dbClient, DefaultGroupFinder defaultGroupFinder, BillingValidationsProxy billingValidations,
+    OrganizationMemberRemovalProxy memberRemoval) {
     this.dbClient = dbClient;
     this.defaultGroupFinder = defaultGroupFinder;
     this.billingValidations = billingValidations;
+    this.memberRemoval = memberRemoval;
   }
 
   public enum MemberType {
@@ -116,6 +125,18 @@ public class MemberUpdater {
 
     usersToRemove.forEach(u -> removeMemberInDb(dbSession, organization, u));
     dbSession.commit();
+
+    usersToRemove.forEach(u -> clearAiLicenseAllocation(organization, u));
+  }
+
+  private void clearAiLicenseAllocation(OrganizationDto organization, UserDto user) {
+    try {
+      memberRemoval.onRemoveMember(
+        new OrganizationMemberRemovalExtension.Organization(organization.getKey(), organization.getUuid(), organization.getName()),
+        new OrganizationMemberRemovalExtension.User(user.getUuid(), user.getLogin(), user.getEmail()));
+    } catch (Exception e) {
+      LOG.warn("Failed to clear AI license allocation for user {} in organization {}", user.getLogin(), organization.getKey(), e);
+    }
   }
 
   private void removeMemberInDb(DbSession dbSession, OrganizationDto organization, UserDto user) {

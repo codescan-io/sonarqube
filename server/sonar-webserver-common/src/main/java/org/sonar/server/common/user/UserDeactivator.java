@@ -20,11 +20,15 @@
 package org.sonar.server.common.user;
 
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.property.PropertyQuery;
 import org.sonar.db.user.UserDto;
+import org.sonar.server.organization.OrganizationMemberRemovalExtension;
+import org.sonar.server.organization.OrganizationMemberRemovalProxy;
 
 import static org.sonar.api.CoreProperties.DEFAULT_ISSUE_ASSIGNEE;
 import static org.sonar.db.permission.GlobalPermission.ADMINISTER;
@@ -32,23 +36,32 @@ import static org.sonar.server.exceptions.BadRequestException.checkRequest;
 import static org.sonar.server.exceptions.NotFoundException.checkFound;
 
 public class UserDeactivator {
+
+  private static final Logger LOG = LoggerFactory.getLogger(UserDeactivator.class);
+
   private final DbClient dbClient;
   private final UserAnonymizer userAnonymizer;
+  private final OrganizationMemberRemovalProxy memberRemoval;
 
-  public UserDeactivator(DbClient dbClient, UserAnonymizer userAnonymizer) {
+  public UserDeactivator(DbClient dbClient, UserAnonymizer userAnonymizer, OrganizationMemberRemovalProxy memberRemoval) {
     this.dbClient = dbClient;
     this.userAnonymizer = userAnonymizer;
+    this.memberRemoval = memberRemoval;
   }
 
   public UserDto deactivateUser(DbSession dbSession, UserDto userDto) {
     UserDto user = doBeforeDeactivation(dbSession, userDto);
-    return deactivateUserInternal(dbSession, user);
+    UserDto deactivatedUser = deactivateUserInternal(dbSession, user);
+    clearAiLicenseAllocation(deactivatedUser);
+    return deactivatedUser;
   }
 
   public UserDto deactivateUserWithAnonymization(DbSession dbSession, UserDto userDto) {
     UserDto user = doBeforeDeactivation(dbSession, userDto);
     anonymizeUser(dbSession, user);
-    return deactivateUserInternal(dbSession, user);
+    UserDto deactivatedUser = deactivateUserInternal(dbSession, user);
+    clearAiLicenseAllocation(deactivatedUser);
+    return deactivatedUser;
   }
 
   private UserDto doBeforeDeactivation(DbSession dbSession, UserDto userDto) {
@@ -86,6 +99,14 @@ public class UserDeactivator {
     dbClient.userDismissedMessagesDao().deleteByUser(dbSession, user);
     dbClient.qualityGateUserPermissionDao().deleteByUser(dbSession, user);
     dbClient.organizationMemberDao().deleteByUserUuid(dbSession, userUuid);
+  }
+
+  private void clearAiLicenseAllocation(UserDto user) {
+    try {
+      memberRemoval.onRemoveUser(new OrganizationMemberRemovalExtension.User(user.getUuid(), user.getLogin(), user.getEmail()));
+    } catch (Exception e) {
+      LOG.warn("Failed to clear AI license allocation for deactivated user {}", user.getLogin(), e);
+    }
   }
 
   private void anonymizeUser(DbSession dbSession, UserDto user) {
