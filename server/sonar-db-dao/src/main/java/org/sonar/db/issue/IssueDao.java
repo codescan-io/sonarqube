@@ -104,6 +104,16 @@ public class IssueDao implements Dao {
     return mapper(dbSession).scrollIssuesForIndexation(branchUuid, issueKeys);
   }
 
+  /** Streams the keys of issues whose rule is ai_code_fix_enabled (and not REMOVED); see BackfillCodefixStatusMigration. */
+  public Cursor<String> scrollIssueKeysForCodefixBackfill(DbSession dbSession) {
+    return mapper(dbSession).scrollIssueKeysForCodefixBackfill();
+  }
+
+  /** Counts the issues {@link #scrollIssueKeysForCodefixBackfill} would return (side-effect free, for the dry-run estimate). */
+  public long countIssuesForCodefixBackfill(DbSession dbSession) {
+    return mapper(dbSession).countIssuesForCodefixBackfill();
+  }
+
   public void insert(DbSession session, IssueDto dto) {
     mapper(session).insert(dto);
     insertIssueImpacts(session, dto);

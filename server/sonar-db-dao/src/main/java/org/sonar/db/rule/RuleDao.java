@@ -121,10 +121,6 @@ public class RuleDao implements Dao {
     return mapper(session).selectAllRules();
   }
 
-  public List<String> selectAiCodeFixBackfillRuleUuids(DbSession session) {
-    return mapper(session).selectAiCodeFixBackfillRuleUuids();
-  }
-
   public List<RuleDto> selectByTypeAndLanguages(DbSession session, List<Integer> types, List<String> languages) {
     return executeLargeInputs(languages, chunk -> mapper(session).selectByTypeAndLanguages(types, chunk));
   }

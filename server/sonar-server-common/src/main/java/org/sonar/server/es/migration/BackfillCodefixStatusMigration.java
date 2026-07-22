@@ -19,45 +19,49 @@
  */
 package org.sonar.server.es.migration;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.reindex.AbstractBulkByScrollRequest;
-import org.elasticsearch.index.reindex.UpdateByQueryRequest;
-import org.elasticsearch.script.Script;
-import org.elasticsearch.script.ScriptType;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.apache.ibatis.cursor.Cursor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.server.ServerSide;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
-import org.sonar.server.es.EsClient;
-import org.sonar.server.issue.index.IssueIndexDefinition;
+import org.sonar.server.issue.index.IssueIndexer;
 
 /**
- * Backfills {@code issues.codefixStatus = AVAILABLE} for issues whose rule has {@code ai_code_fix_enabled=true}
- * and that do not already carry the field. Runs as an ES-side {@code update_by_query} so it does not touch the
- * DB scroll/reindex path. Idempotent: the {@code must_not exists} clause means a re-run only touches docs still
- * missing the field.
+ * Backfills {@code issues.codefixStatus} for issues whose rule has {@code ai_code_fix_enabled=true} by reindexing
+ * those issues from the DB.
  *
- * <p>Unlike {@code IssueMapper#scrollIssuesForIndexation}, this deliberately does NOT narrow variable-naming
- * rules by {@code variableType}; it over-marks every enabled-rule issue as AVAILABLE and lets the service/UI
- * layer filter on read (see {@code SearchResponseFormat} suppressAiFix). The backfill snapshots
- * {@code ai_code_fix_enabled} at run time; rules toggled later do not retroactively update old docs.
+ * <p>The obvious implementation would be an ES-side {@code update_by_query}, but the {@code issues} index is created
+ * with {@code _source} disabled (see {@link org.sonar.server.issue.index.IssueIndexDefinition}), and
+ * {@code update_by_query} rebuilds every matched doc from its {@code _source} — so it fails on every document with
+ * {@code "didn't store _source"}. The DB is the source of truth for the index, so we reindex the affected issues
+ * straight from it instead. Reindexing recomputes {@code codefixStatus} from the canonical
+ * {@code IssueMapper#scrollIssuesForIndexation} expression (which already narrows variable-naming rules by
+ * {@code variableType}), so the value written matches exactly what a normal analysis reindex would write — this
+ * does NOT over-mark.
+ *
+ * <p>Scope is limited to issues of non-REMOVED {@code ai_code_fix_enabled} rules; issues of other rules already hold
+ * the correct (absent/NULL) value in the index and are left untouched. The reindex runs in bounded batches and does
+ * NOT flip {@code need_issue_sync}, so issue search stays available throughout. It is idempotent: each doc is simply
+ * rewritten with its current canonical value, so a re-run (e.g. after a partial failure) is safe.
  */
 @ServerSide
 public class BackfillCodefixStatusMigration implements EsDataMigration {
 
   static final long VERSION = 2026_07_18_01L;
 
-  private final DbClient dbClient;
-  private final EsClient esClient;
+  private static final Logger LOGGER = LoggerFactory.getLogger(BackfillCodefixStatusMigration.class);
+  /** Issue keys reindexed per batch: at most this many keys are held in memory, and each batch is one reindex pass. */
+  private static final int REINDEX_BATCH_SIZE = 10_000;
 
-  public BackfillCodefixStatusMigration(DbClient dbClient, EsClient esClient) {
+  private final DbClient dbClient;
+  private final IssueIndexer issueIndexer;
+
+  public BackfillCodefixStatusMigration(DbClient dbClient, IssueIndexer issueIndexer) {
     this.dbClient = dbClient;
-    this.esClient = esClient;
+    this.issueIndexer = issueIndexer;
   }
 
   @Override
@@ -67,53 +71,42 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
 
   @Override
   public String description() {
-    return "Backfill issues.codefixStatus=AVAILABLE for issues of ai_code_fix_enabled rules that miss the field";
+    return "Backfill issues.codefixStatus for issues of ai_code_fix_enabled rules by reindexing them from the DB";
   }
 
   @Override
   public long estimate(DbSession dbSession) {
-    List<String> ruleUuids = dbClient.ruleDao().selectAiCodeFixBackfillRuleUuids(dbSession);
-    if (ruleUuids.isEmpty()) {
-      return 0;
-    }
-    SearchRequest request = EsClient.prepareSearch(IssueIndexDefinition.TYPE_ISSUE.getMainType())
-      .source(new SearchSourceBuilder().query(buildQuery(ruleUuids)).size(0).trackTotalHits(true));
-    return esClient.search(request).getHits().getTotalHits().value;
+    return dbClient.issueDao().countIssuesForCodefixBackfill(dbSession);
   }
 
   @Override
-  public Optional<String> execute(DbSession dbSession) {
-    List<String> ruleUuids = dbClient.ruleDao().selectAiCodeFixBackfillRuleUuids(dbSession);
-    if (ruleUuids.isEmpty()) {
-      return Optional.empty();
+  public EsDataMigrationExecution execute(DbSession dbSession) {
+    long reindexed = 0;
+    List<String> batch = new ArrayList<>(REINDEX_BATCH_SIZE);
+    try (Cursor<String> issueKeys = dbClient.issueDao().scrollIssueKeysForCodefixBackfill(dbSession)) {
+      for (String issueKey : issueKeys) {
+        batch.add(issueKey);
+        if (batch.size() >= REINDEX_BATCH_SIZE) {
+          reindexed += flush(batch);
+          LOGGER.info("ES data migration {}: reindexed {} issue(s) so far", VERSION, reindexed);
+        }
+      }
+      reindexed += flush(batch);
     }
-    UpdateByQueryRequest request = new UpdateByQueryRequest(IssueIndexDefinition.DESCRIPTOR.getName());
-    request.setQuery(buildQuery(ruleUuids));
-    request.setScript(new Script(ScriptType.INLINE, "painless",
-      "ctx._source." + IssueIndexDefinition.FIELD_ISSUE_CODEFIX_STATUS + " = 'AVAILABLE'", Map.of()));
-    // concurrent issue updates win and carry fresh values, so proceed past version conflicts
-    request.setConflicts("proceed");
-    request.setSlices(AbstractBulkByScrollRequest.AUTO_SLICES);
-    // larger scroll batches -> fewer scroll/bulk round-trips (default is 1000). Trades a higher per-batch,
-    // per-slice heap footprint (batchSize x #slices docs in flight) for throughput on a large issues index.
-    request.setBatchSize(10_000);
-    // no throttling -> maximum throughput. This is already the default; set explicitly for intent. NB the Java
-    // client rejects the REST "-1" sentinel here (setRequestsPerSecond(<=0) throws) - unlimited is POSITIVE_INFINITY.
-    request.setRequestsPerSecond(Float.POSITIVE_INFINITY);
-    // do not force a refresh of the issues index when the task completes; the backfilled values become visible
-    // on the index's normal refresh cycle (also the default, kept explicit).
-    request.setRefresh(false);
-    return Optional.of(esClient.submitUpdateByQueryTask(request).getTask());
+    if (reindexed == 0) {
+      return EsDataMigrationExecution.completed("nothing to do: no issues on ai_code_fix_enabled rules");
+    }
+    return EsDataMigrationExecution.completed("reindexed " + reindexed + " issue(s) from DB");
   }
 
-  /**
-   * Idempotent selection: only docs of the given (all enabled) rules that are still missing the field. The
-   * terms clause on ruleUuid also excludes authorization parent docs (they have no ruleUuid). Naming-rule /
-   * variableType narrowing is deferred to the service/UI layer, so this marks every enabled-rule issue AVAILABLE.
-   */
-  private static BoolQueryBuilder buildQuery(List<String> ruleUuids) {
-    return QueryBuilders.boolQuery()
-      .filter(QueryBuilders.termsQuery(IssueIndexDefinition.FIELD_ISSUE_RULE_UUID, ruleUuids))
-      .mustNot(QueryBuilders.existsQuery(IssueIndexDefinition.FIELD_ISSUE_CODEFIX_STATUS));
+  /** Reindexes the accumulated batch (from the DB, full-doc), clears it, and returns how many were reindexed. */
+  private long flush(List<String> batch) {
+    if (batch.isEmpty()) {
+      return 0;
+    }
+    int size = batch.size();
+    issueIndexer.indexByKeys(batch);
+    batch.clear();
+    return size;
   }
 }

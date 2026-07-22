@@ -19,11 +19,8 @@
  */
 package org.sonar.server.es.migration;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
@@ -33,73 +30,82 @@ import org.junit.Test;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rule.RuleStatus;
 import org.sonar.db.DbTester;
+import org.sonar.db.component.ComponentDto;
+import org.sonar.db.issue.IssueDto;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.server.es.EsClient;
 import org.sonar.server.es.EsTester;
 import org.sonar.server.issue.index.IssueIndexDefinition;
+import org.sonar.server.issue.index.IssueIndexer;
+import org.sonar.server.issue.index.IssueIteratorFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.sonar.server.issue.IssueDocTesting.newDoc;
+import static org.sonar.db.component.ComponentTesting.newFileDto;
 import static org.sonar.server.issue.index.IssueIndexDefinition.TYPE_ISSUE;
 
 public class BackfillCodefixStatusMigrationIT {
-
-  private static final String PROJECT_UUID = "project-uuid";
 
   @Rule
   public EsTester es = EsTester.create();
   @Rule
   public DbTester db = DbTester.create();
 
-  private final BackfillCodefixStatusMigration underTest = new BackfillCodefixStatusMigration(db.getDbClient(), es.client());
+  private final IssueIndexer issueIndexer = new IssueIndexer(es.client(), db.getDbClient(),
+    new IssueIteratorFactory(db.getDbClient()), null);
+  private final BackfillCodefixStatusMigration underTest = new BackfillCodefixStatusMigration(db.getDbClient(), issueIndexer);
 
   @Test
-  public void execute_sets_available_only_for_enabled_rule_issues_missing_the_field() throws Exception {
+  public void execute_reindexes_only_ai_fix_rule_issues_with_the_canonical_codefixStatus() {
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+
     RuleDto enabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true));
     RuleDto disabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(false));
-    // enabled variable-naming rule -> now ALSO marked AVAILABLE (naming/variableType narrowing deferred to service/UI)
+    // enabled variable-naming rule with no AI metadata -> canonical value is NULL (the scrollIssuesForIndexation
+    // CASE narrows naming rules by variableType), so reindexing must NOT mark it AVAILABLE.
     RuleDto namingRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setRuleKey(RuleKey.of("pmd", "ShortVariable")));
-    // REMOVED rule: the enabled flag may linger, but its issues must NOT be over-marked -> excluded by the backfill SQL
+    // REMOVED rule: enabled flag may linger but its issues are out of scope (status != 'REMOVED').
     RuleDto removedRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setStatus(RuleStatus.REMOVED));
 
-    es.putDocuments(TYPE_ISSUE,
-      newDoc().setKey("issue1").setProjectUuid(PROJECT_UUID).setRuleUuid(enabledRule.getUuid()),
-      newDoc().setKey("issue2").setProjectUuid(PROJECT_UUID).setRuleUuid(disabledRule.getUuid()),
-      newDoc().setKey("issue3").setProjectUuid(PROJECT_UUID).setRuleUuid(enabledRule.getUuid()).setCodefixStatus("FIX_GENERATED"),
-      newDoc().setKey("issue4").setProjectUuid(PROJECT_UUID).setRuleUuid(namingRule.getUuid()),
-      newDoc().setKey("issue5").setProjectUuid(PROJECT_UUID).setRuleUuid(removedRule.getUuid()));
+    IssueDto onEnabled = db.issues().insert(enabledRule, project, file);
+    IssueDto onDisabled = db.issues().insert(disabledRule, project, file);
+    IssueDto onEnabledPreset = db.issues().insert(enabledRule, project, file, t -> t.setCodefixStatus("FIX_GENERATED"));
+    IssueDto onNaming = db.issues().insert(namingRule, project, file);
+    IssueDto onRemoved = db.issues().insert(removedRule, project, file);
 
-    assertThat(underTest.estimate(db.getSession())).isEqualTo(2);
+    // enabled(2) + naming(1); disabled and removed are out of scope
+    assertThat(underTest.estimate(db.getSession())).isEqualTo(3);
 
-    Optional<String> taskId = underTest.execute(db.getSession());
-    assertThat(taskId).isPresent();
-    waitForTaskCompletion(taskId.get());
+    EsDataMigrationExecution execution = underTest.execute(db.getSession());
+    assertThat(execution.asyncTaskId()).isEmpty();
+    assertThat(execution.detail()).contains("reindexed 3");
     es.client().refresh(IssueIndexDefinition.DESCRIPTOR);
 
     Map<String, String> statuses = codefixStatusByKey();
-    assertThat(statuses.get("issue1")).isEqualTo("AVAILABLE");
-    assertThat(statuses.get("issue2")).isNull();
-    assertThat(statuses.get("issue3")).isEqualTo("FIX_GENERATED");
-    assertThat(statuses.get("issue4")).isEqualTo("AVAILABLE");
-    assertThat(statuses.get("issue5")).isNull();
+    // reindexed from DB, canonical value written:
+    assertThat(statuses.get(onEnabled.getKey())).isEqualTo("AVAILABLE");
+    assertThat(statuses.get(onEnabledPreset.getKey())).isEqualTo("FIX_GENERATED"); // pre-set DB value preserved via COALESCE
+    assertThat(statuses).containsKey(onNaming.getKey());
+    assertThat(statuses.get(onNaming.getKey())).isNull(); // reindexed, but naming rule w/o metadata -> no AVAILABLE (no over-mark)
+    // out of scope -> never indexed:
+    assertThat(statuses).doesNotContainKey(onDisabled.getKey());
+    assertThat(statuses).doesNotContainKey(onRemoved.getKey());
   }
 
   @Test
-  public void execute_returns_empty_when_no_enabled_rules() {
-    assertThat(underTest.execute(db.getSession())).isEmpty();
-  }
+  public void execute_reports_nothing_to_do_when_no_ai_fix_rule_issues() {
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto disabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(false));
+    db.issues().insert(disabledRule, project, file);
 
-  private void waitForTaskCompletion(String taskId) throws InterruptedException {
-    for (int i = 0; i < 200; i++) {
-      String taskJson = es.client().getTaskIfExists(taskId)
-        .orElseThrow(() -> new IllegalStateException("update_by_query task " + taskId + " no longer exists"));
-      JsonObject task = JsonParser.parseString(taskJson).getAsJsonObject();
-      if (task.get("completed").getAsBoolean()) {
-        return;
-      }
-      Thread.sleep(50);
-    }
-    throw new IllegalStateException("update_by_query task " + taskId + " did not complete in time");
+    assertThat(underTest.estimate(db.getSession())).isZero();
+
+    EsDataMigrationExecution execution = underTest.execute(db.getSession());
+    assertThat(execution.asyncTaskId()).isEmpty();
+    assertThat(execution.detail()).contains("nothing to do");
+    es.client().refresh(IssueIndexDefinition.DESCRIPTOR);
+    assertThat(codefixStatusByKey()).isEmpty();
   }
 
   private Map<String, String> codefixStatusByKey() {

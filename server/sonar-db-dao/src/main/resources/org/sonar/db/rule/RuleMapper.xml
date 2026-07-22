@@ -780,18 +780,6 @@
     <include refid="org.sonar.db.common.Common.pagination"/>
   </select>
 
-  <!-- Rule uuids eligible for the codefixStatus ES backfill (BackfillCodefixStatusMigration #2026071801).
-       Marks EVERY non-removed ai_code_fix_enabled rule as eligible. The naming-rule / variableType!=INSTANCE
-       narrowing that IssueMapper#scrollIssuesForIndexation applies is intentionally NOT done here: the backfill
-       over-marks AVAILABLE and the service/UI layer filters on read (see SearchResponseFormat suppressAiFix).
-       REMOVED rules are excluded (as elsewhere in this mapper) so issues of deleted rules are not over-marked. -->
-  <select id="selectAiCodeFixBackfillRuleUuids" resultType="string">
-    select r.uuid
-    from rules r
-    where r.ai_code_fix_enabled = ${_true}
-      and r.status != 'REMOVED'
-  </select>
-
   <select id="selectRules">
     select r.uuid from rules r
     <include refid="queryList"/>

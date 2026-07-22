@@ -19,13 +19,13 @@
  */
 package org.sonar.server.es.migration;
 
-import java.util.Optional;
 import org.sonar.db.DbSession;
 
 /**
- * A one-shot, versioned Elasticsearch data migration (typically an {@code update_by_query} backfill of a
- * newly added field). Implementations are registered in DI and executed on demand through
- * {@link EsDataMigrationEngine} (never automatically). State is tracked in the ES {@code metadatas} index.
+ * A one-shot, versioned Elasticsearch data migration — a backfill of a newly added field, done either by a
+ * DB-driven reindex (the only option for SonarQube's {@code _source}-less indices) or, on a {@code _source}-storing
+ * index, by an asynchronous {@code update_by_query}. Implementations are registered in DI and executed on demand
+ * through {@link EsDataMigrationEngine} (never automatically). State is tracked in the ES {@code metadatas} index.
  */
 public interface EsDataMigration {
 
@@ -44,8 +44,9 @@ public interface EsDataMigration {
   long estimate(DbSession dbSession);
 
   /**
-   * Submits the work as an asynchronous ES task and returns its task id, or {@link Optional#empty()} when
-   * there is nothing to do (the engine then marks the migration completed immediately).
+   * Runs the migration and returns its {@link EsDataMigrationExecution outcome}: either an asynchronous ES task
+   * for the engine to poll, or a synchronous completion (the common case) with a short summary. Throwing marks
+   * the migration FAILED; implementations should let exceptions propagate rather than swallow a partial run.
    */
-  Optional<String> execute(DbSession dbSession);
+  EsDataMigrationExecution execute(DbSession dbSession);
 }
