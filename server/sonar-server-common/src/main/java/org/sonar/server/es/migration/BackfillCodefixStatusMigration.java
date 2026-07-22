@@ -20,6 +20,7 @@
 package org.sonar.server.es.migration;
 
 import java.util.List;
+import java.util.function.Supplier;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -48,18 +49,29 @@ import org.sonar.server.issue.index.IssueIndexer;
  * does NOT over-mark.
  *
  * <p>Scope is limited to issues of non-REMOVED {@code ai_code_fix_enabled} rules; issues of other rules already hold
- * the correct (absent/NULL) value in the index and are left untouched. The reindex runs in bounded batches and does
+ * the correct (absent/NULL) value in the index and are left untouched. The reindex streams the in-scope keys in bounded
+ * keyset pages under a single {@code BulkIndexer.Size.LARGE} bulk (see {@link IssueIndexer#reindexByKeyPages}) and does
  * NOT flip {@code need_issue_sync}, so issue search stays available throughout. It is idempotent: each doc is simply
  * rewritten with its current canonical value, so a re-run (e.g. after a partial failure) is safe.
  *
  * <p><b>Run this while analyses of {@code ai_code_fix_enabled} projects are quiesced</b> (e.g. a maintenance
- * window). It writes issue docs from the DB directly — outside the resilient {@code es_queue} path and with plain
+ * window). The {@code LARGE} bulk temporarily drops the {@code issues} index to 0 replicas and disables periodic
+ * refresh for the duration of the run (restored, with a force-merge, at the end), so it is a heavy index-wide
+ * operation. It also writes issue docs from the DB directly — outside the resilient {@code es_queue} path and with plain
  * last-write-wins index requests — so it takes no part in the analysis/indexing serialization and is NOT protected
  * against concurrent writers. If an analysis re-indexes one of these issues at the same time, the two writers race
  * and the migration can overwrite the fresher analysis doc with the snapshot it read a moment earlier; that doc
  * then stays stale until the issue is next re-indexed. The migration is admin-triggered on demand (never
  * automatically) precisely so an operator can pick a quiet moment, and because it is idempotent, simply re-running
  * it once analyses have settled repairs any doc lost to such a race.
+ *
+ * <p><b>IMPORTANT — after a failed run, verify the index settings before re-running.</b> The temporary settings
+ * ({@code number_of_replicas=0}, {@code refresh_interval=-1}) are restored by the {@code LARGE} bulk at the end of a
+ * run, but that restore is itself an Elasticsearch call: if a run fails because ES is unreachable, the settings can be
+ * left in the disabled state. Before re-running, confirm the {@code issues} index has its original
+ * {@code number_of_replicas} and {@code refresh_interval} (e.g. {@code GET issues/_settings}) and restore them if not.
+ * Re-running against an index still in the disabled state makes the {@code LARGE} bulk capture {@code -1} / {@code 0}
+ * as the baseline to "restore" to, which would leave periodic refresh permanently off.
  */
 @ServerSide
 public class BackfillCodefixStatusMigration implements EsDataMigration {
@@ -104,29 +116,44 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
 
   @Override
   public EsDataMigrationExecution execute(DbSession dbSession) {
-    long reindexed = 0;
-    String afterKey = null;
-    while (true) {
+    KeyPageCursor cursor = new KeyPageCursor(dbSession);
+    // A single LARGE bulk spans every page (replicas + refresh disabled for the run, one force-merge + refresh at the
+    // end); the cursor keyset-paginates and commits the read snapshot between pages so no long transaction is held.
+    issueIndexer.reindexByKeyPages(cursor);
+    if (cursor.total == 0) {
+      return EsDataMigrationExecution.completed("nothing to do: no issues on ai_code_fix_enabled rules");
+    }
+    return EsDataMigrationExecution.completed("reindexed " + cursor.total + " issue(s) from DB");
+  }
+
+  /**
+   * Keyset-paginates the in-scope issue keys for {@link IssueIndexer#reindexByKeyPages}. Each {@link #get()} fetches the
+   * next page ordered by key and commits the DB read snapshot, so the indexer never holds a long-lived transaction while
+   * it does its (slow, many-round-trip) ES writes. Returns an empty list once the keys are exhausted.
+   */
+  private final class KeyPageCursor implements Supplier<List<String>> {
+    private final DbSession dbSession;
+    private String afterKey = null;
+    private long total = 0;
+
+    private KeyPageCursor(DbSession dbSession) {
+      this.dbSession = dbSession;
+    }
+
+    @Override
+    public List<String> get() {
       List<String> keys = dbClient.issueDao()
         .selectIssueKeysForCodefixBackfill(dbSession, afterKey, Pagination.forPage(1).andSize(REINDEX_PAGE_SIZE));
       if (keys.isEmpty()) {
-        break;
+        return keys;
       }
-      issueIndexer.indexByKeys(keys);
-      reindexed += keys.size();
       afterKey = keys.get(keys.size() - 1);
-      // Release the DB read snapshot between pages: reindexing a page is slow (many ES round-trips)
+      total += keys.size();
       // Safe to commit — the migration only reads from the DB.
       dbSession.commit();
-      LOGGER.info("ES data migration {}: reindexed {} issue(s) so far", VERSION, reindexed);
-      if (keys.size() < REINDEX_PAGE_SIZE) {
-        break;
-      }
+      LOGGER.info("ES data migration {}: queued {} issue(s) for reindex so far", VERSION, total);
+      return keys;
     }
-    if (reindexed == 0) {
-      return EsDataMigrationExecution.completed("nothing to do: no issues on ai_code_fix_enabled rules");
-    }
-    return EsDataMigrationExecution.completed("reindexed " + reindexed + " issue(s) from DB");
   }
 
   /**
