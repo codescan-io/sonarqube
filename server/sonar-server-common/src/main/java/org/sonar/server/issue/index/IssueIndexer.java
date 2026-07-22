@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -122,19 +123,47 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
   }
 
   /**
-   * Reindexes the given issues from the DB in place: a bulk full-document index that recomputes every field
-   * (including {@code codefixStatus}, via {@code IssueMapper#scrollIssuesForIndexation}). This is the {@code _source}-free
-   * way to backfill/refresh a field, since the {@code issues} index stores no {@code _source} and so cannot be updated
-   * with {@code update_by_query}. Unlike {@link #indexProject} it does NOT set {@code need_issue_sync}, so issue search
-   * stays available; and unlike the resilient paths it fails fast (no {@code es_queue} recovery) — the behaviour a
-   * one-shot admin data migration wants. The caller must batch {@code issueKeys} to bound heap.
+   * Reindexes issues from the DB in place under a single {@link Size#LARGE} bulk that spans every page: a full-document
+   * index that recomputes every field (including {@code codefixStatus}, via {@code IssueMapper#scrollIssuesForIndexation}).
+   * This is the {@code _source}-free way to backfill/refresh a field, since the {@code issues} index stores no
+   * {@code _source} and so cannot be updated with {@code update_by_query}.
+   *
+   * <p>Because the {@code LARGE} bulk spans the whole run, replicas and periodic refresh are disabled for its duration
+   * and the index is force-merged and refreshed <em>once</em> at the end — rather than refreshed after every page, which
+   * is what makes a naive page-by-page reindex of millions of docs pathologically slow. Unlike {@link #indexProject} it
+   * does NOT set {@code need_issue_sync}, so issue search stays available; and unlike the resilient paths it fails fast
+   * (no {@code es_queue} recovery) — the behaviour a one-shot admin data migration wants.
+   *
+   * <p>{@code pageSupplier} is polled for bounded issue-key pages until it returns an empty list; the caller reads and
+   * commits its own DB session between pages, so no long read snapshot is held while indexing. Run while analyses are
+   * quiesced: replicas are temporarily dropped to 0 for the duration.
+   *
+   * <p><b>Note:</b> the disabled replicas / {@code refresh_interval} are restored by {@link BulkIndexer#stop()}, which
+   * is itself an Elasticsearch call — if the run fails because ES is unreachable, the index can be left with those
+   * settings disabled. Callers must ensure the settings are restored before re-invoking, otherwise the {@code LARGE}
+   * handler will capture the disabled values as the baseline it "restores" to (leaving periodic refresh off).
    */
-  public void indexByKeys(Collection<String> issueKeys) {
-    if (issueKeys.isEmpty()) {
+  public void reindexByKeyPages(Supplier<List<String>> pageSupplier) {
+    List<String> keys = pageSupplier.get();
+    if (keys.isEmpty()) {
+      // nothing in scope: don't disable replicas / refresh or force-merge the index for no reason
       return;
     }
-    try (IssueIterator issues = issueIteratorFactory.createForIssueKeys(issueKeys)) {
-      doIndex(issues);
+    BulkIndexer bulkIndexer = new BulkIndexer(esClient, TYPE_ISSUE, Size.LARGE, IndexingListener.FAIL_ON_ERROR);
+    bulkIndexer.start();
+    try {
+      while (!keys.isEmpty()) {
+        try (IssueIterator issues = issueIteratorFactory.createForIssueKeys(keys)) {
+          while (issues.hasNext()) {
+            bulkIndexer.add(newIndexRequest(issues.next()));
+          }
+        }
+        keys = pageSupplier.get();
+      }
+    } finally {
+      // stop() force-merges, refreshes once, and restores replicas + refresh_interval. It must run even if a page
+      // fails, otherwise the index is left with replicas=0 / refresh_interval=-1.
+      bulkIndexer.stop();
     }
   }
 
