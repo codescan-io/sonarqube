@@ -74,8 +74,6 @@ public interface IssueMapper {
 
   List<String> selectIssueKeysForCodefixBackfill(@Nullable @Param("afterKey") String afterKey, @Param("pagination") Pagination pagination);
 
-  long countIssuesForCodefixBackfill();
-
   Collection<IssueGroupDto> selectIssueGroupsByComponent(@Param("component") ComponentDto component, @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
 
   Collection<IssueImpactGroupDto> selectIssueImpactGroupsByComponent(@Param("component") ComponentDto component, @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
