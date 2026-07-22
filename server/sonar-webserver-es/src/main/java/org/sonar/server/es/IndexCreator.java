@@ -57,6 +57,13 @@ public class IndexCreator implements Startable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IndexCreator.class);
 
+  /**
+   * Index settings Elasticsearch applies to a live index without a rebuild. A change to one of these is pushed in
+   * place via {@link EsClient#putSettings} instead of forcing the destructive delete + recreate that a structural
+   * setting change (shards, analyzers, ...) requires.
+   */
+  private static final Set<String> LIVE_UPDATABLE_SETTINGS = Set.of("index.number_of_replicas", "index.refresh_interval");
+
   private final MetadataIndexDefinition metadataIndexDefinition;
   private final MetadataIndex metadataIndex;
   private final EsClient client;
@@ -182,16 +189,19 @@ public class IndexCreator implements Startable {
    * re-run a full indexing). ES rejects incompatible merges (changed field types/analyzers) with an
    * exception, which falls back to delete + recreate.
    *
-   * <p>Only the <b>mapping</b> is merged in place, never settings. Any difference in a declared index setting
-   * (number of shards / replicas, analyzers, refresh_interval, ...) forces the delete + recreate path instead,
-   * so setting changes are still applied — via a full rebuild rather than in place. The in-place path is
-   * therefore taken only for a pure additive-mapping change with otherwise identical settings.
+   * <p>Structural settings (number of shards, analyzers, ...) cannot change on a live index, so any difference in
+   * one forces the delete + recreate path. Dynamic settings ES can change in place ({@link #LIVE_UPDATABLE_SETTINGS}:
+   * number of replicas, refresh_interval) are the exception: a change to one is pushed onto the live index via
+   * {@code updateSettings} instead of triggering a rebuild. The in-place path is therefore taken for a pure
+   * additive-mapping change combined with, at most, dynamic-setting changes.
    */
   private boolean tryInPlaceMappingUpdate(BuiltIndex<?> index) {
     String indexName = index.getMainType().getIndex().getName();
     long startedAt = System.currentTimeMillis();
+    GetSettingsResponse liveSettings;
     try {
-      if (settingsDiffer(index, indexName)) {
+      liveSettings = client.getSettings(new GetSettingsRequest().indices(indexName));
+      if (structuralSettingsDiffer(index, indexName, liveSettings)) {
         return false;
       }
       AcknowledgedResponse response = client.putMapping(new PutMappingRequest(indexName).source(index.getAttributes()));
@@ -204,10 +214,17 @@ public class IndexCreator implements Startable {
     }
 
     // At this point the mapping has been merged and the existing documents are preserved: the in-place update
-    // has succeeded and MUST be treated as committed. Persisting the new definition hash below is only
-    // bookkeeping; if it fails it is harmless and self-healing (next startup sees the stale hash, re-runs the
-    // idempotent merge and retries the hash write). It must therefore never fall through to the destructive
-    // delete + recreate path, which would throw away a live index over a failed metadata write.
+    // has succeeded and MUST be treated as committed. Everything below is best-effort in-place bookkeeping
+    // (pushing dynamic-setting changes, persisting the new definition hash); if any of it fails it is harmless
+    // and self-healing (next startup sees the stale hash, re-runs the idempotent merge and retries). It must
+    // therefore never fall through to the destructive delete + recreate path, which would throw away a live
+    // index over a failed metadata/settings write.
+    try {
+      applyLiveSettingChanges(index, indexName, liveSettings);
+    } catch (Exception e) {
+      LOGGER.warn("Index [{}]: mapping merged in place but applying dynamic setting change(s) failed; "
+        + "it will be retried on next startup", indexName, e);
+    }
     try {
       metadataIndex.setHash(index.getMainType().getIndex(), IndexDefinitionHash.of(index));
     } catch (Exception e) {
@@ -220,24 +237,49 @@ public class IndexCreator implements Startable {
   }
 
   /**
-   * Whether any index setting declared by the definition differs from the running index. Unlike an additive
-   * mapping, a settings change (shards/replicas, analyzers, refresh_interval, ...) cannot be merged into a live
-   * index, so ANY declared-setting difference forces the delete + recreate path — which reapplies the full
-   * definition — rather than silently keeping the old settings. Only keys present in the definition are
-   * compared, so ES-supplied defaults never spuriously force a rebuild on an unchanged redeploy.
+   * Whether any STRUCTURAL index setting (one ES cannot change on a live index: shards, analyzers, ...) declared
+   * by the definition differs from the running index. Such a change cannot be merged in place, so it forces the
+   * delete + recreate path — which reapplies the full definition — rather than silently keeping the old value.
+   * Dynamic settings in {@link #LIVE_UPDATABLE_SETTINGS} are excluded here: they never force a rebuild and are
+   * instead pushed onto the live index by {@link #applyLiveSettingChanges}. Only keys present in the definition
+   * are compared, so ES-supplied defaults never spuriously force a rebuild on an unchanged redeploy.
    */
-  private boolean settingsDiffer(BuiltIndex<?> index, String indexName) {
-    GetSettingsResponse liveSettings = client.getSettings(new GetSettingsRequest().indices(indexName));
+  private static boolean structuralSettingsDiffer(BuiltIndex<?> index, String indexName, GetSettingsResponse liveSettings) {
     Settings target = index.getSettings();
     for (String key : target.keySet()) {
+      if (LIVE_UPDATABLE_SETTINGS.contains(key)) {
+        continue;
+      }
       String targetValue = target.get(key);
       String currentValue = liveSettings.getSetting(indexName, key);
       if (targetValue != null && !targetValue.equals(currentValue)) {
-        LOGGER.info("Index [{}]: setting {} changed ({} -> {}), in-place update not possible", indexName, key, currentValue, targetValue);
+        LOGGER.info("Index [{}]: structural setting {} changed ({} -> {}), in-place update not possible", indexName, key, currentValue, targetValue);
         return true;
       }
     }
     return false;
+  }
+
+  /**
+   * Pushes any changed {@link #LIVE_UPDATABLE_SETTINGS} (e.g. number_of_replicas, refresh_interval) onto the live
+   * index via {@code updateSettings}. These are dynamic in Elasticsearch, so they take effect without a rebuild;
+   * applying them here is what lets a change to one of them avoid the delete + recreate path. Only keys present in
+   * the definition and actually differing from the running index are sent.
+   */
+  private void applyLiveSettingChanges(BuiltIndex<?> index, String indexName, GetSettingsResponse liveSettings) {
+    Settings target = index.getSettings();
+    Settings.Builder changed = Settings.builder();
+    for (String key : LIVE_UPDATABLE_SETTINGS) {
+      String targetValue = target.get(key);
+      if (targetValue != null && !targetValue.equals(liveSettings.getSetting(indexName, key))) {
+        changed.put(key, targetValue);
+      }
+    }
+    Settings toApply = changed.build();
+    if (!toApply.isEmpty()) {
+      client.putSettings(new UpdateSettingsRequest().indices(indexName).settings(toApply));
+      LOGGER.info("Index [{}]: applied dynamic setting change(s) in place (no rebuild): {}", indexName, toApply.keySet());
+    }
   }
 
   private boolean hasDefinitionChange(BuiltIndex<?> index) {

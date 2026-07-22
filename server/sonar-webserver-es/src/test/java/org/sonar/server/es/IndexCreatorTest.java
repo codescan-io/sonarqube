@@ -150,6 +150,32 @@ public class IndexCreatorTest {
   }
 
   @Test
+  public void update_dynamic_setting_in_place_when_only_refresh_interval_changed() {
+    // v1: refresh_interval = 30s (default)
+    run(new FakeIndexDefinition());
+    putFakeDocument();
+    metadataIndex.setInitialized(FakeIndexDefinition.INDEX_TYPE, true);
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isOne();
+    String hashV1 = metadataIndex.getHash(FakeIndexDefinition.INDEX_TYPE.getIndex()).orElse(null);
+
+    // v2: identical mapping, only refresh_interval changed -> a DYNAMIC setting -> pushed in place, NOT a rebuild
+    logTester.clear();
+    run(new FakeIndexDefinitionDifferentRefreshInterval());
+
+    // doc survives (no delete + recreate) and full-reindex is not re-triggered
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isOne();
+    assertThat(metadataIndex.getInitialized(FakeIndexDefinition.INDEX_TYPE)).isTrue();
+    // the new value is actually applied to the live index
+    String indexName = FakeIndexDefinition.INDEX_TYPE.getIndex().getName();
+    assertThat(es.client().getSettings(new GetSettingsRequest().indices(indexName)).getSetting(indexName, "index.refresh_interval"))
+      .isEqualTo("-1");
+    // hash advanced to v2, in-place path taken, no recreate
+    assertThat(metadataIndex.getHash(FakeIndexDefinition.INDEX_TYPE.getIndex()).orElse(null)).isNotNull().isNotEqualTo(hashV1);
+    assertThat(logTester.logs(Level.INFO)).anyMatch(l -> l.contains("applied dynamic setting change"));
+    assertThat(logTester.logs(Level.INFO)).noneMatch(l -> l.contains("Delete Elasticsearch index fakes"));
+  }
+
+  @Test
   public void mark_all_non_existing_index_types_as_uninitialized() {
     Index fakesIndex = Index.simple("fakes");
     Index fakersIndex = Index.simple("fakers");
@@ -316,6 +342,21 @@ public class IndexCreatorTest {
       // same mapping as FakeIndexDefinition, but 2 shards instead of 1 (a setting that cannot change in place)
       SettingsConfiguration twoShards = newBuilder(new MapSettings().asConfig()).setDefaultNbOfShards(2).build();
       NewRegularIndex newIndex = context.create(index, twoShards);
+      newIndex.createTypeMapping(IndexType.main(index, "fake"))
+        .keywordFieldBuilder("key").build()
+        .createDateTimeField("updatedAt");
+    }
+  }
+
+  private static class FakeIndexDefinitionDifferentRefreshInterval implements IndexDefinition {
+    @Override
+    public void define(IndexDefinitionContext context) {
+      Index index = Index.simple("fakes");
+      // same mapping and shards as FakeIndexDefinition, but refresh_interval = -1 instead of the default 30s
+      // (a DYNAMIC setting Elasticsearch applies to a live index without a rebuild)
+      SettingsConfiguration manualRefresh = newBuilder(new MapSettings().asConfig())
+        .setRefreshInterval(SettingsConfiguration.MANUAL_REFRESH_INTERVAL).build();
+      NewRegularIndex newIndex = context.create(index, manualRefresh);
       newIndex.createTypeMapping(IndexType.main(index, "fake"))
         .keywordFieldBuilder("key").build()
         .createDateTimeField("updatedAt");

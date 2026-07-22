@@ -64,8 +64,12 @@ public class EsMigrationsWs implements WebService {
       .prop("description", state.getDescription())
       .prop("status", state.getStatus() == null ? null : state.getStatus().name())
       .prop("taskId", state.getTaskId())
-      .prop("detail", state.getDetail())
-      .propDateTime("updatedAt", new Date(state.getUpdatedAt()))
+      .prop("detail", state.getDetail());
+    // wall-clock run time; present only once the migration has finished (COMPLETED/FAILED)
+    if (state.getDurationMs() != null) {
+      json.prop("durationMs", state.getDurationMs().longValue());
+    }
+    json.propDateTime("updatedAt", new Date(state.getUpdatedAt()))
       .endObject();
   }
 }

@@ -36,8 +36,6 @@ public interface RuleMapper {
 
   List<RuleDto> selectAllRules();
 
-  List<String> selectAiCodeFixBackfillRuleUuids();
-
   List<RuleDto> selectEnabled();
 
   RuleDto selectByUuid(@Param("uuid") String uuid);

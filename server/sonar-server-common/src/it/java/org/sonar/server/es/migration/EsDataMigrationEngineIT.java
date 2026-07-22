@@ -19,7 +19,6 @@
  */
 package org.sonar.server.es.migration;
 
-import java.util.Optional;
 import org.junit.Rule;
 import org.junit.Test;
 import org.sonar.api.config.internal.MapSettings;
@@ -50,25 +49,30 @@ public class EsDataMigrationEngineIT {
 
   @Test
   public void list_reports_pending_for_unrun_migration() {
-    EsDataMigrationEngine engine = newEngine(fakeMigration(1L, Optional.empty()));
+    EsDataMigrationEngine engine = newEngine(fakeMigration(1L, EsDataMigrationExecution.completed("nothing to do")));
     assertThat(engine.list())
       .extracting(EsDataMigrationState::getVersion, EsDataMigrationState::getStatus)
       .containsExactly(tuple(1L, EsDataMigrationState.Status.PENDING));
+    // never-run migration has no duration yet
+    assertThat(engine.list().get(0).getDurationMs()).isNull();
   }
 
   @Test
   public void run_with_no_work_marks_completed_immediately() {
-    EsDataMigrationEngine engine = newEngine(fakeMigration(1L, Optional.empty()));
+    EsDataMigrationEngine engine = newEngine(fakeMigration(1L, EsDataMigrationExecution.completed("nothing to do")));
     EsDataMigrationState state = engine.run(1L, false);
     assertThat(state.getStatus()).isEqualTo(EsDataMigrationState.Status.COMPLETED);
+    // a completed run records how long it took
+    assertThat(state.getDurationMs()).isNotNull().isGreaterThanOrEqualTo(0L);
     assertThat(engine.status(1L).getStatus()).isEqualTo(EsDataMigrationState.Status.COMPLETED);
   }
 
   @Test
   public void run_refuses_completed_migration_without_force() {
-    EsDataMigrationEngine engine = newEngine(fakeMigration(1L, Optional.empty()));
+    EsDataMigrationEngine engine = newEngine(fakeMigration(1L, EsDataMigrationExecution.completed("nothing to do")));
     engine.run(1L, false);
-    assertThatThrownBy(() -> engine.run(1L, false)).isInstanceOf(IllegalStateException.class);
+    // completed-without-force is a client-recoverable condition -> IllegalArgumentException (HTTP 400), not 500
+    assertThatThrownBy(() -> engine.run(1L, false)).isInstanceOf(IllegalArgumentException.class);
     // force allows re-run
     assertThat(engine.run(1L, true).getStatus()).isEqualTo(EsDataMigrationState.Status.COMPLETED);
   }
@@ -81,7 +85,7 @@ public class EsDataMigrationEngineIT {
   // NOTE: the RUNNING -> COMPLETED transition against a real ES task is covered by
   // BackfillCodefixStatusMigrationIT (Task 6) + the end-to-end pass — not here.
 
-  private static EsDataMigration fakeMigration(long version, Optional<String> executeResult) {
+  private static EsDataMigration fakeMigration(long version, EsDataMigrationExecution executeResult) {
     return new EsDataMigration() {
       @Override
       public long version() {
@@ -99,7 +103,7 @@ public class EsDataMigrationEngineIT {
       }
 
       @Override
-      public Optional<String> execute(DbSession dbSession) {
+      public EsDataMigrationExecution execute(DbSession dbSession) {
         return executeResult;
       }
     };

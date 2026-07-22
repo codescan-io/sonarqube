@@ -121,6 +121,23 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
     }
   }
 
+  /**
+   * Reindexes the given issues from the DB in place: a bulk full-document index that recomputes every field
+   * (including {@code codefixStatus}, via {@code IssueMapper#scrollIssuesForIndexation}). This is the {@code _source}-free
+   * way to backfill/refresh a field, since the {@code issues} index stores no {@code _source} and so cannot be updated
+   * with {@code update_by_query}. Unlike {@link #indexProject} it does NOT set {@code need_issue_sync}, so issue search
+   * stays available; and unlike the resilient paths it fails fast (no {@code es_queue} recovery) — the behaviour a
+   * one-shot admin data migration wants. The caller must batch {@code issueKeys} to bound heap.
+   */
+  public void indexByKeys(Collection<String> issueKeys) {
+    if (issueKeys.isEmpty()) {
+      return;
+    }
+    try (IssueIterator issues = issueIteratorFactory.createForIssueKeys(issueKeys)) {
+      doIndex(issues);
+    }
+  }
+
   @Override
   public void indexOnAnalysis(String branchUuid) {
     try (IssueIterator issues = issueIteratorFactory.createForBranch(branchUuid)) {

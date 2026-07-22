@@ -372,6 +372,27 @@
     </collection>
   </resultMap>
 
+  <!-- Issues eligible for the codefixStatus ES backfill (BackfillCodefixStatusMigration #2026071801): every issue
+       of a non-removed ai_code_fix_enabled rule. Selection is deliberately coarse (rule-level, not value-level):
+       the canonical codefixStatus value is recomputed by scrollIssuesForIndexation when these keys are reindexed,
+       so this does not need to replicate the naming-rule / variableType narrowing. -->
+  <select id="countIssuesForCodefixBackfill" resultType="long">
+    select count(i.kee)
+    from issues i
+    inner join rules r on r.uuid = i.rule_uuid
+    where r.ai_code_fix_enabled = ${_true}
+      and r.status != 'REMOVED'
+  </select>
+
+  <select id="scrollIssueKeysForCodefixBackfill" resultType="string" fetchSize="${_scrollFetchSize}"
+           resultSetType="FORWARD_ONLY" resultOrdered="true">
+    select i.kee
+    from issues i
+    inner join rules r on r.uuid = i.rule_uuid
+    where r.ai_code_fix_enabled = ${_true}
+      and r.status != 'REMOVED'
+  </select>
+
   <select id="scrollIssuesForIndexation" parameterType="map" resultMap="indexedIssueResultMap" fetchSize="${_scrollFetchSize}"
            resultSetType="FORWARD_ONLY" resultOrdered="true">
     select

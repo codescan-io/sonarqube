@@ -38,6 +38,9 @@ public class EsDataMigrationState {
   private String taskId;
   @Nullable
   private String detail;
+  /** Wall-clock time the run took, in millis; set only once the migration reaches a terminal state (COMPLETED/FAILED), else null. */
+  @Nullable
+  private Long durationMs;
   private long updatedAt;
 
   public long getVersion() {
@@ -85,6 +88,16 @@ public class EsDataMigrationState {
 
   public EsDataMigrationState setDetail(@Nullable String detail) {
     this.detail = detail;
+    return this;
+  }
+
+  @Nullable
+  public Long getDurationMs() {
+    return durationMs;
+  }
+
+  public EsDataMigrationState setDurationMs(@Nullable Long durationMs) {
+    this.durationMs = durationMs;
     return this;
   }
 

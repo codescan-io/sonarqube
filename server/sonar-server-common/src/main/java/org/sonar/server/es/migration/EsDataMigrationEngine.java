@@ -106,22 +106,25 @@ public class EsDataMigrationEngine {
         throw new IllegalArgumentException("ES data migration " + version + " already completed. Use force to re-run.");
       }
     }
+    long startedAt = system2.now();
     try (DbSession dbSession = dbClient.openSession(false)) {
       LOGGER.info("Starting ES data migration {} ({}){}", version, migration.description(), force ? " [forced re-run]" : "");
-      Optional<String> taskId = migration.execute(dbSession);
+      EsDataMigrationExecution execution = migration.execute(dbSession);
       EsDataMigrationState state;
-      if (taskId.isPresent()) {
-        state = newState(version, Status.RUNNING, taskId.get(), null);
-        LOGGER.info("ES data migration {} submitted as ES task {}", version, taskId.get());
+      if (execution.asyncTaskId().isPresent()) {
+        // async task still running: duration is recorded later, when status() polls it to a terminal state
+        state = newState(version, Status.RUNNING, execution.asyncTaskId().get(), null);
+        LOGGER.info("ES data migration {} submitted as ES task {}", version, execution.asyncTaskId().get());
       } else {
-        state = newState(version, Status.COMPLETED, null, "nothing to do");
-        LOGGER.info("ES data migration {} completed: nothing to do", version);
+        long durationMs = system2.now() - startedAt;
+        state = newState(version, Status.COMPLETED, null, execution.detail()).setDurationMs(durationMs);
+        LOGGER.info("ES data migration {} completed in {} ms: {}", version, durationMs, execution.detail());
       }
       persist(state);
       return withDescription(state, migration);
     } catch (Exception e) {
       LOGGER.error("ES data migration {} failed to start", version, e);
-      EsDataMigrationState state = newState(version, Status.FAILED, null, e.getMessage());
+      EsDataMigrationState state = newState(version, Status.FAILED, null, e.getMessage()).setDurationMs(system2.now() - startedAt);
       persist(state);
       return withDescription(state, migration);
     }
@@ -149,7 +152,8 @@ public class EsDataMigrationEngine {
         // migration rather than leaving it wedged at RUNNING forever; an admin can re-run it with force=true.
         String detail = "task " + state.getTaskId()
           + " no longer exists on the cluster (node restart or evicted result); re-run with force=true";
-        EsDataMigrationState failed = newState(state.getVersion(), Status.FAILED, state.getTaskId(), detail);
+        EsDataMigrationState failed = newState(state.getVersion(), Status.FAILED, state.getTaskId(), detail)
+          .setDurationMs(system2.now() - state.getUpdatedAt());
         persist(failed);
         LOGGER.error("ES data migration {} failed: {}", state.getVersion(), detail);
         return failed;
@@ -179,9 +183,9 @@ public class EsDataMigrationEngine {
           + ", versionConflicts=" + response.get("version_conflicts")
           + (hasFailures ? (", failures=" + failures.size() + " (first: " + truncate(failures.get(0).toString(), 500) + ")") : "");
       }
-      EsDataMigrationState done = newState(state.getVersion(), status, state.getTaskId(), detail);
-      persist(done);
       long wallClockMs = system2.now() - state.getUpdatedAt();
+      EsDataMigrationState done = newState(state.getVersion(), status, state.getTaskId(), detail).setDurationMs(wallClockMs);
+      persist(done);
       if (status == Status.FAILED) {
         LOGGER.error("ES data migration {} failed (task {}) after {} ms: {}", done.getVersion(), done.getTaskId(), wallClockMs, detail);
       } else {
