@@ -44,7 +44,10 @@ public class RunAction implements EsMigrationsWsAction {
   @Override
   public void define(WebService.NewController controller) {
     WebService.NewAction action = controller.createAction("run")
-      .setDescription("Run (or dry-run) an ES data migration by version. Requires 'Administer System' permission.")
+      .setDescription("Run (or dry-run) an ES data migration by version. Requires 'Administer System' permission. "
+        + "Run migrations during a quiet period: a migration may reindex documents from the DB outside the "
+        + "resilient indexing path, so an analysis writing the same documents concurrently can race it and be "
+        + "overwritten. Migrations are idempotent — if in doubt, re-run once analyses have settled.")
       .setSince("10.8")
       .setPost(true)
       .setInternal(true)
