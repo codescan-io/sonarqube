@@ -42,6 +42,7 @@ import org.sonar.db.DbSession;
 import org.sonar.server.es.EsClient;
 import org.sonar.server.es.metadata.MetadataIndex;
 import org.sonar.server.es.migration.EsDataMigrationState.Status;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Runs and tracks {@link EsDataMigration}s. Migrations never run automatically: they are triggered through
@@ -63,13 +64,15 @@ public class EsDataMigrationEngine {
   private final System2 system2;
   private final Executor executor;
   private final Map<Long, EsDataMigration> migrationsByVersion;
-
+  
+  @Autowired(required = false)
   public EsDataMigrationEngine(DbClient dbClient, EsClient esClient, MetadataIndex metadataIndex,
     System2 system2, EsDataMigration... migrations) {
     this(dbClient, esClient, metadataIndex, system2, newBackgroundExecutor(), migrations);
   }
 
   @VisibleForTesting
+  @Autowired(required = false)
   EsDataMigrationEngine(DbClient dbClient, EsClient esClient, MetadataIndex metadataIndex,
     System2 system2, Executor executor, EsDataMigration... migrations) {
     this.dbClient = dbClient;

@@ -189,6 +189,15 @@ public class IndexCreator implements Startable {
    * re-run a full indexing). ES rejects incompatible merges (changed field types/analyzers) with an
    * exception, which falls back to delete + recreate.
    *
+   * <p><b>IMPORTANT — a newly added field is NOT populated on documents that already exist.</b> Because no rebuild
+   * or reindex is triggered, the field is merely declared in the mapping; every pre-existing document keeps the
+   * absent/NULL value until it is next re-indexed by a normal analysis. This is deliberate: reindexing a large index
+   * (millions of docs) is expensive and must be scheduled by an operator during a quiet period, not forced on every
+   * server startup. If existing documents must carry the new field's value immediately, ship a one-shot
+   * {@link org.sonar.server.es.migration.EsDataMigration} (run on demand via the {@code api/es_migrations} WebService)
+   * to backfill them — as {@code BackfillCodefixStatusMigration} does for {@code issues.codefixStatus}. Do NOT
+   * assume the old delete + recreate behaviour, which used to re-index every document as a side effect of the rebuild.
+   *
    * <p>Structural settings (number of shards, analyzers, ...) cannot change on a live index, so any difference in
    * one forces the delete + recreate path. Dynamic settings ES can change in place ({@link #LIVE_UPDATABLE_SETTINGS}:
    * number of replicas, refresh_interval) are the exception: a change to one is pushed onto the live index via
