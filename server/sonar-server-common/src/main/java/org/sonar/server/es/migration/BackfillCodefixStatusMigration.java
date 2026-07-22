@@ -19,14 +19,13 @@
  */
 package org.sonar.server.es.migration;
 
-import java.util.ArrayList;
 import java.util.List;
-import org.apache.ibatis.cursor.Cursor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.server.ServerSide;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
+import org.sonar.db.Pagination;
 import org.sonar.server.issue.index.IssueIndexer;
 
 /**
@@ -46,6 +45,15 @@ import org.sonar.server.issue.index.IssueIndexer;
  * the correct (absent/NULL) value in the index and are left untouched. The reindex runs in bounded batches and does
  * NOT flip {@code need_issue_sync}, so issue search stays available throughout. It is idempotent: each doc is simply
  * rewritten with its current canonical value, so a re-run (e.g. after a partial failure) is safe.
+ *
+ * <p><b>Run this while analyses of {@code ai_code_fix_enabled} projects are quiesced</b> (e.g. a maintenance
+ * window). It writes issue docs from the DB directly — outside the resilient {@code es_queue} path and with plain
+ * last-write-wins index requests — so it takes no part in the analysis/indexing serialization and is NOT protected
+ * against concurrent writers. If an analysis re-indexes one of these issues at the same time, the two writers race
+ * and the migration can overwrite the fresher analysis doc with the snapshot it read a moment earlier; that doc
+ * then stays stale until the issue is next re-indexed. The migration is admin-triggered on demand (never
+ * automatically) precisely so an operator can pick a quiet moment, and because it is idempotent, simply re-running
+ * it once analyses have settled repairs any doc lost to such a race.
  */
 @ServerSide
 public class BackfillCodefixStatusMigration implements EsDataMigration {
@@ -53,8 +61,8 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
   static final long VERSION = 2026_07_18_01L;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BackfillCodefixStatusMigration.class);
-  /** Issue keys reindexed per batch: at most this many keys are held in memory, and each batch is one reindex pass. */
-  private static final int REINDEX_BATCH_SIZE = 10_000;
+  /** Issue keys fetched and reindexed per page: bounds the keyset page size and the in-memory key list; one reindex pass per page. */
+  private static final int REINDEX_PAGE_SIZE = 10_000;
 
   private final DbClient dbClient;
   private final IssueIndexer issueIndexer;
@@ -82,31 +90,28 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
   @Override
   public EsDataMigrationExecution execute(DbSession dbSession) {
     long reindexed = 0;
-    List<String> batch = new ArrayList<>(REINDEX_BATCH_SIZE);
-    try (Cursor<String> issueKeys = dbClient.issueDao().scrollIssueKeysForCodefixBackfill(dbSession)) {
-      for (String issueKey : issueKeys) {
-        batch.add(issueKey);
-        if (batch.size() >= REINDEX_BATCH_SIZE) {
-          reindexed += flush(batch);
-          LOGGER.info("ES data migration {}: reindexed {} issue(s) so far", VERSION, reindexed);
-        }
+    String afterKey = null;
+    while (true) {
+      List<String> keys = dbClient.issueDao()
+        .selectIssueKeysForCodefixBackfill(dbSession, afterKey, Pagination.forPage(1).andSize(REINDEX_PAGE_SIZE));
+      if (keys.isEmpty()) {
+        break;
       }
-      reindexed += flush(batch);
+      issueIndexer.indexByKeys(keys);
+      reindexed += keys.size();
+      afterKey = keys.get(keys.size() - 1);
+      // Release the DB read snapshot between pages: reindexing a page is slow (many ES round-trips), so holding a
+      // single transaction open across the whole backfill would pin the DB's cleanup horizon (e.g. block VACUUM)
+      // for its entire duration. Safe to commit — the migration only reads from the DB.
+      dbSession.commit();
+      LOGGER.info("ES data migration {}: reindexed {} issue(s) so far", VERSION, reindexed);
+      if (keys.size() < REINDEX_PAGE_SIZE) {
+        break;
+      }
     }
     if (reindexed == 0) {
       return EsDataMigrationExecution.completed("nothing to do: no issues on ai_code_fix_enabled rules");
     }
     return EsDataMigrationExecution.completed("reindexed " + reindexed + " issue(s) from DB");
-  }
-
-  /** Reindexes the accumulated batch (from the DB, full-doc), clears it, and returns how many were reindexed. */
-  private long flush(List<String> batch) {
-    if (batch.isEmpty()) {
-      return 0;
-    }
-    int size = batch.size();
-    issueIndexer.indexByKeys(batch);
-    batch.clear();
-    return size;
   }
 }

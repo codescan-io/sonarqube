@@ -72,7 +72,7 @@ public interface IssueMapper {
 
   Cursor<IndexedIssueDto> scrollIssuesForIndexation(@Nullable @Param("branchUuid") String branchUuid, @Nullable @Param("issueKeys") Collection<String> issueKeys);
 
-  Cursor<String> scrollIssueKeysForCodefixBackfill();
+  List<String> selectIssueKeysForCodefixBackfill(@Nullable @Param("afterKey") String afterKey, @Param("pagination") Pagination pagination);
 
   long countIssuesForCodefixBackfill();
 

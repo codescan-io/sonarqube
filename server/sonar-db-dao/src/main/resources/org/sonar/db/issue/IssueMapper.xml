@@ -375,22 +375,30 @@
   <!-- Issues eligible for the codefixStatus ES backfill (BackfillCodefixStatusMigration #2026071801): every issue
        of a non-removed ai_code_fix_enabled rule. Selection is deliberately coarse (rule-level, not value-level):
        the canonical codefixStatus value is recomputed by scrollIssuesForIndexation when these keys are reindexed,
-       so this does not need to replicate the naming-rule / variableType narrowing. -->
+       so this does not need to replicate the naming-rule / variableType narrowing. The FROM/WHERE is shared by the
+       count (dry-run estimate) and the paginated key select so the two can never drift apart. -->
+  <sql id="codefixBackfillScope">
+    from issues i
+    inner join rules r on r.uuid = i.rule_uuid
+    where r.ai_code_fix_enabled = ${_true}
+      and r.status != 'REMOVED'
+  </sql>
+
   <select id="countIssuesForCodefixBackfill" resultType="long">
     select count(i.kee)
-    from issues i
-    inner join rules r on r.uuid = i.rule_uuid
-    where r.ai_code_fix_enabled = ${_true}
-      and r.status != 'REMOVED'
+    <include refid="codefixBackfillScope"/>
   </select>
 
-  <select id="scrollIssueKeysForCodefixBackfill" resultType="string" fetchSize="${_scrollFetchSize}"
-           resultSetType="FORWARD_ONLY" resultOrdered="true">
+  <!-- Keyset-paginated: i.kee is unique and is both the sort key and the page bound, so one bounded query fetches
+       each page. This avoids holding a DB scroll cursor / transaction open across the ES reindex of a page. -->
+  <select id="selectIssueKeysForCodefixBackfill" parameterType="map" resultType="string">
     select i.kee
-    from issues i
-    inner join rules r on r.uuid = i.rule_uuid
-    where r.ai_code_fix_enabled = ${_true}
-      and r.status != 'REMOVED'
+    <include refid="codefixBackfillScope"/>
+    <if test="afterKey != null">
+      and i.kee &gt; #{afterKey,jdbcType=VARCHAR}
+    </if>
+    order by i.kee
+    <include refid="org.sonar.db.common.Common.pagination"/>
   </select>
 
   <select id="scrollIssuesForIndexation" parameterType="map" resultMap="indexedIssueResultMap" fetchSize="${_scrollFetchSize}"

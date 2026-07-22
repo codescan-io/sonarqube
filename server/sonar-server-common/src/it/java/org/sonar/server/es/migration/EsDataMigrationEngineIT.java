@@ -19,12 +19,14 @@
  */
 package org.sonar.server.es.migration;
 
+import java.util.Optional;
 import org.junit.Rule;
 import org.junit.Test;
 import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.utils.System2;
 import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
+import org.sonar.server.es.EsClient;
 import org.sonar.server.es.EsTester;
 import org.sonar.server.es.IndexDefinition;
 import org.sonar.server.es.metadata.MetadataIndexDefinition;
@@ -33,6 +35,8 @@ import org.sonar.server.es.metadata.MetadataIndexImpl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class EsDataMigrationEngineIT {
 
@@ -82,8 +86,60 @@ public class EsDataMigrationEngineIT {
     assertThatThrownBy(() -> newEngine().run(999L, false)).isInstanceOf(IllegalArgumentException.class);
   }
 
-  // NOTE: the RUNNING -> COMPLETED transition against a real ES task is covered by
-  // BackfillCodefixStatusMigrationIT (Task 6) + the end-to-end pass — not here.
+  @Test
+  public void status_transitions_running_async_migration_to_completed() {
+    EsClient esClientMock = mock(EsClient.class);
+    EsDataMigrationEngine engine = new EsDataMigrationEngine(db.getDbClient(), esClientMock, metadataIndex, System2.INSTANCE,
+      fakeMigration(1L, EsDataMigrationExecution.async("task-1")));
+
+    EsDataMigrationState running = engine.run(1L, false);
+    assertThat(running.getStatus()).isEqualTo(EsDataMigrationState.Status.RUNNING);
+    assertThat(running.getTaskId()).isEqualTo("task-1");
+    // still running: duration is only recorded once the task is polled to a terminal state
+    assertThat(running.getDurationMs()).isNull();
+
+    when(esClientMock.getTaskIfExists("task-1")).thenReturn(Optional.of(
+      "{\"completed\": true, \"response\": {\"took\": 42, \"updated\": 5, \"version_conflicts\": 0, \"failures\": []}}"));
+
+    EsDataMigrationState done = engine.status(1L);
+    assertThat(done.getStatus()).isEqualTo(EsDataMigrationState.Status.COMPLETED);
+    assertThat(done.getDetail()).contains("took=42").contains("updated=5");
+    assertThat(done.getDurationMs()).isNotNull().isGreaterThanOrEqualTo(0L);
+    // the terminal state is persisted, so a later status() call is stable
+    assertThat(engine.status(1L).getStatus()).isEqualTo(EsDataMigrationState.Status.COMPLETED);
+  }
+
+  @Test
+  public void status_keeps_async_migration_running_and_surfaces_progress_until_task_completes() {
+    EsClient esClientMock = mock(EsClient.class);
+    EsDataMigrationEngine engine = new EsDataMigrationEngine(db.getDbClient(), esClientMock, metadataIndex, System2.INSTANCE,
+      fakeMigration(1L, EsDataMigrationExecution.async("task-1")));
+    engine.run(1L, false);
+
+    when(esClientMock.getTaskIfExists("task-1")).thenReturn(Optional.of(
+      "{\"completed\": false, \"task\": {\"status\": {\"updated\": 3, \"total\": 10}}}"));
+
+    EsDataMigrationState state = engine.status(1L);
+    assertThat(state.getStatus()).isEqualTo(EsDataMigrationState.Status.RUNNING);
+    assertThat(state.getDetail()).contains("in progress").contains("updated=3").contains("total=10");
+    // not terminal yet -> no duration recorded
+    assertThat(state.getDurationMs()).isNull();
+  }
+
+  @Test
+  public void status_fails_async_migration_when_task_no_longer_exists() {
+    EsClient esClientMock = mock(EsClient.class);
+    EsDataMigrationEngine engine = new EsDataMigrationEngine(db.getDbClient(), esClientMock, metadataIndex, System2.INSTANCE,
+      fakeMigration(1L, EsDataMigrationExecution.async("task-1")));
+    engine.run(1L, false);
+
+    when(esClientMock.getTaskIfExists("task-1")).thenReturn(Optional.empty());
+
+    EsDataMigrationState state = engine.status(1L);
+    assertThat(state.getStatus()).isEqualTo(EsDataMigrationState.Status.FAILED);
+    assertThat(state.getDetail()).contains("no longer exists");
+    assertThat(state.getDurationMs()).isNotNull().isGreaterThanOrEqualTo(0L);
+  }
 
   private static EsDataMigration fakeMigration(long version, EsDataMigrationExecution executeResult) {
     return new EsDataMigration() {

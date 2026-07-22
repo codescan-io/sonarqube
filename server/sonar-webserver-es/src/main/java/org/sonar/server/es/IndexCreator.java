@@ -215,21 +215,19 @@ public class IndexCreator implements Startable {
 
     // At this point the mapping has been merged and the existing documents are preserved: the in-place update
     // has succeeded and MUST be treated as committed. Everything below is best-effort in-place bookkeeping
-    // (pushing dynamic-setting changes, persisting the new definition hash); if any of it fails it is harmless
-    // and self-healing (next startup sees the stale hash, re-runs the idempotent merge and retries). It must
-    // therefore never fall through to the destructive delete + recreate path, which would throw away a live
-    // index over a failed metadata/settings write.
+    // (pushing dynamic-setting changes, then persisting the new definition hash); if any of it fails it is
+    // harmless and self-healing, but ONLY because the hash is advanced last and in the SAME try: the stale hash
+    // is what triggers the retry, so it must not be persisted past a failed setting push (that would strand the
+    // setting change forever, since next startup would see a matching hash and skip the update). A failed step
+    // therefore leaves the hash stale and re-runs the whole idempotent in-place update (merge + setting push) on
+    // next startup. It must never fall through to the destructive delete + recreate path, which would throw away
+    // a live index over a failed metadata/settings write.
     try {
       applyLiveSettingChanges(index, indexName, liveSettings);
-    } catch (Exception e) {
-      LOGGER.warn("Index [{}]: mapping merged in place but applying dynamic setting change(s) failed; "
-        + "it will be retried on next startup", indexName, e);
-    }
-    try {
       metadataIndex.setHash(index.getMainType().getIndex(), IndexDefinitionHash.of(index));
     } catch (Exception e) {
-      LOGGER.warn("Index [{}]: mapping merged in place but persisting the new definition hash failed; "
-        + "it will be retried on next startup", indexName, e);
+      LOGGER.warn("Index [{}]: mapping merged in place but applying dynamic setting change(s) / persisting the "
+        + "new definition hash failed; it will be retried on next startup", indexName, e);
     }
     LOGGER.info("Updated mapping of index [{}] in place in {} ms (structure change was additive, no rebuild)",
       indexName, System.currentTimeMillis() - startedAt);

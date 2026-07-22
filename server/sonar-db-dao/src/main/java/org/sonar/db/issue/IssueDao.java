@@ -104,12 +104,16 @@ public class IssueDao implements Dao {
     return mapper(dbSession).scrollIssuesForIndexation(branchUuid, issueKeys);
   }
 
-  /** Streams the keys of issues whose rule is ai_code_fix_enabled (and not REMOVED); see BackfillCodefixStatusMigration. */
-  public Cursor<String> scrollIssueKeysForCodefixBackfill(DbSession dbSession) {
-    return mapper(dbSession).scrollIssueKeysForCodefixBackfill();
+  /**
+   * One keyset-paginated page of issue keys whose rule is ai_code_fix_enabled (and not REMOVED), ordered by key;
+   * see BackfillCodefixStatusMigration. Pass {@code afterKey=null} for the first page, then the last key of the
+   * previous page. A bounded query per page (rather than an open scroll cursor) keeps each read short.
+   */
+  public List<String> selectIssueKeysForCodefixBackfill(DbSession dbSession, @Nullable String afterKey, Pagination pagination) {
+    return mapper(dbSession).selectIssueKeysForCodefixBackfill(afterKey, pagination);
   }
 
-  /** Counts the issues {@link #scrollIssueKeysForCodefixBackfill} would return (side-effect free, for the dry-run estimate). */
+  /** Counts the issues {@link #selectIssueKeysForCodefixBackfill} would return (side-effect free, for the dry-run estimate). */
   public long countIssuesForCodefixBackfill(DbSession dbSession) {
     return mapper(dbSession).countIssuesForCodefixBackfill();
   }
