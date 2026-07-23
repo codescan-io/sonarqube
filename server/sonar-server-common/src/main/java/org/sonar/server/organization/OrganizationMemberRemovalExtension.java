@@ -33,14 +33,7 @@ public interface OrganizationMemberRemovalExtension {
 
   void onRemoveMember(Organization organization, User user);
 
-  /**
-   * Called when a user is deactivated and removed from the whole instance, so that all of the user's allocations
-   * (across every organization) can be cleared in a single operation.
-   * The default implementation does nothing, keeping this extension point backward compatible.
-   */
-  default void onRemoveUser(User user) {
-    // no-op by default
-  }
+  void onRemoveUser(User user);
 
   class Organization {
     private final String key;
