@@ -71,3 +71,4 @@ export function GlobalNav(props: GlobalNavProps) {
 }
 
 export default withCurrentUserContext(GlobalNav);
+

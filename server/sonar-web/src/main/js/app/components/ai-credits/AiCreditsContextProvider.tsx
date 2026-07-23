@@ -97,7 +97,6 @@ export function AiCreditsContextProvider({ children }: Props) {
     } else {
       setCreditsData(null);
     }
-
     Promise.all([userPromise, orgPromise]).finally(() => setIsLoading(false));
   }, [orgKee, isOrgAdmin]);
 
