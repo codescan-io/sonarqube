@@ -29,6 +29,7 @@ import { AppStateContext } from "../app-state/AppStateContext";
 import { useCurrentUser } from "../current-user/CurrentUserContext";
 import { useCurrentOrganizationKey } from "../current-organization/CurrentOrganizationKeyContext";
 import { BILLING_PAGE_KEY } from "../../../apps/organizations/navigation/OrganizationNavigationAdministration";
+import { isDeploymentForAmazon } from '../../../helpers/urls';
 
 interface OrganizationPageExtensionProps {
   organization: Organization;
@@ -41,6 +42,7 @@ function OrganizationPageExtension(props: OrganizationPageExtensionProps) {
   const appState = React.useContext(AppStateContext);
   const { currentUser } = useCurrentUser();
   const { billing } = useCurrentOrganizationKey();
+  const { whiteLabel } = appState;
 
   const refreshOrganization = () => {
     return props.organization && getOrganization(organization.kee);
@@ -58,7 +60,7 @@ function OrganizationPageExtension(props: OrganizationPageExtensionProps) {
 
   const requestedKey = `${pluginKey}/${extensionKey}`;
 
-  if (requestedKey === BILLING_PAGE_KEY) {
+  if (!isDeploymentForAmazon(whiteLabel) && requestedKey === BILLING_PAGE_KEY) {
     const canSeeAdministration =
       currentUser.isLoggedIn &&
       ((appState.canAdmin) || (!appState.canAdmin && appState.canCustomerAdmin));
