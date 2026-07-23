@@ -153,6 +153,7 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
     BulkIndexer bulkIndexer = new BulkIndexer(esClient, TYPE_ISSUE, Size.REGULAR, IndexingListener.FAIL_ON_ERROR);
     bulkIndexer.start();
     long reindexed = 0;
+    RuntimeException drainFailure = null;
     try {
       while (!keys.isEmpty()) {
         int pageSize = keys.size();
@@ -174,13 +175,29 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
         keys = pageSupplier.get();
         fetchMs = System.currentTimeMillis() - nextFetchStart;
       }
+    } catch (RuntimeException e) {
+      // Remember the real cause (e.g. a fetch/build/bulk error) so a failure while flushing below cannot mask it —
+      // that root cause is what ends up in the migration's FAILED status and drives diagnosis.
+      drainFailure = e;
+      throw e;
     } finally {
-      // stop() flushes any queued bulk requests and refreshes the index once. It must run even if a page fails so the
-      // already-queued writes are not lost. Timed separately so a slow final refresh is visible in the logs.
-      long flushStart = System.currentTimeMillis();
-      bulkIndexer.stop();
-      LOGGER.info("reindexByKeyPages: final flush + refresh took {} ms ({} docs total)",
-        System.currentTimeMillis() - flushStart, reindexed);
+      // stop() flushes any queued bulk requests and refreshes the index once (and, for a LARGE bulk, would restore
+      // index settings). It must run even if a page failed so queued writes are not lost and settings are reset.
+      // Isolate its own failure: if the drain already failed, keep that as the primary error and only attach the
+      // stop() failure (so it is still visible) rather than letting it replace the root cause; otherwise a flush
+      // failure on an otherwise-successful drain is itself the failure and propagates.
+      try {
+        long flushStart = System.currentTimeMillis();
+        bulkIndexer.stop();
+        LOGGER.info("reindexByKeyPages: final flush + refresh took {} ms ({} docs total)",
+          System.currentTimeMillis() - flushStart, reindexed);
+      } catch (RuntimeException stopFailure) {
+        if (drainFailure != null) {
+          drainFailure.addSuppressed(stopFailure);
+        } else {
+          throw stopFailure;
+        }
+      }
     }
   }
 
