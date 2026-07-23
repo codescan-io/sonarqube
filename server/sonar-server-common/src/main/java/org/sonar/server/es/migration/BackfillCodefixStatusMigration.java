@@ -25,8 +25,6 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.sonar.api.server.ServerSide;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
@@ -78,7 +76,6 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
 
   static final long VERSION = 2026_07_18_01L;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(BackfillCodefixStatusMigration.class);
   /** Issue keys fetched and reindexed per page: bounds the keyset page size and the in-memory key list; one reindex pass per page. */
   private static final int REINDEX_PAGE_SIZE = 10_000;
 
@@ -116,7 +113,13 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
 
   @Override
   public EsDataMigrationExecution execute(DbSession dbSession) {
-    KeyPageCursor cursor = new KeyPageCursor(dbSession);
+    // Resolve the (typically handful of) eligible rule uuids once, up front. The keyset page query then filters on
+    // issues.rule_uuid alone — no per-page join to rules — so each page is an incremental walk of the issues key index.
+    List<String> ruleUuids = dbClient.ruleDao().selectAiCodeFixBackfillRuleUuids(dbSession);
+    if (ruleUuids.isEmpty()) {
+      return EsDataMigrationExecution.completed("nothing to do: no ai_code_fix_enabled rules");
+    }
+    KeyPageCursor cursor = new KeyPageCursor(dbSession, ruleUuids);
     // A single LARGE bulk spans every page (replicas + refresh disabled for the run, one force-merge + refresh at the
     // end); the cursor keyset-paginates and commits the read snapshot between pages so no long transaction is held.
     issueIndexer.reindexByKeyPages(cursor);
@@ -133,25 +136,27 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
    */
   private final class KeyPageCursor implements Supplier<List<String>> {
     private final DbSession dbSession;
+    private final List<String> ruleUuids;
     private String afterKey = null;
     private long total = 0;
 
-    private KeyPageCursor(DbSession dbSession) {
+    private KeyPageCursor(DbSession dbSession, List<String> ruleUuids) {
       this.dbSession = dbSession;
+      this.ruleUuids = ruleUuids;
     }
 
     @Override
     public List<String> get() {
       List<String> keys = dbClient.issueDao()
-        .selectIssueKeysForCodefixBackfill(dbSession, afterKey, Pagination.forPage(1).andSize(REINDEX_PAGE_SIZE));
+        .selectIssueKeysForCodefixBackfill(dbSession, ruleUuids, afterKey, Pagination.forPage(1).andSize(REINDEX_PAGE_SIZE));
       if (keys.isEmpty()) {
         return keys;
       }
       afterKey = keys.get(keys.size() - 1);
       total += keys.size();
-      // Safe to commit — the migration only reads from the DB.
+      // Safe to commit — the migration only reads from the DB. Per-page fetch/reindex timing is logged by
+      // IssueIndexer.reindexByKeyPages (which owns both phases), so we don't double-log progress here.
       dbSession.commit();
-      LOGGER.info("ES data migration {}: queued {} issue(s) for reindex so far", VERSION, total);
       return keys;
     }
   }

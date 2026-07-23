@@ -105,12 +105,15 @@ public class IssueDao implements Dao {
   }
 
   /**
-   * One keyset-paginated page of issue keys whose rule is ai_code_fix_enabled (and not REMOVED), ordered by key;
-   * see BackfillCodefixStatusMigration. Pass {@code afterKey=null} for the first page, then the last key of the
-   * previous page. A bounded query per page (rather than an open scroll cursor) keeps each read short.
+   * One keyset-paginated page of issue keys whose rule is one of {@code ruleUuids} (the ai_code_fix_enabled, non-REMOVED
+   * rules, resolved once by the caller), ordered by key; see BackfillCodefixStatusMigration. Pass {@code afterKey=null}
+   * for the first page, then the last key of the previous page. Filtering on {@code issues.rule_uuid} rather than
+   * joining to rules lets the DB walk the issues primary key incrementally per page instead of re-sorting the whole
+   * in-scope set each time. A bounded query per page (rather than an open scroll cursor) keeps each read short.
    */
-  public List<String> selectIssueKeysForCodefixBackfill(DbSession dbSession, @Nullable String afterKey, Pagination pagination) {
-    return mapper(dbSession).selectIssueKeysForCodefixBackfill(afterKey, pagination);
+  public List<String> selectIssueKeysForCodefixBackfill(DbSession dbSession, Collection<String> ruleUuids,
+    @Nullable String afterKey, Pagination pagination) {
+    return mapper(dbSession).selectIssueKeysForCodefixBackfill(ruleUuids, afterKey, pagination);
   }
 
   public void insert(DbSession session, IssueDto dto) {
