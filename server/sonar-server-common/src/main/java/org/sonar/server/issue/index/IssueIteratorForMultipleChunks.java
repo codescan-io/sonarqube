@@ -22,6 +22,7 @@ package org.sonar.server.issue.index;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import org.sonar.db.DatabaseUtils;
 import org.sonar.db.DbClient;
 
@@ -40,19 +41,26 @@ public class IssueIteratorForMultipleChunks implements IssueIterator {
 
   @Override
   public boolean hasNext() {
-    if (currentChunk != null && currentChunk.hasNext()) {
-      return true;
+    // Advance past chunks that yield no rows. A chunk's keys can resolve to zero indexable issues — e.g. the issues
+    // were deleted since the keys were selected, or they no longer satisfy scrollIssuesForIndexation's inner joins
+    // (missing component/branch). The previous implementation returned true whenever another key-chunk existed and
+    // then called next() on an empty chunk, throwing NoSuchElementException.
+    while (currentChunk == null || !currentChunk.hasNext()) {
+      if (!iteratorOverChunks.hasNext()) {
+        return false;
+      }
+      if (currentChunk != null) {
+        currentChunk.close();
+      }
+      currentChunk = nextChunk();
     }
-    return iteratorOverChunks.hasNext();
+    return true;
   }
 
   @Override
   public IssueDoc next() {
-    if (currentChunk == null) {
-      currentChunk = nextChunk();
-    } else if (!currentChunk.hasNext()) {
-      currentChunk.close();
-      currentChunk = nextChunk();
+    if (!hasNext()) {
+      throw new NoSuchElementException();
     }
     return currentChunk.next();
   }
