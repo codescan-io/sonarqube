@@ -29,12 +29,17 @@ import { DEFAULT_ISSUES_QUERY } from '../../../../components/shared/utils';
 import { hasMessage, translate, translateWithParameters } from '../../../../helpers/l10n';
 import { getPortfolioUrl, getProjectQueryUrl } from '../../../../helpers/urls';
 import { useBranchesQuery, useCurrentBranchQuery } from '../../../../queries/branch';
+import { useGetValuesQuery } from '../../../../queries/settings';
 import { isApplication, isProject } from '../../../../types/component';
 import { Feature } from '../../../../types/features';
 import { Component, Dict, Extension } from '../../../../types/types';
 import withAvailableFeatures, {
-    WithAvailableFeaturesProps,
+  WithAvailableFeaturesProps,
 } from '../../available-features/withAvailableFeatures';
+
+// CodeScan AI pages ("More" dropdown) are gated behind this global setting.
+const AI_FIX_JOB_ENABLED_KEY = 'codescan.cloud.aiAssistant.fixJob.enabled';
+const AI_EXTENSION_KEYS = ['developer/codescan_ai', 'developer/debt_report'];
 
 const SETTINGS_URLS = [
   '/project/admin',
@@ -68,6 +73,10 @@ export function Menu(props: Readonly<Props>) {
   const { data: branchLikes = [] } = useBranchesQuery(component);
   const { data: branchLike } = useCurrentBranchQuery(component);
 
+  const { data: aiSettings } = useGetValuesQuery([AI_FIX_JOB_ENABLED_KEY]);
+  const isAiCodeAssistEnabled =
+    aiSettings?.find((s) => s?.key === AI_FIX_JOB_ENABLED_KEY)?.value === 'true';
+
   const isApplicationChildInaccessble = isApplication(qualifier) && !canBrowseAllChildProjects;
 
   const location = useLocation();
@@ -77,10 +86,7 @@ export function Menu(props: Readonly<Props>) {
   ]
 
   const isActiveRoute = moreURLS.some((url) => {
-    return window.location.href.includes(url)
-      && !window.location.href.includes('extension/developer/project_admin')
-      && !window.location.href.includes('extension/developer/codescan_ai')
-      && !window.location.href.includes('extension/developer/debt_report');
+    return window.location.href.includes(url) && !window.location.href.includes('extension/developer/project_admin');
   });
 
   const hasAnalysis = () => {
@@ -533,44 +539,6 @@ export function Menu(props: Readonly<Props>) {
       .map((e) => renderExtension(e, true, query));
   };
 
-  const AI_TOOLS_KEYS = ['developer/codescan_ai', 'developer/debt_report'];
-
-  const AI_TOOLS_NAMES: Record<string, string> = {
-    'developer/codescan_ai': 'AI Rule Assist',
-    'developer/debt_report': 'AI Codebase Diagnosis',
-  };
-
-  const renderAiTools = () => {
-    const query = getQuery();
-    const aiExtensions = extensions.filter((extension) =>
-      AI_TOOLS_KEYS.includes(extension.key),
-    );
-
-    if (aiExtensions.length === 0) {
-      return null;
-    }
-
-    const isAiToolsActive = AI_TOOLS_KEYS.some((key) =>
-      window.location.href.includes(`extension/${key}`),
-    );
-
-    return (
-      <DropdownMenu.Root
-        data-test="ai-tools"
-        id="component-navigation-ai-tools"
-        items={aiExtensions.map((e) =>
-          renderExtension(
-            { ...e, name: AI_TOOLS_NAMES[e.key] ?? e.name },
-            false,
-            query,
-          ),
-        )}
-      >
-        <NavBarTabLink preventDefault active={isAiToolsActive} text="Codefix AI" withChevron to={{}} />
-      </DropdownMenu.Root>
-    );
-  };
-
   const renderExtensions = () => {
     const query = getQuery();
     let withoutSecurityExtension = extensions.filter(
@@ -582,13 +550,16 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
 
-    withoutSecurityExtension = withoutSecurityExtension.filter((e)=>{
-      return e.name  !== "Project Job" && !AI_TOOLS_KEYS.includes(e.key)
+    withoutSecurityExtension = withoutSecurityExtension.filter((e) => {
+      if (e.name === "Project Job") {
+        return false;
+      }
+      // Hide the CodeScan AI pages unless the AI Fix Jobs feature toggle is enabled.
+      if (!isAiCodeAssistEnabled && AI_EXTENSION_KEYS.includes(e.key)) {
+        return false;
+      }
+      return true;
     });
-
-    if (withoutSecurityExtension.length === 0) {
-      return null;
-    }
 
     return (
       <DropdownMenu.Root
@@ -613,7 +584,6 @@ export function Menu(props: Readonly<Props>) {
         {renderComponentMeasuresLink()}
         {renderCodeLink()}
         {renderActivityLink()}
-        {renderAiTools()}
         {renderExtensions()}
       </NavBarTabs>
       <NavBarTabs>
