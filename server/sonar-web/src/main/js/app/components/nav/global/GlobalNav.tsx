@@ -39,7 +39,7 @@ export interface GlobalNavProps {
 
 export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
-  const { creditsData, isLoading, showCredits } = useAiCreditsContext();
+  const { userCreditsData, isLoading, showCredits } = useAiCreditsContext();
 
   return (
     <MainSonarQubeBar>
@@ -53,7 +53,7 @@ export function GlobalNav(props: GlobalNavProps) {
 
         <div className="sw-flex sw-items-center sw-ml-2">
           <div className="sw-flex sw-items-center sw-mr-1">
-            {!isLoading && showCredits && creditsData && <AiCreditsIndicator data={creditsData} />}
+            {!isLoading && showCredits && userCreditsData && <AiCreditsIndicator data={userCreditsData} />}
           </div>
           <EmbedDocsPopupHelper />
           {isLoggedIn(currentUser) && (!isNonStandardUser(currentUser))  && (
@@ -71,3 +71,4 @@ export function GlobalNav(props: GlobalNavProps) {
 }
 
 export default withCurrentUserContext(GlobalNav);
+
