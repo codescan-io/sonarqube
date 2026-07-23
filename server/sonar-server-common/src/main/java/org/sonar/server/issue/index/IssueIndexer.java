@@ -144,26 +144,47 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
    * handler will capture the disabled values as the baseline it "restores" to (leaving periodic refresh off).
    */
   public void reindexByKeyPages(Supplier<List<String>> pageSupplier) {
+    long fetchStart = System.currentTimeMillis();
     List<String> keys = pageSupplier.get();
+    // fetchMs always holds the fetch time of the page currently in `keys`, so each per-page log pairs the right
+    // fetch cost with its reindex cost.
+    long fetchMs = System.currentTimeMillis() - fetchStart;
     if (keys.isEmpty()) {
       // nothing in scope: don't disable replicas / refresh or force-merge the index for no reason
       return;
     }
     BulkIndexer bulkIndexer = new BulkIndexer(esClient, TYPE_ISSUE, Size.LARGE, IndexingListener.FAIL_ON_ERROR);
     bulkIndexer.start();
+    long reindexed = 0;
     try {
       while (!keys.isEmpty()) {
+        int pageSize = keys.size();
+        // reindex = build docs from the DB (createForIssueKeys scroll) + queue them to the bulk (which blocks here
+        // once ES can't keep up, so this also reflects ES write pressure). Split out from fetch so we can see which
+        // half dominates.
+        long reindexStart = System.currentTimeMillis();
         try (IssueIterator issues = issueIteratorFactory.createForIssueKeys(keys)) {
           while (issues.hasNext()) {
             bulkIndexer.add(newIndexRequest(issues.next()));
           }
         }
+        long reindexMs = System.currentTimeMillis() - reindexStart;
+        reindexed += pageSize;
+        LOGGER.info("reindexByKeyPages: {} docs so far; last page fetch={} ms, reindex(build+bulk)={} ms (page={})",
+          reindexed, fetchMs, reindexMs, pageSize);
+
+        long nextFetchStart = System.currentTimeMillis();
         keys = pageSupplier.get();
+        fetchMs = System.currentTimeMillis() - nextFetchStart;
       }
     } finally {
       // stop() force-merges, refreshes once, and restores replicas + refresh_interval. It must run even if a page
-      // fails, otherwise the index is left with replicas=0 / refresh_interval=-1.
+      // fails, otherwise the index is left with replicas=0 / refresh_interval=-1. Timed separately: on a LARGE bulk
+      // the async writes drain and the final force-merge happens here, so this is where any tail ES cost surfaces.
+      long flushStart = System.currentTimeMillis();
       bulkIndexer.stop();
+      LOGGER.info("reindexByKeyPages: final flush + force-merge + refresh took {} ms ({} docs total)",
+        System.currentTimeMillis() - flushStart, reindexed);
     }
   }
 

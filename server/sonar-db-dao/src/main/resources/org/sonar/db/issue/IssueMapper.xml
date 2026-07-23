@@ -373,16 +373,23 @@
   </resultMap>
 
   <!-- Issue keys eligible for the codefixStatus ES backfill (BackfillCodefixStatusMigration #2026071801): every
-       issue of a non-removed ai_code_fix_enabled rule. Keyset-paginated on the unique key i.kee (also the page
-       bound), so one bounded query fetches each page — no DB scroll cursor / transaction held open across the ES
-       reindex of a page. Selection is deliberately coarse (rule-level): scrollIssuesForIndexation recomputes the
-       canonical codefixStatus on reindex, so the naming-rule / variableType narrowing is not replicated here. -->
+       issue of a non-removed ai_code_fix_enabled rule. The eligible rule uuids are resolved once by the caller
+       (RuleMapper.selectAiCodeFixBackfillRuleUuids) and passed in as ruleUuids, so this query filters on
+       issues.rule_uuid alone — NO join to rules. That matters for pagination: because both the filter and the
+       ORDER BY / page bound live on the issues table, the DB can serve each page by walking the issues primary-key
+       (kee) index in order and stopping at the page size, instead of joining issues to rules, materialising every
+       in-scope issue and re-sorting the whole set on every page (which turned this into an O(pages * total) scan).
+       Keyset-paginated on the unique key i.kee, so one bounded query fetches each page with no scroll cursor /
+       long transaction held open across the ES reindex. Selection is deliberately coarse (rule-level):
+       scrollIssuesForIndexation recomputes the canonical codefixStatus on reindex, so the naming-rule /
+       variableType narrowing is not replicated here. -->
   <select id="selectIssueKeysForCodefixBackfill" parameterType="map" resultType="string">
     select i.kee
     from issues i
-    inner join rules r on r.uuid = i.rule_uuid
-    where r.ai_code_fix_enabled = ${_true}
-      and r.status != 'REMOVED'
+    where i.rule_uuid in
+    <foreach collection="ruleUuids" open="(" close=")" item="ruleUuid" separator=",">
+      #{ruleUuid,jdbcType=VARCHAR}
+    </foreach>
     <if test="afterKey != null">
       and i.kee &gt; #{afterKey,jdbcType=VARCHAR}
     </if>

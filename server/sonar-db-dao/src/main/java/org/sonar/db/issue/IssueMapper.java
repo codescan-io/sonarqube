@@ -72,7 +72,8 @@ public interface IssueMapper {
 
   Cursor<IndexedIssueDto> scrollIssuesForIndexation(@Nullable @Param("branchUuid") String branchUuid, @Nullable @Param("issueKeys") Collection<String> issueKeys);
 
-  List<String> selectIssueKeysForCodefixBackfill(@Nullable @Param("afterKey") String afterKey, @Param("pagination") Pagination pagination);
+  List<String> selectIssueKeysForCodefixBackfill(@Param("ruleUuids") Collection<String> ruleUuids,
+    @Nullable @Param("afterKey") String afterKey, @Param("pagination") Pagination pagination);
 
   Collection<IssueGroupDto> selectIssueGroupsByComponent(@Param("component") ComponentDto component, @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
 
