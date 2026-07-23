@@ -30,11 +30,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.sonar.api.Startable;
 import org.sonar.api.server.ServerSide;
 import org.sonar.api.utils.System2;
 import org.sonar.db.DbClient;
@@ -50,7 +53,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * by version. A {@code RUNNING} migration is refreshed by polling its ES task on every {@link #status}/{@link #list}.
  */
 @ServerSide
-public class EsDataMigrationEngine {
+public class EsDataMigrationEngine implements Startable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EsDataMigrationEngine.class);
   private static final Gson GSON = new Gson();
@@ -93,6 +96,39 @@ public class EsDataMigrationEngine {
       t.setDaemon(true);
       return t;
     });
+  }
+
+  @Override
+  public void start() {
+    // Nothing to initialise: the background executor is created in the constructor.
+  }
+
+  /**
+   * Shuts the background executor down on component stop so the {@code es-data-migration} thread does not outlive the
+   * web context (which the servlet container otherwise flags as a thread leak). A migration can run for a long time, so
+   * we give it a short grace period and then interrupt it; the migration is idempotent and can be re-run after restart.
+   * The test executor is not an {@link ExecutorService}, so there is nothing to stop in that case.
+   */
+  @Override
+  public void stop() {
+    if (!(executor instanceof ExecutorService executorService)) {
+      return;
+    }
+    executorService.shutdown();
+    try {
+      if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+        // A migration is still running; interrupt it and give it a moment to unwind before the container closes
+        // EsClient/DbClient out from under it (an in-flight ES call against a closed client throws
+        // "I/O reactor status: STOPPED"). The migration is idempotent, so it can be re-run after restart.
+        executorService.shutdownNow();
+        if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+          LOGGER.warn("ES data migration thread did not terminate within timeout on shutdown");
+        }
+      }
+    } catch (InterruptedException e) {
+      executorService.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
   }
 
   /** One entry per registered migration, ordered by version; RUNNING entries are refreshed from their ES task. */

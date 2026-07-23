@@ -123,25 +123,22 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
   }
 
   /**
-   * Reindexes issues from the DB in place under a single {@link Size#LARGE} bulk that spans every page: a full-document
-   * index that recomputes every field (including {@code codefixStatus}, via {@code IssueMapper#scrollIssuesForIndexation}).
-   * This is the {@code _source}-free way to backfill/refresh a field, since the {@code issues} index stores no
-   * {@code _source} and so cannot be updated with {@code update_by_query}.
+   * Reindexes issues from the DB in place under a single bulk that spans every page: a full-document index that
+   * recomputes every field (including {@code codefixStatus}, via {@code IssueMapper#scrollIssuesForIndexation}). This is
+   * the {@code _source}-free way to backfill/refresh a field, since the {@code issues} index stores no {@code _source}
+   * and so cannot be updated with {@code update_by_query}.
    *
-   * <p>Because the {@code LARGE} bulk spans the whole run, replicas and periodic refresh are disabled for its duration
-   * and the index is force-merged and refreshed <em>once</em> at the end — rather than refreshed after every page, which
-   * is what makes a naive page-by-page reindex of millions of docs pathologically slow. Unlike {@link #indexProject} it
-   * does NOT set {@code need_issue_sync}, so issue search stays available; and unlike the resilient paths it fails fast
-   * (no {@code es_queue} recovery) — the behaviour a one-shot admin data migration wants.
+   * <p>A single {@link Size#REGULAR} bulk spans the whole run, so the index is refreshed <em>once</em> at the end
+   * (via {@link BulkIndexer#stop()}) rather than after every page. It deliberately does NOT use {@link Size#LARGE}:
+   * LARGE disables periodic refresh for the whole run, which on a multi-hour backfill defers one enormous refresh to the
+   * end (prone to timing out) and, if that final refresh fails, leaves the index stuck with replicas / refresh disabled
+   * because {@link BulkIndexer#stop()} restores those settings only <em>after</em> the refresh call succeeds. REGULAR
+   * keeps periodic refresh and replicas on, so search stays fully live, no index-wide settings are touched, and a failed
+   * run can simply be re-run. Unlike {@link #indexProject} it does NOT set {@code need_issue_sync}; and unlike the
+   * resilient paths it fails fast (no {@code es_queue} recovery) — the behaviour a one-shot admin data migration wants.
    *
    * <p>{@code pageSupplier} is polled for bounded issue-key pages until it returns an empty list; the caller reads and
-   * commits its own DB session between pages, so no long read snapshot is held while indexing. Run while analyses are
-   * quiesced: replicas are temporarily dropped to 0 for the duration.
-   *
-   * <p><b>Note:</b> the disabled replicas / {@code refresh_interval} are restored by {@link BulkIndexer#stop()}, which
-   * is itself an Elasticsearch call — if the run fails because ES is unreachable, the index can be left with those
-   * settings disabled. Callers must ensure the settings are restored before re-invoking, otherwise the {@code LARGE}
-   * handler will capture the disabled values as the baseline it "restores" to (leaving periodic refresh off).
+   * commits its own DB session between pages, so no long read snapshot is held while indexing.
    */
   public void reindexByKeyPages(Supplier<List<String>> pageSupplier) {
     long fetchStart = System.currentTimeMillis();
@@ -150,10 +147,10 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
     // fetch cost with its reindex cost.
     long fetchMs = System.currentTimeMillis() - fetchStart;
     if (keys.isEmpty()) {
-      // nothing in scope: don't disable replicas / refresh or force-merge the index for no reason
+      // nothing in scope: no bulk to run
       return;
     }
-    BulkIndexer bulkIndexer = new BulkIndexer(esClient, TYPE_ISSUE, Size.LARGE, IndexingListener.FAIL_ON_ERROR);
+    BulkIndexer bulkIndexer = new BulkIndexer(esClient, TYPE_ISSUE, Size.REGULAR, IndexingListener.FAIL_ON_ERROR);
     bulkIndexer.start();
     long reindexed = 0;
     try {
@@ -178,12 +175,11 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
         fetchMs = System.currentTimeMillis() - nextFetchStart;
       }
     } finally {
-      // stop() force-merges, refreshes once, and restores replicas + refresh_interval. It must run even if a page
-      // fails, otherwise the index is left with replicas=0 / refresh_interval=-1. Timed separately: on a LARGE bulk
-      // the async writes drain and the final force-merge happens here, so this is where any tail ES cost surfaces.
+      // stop() flushes any queued bulk requests and refreshes the index once. It must run even if a page fails so the
+      // already-queued writes are not lost. Timed separately so a slow final refresh is visible in the logs.
       long flushStart = System.currentTimeMillis();
       bulkIndexer.stop();
-      LOGGER.info("reindexByKeyPages: final flush + force-merge + refresh took {} ms ({} docs total)",
+      LOGGER.info("reindexByKeyPages: final flush + refresh took {} ms ({} docs total)",
         System.currentTimeMillis() - flushStart, reindexed);
     }
   }
