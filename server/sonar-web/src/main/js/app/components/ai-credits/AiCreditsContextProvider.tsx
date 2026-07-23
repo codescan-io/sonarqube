@@ -35,6 +35,7 @@ export function AiCreditsContextProvider({ children }: Props) {
   const { userOrganizations } = useCurrentUser();
 
   const [creditsData, setCreditsData] = React.useState<AiCreditsSummary | null>(null);
+  const [userCreditsData, setUserCreditsData] = React.useState<AiCreditsSummary | null>(null);
   const [showCredits, setShowCredits] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
 
@@ -64,47 +65,48 @@ export function AiCreditsContextProvider({ children }: Props) {
   React.useEffect(() => {
     if (!orgKee) {
       setCreditsData(null);
+      setUserCreditsData(null);
       setShowCredits(false);
       setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
+
+    // Top-nav pie indicator always shows the CURRENT user's own credits.
+    const userPromise = fetchUserAiCredits(orgKee)
+      .then((user) => {
+        setUserCreditsData({
+          allocatedCredits: user.creditLimit,
+          consumedCredits: user.creditsUsed,
+          remainingCredits: user.creditsRemaining,
+          resetDate: '',
+        });
+        setShowCredits(user.hasAiAccess);
+      })
+      .catch(() => {
+        setUserCreditsData(null);
+        setShowCredits(false);
+      });
+
+    let orgPromise: Promise<unknown> = Promise.resolve();
     if (isOrgAdmin) {
-      fetchCredits(orgKee)
-        .then((data) => {
-          setCreditsData(data);
-          setShowCredits(data.allocatedCredits > 0);
-        })
-        .catch(() => {
-          setCreditsData(null);
-          setShowCredits(false);
-        })
-        .finally(() => setIsLoading(false));
+      orgPromise = fetchCredits(orgKee)
+        .then(setCreditsData)
+        .catch(() => setCreditsData(null));
     } else {
-      fetchUserAiCredits(orgKee)
-        .then((user) => {
-          setCreditsData({
-            allocatedCredits: user.creditLimit,
-            consumedCredits: user.creditsUsed,
-            remainingCredits: user.creditsRemaining,
-            resetDate: '',
-          });
-          setShowCredits(user.hasAiAccess);
-        })
-        .catch(() => {
-          setCreditsData(null);
-          setShowCredits(false);
-        })
-        .finally(() => setIsLoading(false));
+      setCreditsData(null);
     }
+
+    Promise.all([userPromise, orgPromise]).finally(() => setIsLoading(false));
   }, [orgKee, isOrgAdmin]);
 
   const value = React.useMemo(() => ({
     creditsData,
+    userCreditsData,
     isLoading,
     showCredits,
-  }), [creditsData, isLoading, showCredits]);
+  }), [creditsData, userCreditsData, isLoading, showCredits]);
 
   return (
     <AiCreditsContext.Provider value={value}>
