@@ -74,7 +74,7 @@ test {
   useJUnitPlatform()
 }
 
-artifactoryPublish.skip = false
+ext.publishToCodeArtifact = true
 
 // Used by core plugins
 publishing {

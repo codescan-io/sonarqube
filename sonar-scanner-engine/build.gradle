@@ -83,7 +83,7 @@ license {
   excludes(["**/Fake.java", "**/Fake.groovy", "org/sonar/scanner/cpd/ManyStatements.java", "org/sonar/scm/git/expected-blame/**/*"])
 }
 
-artifactoryPublish.skip = !deployCommunity
+ext.publishToCodeArtifact = deployCommunity
 
 // Used by core plugins
 publishing {

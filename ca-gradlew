@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#
+# Thin wrapper around ./gradlew for local development that first obtains an AWS CodeArtifact
+# authorization token (via scripts/codeartifact-bootstrap.sh) and exports it as
+# CODEARTIFACT_AUTH_TOKEN, which build.gradle uses to authenticate to CodeArtifact.
+#
+# Usage (identical to gradlew):
+#   ./ca-gradlew build
+#   ./ca-gradlew clean build artifactPublish -x test
+#
+# If CODEARTIFACT_AUTH_TOKEN is already set (e.g. in CI), it is reused as-is.
+
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ -z "${CODEARTIFACT_AUTH_TOKEN:-}" ]]; then
+  # shellcheck disable=SC1090
+  eval "$("$DIR/scripts/codeartifact-bootstrap.sh")"
+fi
+
+exec "$DIR/gradlew" "$@"

@@ -39,7 +39,7 @@ dependencies {
   testFixturesApi 'commons-io:commons-io'
 }
 
-artifactoryPublish.skip = !deployCommunity
+ext.publishToCodeArtifact = deployCommunity
 
 publishing {
   publications {
