@@ -24,6 +24,7 @@ import { AppStateContext } from '../../../app/components/app-state/AppStateConte
 import { useCurrentUser } from '../../../app/components/current-user/CurrentUserContext';
 import { translate } from '../../../helpers/l10n';
 import { Organization, OrganizationBillingDetails } from '../../../types/types';
+import { isDeploymentForAmazon } from '../../../helpers/urls';
 
 interface Props {
   billing?: OrganizationBillingDetails;
@@ -52,6 +53,7 @@ export default function OrganizationNavigationAdministration({ billing, location
     currentUser.isLoggedIn &&
     ((appState.canAdmin) || (!appState.canAdmin && appState.canCustomerAdmin));
 
+  const { whiteLabel } = appState;
   const subscriptionId = billing?.subscriptionId;
   const hasPaidSubscription =
     subscriptionId !== undefined && subscriptionId !== null && subscriptionId !== '';
@@ -74,7 +76,7 @@ export default function OrganizationNavigationAdministration({ billing, location
             .filter((e) => organization.inviteUsersEnabled || e.key !== 'developer/invite_users')
             .filter(
               (e) =>
-                e.key !== BILLING_PAGE_KEY || hasPaidSubscription || canSeeAdministration
+                isDeploymentForAmazon(whiteLabel) || hasPaidSubscription || canSeeAdministration || e.key !== BILLING_PAGE_KEY
             )
             .map((extension) => (
               <DropdownMenu.ItemLink
