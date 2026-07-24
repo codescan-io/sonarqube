@@ -31,7 +31,6 @@ import { Helmet } from "react-helmet-async";
 import Suggestions from "../../../components/embed-docs-modal/Suggestions";
 import OrganizationNavigation from "../navigation/OrganizationNavigation";
 import withCurrentUserContext from "../../../app/components/current-user/withCurrentUserContext";
-import { useAppState } from '../../../app/components/app-state/withAppStateContext';
 import { WHITELIST_VALUE_CODESCAN } from '../../../helpers/constants';
 import { Location } from '~sonar-aligned/types/router';
 import { withRouter } from '~sonar-aligned/components/hoc/withRouter';
@@ -57,7 +56,6 @@ const OrganizationApp: React.FC<OrganizationAppProps> = ({  userOrganizations, l
   const [organization, setOrganization] = useState<Organization>();
   const {setIsNotStandardOrg, currentUser} = useCurrentUser();
   const { setBilling } = useCurrentOrganizationKey();
-  const appState = useAppState();
   const navigate = useNavigate();
   // Set portal anchor on mount
   useEffect(() => {
