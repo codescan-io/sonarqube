@@ -19,8 +19,10 @@
  */
 
 import classNames from 'classnames';
+import { useAppState } from '../../app-state/withAppStateContext';
 import { useCurrentOrganizationKey } from '../../current-organization/CurrentOrganizationKeyContext';
 import { translate, translateWithParameters } from '../../../../helpers/l10n';
+import { isDeploymentForAmazon } from '../../../../helpers/urls';
 import './TrialStatusPill.css';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -89,7 +91,15 @@ export function getTrialPillState(
 }
 
 export default function TrialStatusPill() {
+  const appState = useAppState();
   const { organizationKey, billing } = useCurrentOrganizationKey();
+
+  // The Amazon white-label product has no trial concept, so the trial pill never applies
+  // there (consistent with BillingService#isTrialOrganization on the backend and with
+  // OrganizationNavigationAdministration on the frontend).
+  if (isDeploymentForAmazon(appState.whiteLabel)) {
+    return null;
+  }
 
   // Only use billing that belongs to the org currently in view, so we never render
   // one org's trial for another while navigation is in flight.
