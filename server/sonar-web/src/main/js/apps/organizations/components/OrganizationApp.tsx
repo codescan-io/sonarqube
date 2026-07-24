@@ -24,6 +24,8 @@ import { OrganizationContextProps } from "../OrganizationContext";
 import { Organization } from "../../../types/types";
 import { getOrganization, getOrganizationBillingDetails, getOrganizationNavigation } from "../../../api/organizations";
 import { useCurrentOrganizationKey } from '../../../app/components/current-organization/CurrentOrganizationKeyContext';
+import { useAppState } from '../../../app/components/app-state/withAppStateContext';
+import { isDeploymentForAmazon } from '../../../helpers/urls';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { Helmet } from "react-helmet-async";
 import Suggestions from "../../../components/embed-docs-modal/Suggestions";
@@ -55,6 +57,7 @@ const OrganizationApp: React.FC<OrganizationAppProps> = ({  userOrganizations, l
   const [organization, setOrganization] = useState<Organization>();
   const {setIsNotStandardOrg, currentUser} = useCurrentUser();
   const { setBilling } = useCurrentOrganizationKey();
+  const appState = useAppState();
   const navigate = useNavigate();
   // Set portal anchor on mount
   useEffect(() => {
@@ -82,9 +85,13 @@ const OrganizationApp: React.FC<OrganizationAppProps> = ({  userOrganizations, l
           }
         ).catch(throwGlobalError);
 
-        getOrganizationBillingDetails(organizationKey)
-          .then((details) => setBilling({ organizationKey, details }))
-          .catch(() => undefined);
+        // Fetched alongside (but not awaited with) the org navigation, feeding the global
+        // trial banner. Skipped on the Amazon white-label product, which has no trial concept.
+        if (!isDeploymentForAmazon(appState.whiteLabel)) {
+          getOrganizationBillingDetails(organizationKey)
+            .then((details) => setBilling({ organizationKey, details }))
+            .catch(() => undefined);
+        }
       }
     }
   }, [organizationKey]);
