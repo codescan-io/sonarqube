@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { Button, ButtonVariety, IconCheck, LinkStandalone } from '@sonarsource/echoes-react';
+import { Button, ButtonVariety, IconCheck, Label, LinkStandalone } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
 import { useSearchParams } from 'react-router-dom';
@@ -34,7 +34,6 @@ import {
   Title,
 } from '~design-system';
 import { Image } from '~sonar-aligned/components/common/Image';
-import { SonarQubeConnectionIllustration } from '../../components/branding/SonarQubeConnectionIllustration';
 import { whenLoggedIn } from '../../components/hoc/whenLoggedIn';
 import { translate, translateWithParameters } from '../../helpers/l10n';
 import { portIsValid, sendUserToken } from '../../helpers/sonarlint';
@@ -149,9 +148,9 @@ export function SonarLintConnection({ appState, currentUser }: Readonly<Props>) 
 
           {isDeploymentForAmazon(whiteLabel) && (
             <div className="input-large spacer-right display-flex-column">
-              <label htmlFor="token-select-project" className="text-bold text-left">
+              <Label htmlFor="token-select-project" className="sw-mr-4">
                 {translate('users.tokens.project')}
-              </label>
+              </Label>
               <InputSelect
                 id="token-select-project"
                 className="spacer-top it__project"
@@ -168,6 +167,7 @@ export function SonarLintConnection({ appState, currentUser }: Readonly<Props>) 
             onClick={authorize}
             variety={ButtonVariety.Primary}
             isDisabled={isAllowConnectionDisabled()}
+            className="sw-my-4"
           >
             {translate('sonarlint-connection.request.action')}
           </Button>
