@@ -39,10 +39,13 @@ import org.sonar.server.issue.index.IssueIndexer;
  * with {@code _source} disabled (see {@link org.sonar.server.issue.index.IssueIndexDefinition}), and
  * {@code update_by_query} rebuilds every matched doc from its {@code _source} — so it fails on every document with
  * {@code "didn't store _source"}. The DB is the source of truth for the index, so we reindex the affected issues
- * straight from it instead. Reindexing recomputes {@code codefixStatus} from the canonical
- * {@code IssueMapper#scrollIssuesForIndexation} expression (which already narrows variable-naming rules by
- * {@code variableType}), so the value written matches exactly what a normal analysis reindex would write — this
- * does NOT over-mark.
+ * straight from it instead. This is a one-off BLANKET backfill: the by-rule scroll writes
+ * {@code codefixStatus = COALESCE(codefix_status, 'AVAILABLE')}, marking every in-scope issue AVAILABLE and defaulting
+ * only the NULLs (any already-persisted value is preserved). It deliberately SKIPS the {@code variableType} narrowing
+ * that normal analysis indexing applies to variable-naming rules: old issues predate {@code issue_ai_metadata}, so
+ * that narrowing would leave those rules' issues NULL, whereas the backfill intent is to mark them all. As a result the
+ * backfilled value for an old INSTANCE-variable issue can differ from what its next analysis would write (which would
+ * set it back to NULL) — accepted, as these are historical issues.
  *
  * <p>Scope is limited to issues of non-REMOVED {@code ai_code_fix_enabled} rules; issues of other rules already hold
  * the correct (absent/NULL) value in the index and are left untouched. The reindex streams the whole in-scope set in a
@@ -108,7 +111,7 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
     if (reindexed == 0) {
       return EsDataMigrationExecution.completed("nothing to do: no issues on ai_code_fix_enabled rules");
     }
-    return EsDataMigrationExecution.completed("reindexed " + reindexed + " issue(s) from DB");
+      return EsDataMigrationExecution.completed("reindexed " + reindexed + " issue(s) from DB");
   }
 
   /**
