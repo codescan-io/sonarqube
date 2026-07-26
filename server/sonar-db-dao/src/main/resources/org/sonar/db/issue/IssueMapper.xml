@@ -372,31 +372,6 @@
     </collection>
   </resultMap>
 
-  <!-- Issue keys eligible for the codefixStatus ES backfill (BackfillCodefixStatusMigration #2026071801): every
-       issue of a non-removed ai_code_fix_enabled rule. The eligible rule uuids are resolved once by the caller
-       (RuleMapper.selectAiCodeFixBackfillRuleUuids) and passed in as ruleUuids, so this query filters on
-       issues.rule_uuid alone — NO join to rules. That matters for pagination: because both the filter and the
-       ORDER BY / page bound live on the issues table, the DB can serve each page by walking the issues primary-key
-       (kee) index in order and stopping at the page size, instead of joining issues to rules, materialising every
-       in-scope issue and re-sorting the whole set on every page (which turned this into an O(pages * total) scan).
-       Keyset-paginated on the unique key i.kee, so one bounded query fetches each page with no scroll cursor /
-       long transaction held open across the ES reindex. Selection is deliberately coarse (rule-level):
-       scrollIssuesForIndexation recomputes the canonical codefixStatus on reindex, so the naming-rule /
-       variableType narrowing is not replicated here. -->
-  <select id="selectIssueKeysForCodefixBackfill" parameterType="map" resultType="string">
-    select i.kee
-    from issues i
-    where i.rule_uuid in
-    <foreach collection="ruleUuids" open="(" close=")" item="ruleUuid" separator=",">
-      #{ruleUuid,jdbcType=VARCHAR}
-    </foreach>
-    <if test="afterKey != null">
-      and i.kee &gt; #{afterKey,jdbcType=VARCHAR}
-    </if>
-    order by i.kee
-    <include refid="org.sonar.db.common.Common.pagination"/>
-  </select>
-
   <select id="scrollIssuesForIndexation" parameterType="map" resultMap="indexedIssueResultMap" fetchSize="${_scrollFetchSize}"
            resultSetType="FORWARD_ONLY" resultOrdered="true">
     select
@@ -458,6 +433,16 @@
            and i.kee in
         <foreach collection="issueKeys" open="(" close=")" item="key" separator=",">
             #{key,jdbcType=VARCHAR}
+        </foreach>
+      </if>
+      <!-- Used by the codefixStatus ES backfill (BackfillCodefixStatusMigration): stream, in one server-side scroll
+           ordered by kee, every issue of the given (ai_code_fix_enabled, non-REMOVED) rule uuids. Filters on the
+           issues.rule_uuid column directly (not via the joined rules row) so it can use the ISSUES_RULE_UUID index.
+           The rule set is a small handful, so it is passed unchunked. -->
+      <if test="ruleUuids != null">
+           and i.rule_uuid in
+        <foreach collection="ruleUuids" open="(" close=")" item="ruleUuid" separator=",">
+            #{ruleUuid,jdbcType=VARCHAR}
         </foreach>
       </if>
     </where>
