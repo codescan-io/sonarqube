@@ -101,19 +101,18 @@ public class IssueDao implements Dao {
 
   public Cursor<IndexedIssueDto> scrollIssuesForIndexation(DbSession dbSession, @Nullable @Param("branchUuid") String branchUuid,
     @Nullable @Param("issueKeys") Collection<String> issueKeys) {
-    return mapper(dbSession).scrollIssuesForIndexation(branchUuid, issueKeys);
+    return mapper(dbSession).scrollIssuesForIndexation(branchUuid, issueKeys, null);
   }
 
   /**
-   * One keyset-paginated page of issue keys whose rule is one of {@code ruleUuids} (the ai_code_fix_enabled, non-REMOVED
-   * rules, resolved once by the caller), ordered by key; see BackfillCodefixStatusMigration. Pass {@code afterKey=null}
-   * for the first page, then the last key of the previous page. Filtering on {@code issues.rule_uuid} rather than
-   * joining to rules lets the DB walk the issues primary key incrementally per page instead of re-sorting the whole
-   * in-scope set each time. A bounded query per page (rather than an open scroll cursor) keeps each read short.
+   * Streams, in a single server-side scroll cursor ordered by key, every issue whose rule is one of {@code ruleUuids}
+   * (the ai_code_fix_enabled, non-REMOVED rules, resolved once by the caller); see BackfillCodefixStatusMigration.
+   * Filters on the {@code issues.rule_uuid} column directly (not via the joined rules row) so it can use the
+   * {@code ISSUES_RULE_UUID} index. One long-lived cursor rather than keyset pages: much faster (no per-page re-query),
+   * but holds a DB read cursor open for the whole reindex, so it is meant to run in a maintenance window.
    */
-  public List<String> selectIssueKeysForCodefixBackfill(DbSession dbSession, Collection<String> ruleUuids,
-    @Nullable String afterKey, Pagination pagination) {
-    return mapper(dbSession).selectIssueKeysForCodefixBackfill(ruleUuids, afterKey, pagination);
+  public Cursor<IndexedIssueDto> scrollIssuesForIndexationByRuleUuids(DbSession dbSession, Collection<String> ruleUuids) {
+    return mapper(dbSession).scrollIssuesForIndexation(null, null, ruleUuids);
   }
 
   public void insert(DbSession session, IssueDto dto) {

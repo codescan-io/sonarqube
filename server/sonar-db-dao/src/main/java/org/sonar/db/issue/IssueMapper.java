@@ -70,10 +70,8 @@ public interface IssueMapper {
 
   void scrollClosedByComponentUuid(@Param("componentUuid") String componentUuid, @Param("closeDateAfter") long closeDateAfter, ResultHandler<IssueDto> handler);
 
-  Cursor<IndexedIssueDto> scrollIssuesForIndexation(@Nullable @Param("branchUuid") String branchUuid, @Nullable @Param("issueKeys") Collection<String> issueKeys);
-
-  List<String> selectIssueKeysForCodefixBackfill(@Param("ruleUuids") Collection<String> ruleUuids,
-    @Nullable @Param("afterKey") String afterKey, @Param("pagination") Pagination pagination);
+  Cursor<IndexedIssueDto> scrollIssuesForIndexation(@Nullable @Param("branchUuid") String branchUuid,
+    @Nullable @Param("issueKeys") Collection<String> issueKeys, @Nullable @Param("ruleUuids") Collection<String> ruleUuids);
 
   Collection<IssueGroupDto> selectIssueGroupsByComponent(@Param("component") ComponentDto component, @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
 
