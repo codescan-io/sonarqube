@@ -21,6 +21,7 @@ package org.sonar.server.es.migration;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
@@ -124,6 +125,27 @@ public class BackfillCodefixStatusMigrationIT {
 
     // enabled(2) + naming(1); disabled and removed rules are out of scope
     assertThat(underTest.estimate(db.getSession())).isEqualTo(3);
+  }
+
+  @Test
+  public void estimate_and_execute_are_noops_when_issues_index_is_absent() {
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto enabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true));
+    db.issues().insert(enabledRule, project, file);
+
+    // Simulate a deleted index: it will be recreated and repopulated by the normal startup reindex flow, so this
+    // migration must step aside rather than fail. Deleting the index is the scenario that made the dry-run throw
+    // index_not_found_exception before the guard.
+    es.client().deleteIndex(new DeleteIndexRequest(TYPE_ISSUE.getMainType().getIndex().getName()));
+
+    // dry-run (estimate) must NOT throw and reports nothing to backfill
+    assertThat(underTest.estimate(db.getSession())).isZero();
+
+    // execute must NOT throw and reports it stepped aside
+    EsDataMigrationExecution execution = underTest.execute(db.getSession());
+    assertThat(execution.asyncTaskId()).isEmpty();
+    assertThat(execution.detail()).contains("issues index absent");
   }
 
   private Map<String, String> codefixStatusByKey() {

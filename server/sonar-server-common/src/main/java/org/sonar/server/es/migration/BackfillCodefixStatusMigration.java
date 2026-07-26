@@ -21,6 +21,7 @@ package org.sonar.server.es.migration;
 
 import java.util.List;
 import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -89,6 +90,13 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
 
   @Override
   public long estimate(DbSession dbSession) {
+    // The backfill only applies to an EXISTING index. If the issues index is absent (e.g. it was deleted), the normal
+    // startup flow recreates it and fully repopulates it from the DB — writing codefixStatus itself — so there is
+    // nothing here to backfill. Return 0 rather than letting the ES search below throw index_not_found_exception, which
+    // would fail the dry-run (estimate) API call.
+    if (!issuesIndexExists()) {
+      return 0;
+    }
     List<String> ruleUuids = dbClient.ruleDao().selectAiCodeFixBackfillRuleUuids(dbSession);
     if (ruleUuids.isEmpty()) {
       return 0;
@@ -101,6 +109,12 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
 
   @Override
   public EsDataMigrationExecution execute(DbSession dbSession) {
+    // The migration can only run against an EXISTING index. If the issues index is absent it will be recreated and
+    // fully repopulated (codefixStatus included) by the normal startup reindex flow, so there is nothing to backfill —
+    // and the LARGE bulk below would in any case fail while reading settings off a missing index. Step aside cleanly.
+    if (!issuesIndexExists()) {
+      return EsDataMigrationExecution.completed("nothing to do: issues index absent; the full reindex will repopulate codefixStatus");
+    }
     // Resolve the (typically handful of) eligible rule uuids once, then stream-reindex every issue of those rules in a
     // single scroll under a LARGE bulk (IssueIndexer.reindexByRuleUuids). Meant to run inside a downtime window.
     List<String> ruleUuids = dbClient.ruleDao().selectAiCodeFixBackfillRuleUuids(dbSession);
@@ -112,6 +126,15 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
       return EsDataMigrationExecution.completed("nothing to do: no issues on ai_code_fix_enabled rules");
     }
       return EsDataMigrationExecution.completed("reindexed " + reindexed + " issue(s) from DB");
+  }
+
+  /**
+   * True if the {@code issues} index currently exists on the cluster. The backfill only applies to an existing index:
+   * a deleted index is recreated and repopulated (codefixStatus included) by the normal startup reindex flow, which
+   * this migration must not interfere with. Both {@link #estimate} and {@link #execute} step aside when this is false.
+   */
+  private boolean issuesIndexExists() {
+    return esClient.indexExists(new GetIndexRequest(IssueIndexDefinition.TYPE_ISSUE.getMainType().getIndex().getName()));
   }
 
   /**
