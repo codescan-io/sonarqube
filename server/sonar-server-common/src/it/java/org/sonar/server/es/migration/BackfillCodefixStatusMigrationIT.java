@@ -58,14 +58,14 @@ public class BackfillCodefixStatusMigrationIT {
   private final BackfillCodefixStatusMigration underTest = new BackfillCodefixStatusMigration(db.getDbClient(), issueIndexer, es.client());
 
   @Test
-  public void execute_reindexes_only_ai_fix_rule_issues_with_the_canonical_codefixStatus() {
+  public void execute_reindexes_only_ai_fix_rule_issues_marking_them_all_available() {
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
     ComponentDto file = db.components().insertComponent(newFileDto(project));
 
     RuleDto enabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true));
     RuleDto disabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(false));
-    // enabled variable-naming rule with no AI metadata -> canonical value is NULL (the scrollIssuesForIndexation
-    // CASE narrows naming rules by variableType), so reindexing must NOT mark it AVAILABLE.
+    // enabled variable-naming rule with no AI metadata: normal analysis indexing would leave this NULL (variableType
+    // narrowing), but the one-off BLANKET backfill marks every in-scope issue AVAILABLE, so this must become AVAILABLE too.
     RuleDto namingRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setRuleKey(RuleKey.of("pmd", "ShortVariable")));
     // REMOVED rule: enabled flag may linger but its issues are out of scope (status != 'REMOVED').
     RuleDto removedRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setStatus(RuleStatus.REMOVED));
@@ -82,11 +82,10 @@ public class BackfillCodefixStatusMigrationIT {
     es.client().refresh(IssueIndexDefinition.DESCRIPTOR);
 
     Map<String, String> statuses = codefixStatusByKey();
-    // reindexed from DB, canonical value written:
+    // blanket backfill: every in-scope issue is marked AVAILABLE, any already-persisted DB value is preserved
     assertThat(statuses.get(onEnabled.getKey())).isEqualTo("AVAILABLE");
     assertThat(statuses.get(onEnabledPreset.getKey())).isEqualTo("FIX_GENERATED"); // pre-set DB value preserved via COALESCE
-    assertThat(statuses).containsKey(onNaming.getKey());
-    assertThat(statuses.get(onNaming.getKey())).isNull(); // reindexed, but naming rule w/o metadata -> no AVAILABLE (no over-mark)
+    assertThat(statuses.get(onNaming.getKey())).isEqualTo("AVAILABLE"); // naming rule w/o metadata still marked (blanket backfill, no variableType narrowing)
     // out of scope -> never indexed:
     assertThat(statuses).doesNotContainKey(onDisabled.getKey());
     assertThat(statuses).doesNotContainKey(onRemoved.getKey());
