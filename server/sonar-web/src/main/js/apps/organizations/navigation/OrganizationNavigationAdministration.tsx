@@ -21,9 +21,10 @@ import { DropdownMenu } from '@sonarsource/echoes-react';
 import { NavBarTabLink } from '~design-system';
 import * as React from 'react';
 import { translate } from '../../../helpers/l10n';
-import { Organization } from '../../../types/types';
+import { Organization, OrganizationBillingDetails } from '../../../types/types';
 
 interface Props {
+  billing?: OrganizationBillingDetails;
   location: { pathname: string };
   organization: Organization;
 }

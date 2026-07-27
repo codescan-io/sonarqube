@@ -31,6 +31,7 @@ import SuggestionsProvider from '../../components/embed-docs-modal/SuggestionsPr
 import NCDAutoUpdateMessage from '../../components/new-code-definition/NCDAutoUpdateMessage';
 import Workspace from '../../components/workspace/Workspace';
 import BranchStatusContextProvider from './branch-status/BranchStatusContextProvider';
+import CurrentOrganizationKeyProvider from './current-organization/CurrentOrganizationKeyContext';
 import CalculationChangeMessage from './calculation-notification/CalculationChangeMessage';
 import ChatWidget from './ChatWidget';
 import GlobalFooterCodescan from './GlobalFooterCodescan';
@@ -141,6 +142,7 @@ export default function GlobalContainer() {
       <SuggestionsProvider>
         <A11yProvider>
           <A11ySkipLinks />
+          <CurrentOrganizationKeyProvider>
           <GlobalContainerWrapper>
             {isChatEnabled && <ChatWidget />}
             <GlobalBackground
@@ -178,6 +180,7 @@ export default function GlobalContainer() {
             <GlobalFooterCodescan />
           </GlobalContainerWrapper>
           <StartupModal />
+          </CurrentOrganizationKeyProvider>
         </A11yProvider>
       </SuggestionsProvider>
     </ThemeProvider>

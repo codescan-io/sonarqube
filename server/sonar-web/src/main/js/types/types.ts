@@ -921,6 +921,12 @@ export interface OrganizationBase {
   inviteUsersEnabled: boolean;
 }
 
+export interface OrganizationBillingDetails {
+  status?: string;
+  subscriptionId?: string | null;
+  trialEnds?: number;
+}
+
 export interface OrganizationMember extends UserActive {
   groupCount?: number;
   type: string;
