@@ -404,14 +404,27 @@
       i.code_variants as codeVariants,
       i.prioritized_rule as prioritizedRule,
       i.issue_ai_metadata as issueAiMetadata,
-      COALESCE(i.codefix_status,
-        CASE WHEN r.ai_code_fix_enabled = true
-              AND (
-                r.plugin_rule_key not in (<include refid="aiFixVariableNamingRuleKeys"/>)
-                OR (i.issue_ai_metadata is not null
-                    AND i.issue_ai_metadata not like '%"variableType":"INSTANCE"%')
-              )
-             THEN 'AVAILABLE' END) as codefixStatus,
+      <choose>
+        <!-- BackfillCodefixStatusMigration (the by-rule scroll: ruleUuids set) is a one-off blanket backfill and marks
+             EVERY in-scope issue AVAILABLE. Old issues predate issue_ai_metadata, so the variableType narrowing in the
+             <otherwise> branch would leave the variable-naming rules (ShortVariable/LongVariable/VariableNamingConventions)
+             NULL — but the backfill intent is to mark them all. COALESCE keeps any codefix_status already persisted and
+             only defaults the NULLs to AVAILABLE (no clobber of a real computed value). Normal analysis indexing takes
+             the <otherwise> branch and is unchanged. -->
+        <when test="ruleUuids != null">
+          COALESCE(i.codefix_status, 'AVAILABLE') as codefixStatus,
+        </when>
+        <otherwise>
+          COALESCE(i.codefix_status,
+            CASE WHEN r.ai_code_fix_enabled = true
+                  AND (
+                    r.plugin_rule_key not in (<include refid="aiFixVariableNamingRuleKeys"/>)
+                    OR (i.issue_ai_metadata is not null
+                        AND i.issue_ai_metadata not like '%"variableType":"INSTANCE"%')
+                  )
+                 THEN 'AVAILABLE' END) as codefixStatus,
+        </otherwise>
+      </choose>
       <include refid="issueImpactsColumns"/>
       <include refid="ruleDefaultImpactsColumns"/>
       <include refid="issuesDependencyColumns"/>
@@ -433,6 +446,17 @@
            and i.kee in
         <foreach collection="issueKeys" open="(" close=")" item="key" separator=",">
             #{key,jdbcType=VARCHAR}
+        </foreach>
+      </if>
+      <!-- Used by the codefixStatus ES backfill (BackfillCodefixStatusMigration): stream, in one server-side scroll
+           ordered by kee, every issue of the given (ai_code_fix_enabled, non-REMOVED) rule uuids. Filters on the
+           issues.rule_uuid column directly (not via the joined rules row) so it can use the ISSUES_RULE_UUID index.
+           The rule set is a small handful, so it is passed unchunked. This same ruleUuids-set condition also switches
+           the codefixStatus SELECT expression above to the blanket-AVAILABLE backfill (see the <choose> there). -->
+      <if test="ruleUuids != null">
+           and i.rule_uuid in
+        <foreach collection="ruleUuids" open="(" close=")" item="ruleUuid" separator=",">
+            #{ruleUuid,jdbcType=VARCHAR}
         </foreach>
       </if>
     </where>

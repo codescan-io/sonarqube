@@ -101,7 +101,22 @@ public class IssueDao implements Dao {
 
   public Cursor<IndexedIssueDto> scrollIssuesForIndexation(DbSession dbSession, @Nullable @Param("branchUuid") String branchUuid,
     @Nullable @Param("issueKeys") Collection<String> issueKeys) {
-    return mapper(dbSession).scrollIssuesForIndexation(branchUuid, issueKeys);
+    return mapper(dbSession).scrollIssuesForIndexation(branchUuid, issueKeys, null);
+  }
+
+  /**
+   * Streams, in a single server-side scroll cursor ordered by key, every issue whose rule is one of {@code ruleUuids}
+   * (the ai_code_fix_enabled, non-REMOVED rules, resolved once by the caller); see BackfillCodefixStatusMigration.
+   * Filters on the {@code issues.rule_uuid} column directly (not via the joined rules row) so it can use the
+   * {@code ISSUES_RULE_UUID} index. One long-lived cursor rather than keyset pages: much faster (no per-page re-query),
+   * but holds a DB read cursor open for the whole reindex, so it is meant to run in a maintenance window.
+   * <p>Because {@code ruleUuids} is set, the query emits {@code codefixStatus = COALESCE(codefix_status, 'AVAILABLE')}:
+   * a blanket backfill that marks every in-scope issue AVAILABLE (defaulting only the NULLs), WITHOUT the variableType
+   * narrowing that normal analysis indexing applies. Old issues predate {@code issue_ai_metadata}, so that narrowing
+   * would leave the variable-naming rules NULL; the backfill intent is to mark them all.
+   */
+  public Cursor<IndexedIssueDto> scrollIssuesForIndexationByRuleUuids(DbSession dbSession, Collection<String> ruleUuids) {
+    return mapper(dbSession).scrollIssuesForIndexation(null, null, ruleUuids);
   }
 
   public void insert(DbSession session, IssueDto dto) {

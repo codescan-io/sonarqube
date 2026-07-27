@@ -121,6 +121,14 @@ public class RuleDao implements Dao {
     return mapper(session).selectAllRules();
   }
 
+  /**
+   * Uuids of every non-REMOVED ai_code_fix_enabled rule. Used to terms-filter the fast ES doc-count that backs
+   * BackfillCodefixStatusMigration's dry-run estimate.
+   */
+  public List<String> selectAiCodeFixBackfillRuleUuids(DbSession session) {
+    return mapper(session).selectAiCodeFixBackfillRuleUuids();
+  }
+
   public List<RuleDto> selectByTypeAndLanguages(DbSession session, List<Integer> types, List<String> languages) {
     return executeLargeInputs(languages, chunk -> mapper(session).selectByTypeAndLanguages(types, chunk));
   }

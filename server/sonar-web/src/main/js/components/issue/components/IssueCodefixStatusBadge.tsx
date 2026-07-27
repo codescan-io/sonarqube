@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { replaceEqualDeep, useQuery, useQueryClient } from '@tanstack/react-query';
 import classNames from 'classnames';
 import * as React from 'react';
 import { getCodefixStatus } from '../../../api/ai-codefix';
@@ -99,6 +99,8 @@ const CODEFIX_FIX_GENERATED_VISIBLE_MS = 2_000; // 2 seconds
 
 export default function AiCodefixBadge({ issue }: { issue: Issue }) {
   const hasAiFix = hasAiCodefix(issue);
+  const assignedToAi =
+    issue.assignee === AI_CODE_ASSISTANT_ASSIGNEE || issue.assigneeLogin === AI_CODE_ASSISTANT_ASSIGNEE;
   const queryClient = useQueryClient();
 
   // Automation mode tells us whether a FIX_GENERATED job will get a PR automatically. No staleTime, but the
@@ -120,8 +122,14 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
     enabled: hasAiFix && Boolean(issue.key),
     staleTime: CODEFIX_STATUS_STALE_MS,
     refetchOnWindowFocus: false,
+    structuralSharing: (oldData, newData) => {
+      if (newData && !newData.status && oldData?.status) {
+        return oldData;
+      }
+      return replaceEqualDeep(oldData, newData);
+    },
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
+      const status = query.state.data?.status || issue.codefixStatus;
       if (
         status === 'PENDING' ||
         status === 'IN_PROGRESS' ||
@@ -132,6 +140,9 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
       if (status === 'FIX_GENERATED') {
         // Automatic: PR is being created, poll fast to catch it. Manual: waits on the user, poll slower.
         return isAutomaticMode ? CODEFIX_ACTIVE_POLL_MS : CODEFIX_FIX_GENERATED_POLL_MS;
+      }
+      if (!status && assignedToAi) {
+        return CODEFIX_ACTIVE_POLL_MS;
       }
       return false;
     },
@@ -144,7 +155,7 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
     }
   }, [issue.key, issue.codefixStatus, queryClient]);
 
-  const rawStatus = statusData?.status ?? issue.codefixStatus;
+  const rawStatus = statusData?.status || issue.codefixStatus;
   const isAutomaticFixGenerated = rawStatus === 'FIX_GENERATED' && isAutomaticMode;
 
   // Automatic FIX_GENERATED means the PR is being created: show it as "Pull Request In Progress", but only

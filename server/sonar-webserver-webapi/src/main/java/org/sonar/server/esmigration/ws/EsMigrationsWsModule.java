@@ -17,26 +17,21 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.server.es.metadata;
+package org.sonar.server.esmigration.ws;
 
-import java.util.Optional;
-import org.sonar.server.es.Index;
-import org.sonar.server.es.IndexType;
+import org.sonar.core.platform.Module;
+import org.sonar.server.es.migration.BackfillCodefixStatusMigration;
+import org.sonar.server.es.migration.EsDataMigrationEngine;
 
-public interface MetadataIndex {
-  Optional<String> getHash(Index index);
-
-  void setHash(Index index, String hash);
-
-  boolean getInitialized(IndexType indexType);
-
-  void setInitialized(IndexType indexType, boolean initialized);
-
-  Optional<String> getDbVendor();
-
-  void setDbMetadata(String vendor);
-
-  Optional<String> getEsDataMigrationState(long version);
-
-  void setEsDataMigrationState(long version, String stateJson);
+public class EsMigrationsWsModule extends Module {
+  @Override
+  protected void configureModule() {
+    add(
+      EsDataMigrationEngine.class,
+      BackfillCodefixStatusMigration.class,
+      EsMigrationsWs.class,
+      ListAction.class,
+      RunAction.class,
+      StatusAction.class);
+  }
 }
