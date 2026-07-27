@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.sonar.db.ai.CsAiRulesCatalogMapper">
+
+  <resultMap id="RuleCatalogResult" type="org.sonar.db.ai.CsAiRuleCatalogDto">
+    <result column="rule_key" property="ruleKey"/>
+    <result column="language" property="language"/>
+    <result column="description" property="description"/>
+    <result column="context_severity" property="contextSeverity"/>
+  </resultMap>
+
+  <select id="selectByRuleKey" parameterType="string" resultMap="RuleCatalogResult">
+    select rule_key, language, description, context_severity
+    from cs_ai_rules_catalog
+    where rule_key = #{ruleKey} and language = #{language}
+  </select>
+
+</mapper>

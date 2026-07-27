@@ -31,6 +31,16 @@ import {
 } from '../types/issues';
 import { Dict, FacetValue, IssueChangelog, SnippetsByComponent, SourceLine } from '../types/types';
 
+export type IssueContextResponse = {
+  componentKey?: string;
+  contextSeverity?: 'LOW' | 'MEDIUM' | 'HIGH';
+  issueKey: string;
+  line: number;
+  ruleDescription?: string;
+  ruleKey?: string;
+  snippet: string;
+};
+
 export function searchIssues(query: RequestData): Promise<RawIssuesResponse> {
   return getJSON('/api/issues/search', query).catch(error => {
     if (error?.status === 403 ) {
@@ -186,4 +196,8 @@ export function getIssueFlowSnippets(issueKey: string): Promise<Dict<SnippetsByC
       });
       return result;
     });
+}
+
+export function getIssueContext(data: {componentKey?: string; contextSeverity?: 'LOW' | 'MEDIUM' | 'HIGH'; issue: string; rule?: string;}): Promise<IssueContextResponse> {
+  return getJSON('/api/issues/context', data).catch(throwGlobalError);
 }

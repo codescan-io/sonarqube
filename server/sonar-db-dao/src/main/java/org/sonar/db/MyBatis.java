@@ -33,6 +33,8 @@ import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 import org.apache.ibatis.session.TransactionIsolationLevel;
+import org.sonar.db.ai.CsAiRuleCatalogDto;
+import org.sonar.db.ai.CsAiRulesCatalogMapper;
 import org.sonar.db.alm.pat.AlmPatMapper;
 import org.sonar.db.alm.setting.AlmSettingMapper;
 import org.sonar.db.alm.setting.ProjectAlmKeyAndProject;
@@ -221,6 +223,7 @@ public class MyBatis {
     confBuilder.loadAlias("AnticipatedTransition", AnticipatedTransitionDto.class);
     confBuilder.loadAlias("CeTaskCharacteristic", CeTaskCharacteristicDto.class);
     confBuilder.loadAlias("Component", ComponentDto.class);
+    confBuilder.loadAlias("CsAiRuleCatalog", CsAiRuleCatalogDto.class);
     confBuilder.loadAlias("Cve", CveDto.class);
     confBuilder.loadAlias("CveCwe", CveCweDto.class);
     confBuilder.loadAlias("DevOpsPermissionsMapping", DevOpsPermissionsMappingDto.class);
@@ -303,6 +306,7 @@ public class MyBatis {
       CeTaskMessageMapper.class,
       ComponentKeyUpdaterMapper.class,
       ComponentMapper.class,
+      CsAiRulesCatalogMapper.class,
       CveMapper.class,
       CveCweMapper.class,
       DefaultQProfileMapper.class,

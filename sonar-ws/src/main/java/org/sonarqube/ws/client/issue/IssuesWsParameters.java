@@ -42,6 +42,7 @@ public class IssuesWsParameters {
   public static final String ACTION_PULL = "pull";
   public static final String ACTION_PULL_TAINT = "pull_taint";
   public static final String ACTION_ANTICIPATED_TRANSITIONS = "anticipated_transitions";
+  public static final String ACTION_CONTEXT = "context";
 
   public static final String PARAM_ISSUE = "issue";
   public static final String PARAM_IMPACT = "impact";
@@ -64,14 +65,17 @@ public class IssuesWsParameters {
   public static final String PARAM_RESOLVED = "resolved";
   public static final String PARAM_PRIORITIZED_RULE = "prioritizedRule";
   public static final String PARAM_COMPONENTS = "components";
+  public static final String PARAM_COMPONENT_KEY = "componentKey";
   public static final String PARAM_COMPONENT_KEYS = "componentKeys";
   public static final String PARAM_COMPONENT_UUIDS = "componentUuids";
+  public static final String PARAM_CONTEXT_SEVERITY = "contextSeverity";
   public static final String PARAM_PROJECTS = "projects";
   public static final String PARAM_DIRECTORIES = "directories";
   public static final String PARAM_FILES = "files";
   public static final String PARAM_ON_COMPONENT_ONLY = "onComponentOnly";
   public static final String PARAM_BRANCH = "branch";
   public static final String PARAM_PULL_REQUEST = "pullRequest";
+  public static final String PARAM_RULE = "rule";
   public static final String PARAM_RULES = "rules";
   public static final String PARAM_ASSIGN = "assign";
   public static final String PARAM_SET_SEVERITY = "set_severity";
