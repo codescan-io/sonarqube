@@ -46,6 +46,8 @@ import withAvailableFeatures, {
 } from './available-features/withAvailableFeatures';
 import { ComponentContext } from './componentContext/ComponentContext';
 import { useCurrentOrganizationKey } from './current-organization/CurrentOrganizationKeyContext';
+import { useAppState } from './app-state/withAppStateContext';
+import { isDeploymentForAmazon } from '../../helpers/urls';
 import ComponentNav from './nav/component/ComponentNav';
 import { getOrganization, getOrganizationBillingDetails, getOrganizationNavigation } from "../../api/organizations";
 import { ComponentQualifier } from "~sonar-aligned/types/component";
@@ -68,6 +70,7 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
   const intl = useIntl();
 
   const { setOrganizationKey, setBilling } = useCurrentOrganizationKey();
+  const appState = useAppState();
 
   const [comparisonBranchesEnabled, setComparisonBranchesEnabled] = React.useState<boolean>();
   const [organization, setOrganization] = React.useState<Organization>();
@@ -111,10 +114,14 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
         setOrganization({ ...organization, ...navigation });
         setComparisonBranchesEnabled(settings[0]?.value === "true");
 
-        const billingOrganization = component.organization;
-        getOrganizationBillingDetails(billingOrganization)
-          .then((details) => setBilling({ organizationKey: billingOrganization, details }))
-          .catch(() => undefined);
+        // Feeds the global trial banner. Skipped on the Amazon white-label product,
+        // which has no trial concept.
+        if (!isDeploymentForAmazon(appState.whiteLabel)) {
+          const billingOrganization = component.organization;
+          getOrganizationBillingDetails(billingOrganization)
+            .then((details) => setBilling({ organizationKey: billingOrganization, details }))
+            .catch(() => undefined);
+        }
       } catch (e) {
         if (e instanceof Response && e.status === HttpStatus.Forbidden) {
           handleRequiredAuthorization();
