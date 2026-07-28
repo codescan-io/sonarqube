@@ -28,12 +28,12 @@ import withCurrentUserContext from './current-user/withCurrentUserContext';
 import "../styles/components/home.css";
 import { isNonStandardUser } from '../utils/userAccess';
 
-import { getValue } from '../../api/settings';
+import { getValues } from '../../api/settings';
 import MsaGate from '../../apps/sessions/components/MsaGate';
-const MSA_TOGGLE_KEY = 'codescan.cloud.msaConsent.displayMessage';
 import { getEulaVerification } from '../../api/eula';
 import { isMsaConsentPopupEnabled } from '../../helpers/eula-constants';
 import { GlobalSettingKeys } from '../../types/settings';
+import { isDeploymentForAmazon } from '../../helpers/urls';
 
 interface Props {
   appState: AppState;
@@ -63,8 +63,20 @@ class Home extends React.PureComponent<Props, State> {
      this.mounted = true;
 
      try {
-       const resp = await getValue({ key: GlobalSettingKeys.CodescanMsaConsentDisplayMessage });
-       const msaEnabled = resp?.value==='true';
+       const msaSettings = await getValues({
+         keys: [
+           GlobalSettingKeys.CodescanMsaConsentDisplayMessage,
+           GlobalSettingKeys.CodescanMsaConsentDisplayMessageForTrialUser,
+         ],
+       });
+       const isSettingEnabled = (key: string) =>
+         msaSettings.some((setting) => setting?.key === key && setting?.value === 'true');
+       const { whiteLabel } = this.props.appState;
+       const globalEnabled = isSettingEnabled(GlobalSettingKeys.CodescanMsaConsentDisplayMessage);
+       const trialEnabled =
+         isSettingEnabled(GlobalSettingKeys.CodescanMsaConsentDisplayMessageForTrialUser) &&
+         !isDeploymentForAmazon(whiteLabel);
+       const msaEnabled = globalEnabled || trialEnabled;
 
        if (this.mounted) {
          this.setState({ msaEnabled });
