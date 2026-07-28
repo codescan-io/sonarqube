@@ -20,8 +20,11 @@
 import { DropdownMenu } from '@sonarsource/echoes-react';
 import { NavBarTabLink } from '~design-system';
 import * as React from 'react';
+import { AppStateContext } from '../../../app/components/app-state/AppStateContext';
+import { useCurrentUser } from '../../../app/components/current-user/CurrentUserContext';
 import { translate } from '../../../helpers/l10n';
 import { Organization, OrganizationBillingDetails } from '../../../types/types';
+import { isDeploymentForAmazon } from '../../../helpers/urls';
 
 interface Props {
   billing?: OrganizationBillingDetails;
@@ -38,8 +41,23 @@ const ADMIN_PATHS = [
   'webhooks',
 ];
 
-export default function OrganizationNavigationAdministration({ location, organization }: Props) {
+export const BILLING_PAGE_KEY = 'billing/billing';
+
+export default function OrganizationNavigationAdministration({ billing, location, organization }: Props) {
   const { adminPages = [] } = organization;
+  const appState = React.useContext(AppStateContext);
+  const { currentUser } = useCurrentUser();
+
+
+  const canSeeAdministration =
+    currentUser.isLoggedIn &&
+    ((appState.canAdmin) || (!appState.canAdmin && appState.canCustomerAdmin));
+
+  const { whiteLabel } = appState;
+  const subscriptionId = billing?.subscriptionId;
+  const hasPaidSubscription =
+    subscriptionId !== undefined && subscriptionId !== null && subscriptionId !== '';
+
   const adminPathsWithExtensions = adminPages.map((e) => `extension/${e.key}`).concat(ADMIN_PATHS);
   const adminActive = adminPathsWithExtensions.some((path) =>
     location.pathname.endsWith(`organizations/${organization.kee}/${path}`),
@@ -54,15 +72,21 @@ export default function OrganizationNavigationAdministration({ location, organiz
             {translate('organization.settings')}
           </DropdownMenu.ItemLink>
 
-          {adminPages.filter(e=> organization.inviteUsersEnabled || e.key!=="developer/invite_users").map((extension) => (
-            <DropdownMenu.ItemLink
-              isMatchingFullPath
-              to={`/organizations/${organization.kee}/extension/${extension.key}`}
-              key={extension.key}
-            >
-              {extension.name}
-            </DropdownMenu.ItemLink>
-          ))}
+          {adminPages
+            .filter((e) => organization.inviteUsersEnabled || e.key !== 'developer/invite_users')
+            .filter(
+              (e) =>
+                isDeploymentForAmazon(whiteLabel) || hasPaidSubscription || canSeeAdministration || e.key !== BILLING_PAGE_KEY
+            )
+            .map((extension) => (
+              <DropdownMenu.ItemLink
+                isMatchingFullPath
+                to={`/organizations/${organization.kee}/extension/${extension.key}`}
+                key={extension.key}
+              >
+                {extension.name}
+              </DropdownMenu.ItemLink>
+            ))}
 
           <DropdownMenu.ItemLink
             isMatchingFullPath
