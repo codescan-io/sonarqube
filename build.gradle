@@ -722,9 +722,6 @@ subprojects {
     }
     publications {
       mavenJava(MavenPublication) {
-        if (components.findByName('java') != null) {
-          from components.java
-        }
         pom {
           name = 'Codescan Cloud'
           description = project.description
