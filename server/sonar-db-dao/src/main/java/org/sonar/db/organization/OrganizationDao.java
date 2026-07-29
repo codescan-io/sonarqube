@@ -20,7 +20,6 @@
 package org.sonar.db.organization;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -91,17 +90,6 @@ public class OrganizationDao implements Dao {
 
   public List<OrganizationDto> selectByUuids(DbSession dbSession, Set<String> organizationUuids) {
     return executeLargeInputs(organizationUuids, getMapper(dbSession)::selectByUuids);
-  }
-
-  /**
-   * Among the given organizations, returns the uuids of those on a CodeScan trial
-   * (cs_billing row with a null subscription id). Empty input returns empty.
-   */
-  public Set<String> selectTrialOrganizationUuids(DbSession dbSession, Set<String> organizationUuids) {
-    if (organizationUuids.isEmpty()) {
-      return Set.of();
-    }
-    return new HashSet<>(executeLargeInputs(organizationUuids, getMapper(dbSession)::selectTrialOrganizationUuids));
   }
 
   public List<OrganizationDto> selectByPermission(DbSession dbSession, String userUuid, String permission) {

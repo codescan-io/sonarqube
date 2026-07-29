@@ -41,8 +41,6 @@ public interface OrganizationMapper {
 
   List<OrganizationDto> selectByUuids(@Param("uuids") List<String> uuids);
 
-  List<String> selectTrialOrganizationUuids(@Param("uuids") List<String> uuids);
-
   List<OrganizationDto> selectByPermission(@Param("userUuid") String userUuid, @Param("permission") String permission);
 
   List<OrganizationDto> selectOrgsForUserAndRole(@Param("userUuid") String userUuid,
