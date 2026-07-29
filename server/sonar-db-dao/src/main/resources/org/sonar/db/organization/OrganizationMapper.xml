@@ -60,6 +60,23 @@
         </foreach>
   </select>
 
+  <!--
+    Returns, among the given organizations, the uuids of those on a CodeScan trial
+    (a cs_billing row with no ChargeBee subscription id). Used to hide Salesforce
+    projects/issues for trial organizations. The Amazon white-label case is handled
+    by the caller (the flag is instance-level), so it is not considered here.
+  -->
+  <select id="selectTrialOrganizationUuids" resultType="String">
+    select org.uuid
+    from organizations org
+    inner join cs_billing b on b.uuid = org.uuid
+    where b.subscription_id is null
+      and org.uuid in
+        <foreach collection="uuids" open="(" close=")" item="uuid" separator=",">
+          #{uuid, jdbcType=VARCHAR}
+        </foreach>
+  </select>
+
   <select id="countByQuery" resultType="int">
     select count(org.uuid)
     <include refid="sqlSelectByQuery" />

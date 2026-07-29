@@ -19,6 +19,7 @@
  */
 package org.sonar.server.ui.ws;
 
+import org.sonar.api.config.Configuration;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
@@ -33,7 +34,9 @@ import org.sonar.server.ui.PageRepository;
 import org.sonar.server.user.UserSession;
 
 import java.util.List;
+import java.util.Set;
 
+import static org.sonar.core.config.CorePropertyDefinitions.CODESCAN_WHITE_LABEL_PRODUCT;
 import static org.sonar.db.permission.OrganizationPermission.ADMINISTER;
 import static org.sonar.server.exceptions.NotFoundException.checkFoundWithOptional;
 
@@ -41,14 +44,19 @@ public class OrganizationAction implements NavigationWsAction {
 
     private static final String ACTION_NAME = "organization";
     private static final String PARAM_ORGANIZATION = "organization";
+    private static final String SALESFORCE_CONNECTION_PAGE_KEY = "developer/salesforce_connection";
+    private static final String KEY_AMAZON_WHITE_LABEL_PRODUCT = "AMAZON";
     private final DbClient dbClient;
     private final UserSession userSession;
     private final PageRepository pageRepository;
+    private final Configuration config;
 
-    public OrganizationAction(DbClient dbClient, UserSession userSession, PageRepository pageRepository) {
+    public OrganizationAction(DbClient dbClient, UserSession userSession, PageRepository pageRepository,
+            Configuration config) {
         this.pageRepository = pageRepository;
         this.dbClient = dbClient;
         this.userSession = userSession;
+        this.config = config;
     }
 
     @Override
@@ -78,28 +86,57 @@ public class OrganizationAction implements NavigationWsAction {
             JsonWriter json = response.newJsonWriter();
             json.beginObject();
             // writeOrganization data
-            writeOrganization(json, organization, true);
+            writeOrganization(json, dbSession, organization, true);
             json.endObject().close();
         }
     }
 
-    private void writeOrganization(JsonWriter json, OrganizationDto organization, boolean newProjectPrivate) {
+    private void writeOrganization(JsonWriter json, DbSession dbSession, OrganizationDto organization, boolean newProjectPrivate) {
         json.name("organization")
                 .beginObject()
                 .prop("projectVisibility", Visibility.getLabel(newProjectPrivate))//We don't use this feature, ignore the complete block.
                 .prop("subscription", organization.getSubscription().name());//We don't use this feature, ignore the complete block.
-        writeOrganizationPages(json, organization);
+        writeOrganizationPages(json, dbSession, organization);
     }
 
-    private void writeOrganizationPages(JsonWriter json, OrganizationDto organization) {
+    private void writeOrganizationPages(JsonWriter json, DbSession dbSession, OrganizationDto organization) {
         json.name("pages");
         writePages(json, pageRepository.getOrganizationPages(false));
         // Check userPermissions
         if (userSession.hasPermission(ADMINISTER, organization)) {
             json.name("adminPages");
-            writePages(json, pageRepository.getOrganizationPages(true));
+            writePages(json, filterAdminPages(dbSession, organization, pageRepository.getOrganizationPages(true)));
         }
         json.endObject();
+    }
+
+    /**
+     * Salesforce is not available to trial organizations (no ChargeBee subscription id in
+     * {@code cs_billing}), so the "Salesforce Connections" admin page is not advertised for
+     * them. This drives both the Administration menu and the extension page resolution, so
+     * a direct URL to that page renders "not found". Licensed organizations and the Amazon
+     * white-label product (which has no trial concept) are unaffected.
+     */
+    private List<Page> filterAdminPages(DbSession dbSession, OrganizationDto organization, List<Page> adminPages) {
+        if (!isTrialOrganization(dbSession, organization)) {
+            return adminPages;
+        }
+        return adminPages.stream()
+                .filter(page -> !SALESFORCE_CONNECTION_PAGE_KEY.equals(page.getKey()))
+                .toList();
+    }
+
+    private boolean isTrialOrganization(DbSession dbSession, OrganizationDto organization) {
+        if (isAmazonWhiteLabelProduct()) {
+            return false;
+        }
+        return dbClient.organizationDao()
+                .selectTrialOrganizationUuids(dbSession, Set.of(organization.getUuid()))
+                .contains(organization.getUuid());
+    }
+
+    private boolean isAmazonWhiteLabelProduct() {
+        return config.get(CODESCAN_WHITE_LABEL_PRODUCT).map(KEY_AMAZON_WHITE_LABEL_PRODUCT::equals).orElse(false);
     }
 
 
