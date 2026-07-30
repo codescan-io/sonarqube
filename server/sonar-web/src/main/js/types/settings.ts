@@ -49,6 +49,7 @@ export enum GlobalSettingKeys {
   CodescanSupportSalesforceOrdId = 'codescan.cloud.support.salesforce.orgid',
   CodescanSupport = 'codescan.cloud.support',
   CodescanMsaConsentDisplayMessage = 'codescan.cloud.msaConsent.displayMessage',
+  CodescanMsaConsentDisplayMessageForTrialUser = 'codescan.cloud.msaConsent.trial.displayMessage',
 }
 
 export type SettingDefinitionAndValue = {
