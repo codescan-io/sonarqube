@@ -22,7 +22,6 @@ import { NavBarTabLink } from '~design-system';
 import * as React from 'react';
 import { AppStateContext } from '../../../app/components/app-state/AppStateContext';
 import { useCurrentUser } from '../../../app/components/current-user/CurrentUserContext';
-import { useAppState } from '../../../app/components/app-state/withAppStateContext';
 import { translate } from '../../../helpers/l10n';
 import { isDeploymentForAmazon } from '../../../helpers/urls';
 import { Organization, OrganizationBillingDetails } from '../../../types/types';
@@ -47,7 +46,6 @@ const ADMIN_PATHS = [
 export const BILLING_PAGE_KEY = 'billing/billing';
 
 export default function OrganizationNavigationAdministration({ billing, location, organization }: Props) {
-  const appStateInfo = useAppState();
   const { adminPages = [] } = organization;
   const appState = React.useContext(AppStateContext);
   const { currentUser } = useCurrentUser();
@@ -62,15 +60,8 @@ export default function OrganizationNavigationAdministration({ billing, location
   const hasPaidSubscription =
     subscriptionId !== undefined && subscriptionId !== null && subscriptionId !== '';
 
-
-  // A trial organization has no ChargeBee subscription id. Salesforce is not
-  // available to trial organizations, so hide its admin page. The Amazon
-  // white-label product has no trial concept and keeps Salesforce. Billing not
-  // yet loaded => fail open (the backend still blocks Salesforce APIs).
-  const hasPaidSubscriptionOrg =
-    typeof billing?.subscriptionId === 'string' && billing.subscriptionId.length > 0;
-  const isTrialOrganization =
-    billing !== undefined && !hasPaidSubscription && !isDeploymentForAmazon(appStateInfo.whiteLabel);
+  // Salesforce is not available to trial organizations.
+  const isTrialOrganization = billing?.isTrialOrganization === true;
 
   const adminPathsWithExtensions = adminPages.map((e) => `extension/${e.key}`).concat(ADMIN_PATHS);
   const adminActive = adminPathsWithExtensions.some((path) =>
