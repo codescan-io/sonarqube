@@ -99,8 +99,6 @@ const CODEFIX_FIX_GENERATED_VISIBLE_MS = 2_000; // 2 seconds
 
 export default function AiCodefixBadge({ issue }: { issue: Issue }) {
   const hasAiFix = hasAiCodefix(issue);
-  const assignedToAi =
-    issue.assignee === AI_CODE_ASSISTANT_ASSIGNEE || issue.assigneeLogin === AI_CODE_ASSISTANT_ASSIGNEE;
   const queryClient = useQueryClient();
 
   // Automation mode tells us whether a FIX_GENERATED job will get a PR automatically. No staleTime, but the
@@ -140,9 +138,6 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
       if (status === 'FIX_GENERATED') {
         // Automatic: PR is being created, poll fast to catch it. Manual: waits on the user, poll slower.
         return isAutomaticMode ? CODEFIX_ACTIVE_POLL_MS : CODEFIX_FIX_GENERATED_POLL_MS;
-      }
-      if (!status && assignedToAi) {
-        return CODEFIX_ACTIVE_POLL_MS;
       }
       return false;
     },
