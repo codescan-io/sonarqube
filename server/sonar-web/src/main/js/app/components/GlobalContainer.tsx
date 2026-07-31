@@ -104,11 +104,11 @@ export default function GlobalContainer() {
           });
           const isSettingEnabled = (key: string) =>
             msaSettings.some((setting) => setting?.key === key && setting?.value === 'true');
-          const globalEnabled = isSettingEnabled(GlobalSettingKeys.CodescanMsaConsentDisplayMessage);
-          const trialEnabled =
+          const subscribedUserMsaEnabled = isSettingEnabled(GlobalSettingKeys.CodescanMsaConsentDisplayMessage);
+          const trialUserMsaEnabled =
             isSettingEnabled(GlobalSettingKeys.CodescanMsaConsentDisplayMessageForTrialUser) &&
             !isDeploymentForAmazon(whiteLabel);
-          const getMsaEnabledValue = globalEnabled || trialEnabled;
+          const getMsaEnabledValue = subscribedUserMsaEnabled || trialUserMsaEnabled;
           setMsaEnabled(getMsaEnabledValue);
           if(getMsaEnabledValue){
             try {
