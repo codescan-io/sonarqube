@@ -51,6 +51,7 @@ public class CorePropertyDefinitions {
   public static final String ORGANIZATIONS_DEFAULT_PUBLIC_VISIBILITY = "sonar.organizations.defaultPublicVisibility";
   public static final String CODESCAN_WHITE_LABEL_PRODUCT = "codescan.cloud.whiteLabelProduct";
   public static final String CODESCAN_ORGANIZATION_RETENTION_PERIOD = "codescan.cloud.organizationRetentionPeriod";
+
   public static final String ALLOW_DISABLE_INHERITED_RULES = "sonar.qualityProfiles.allowDisableInheritedRules";
 
   public static final String PLUGINS_RISK_CONSENT = "sonar.plugins.risk.consent";

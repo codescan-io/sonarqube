@@ -72,11 +72,11 @@ class Home extends React.PureComponent<Props, State> {
        const isSettingEnabled = (key: string) =>
          msaSettings.some((setting) => setting?.key === key && setting?.value === 'true');
        const { whiteLabel } = this.props.appState;
-       const globalEnabled = isSettingEnabled(GlobalSettingKeys.CodescanMsaConsentDisplayMessage);
-       const trialEnabled =
+       const subscribedUserMsaEnabled = isSettingEnabled(GlobalSettingKeys.CodescanMsaConsentDisplayMessage);
+       const trialUserMsaEnabled =
          isSettingEnabled(GlobalSettingKeys.CodescanMsaConsentDisplayMessageForTrialUser) &&
          !isDeploymentForAmazon(whiteLabel);
-       const msaEnabled = globalEnabled || trialEnabled;
+       const msaEnabled = subscribedUserMsaEnabled || trialUserMsaEnabled;
 
        if (this.mounted) {
          this.setState({ msaEnabled });
