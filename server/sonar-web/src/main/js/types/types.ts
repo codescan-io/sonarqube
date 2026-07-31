@@ -925,6 +925,7 @@ export interface OrganizationBillingDetails {
   status?: string;
   subscriptionId?: string | null;
   trialEnds?: number;
+  isTrialOrganization?: boolean;
 }
 
 export interface OrganizationMember extends UserActive {

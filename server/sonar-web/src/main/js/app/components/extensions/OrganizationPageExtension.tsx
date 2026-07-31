@@ -30,9 +30,6 @@ import { useCurrentUser } from "../current-user/CurrentUserContext";
 import { useCurrentOrganizationKey } from "../current-organization/CurrentOrganizationKeyContext";
 import { BILLING_PAGE_KEY } from "../../../apps/organizations/navigation/OrganizationNavigationAdministration";
 import { isDeploymentForAmazon } from '../../../helpers/urls';
-import { useAppState } from '../app-state/withAppStateContext';
-
-const SALESFORCE_CONNECTION_PAGE_KEY = 'developer/salesforce_connection';
 
 interface OrganizationPageExtensionProps {
   organization: Organization;
@@ -46,8 +43,6 @@ function OrganizationPageExtension(props: OrganizationPageExtensionProps) {
   const { currentUser } = useCurrentUser();
   const { billing } = useCurrentOrganizationKey();
   const { whiteLabel } = appState;
-  const appStateInfo = useAppState();
-
 
   const refreshOrganization = () => {
     return props.organization && getOrganization(organization.kee);
@@ -78,20 +73,6 @@ function OrganizationPageExtension(props: OrganizationPageExtensionProps) {
     if (!(canSeeAdministration || hasPaidSubscription)) {
       return <Navigate to={`/organizations/${organization.kee}/projects`} replace={true} />;
     }
-  }
-
-  // Salesforce is not available to trial organizations (no ChargeBee subscription id).
-  // Filter the Salesforce Connections page out so a direct URL renders NotFound. This must
-  // happen BEFORE the page lookup below. The backend also omits this page from adminPages
-  // for trial organizations, so this is a second line of defence (e.g. stale navigation
-  // data). The Amazon white-label product has no trial concept and keeps Salesforce.
-  const details = billing?.organizationKey === organization.kee ? billing.details : undefined;
-  const hasPaidSubscriptionOrg =
-    typeof details?.subscriptionId === 'string' && details.subscriptionId.length > 0;
-  const isTrialOrganization =
-    details !== undefined && !hasPaidSubscriptionOrg && !isDeploymentForAmazon(appStateInfo.whiteLabel);
-  if (isTrialOrganization) {
-    pages = pages.filter((p) => p.key !== SALESFORCE_CONNECTION_PAGE_KEY);
   }
 
   const extension = pages.find(p => p.key === requestedKey);
