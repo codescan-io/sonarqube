@@ -61,7 +61,7 @@ export default function OrganizationNavigationAdministration({ billing, location
     subscriptionId !== undefined && subscriptionId !== null && subscriptionId !== '';
 
   // Salesforce is not available to trial organizations.
-  const isTrialOrganization = billing?.isTrialOrganization === true;
+  const isTrialOrganization = organization.isTrial === true;
 
   const adminPathsWithExtensions = adminPages.map((e) => `extension/${e.key}`).concat(ADMIN_PATHS);
   const adminActive = adminPathsWithExtensions.some((path) =>
