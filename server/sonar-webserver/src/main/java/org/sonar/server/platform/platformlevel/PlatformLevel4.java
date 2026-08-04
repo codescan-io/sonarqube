@@ -185,7 +185,6 @@ import org.sonar.server.notification.email.telemetry.EmailConfigAuthMethodTeleme
 import org.sonar.server.notification.email.telemetry.EmailConfigHostTelemetryProvider;
 import org.sonar.server.notification.ws.NotificationWsModule;
 import org.sonar.server.organization.BillingValidationsProxyImpl;
-import org.sonar.server.organization.OrganizationMemberRemovalProxyImpl;
 import org.sonar.server.organization.ws.OrganizationsWsModule;
 import org.sonar.server.permission.index.PermissionIndexer;
 import org.sonar.server.permission.ws.PermissionsWsModule;
@@ -361,7 +360,6 @@ public class PlatformLevel4 extends PlatformLevel {
       OrganizationService.class,
       new OrganizationsWsModule(),
       BillingValidationsProxyImpl.class,
-      OrganizationMemberRemovalProxyImpl.class,
 
       // quality profile
       BuiltInQProfileRepositoryImpl.class,

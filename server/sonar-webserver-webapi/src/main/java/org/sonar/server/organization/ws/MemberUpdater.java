@@ -40,8 +40,6 @@ import org.sonar.db.user.UserDto;
 import org.sonar.db.user.UserGroupDto;
 import org.sonar.server.organization.BillingValidations;
 import org.sonar.server.organization.BillingValidationsProxy;
-import org.sonar.server.organization.OrganizationMemberRemovalExtension;
-import org.sonar.server.organization.OrganizationMemberRemovalProxy;
 import org.sonar.server.usergroups.DefaultGroupFinder;
 
 public class MemberUpdater {
@@ -51,14 +49,11 @@ public class MemberUpdater {
   private final DbClient dbClient;
   private final DefaultGroupFinder defaultGroupFinder;
   private final BillingValidationsProxy billingValidations;
-  private final OrganizationMemberRemovalProxy memberRemoval;
 
-  public MemberUpdater(DbClient dbClient, DefaultGroupFinder defaultGroupFinder, BillingValidationsProxy billingValidations,
-    OrganizationMemberRemovalProxy memberRemoval) {
+  public MemberUpdater(DbClient dbClient, DefaultGroupFinder defaultGroupFinder, BillingValidationsProxy billingValidations) {
     this.dbClient = dbClient;
     this.defaultGroupFinder = defaultGroupFinder;
     this.billingValidations = billingValidations;
-    this.memberRemoval = memberRemoval;
   }
 
   public enum MemberType {
@@ -126,17 +121,6 @@ public class MemberUpdater {
     usersToRemove.forEach(u -> removeMemberInDb(dbSession, organization, u));
     dbSession.commit();
 
-    usersToRemove.forEach(u -> clearAiLicenseAllocation(organization, u));
-  }
-
-  private void clearAiLicenseAllocation(OrganizationDto organization, UserDto user) {
-    try {
-      memberRemoval.onRemoveMember(
-        new OrganizationMemberRemovalExtension.Organization(organization.getKey(), organization.getUuid(), organization.getName()),
-        new OrganizationMemberRemovalExtension.User(user.getUuid(), user.getLogin(), user.getEmail()));
-    } catch (Exception e) {
-      LOG.warn("Failed to clear AI license allocation for user {} in organization {}", user.getLogin(), organization.getKey(), e);
-    }
   }
 
   private void removeMemberInDb(DbSession dbSession, OrganizationDto organization, UserDto user) {
@@ -149,7 +133,7 @@ public class MemberUpdater {
     dbClient.propertiesDao().deleteByOrganizationAndUser(dbSession, organizationUuid, userUuid);
     dbClient.propertiesDao().deleteByOrganizationAndMatchingLogin(dbSession, organizationUuid, user.getLogin(), singletonList(DEFAULT_ISSUE_ASSIGNEE));
     dbClient.ideUsageDao().deleteByOrganizationAndUser(dbSession, organizationUuid, userUuid);
-
+    dbClient.aiUserAllocationDao().updateByOrganizationAndUser(dbSession, organizationUuid, userUuid);
     dbClient.organizationMemberDao().delete(dbSession, organizationUuid, userUuid);
   }
 }
