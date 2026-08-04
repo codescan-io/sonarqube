@@ -21,6 +21,7 @@ package org.sonar.db;
 
 import java.util.IdentityHashMap;
 import java.util.Map;
+import org.sonar.db.aiuserallocation.AiUserAllocationDao;
 import org.sonar.db.alm.pat.AlmPatDao;
 import org.sonar.db.alm.setting.AlmSettingDao;
 import org.sonar.db.alm.setting.ProjectAlmSettingDao;
@@ -128,6 +129,7 @@ public class DbClient {
   private final QualityProfileExportDao qualityProfileExportDao;
   private final PropertiesDao propertiesDao;
   private final IdeUsageDao ideUsageDao;
+  private final AiUserAllocationDao aiUserAllocationDao;
   private final AlmSettingDao almSettingDao;
   private final AlmPatDao almPatDao;
   private final AuditDao auditDao;
@@ -234,6 +236,7 @@ public class DbClient {
     qualityProfileExportDao = getDao(map, QualityProfileExportDao.class);
     propertiesDao = getDao(map, PropertiesDao.class);
     ideUsageDao = getDao(map, IdeUsageDao.class);
+    aiUserAllocationDao = getDao(map, AiUserAllocationDao.class);
     internalPropertiesDao = getDao(map, InternalPropertiesDao.class);
     snapshotDao = getDao(map, SnapshotDao.class);
     componentDao = getDao(map, ComponentDao.class);
@@ -394,6 +397,10 @@ public class DbClient {
 
   public IdeUsageDao ideUsageDao() {
     return ideUsageDao;
+  }
+
+  public AiUserAllocationDao aiUserAllocationDao(){
+      return aiUserAllocationDao;
   }
 
   public InternalPropertiesDao internalPropertiesDao() {

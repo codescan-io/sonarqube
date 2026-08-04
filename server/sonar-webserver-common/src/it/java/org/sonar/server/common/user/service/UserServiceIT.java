@@ -65,7 +65,6 @@ import org.sonar.server.common.avatar.AvatarResolverImpl;
 import org.sonar.server.common.management.ManagedInstanceChecker;
 import org.sonar.server.common.user.UserAnonymizer;
 import org.sonar.server.common.user.UserDeactivator;
-import org.sonar.server.organization.OrganizationMemberRemovalProxy;
 import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.management.ManagedInstanceService;
@@ -107,7 +106,7 @@ public class UserServiceIT {
 
   private final UserAnonymizer userAnonymizer = new UserAnonymizer(db.getDbClient(), () -> "anonymized");
 
-  private final UserDeactivator userDeactivator = new UserDeactivator(db.getDbClient(), userAnonymizer, mock(OrganizationMemberRemovalProxy.class));
+  private final UserDeactivator userDeactivator = new UserDeactivator(db.getDbClient(), userAnonymizer);
   private final MapSettings settings = new MapSettings().setProperty("sonar.internal.pbkdf2.iterations", "1");
   private final CredentialsLocalAuthentication localAuthentication = new CredentialsLocalAuthentication(db.getDbClient(), settings.asConfig());
   private final UserUpdater userUpdater = new UserUpdater(mock(NewUserNotifier.class), db.getDbClient(), new DefaultGroupFinder(db.getDbClient()),
