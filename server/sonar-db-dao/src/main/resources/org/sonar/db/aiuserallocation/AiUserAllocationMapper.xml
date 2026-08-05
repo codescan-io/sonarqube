@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "mybatis-3-mapper.dtd">
+
+<mapper namespace="org.sonar.db.aiuserallocation.AiUserAllocationMapper">
+
+    <update id="updateByOrganizationAndUser" parameterType="map">
+        UPDATE cs_ai_user_allocation
+        SET licenses = '{}'::text[]
+        WHERE organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+        AND user_uuid = #{userUuid,jdbcType=VARCHAR}
+    </update>
+    <update id="updateByUser" parameterType="map">
+        UPDATE cs_ai_user_allocation
+        SET licenses = '{}'::text[]
+        WHERE user_uuid = #{userUuid,jdbcType=VARCHAR}
+    </update>
+
+</mapper>
