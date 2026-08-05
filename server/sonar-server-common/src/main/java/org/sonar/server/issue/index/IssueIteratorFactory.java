@@ -42,4 +42,12 @@ public class IssueIteratorFactory {
   public IssueIterator createForIssueKeys(Collection<String> issueKeys) {
     return new IssueIteratorForMultipleChunks(dbClient, issueKeys);
   }
+
+  /**
+   * Streams every issue of the given rule uuids in a single server-side scroll cursor. Used by the codefixStatus
+   * backfill migration to reindex the whole in-scope set in one pass (no key pagination / per-chunk re-query).
+   */
+  public IssueIterator createForRuleUuids(Collection<String> ruleUuids) {
+    return new IssueIteratorForSingleChunk(dbClient, ruleUuids);
+  }
 }

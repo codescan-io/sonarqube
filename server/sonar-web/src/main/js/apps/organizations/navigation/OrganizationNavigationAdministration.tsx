@@ -22,6 +22,7 @@ import { NavBarTabLink } from '~design-system';
 import * as React from 'react';
 import { translate } from '../../../helpers/l10n';
 import { Organization } from '../../../types/types';
+import { useAiCreditsContext } from '../../../app/components/ai-credits/AiCreditsContext';
 
 interface Props {
   location: { pathname: string };
@@ -38,6 +39,8 @@ const ADMIN_PATHS = [
 ];
 
 export default function OrganizationNavigationAdministration({ location, organization }: Props) {
+  const { creditsData, isLoading } = useAiCreditsContext();
+
   const { adminPages = [] } = organization;
   const adminPathsWithExtensions = adminPages.map((e) => `extension/${e.key}`).concat(ADMIN_PATHS);
   const adminActive = adminPathsWithExtensions.some((path) =>
@@ -53,7 +56,14 @@ export default function OrganizationNavigationAdministration({ location, organiz
             {translate('organization.settings')}
           </DropdownMenu.ItemLink>
 
-          {adminPages.filter(e=> organization.inviteUsersEnabled || e.key!=="developer/invite_users").map((extension) => (
+          {adminPages
+            .filter((e) => organization.inviteUsersEnabled || e.key !== 'developer/invite_users')
+            .filter(
+              (e) =>
+                e.key !== 'billing/ai_billing' ||
+                (!isLoading && creditsData && creditsData.allocatedCredits > 0),
+            )
+            .map((extension) => (
             <DropdownMenu.ItemLink
               isMatchingFullPath
               to={`/organizations/${organization.kee}/extension/${extension.key}`}

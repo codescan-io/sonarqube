@@ -95,6 +95,7 @@ import static org.sonar.server.issue.ws.SearchAdditionalField.COMMENTS;
 import static org.sonar.server.issue.ws.SearchAdditionalField.RULE_DESCRIPTION_CONTEXT_KEY;
 import static org.sonar.server.issue.ws.SearchAdditionalField.TRANSITIONS;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ASSIGNEES;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE_CODEFIX_STATUSES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_RULES;
 
 public class SearchResponseFormat {
@@ -105,6 +106,10 @@ public class SearchResponseFormat {
   private final UserResponseFormatter userFormatter;
   private final CvssMetadataService cvssMetadataService;
   private static final String REMOVED_USER_PREFIX = "sq-removed-";
+  // Variable-naming rules that carry an issue_ai_metadata variableType. AI code-fix is not offered
+  // when one of these is raised on an instance/class field (variableType == INSTANCE).
+  private static final Set<String> VARIABLE_NAMING_RULE_KEYS = Set.of("ShortVariable", "LongVariable", "VariableNamingConventions");
+  private static final String VARIABLE_TYPE_INSTANCE = "INSTANCE";
 
   public SearchResponseFormat(Durations durations, Languages languages, TextRangeResponseFormatter textRangeFormatter,
     UserResponseFormatter userFormatter) {
@@ -190,6 +195,11 @@ public class SearchResponseFormat {
   private void addMandatoryFieldsToIssueBuilder(Issue.Builder issueBuilder, IssueDto dto, SearchResponseData data, Map<String, Object[]> issueMap, boolean showAuthor) {
     issueBuilder.setKey(dto.getKey());
     issueBuilder.setType(Common.RuleType.forNumber(dto.getType()));
+    String variableType = dto.getVariableType();
+    boolean suppressAiFix = VARIABLE_NAMING_RULE_KEYS.contains(dto.getRuleKey().rule())
+              && (variableType == null || VARIABLE_TYPE_INSTANCE.equals(variableType));
+    boolean aiCodeFixEnabled = data.getRulesByUuid().get(dto.getRuleUuid()).getAiCodeFixEnabled()
+              && !suppressAiFix;
 
     CleanCodeAttribute cleanCodeAttribute = dto.getEffectiveCleanCodeAttribute();
     if (cleanCodeAttribute != null) {
@@ -207,12 +217,14 @@ public class SearchResponseFormat {
     ComponentDto component = data.getComponentByUuid(dto.getComponentUuid());
     issueBuilder.setOrganization(data.getOrganizationKey(component.getOrganizationUuid()));
     issueBuilder.setComponent(component.getKey());
+    issueBuilder.setAiCodeFixEnabled(aiCodeFixEnabled);
     setBranchOrPr(component, issueBuilder, data);
     ComponentDto branch = data.getComponentByUuid(dto.getProjectUuid());
     if (branch != null) {
       issueBuilder.setProject(branch.getKey());
     }
     issueBuilder.setRule(dto.getRuleKey().toString());
+    ofNullable(dto.getCodefixStatus()).ifPresent(issueBuilder::setCodefixStatus);
     if (dto.isExternal()) {
       issueBuilder.setExternalRuleEngine(engineNameFrom(dto.getRuleKey()));
     }
@@ -443,6 +455,7 @@ public class SearchResponseFormat {
     if (lang != null) {
       builder.setLangName(lang.getName());
     }
+    builder.setAiCodeFixEnabled(rule.getAiCodeFixEnabled());
     return builder;
   }
 
@@ -523,12 +536,36 @@ public class SearchResponseFormat {
       .filter(f -> !f.equals(FACET_ASSIGNED_TO_ME))
       .filter(f -> !f.equals(PARAM_ASSIGNEES))
       .filter(f -> !f.equals(PARAM_RULES))
+      .filter(f -> !f.equals(PARAM_ISSUE_CODEFIX_STATUSES))
       .forEach(f -> computeStandardFacet(wsFacets, facets, f));
     computeAssigneesFacet(wsFacets, facets, data);
     computeAssignedToMeFacet(wsFacets, facets, data);
     computeRulesFacet(wsFacets, facets, data);
     computeProjectsFacet(wsFacets, facets, data);
+    computeCodefixStatusFacet(wsFacets, facets);
     wsSearch.setFacets(wsFacets.build());
+  }
+
+  /**
+   * Codefix status facet: ES stores backend values (AVAILABLE, PENDING, IN_PROGRESS, ...).
+   * Map to frontend values (AI_FIX_AVAILABLE, AI_FIX_IN_PROGRESS, ...). AI_FIX_IN_PROGRESS = PENDING + IN_PROGRESS.
+   */
+  private static void computeCodefixStatusFacet(Common.Facets.Builder wsFacets, Facets facets) {
+    LinkedHashMap<String, Long> facet = facets.get(PARAM_ISSUE_CODEFIX_STATUSES);
+    if (facet == null) {
+      return;
+    }
+    Common.Facet.Builder wsFacet = wsFacets.addFacetsBuilder();
+    wsFacet.setProperty(PARAM_ISSUE_CODEFIX_STATUSES);
+     Map<String, List<String>> frontendToBackends = SearchAction.CODEFIX_STATUS_FRONTEND_TO_BACKEND;
+    for (String frontendValue : SearchAction.CODEFIX_STATUS_FRONTEND_VALUES) {
+      List<String> backendValues = frontendToBackends.get(frontendValue);
+      long count = backendValues != null
+        ? backendValues.stream().mapToLong(b -> facet.getOrDefault(b, 0L)).sum()
+        : 0L;
+      wsFacet.addValuesBuilder().setVal(frontendValue).setCount(count).build();
+    }
+    wsFacet.build();
   }
 
   private static void computeStandardFacet(Common.Facets.Builder wsFacets, Facets facets, String facetKey) {

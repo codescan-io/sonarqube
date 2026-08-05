@@ -18,39 +18,44 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { Checkbox, RadioButtonGroup, Spinner } from '@sonarsource/echoes-react';
-import { countBy, flattenDeep, pickBy, sortBy } from 'lodash';
+import {Checkbox, RadioButtonGroup, Spinner} from '@sonarsource/echoes-react';
+import {countBy, flattenDeep, pickBy, sortBy} from 'lodash';
 import * as React from 'react';
-import { FormattedMessage } from 'react-intl';
+import {FormattedMessage} from 'react-intl';
 import {
+  addGlobalErrorMessage,
   ButtonPrimary,
   DatePicker,
   FlagMessage,
   FormField,
   Highlight,
+  HelperHintIcon,
   InputTextArea,
   LightLabel,
   Modal,
   Note,
   SelectionCard,
 } from '~design-system';
-import { throwGlobalError } from '~sonar-aligned/helpers/error';
-import { bulkChangeIssues, searchIssueTags } from '../../../api/issues';
+import HelpTooltip from '~sonar-aligned/components/controls/HelpTooltip';
+import {throwGlobalError} from '~sonar-aligned/helpers/error';
+import {bulkChangeIssues, searchIssueTags} from '../../../api/issues';
 import withComponentContext from '../../../app/components/componentContext/withComponentContext';
 import FormattingTips from '../../../components/common/FormattingTips';
 import {
-  isTransitionHidden,
   issueSupportsExceptionExpiryPicker,
+  isTransitionHidden,
   transitionRequiresComment,
   transitionRequiresMandatoryComment,
 } from '../../../components/issue/helpers';
-import { translate, translateWithParameters } from '../../../helpers/l10n';
-import { withBranchStatusRefresh } from '../../../queries/branch';
-import { IssueTransition } from '../../../types/issues';
-import { Issue, Organization, Paging } from '../../../types/types';
-import { withOrganizationContext } from "../../organizations/OrganizationContext";
+import {translate, translateWithParameters} from '../../../helpers/l10n';
+import {withBranchStatusRefresh} from '../../../queries/branch';
+import {IssueTransition} from '../../../types/issues';
+import {Issue, Organization, Paging} from '../../../types/types';
+import {withOrganizationContext} from "../../organizations/OrganizationContext";
 import AssigneeSelect from './AssigneeSelect';
 import TagsSelect from './TagsSelect';
+import {getCodefixQuota, getCodefixStatus, queueCodeFix} from '../../../api/ai-codefix';
+import {CreateBulkPullRequestModal} from '../../../components/rules/CreateBulkPullRequestModal';
 
 interface Props {
   organization: Organization;
@@ -72,6 +77,7 @@ interface FormFields {
   severity?: string;
   transition?: IssueTransition;
   type?: string;
+  createPr?: boolean;
 }
 
 interface State extends FormFields {
@@ -82,6 +88,7 @@ interface State extends FormFields {
   paging?: Paging;
   // used when submitting a form
   submitting: boolean;
+  showBulkPrModal: boolean;
 }
 
 enum InputField {
@@ -93,6 +100,7 @@ enum InputField {
 }
 
 export const MAX_PAGE_SIZE = 500;
+export const MAX_AI_CODE_ASSISTANT_BULK_ASSIGN = 10;
 
 export class BulkChangeModal extends React.PureComponent<Props, State> {
   mounted = false;
@@ -100,7 +108,14 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
   constructor(props: Props) {
     super(props);
     const organization  = props.organization.kee;
-    this.state = { initialTags: [], issues: [], loading: true, submitting: false, organization };
+    this.state = {
+      initialTags: [],
+      issues: [],
+      loading: true,
+      submitting: false,
+      organization,
+      showBulkPrModal: false,
+    };
   }
 
   componentDidMount() {
@@ -123,6 +138,26 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
             issues,
             loading: false,
             paging,
+          });
+
+          // Fetch live status from the CodeScan backend for each issue so that the
+          // "Create Bulk PR" checkbox appears without needing a page refresh.
+          Promise.all(
+            issues.map((issue) =>
+              getCodefixStatus(issue.key)
+                .then((res) => ({ key: issue.key, codefixStatus: res?.status }))
+                .catch(() => ({ key: issue.key, codefixStatus: issue.codefixStatus })),
+            ),
+          ).then((freshStatuses) => {
+            if (this.mounted) {
+              const statusMap = new Map(freshStatuses.map((s) => [s.key, s.codefixStatus]));
+              this.setState(({ issues: current }) => ({
+                issues: current.map((issue) => {
+                  const fresh = statusMap.get(issue.key);
+                  return fresh ? { ...issue, codefixStatus: fresh } : issue;
+                }),
+              }));
+            }
           });
         }
       },
@@ -180,6 +215,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       addTags,
       assignee,
       comment,
+      createPr,
       exceptionExpiryDate,
       issues,
       notifications,
@@ -188,7 +224,23 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       transition,
       type,
     } = this.state;
-    if (transition && transitionRequiresMandatoryComment(transition) && !comment?.trim()) {
+
+    if (createPr) {
+      const fixGeneratedIssues = issues.filter((issue) => issue.codefixStatus === 'FIX_GENERATED');
+      if (fixGeneratedIssues.length > MAX_AI_CODE_ASSISTANT_BULK_ASSIGN) {
+        throwGlobalError({
+          data: {
+            message: `You can select a maximum of ${MAX_AI_CODE_ASSISTANT_BULK_ASSIGN} Fix Generated issues for Bulk PR creation.`,
+          },
+        });
+        this.props.onClose();
+        return;
+      }
+      this.setState({ showBulkPrModal: true });
+      return;
+    }
+
+    if (!createPr && transition && transitionRequiresMandatoryComment(transition) && !comment?.trim()) {
       return;
     }
     const supportsBulkExceptionExpiry =
@@ -201,6 +253,31 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
       const mm = String(exceptionExpiryDate.getMonth() + 1).padStart(2, '0');
       const dd = String(exceptionExpiryDate.getDate()).padStart(2, '0');
       expiryFields.issueResolutionExpiryDate = `${yyyy}-${mm}-${dd}`;
+    }
+
+    if (assignee === 'ai-code-assistant') {
+      const hasAnyAiDisabled = issues.some((issue) => issue.aiCodeFixEnabled !== true);
+      if (hasAnyAiDisabled) {
+        throwGlobalError({
+          data: {
+            message:
+              'AI Agent can only be assigned to issues where AI CodeFix is available.',
+          },
+        });
+        this.props.onClose();
+        return;
+      }
+
+      if (issues.length > MAX_AI_CODE_ASSISTANT_BULK_ASSIGN) {
+        throwGlobalError({
+          data: {
+            message:
+                'You can assign a maximum of 10 issues to the AI Agent in a single bulk action.',
+          },
+        });
+        this.props.onClose();
+        return;
+      }
     }
 
     const trimmedComment = comment?.trim();
@@ -227,8 +304,50 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
 
     bulkChangeIssues(issueKeys, query).then(
       () => {
-        this.setState({ submitting: false });
         this.props.refreshBranchStatus();
+
+        if (query.assign === 'ai-code-assistant') {
+          const issuesToQueue = issues.filter(
+            (issue) =>
+              issue.codefixStatus !== 'FIX_GENERATED' &&
+              issue.codefixStatus !== 'PULL_REQUEST_CREATED',
+          );
+
+          if (issuesToQueue.length === 0) {
+            this.setState({ submitting: false });
+            this.props.onDone();
+            return;
+          }
+
+          getCodefixQuota(this.props.organization.kee)
+            .then((quota) => {
+              if (!quota.moduleLicensed) {
+                addGlobalErrorMessage(translate('aicodefix.module_not_licensed'));
+                return;
+              }
+              if (issuesToQueue.length > quota.remainingFixes) {
+                addGlobalErrorMessage(translate('aicodefix.insufficient_credits'));
+                return;
+              }
+              if (quota.currentUsage + issuesToQueue.length > quota.dailyLimit) {
+                addGlobalErrorMessage(translateWithParameters('aicodefix.daily_limit_exceeded', quota.dailyLimit));
+                return;
+              }
+              return queueCodeFix({
+                organizationKey: issuesToQueue[0].organization,
+                projectKey: issuesToQueue[0].projectKey,
+                issueKeys: issuesToQueue.map((issue) => issue.key),
+              });
+            })
+            .catch(throwGlobalError)
+            .finally(() => {
+              this.setState({ submitting: false });
+              this.props.onDone();
+            });
+          return;
+        }
+
+        this.setState({ submitting: false });
         this.props.onDone();
       },
       (error) => {
@@ -249,12 +368,12 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
   }
 
   canSubmit = () => {
-    const { addTags, assignee, removeTags, severity, transition, type } = this.state;
-
+    const { addTags, assignee, createPr, removeTags, severity, transition, type } = this.state;
     return Boolean(
       (addTags && addTags.length > 0) ||
         (removeTags && removeTags.length > 0) ||
         assignee !== undefined ||
+        createPr ||
         severity ||
         transition ||
         type,
@@ -336,32 +455,51 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
   };
 
   renderTransitionsField = () => {
-    const transitions = this.getAvailableTransitions(this.state.issues).filter(
+    const { issues, createPr } = this.state;
+    const hasFixGeneratedIssues = issues.length > 0 && issues.every(issue => issue.codefixStatus === 'FIX_GENERATED');
+
+    const transitions = this.getAvailableTransitions(issues).filter(
       (transition) => !isTransitionHidden(transition.transition),
     );
 
-    if (transitions.length === 0) {
+    if (transitions.length === 0 && issues.length === 0) {
       return null;
     }
 
+    const bulkPrTooltip = 'All selected issues must have an AI-generated fix ready to enable bulk pull request creation.';
+
     return (
       <div className="sw-mb-6">
-        <fieldset>
-          <Highlight id="bulk-change-transition-label" as="legend" className="sw-mb-2">
-            {translate('issue.change_status')}
-          </Highlight>
+        {transitions.length > 0 && (
+          <fieldset>
+            <Highlight id="bulk-change-transition-label" as="legend" className="sw-mb-2">
+              {translate('issue.change_status')}
+            </Highlight>
 
-          <RadioButtonGroup
-            ariaLabelledBy="bulk-change-transition-label"
-            id="bulk-change-transition"
-            options={transitions.map(({ transition, count }) => ({
-              label: translate('issue.transition', transition),
-              value: transition,
-              helpText: translateWithParameters('issue_bulk_change.x_issues', count),
-            }))}
-            onChange={this.handleRadioTransitionChange}
+            <RadioButtonGroup
+              ariaLabelledBy="bulk-change-transition-label"
+              id="bulk-change-transition"
+              options={transitions.map(({ transition, count }) => ({
+                label: translate('issue.transition', transition),
+                value: transition,
+                helpText: translateWithParameters('issue_bulk_change.x_issues', count),
+              }))}
+              onChange={this.handleRadioTransitionChange}
+            />
+          </fieldset>
+        )}
+
+        <div className="sw-mt-4 sw-flex sw-items-center sw-gap-2">
+          <Checkbox
+            checked={createPr || false}
+            label={translate('issues.code_fix.create_bulk_pr_modal.title')}
+            onCheck={(checked) => this.setState({ createPr: checked })}
+            isDisabled={!hasFixGeneratedIssues}
           />
-        </fieldset>
+          <HelpTooltip overlay={bulkPrTooltip}>
+            <HelperHintIcon aria-label={bulkPrTooltip} />
+          </HelpTooltip>
+        </div>
       </div>
     );
   };
@@ -491,9 +629,21 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
   };
 
   render() {
-    const { issues, loading, submitting } = this.state;
+    const { issues, loading, submitting, showBulkPrModal } = this.state;
 
     const canSubmit = this.canSubmit();
+
+    if (showBulkPrModal) {
+      return (
+        <CreateBulkPullRequestModal
+          issueKeys={issues.map((i) => i.key)}
+          onClose={() => this.setState({ showBulkPrModal: false })}
+          onSuccess={() => {
+            this.props.onDone();
+          }}
+        />
+      );
+    }
 
     return (
       <Modal
@@ -509,7 +659,7 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
         primaryButton={
           <ButtonPrimary
             disabled={!canSubmit || submitting || issues.length === 0 ||
-              (transitionRequiresMandatoryComment(this.state.transition) && !this.state.comment?.trim())}
+              (!this.state.createPr && transitionRequiresMandatoryComment(this.state.transition) && !this.state.comment?.trim())}
             form="bulk-change-form"
             id="bulk-change-submit"
             type="submit"

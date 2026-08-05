@@ -82,6 +82,8 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
   private static final Logger LOGGER = LoggerFactory.getLogger(IssueIndexer.class);
   private static final AuthorizationScope AUTHORIZATION_SCOPE = new AuthorizationScope(TYPE_ISSUE, entity -> ComponentQualifiers.PROJECT.equals(entity.getQualifier()));
   private static final Set<IndexType> INDEX_TYPES = Set.of(TYPE_ISSUE);
+  /** Emit a progress log every this-many docs queued during a rule-scoped reindex (see {@link #reindexByRuleUuids}). */
+  private static final long REINDEX_LOG_INTERVAL = 100_000L;
 
   private final EsClient esClient;
   private final DbClient dbClient;
@@ -119,6 +121,87 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
     try (IssueIterator issues = issueIteratorFactory.createForAll()) {
       doIndex(issues);
     }
+  }
+
+  /**
+   * Reindexes from the DB, in a single streaming pass, every issue whose rule is one of {@code ruleUuids}: a
+   * full-document index that recomputes every field (including {@code codefixStatus}) from the canonical
+   * {@code IssueMapper#scrollIssuesForIndexation} expression. This is the {@code _source}-free way to backfill a field,
+   * since the {@code issues} index stores no {@code _source} and so cannot be updated with {@code update_by_query}.
+   *
+   * <p>It uses ONE server-side scroll cursor (no keyset pagination, no per-chunk {@code kee IN (...)} re-query) drained
+   * under a {@link Size#LARGE} bulk. LARGE disables the index's replicas and periodic refresh for the whole run, then
+   * force-merges and restores those settings on {@link BulkIndexer#stop()} — the fast bulk-load path. That is ONLY
+   * appropriate in a maintenance window with issue search and analyses of the affected projects quiesced: LARGE degrades
+   * search (no refresh, replicas dropped) for the duration, and the single scroll holds one DB read cursor open
+   * throughout. Because there are no concurrent writers in such a window, the doc-vs-analysis race the resilient paths
+   * guard against cannot happen, so the plain last-write-wins index requests here are safe. Unlike {@link #indexProject}
+   * it does NOT set {@code need_issue_sync}; and unlike the resilient paths it fails fast (no {@code es_queue} recovery)
+   * — the behaviour a one-shot admin data migration run inside a downtime window wants.
+   *
+   * <p>Any indexing error is recoverable by a plain force re-run (the reindex is idempotent). It comes back in one of two
+   * shapes. A <em>bulk-item</em> failure (e.g. a transient ES hiccup on some docs) is the common one: {@code stop()} still
+   * runs to completion — it flushes, refreshes, force-merges and RESTORES the settings — and only THEN
+   * {@link IndexingListener#FAIL_ON_ERROR} throws {@code "Unrecoverable indexing failures: N errors ..."}. So the index
+   * settings are left intact; just re-run to convergence (COMPLETED is reached only when every doc indexed, so there is
+   * no silent partial backfill). The per-doc causes are in the server/Elasticsearch log, not in the FAILED detail.
+   *
+   * <p><b>Recovery after an interrupted run.</b> The other shape is the run DYING before {@code stop()} finishes (server
+   * shut down mid-run, or {@code stop()} itself throwing on awaitClose/refresh/force-merge). {@link BulkIndexer#stop()}
+   * refreshes the index BEFORE it restores the bulk-load settings, so in that case exactly TWO settings are left
+   * stranded on the {@code issues} index:
+   * <ul>
+   *   <li>{@code index.refresh_interval} = {@code -1} (periodic refresh disabled)</li>
+   *   <li>{@code index.number_of_replicas} = {@code 0} (replicas dropped — only if it was &gt; 0 before the run)</li>
+   * </ul>
+   * Fix it either way: re-run this idempotent migration to completion (it restores both), OR push them back manually:
+   * <pre>
+   * PUT issues/_settings
+   * { "index": { "refresh_interval": null, "number_of_replicas": &lt;normal count; 0 for standalone&gt; } }
+   * </pre>
+   * ({@code "refresh_interval": null} resets Elasticsearch's default; use your configured value if the index overrides
+   * it.) Do NOT run this migration outside a controlled window.
+   *
+   * @return the number of issue documents reindexed
+   */
+  public long reindexByRuleUuids(Collection<String> ruleUuids) {
+    BulkIndexer bulkIndexer = new BulkIndexer(esClient, TYPE_ISSUE, Size.LARGE, IndexingListener.FAIL_ON_ERROR);
+    bulkIndexer.start();
+    long reindexed = 0;
+    long startedAt = System.currentTimeMillis();
+    RuntimeException drainFailure = null;
+    try (IssueIterator issues = issueIteratorFactory.createForRuleUuids(ruleUuids)) {
+      while (issues.hasNext()) {
+        bulkIndexer.add(newIndexRequest(issues.next()));
+        reindexed++;
+        if (reindexed % REINDEX_LOG_INTERVAL == 0) {
+          LOGGER.info("reindexByRuleUuids: {} docs queued after {} ms", reindexed, System.currentTimeMillis() - startedAt);
+        }
+      }
+    } catch (RuntimeException e) {
+      // Remember the real cause (fetch/build/bulk error) so a failure while flushing below cannot mask it — that root
+      // cause is what ends up in the migration's FAILED status and drives diagnosis.
+      drainFailure = e;
+      throw e;
+    } finally {
+      // stop() flushes queued bulk requests, refreshes the index, force-merges and restores the LARGE settings. It must
+      // run even if the drain failed, both to flush what was queued and to attempt the settings restore. Isolate its own
+      // failure: if the drain already failed keep that as the primary error and only attach the stop() failure; else a
+      // flush/restore failure on an otherwise-successful drain is itself the failure and propagates.
+      try {
+        long flushStart = System.currentTimeMillis();
+        bulkIndexer.stop();
+        LOGGER.info("reindexByRuleUuids: final flush + force-merge + settings restore took {} ms ({} docs total)",
+          System.currentTimeMillis() - flushStart, reindexed);
+      } catch (RuntimeException stopFailure) {
+        if (drainFailure != null) {
+          drainFailure.addSuppressed(stopFailure);
+        } else {
+          throw stopFailure;
+        }
+      }
+    }
+    return reindexed;
   }
 
   @Override

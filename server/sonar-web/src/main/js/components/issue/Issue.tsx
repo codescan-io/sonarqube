@@ -42,10 +42,12 @@ interface Props {
   onSelect: (issueKey: string) => void;
   openPopup?: string;
   selected: boolean;
+  aiAssistantEnabled?: boolean;
 }
 
 function Issue(props: Readonly<Props>) {
   const {
+    aiAssistantEnabled = false,
     selected = false,
     issue,
     branchLike,
@@ -72,9 +74,10 @@ function Issue(props: Readonly<Props>) {
   const handleAssignement = useCallback(
     (login: string) => {
       if (issue.assignee !== login) {
-        updateIssue(onChange, setIssueAssignee({ issue: issue.key, assignee: login }));
+        return updateIssue(onChange, setIssueAssignee({ issue: issue.key, assignee: login }));
       }
       togglePopup('assign', false);
+      return Promise.resolve();
     },
     [issue.assignee, issue.key, onChange, togglePopup],
   );
@@ -118,6 +121,7 @@ function Issue(props: Readonly<Props>) {
 
   return (
     <IssueView
+      aiAssistantEnabled={aiAssistantEnabled}
       branchLike={branchLike}
       checked={checked}
       currentPopup={openPopup}

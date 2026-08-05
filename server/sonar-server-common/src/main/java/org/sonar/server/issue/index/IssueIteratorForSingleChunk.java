@@ -76,6 +76,23 @@ class IssueIteratorForSingleChunk implements IssueIterator {
     }
   }
 
+  /**
+   * Streams every issue of the given rule uuids in one server-side scroll cursor (used by the codefixStatus backfill
+   * migration). The rule set is a small handful, so it is not chunked; the check guards the Oracle IN-list limit anyway.
+   */
+  IssueIteratorForSingleChunk(DbClient dbClient, Collection<String> ruleUuids) {
+    checkArgument(ruleUuids != null && ruleUuids.size() <= DatabaseUtils.PARTITION_SIZE_FOR_ORACLE,
+      "Cannot search for more than " + DatabaseUtils.PARTITION_SIZE_FOR_ORACLE + " rule uuids at once.");
+    this.session = dbClient.openSession(false);
+    try {
+      indexCursor = dbClient.issueDao().scrollIssuesForIndexationByRuleUuids(session, ruleUuids);
+      iterator = indexCursor.iterator();
+    } catch (Exception e) {
+      session.close();
+      throw new IllegalStateException("Fail to prepare SQL request to select issues by rule", e);
+    }
+  }
+
   @Override
   public boolean hasNext() {
     return iterator.hasNext();
@@ -106,6 +123,7 @@ class IssueIteratorForSingleChunk implements IssueIterator {
     doc.setCleanCodeAttributeCategory(cleanCodeAttributeCategory);
     doc.setStatus(indexedIssueDto.getStatus());
     doc.setIssueStatus(indexedIssueDto.getIssueStatus());
+    doc.setCodefixStatus(indexedIssueDto.getCodefixStatus());
     doc.setEffort(indexedIssueDto.getEffort());
     doc.setAuthorLogin(indexedIssueDto.getAuthorLogin());
 
@@ -153,6 +171,7 @@ class IssueIteratorForSingleChunk implements IssueIterator {
     String codeVariants = indexedIssueDto.getCodeVariants();
     doc.setCodeVariants(STRING_LIST_SPLITTER.splitToList(codeVariants == null ? "" : codeVariants));
     doc.setPrioritizedRule(indexedIssueDto.isPrioritizedRule());
+    doc.setIssueAiMetadata(indexedIssueDto.getIssueAiMetadata());
     return doc;
 
   }
