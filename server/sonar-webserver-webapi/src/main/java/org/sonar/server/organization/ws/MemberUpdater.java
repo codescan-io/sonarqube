@@ -29,8 +29,6 @@ import static org.sonar.db.permission.OrganizationPermission.ADMINISTER;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
@@ -43,8 +41,6 @@ import org.sonar.server.organization.BillingValidationsProxy;
 import org.sonar.server.usergroups.DefaultGroupFinder;
 
 public class MemberUpdater {
-
-  private static final Logger LOG = LoggerFactory.getLogger(MemberUpdater.class);
 
   private final DbClient dbClient;
   private final DefaultGroupFinder defaultGroupFinder;
