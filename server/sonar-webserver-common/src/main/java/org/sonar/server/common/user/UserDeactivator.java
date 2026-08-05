@@ -32,7 +32,6 @@ import static org.sonar.server.exceptions.BadRequestException.checkRequest;
 import static org.sonar.server.exceptions.NotFoundException.checkFound;
 
 public class UserDeactivator {
-
   private final DbClient dbClient;
   private final UserAnonymizer userAnonymizer;
 

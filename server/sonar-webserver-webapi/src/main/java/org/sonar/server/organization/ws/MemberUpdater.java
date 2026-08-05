@@ -116,7 +116,6 @@ public class MemberUpdater {
 
     usersToRemove.forEach(u -> removeMemberInDb(dbSession, organization, u));
     dbSession.commit();
-
   }
 
   private void removeMemberInDb(DbSession dbSession, OrganizationDto organization, UserDto user) {
