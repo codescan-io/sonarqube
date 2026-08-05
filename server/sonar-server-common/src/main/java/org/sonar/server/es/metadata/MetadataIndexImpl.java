@@ -36,6 +36,7 @@ import static org.sonar.server.es.newindex.DefaultIndexSettings.REFRESH_IMMEDIAT
 public class MetadataIndexImpl implements MetadataIndex {
 
   private static final String DB_VENDOR_KEY = "dbVendor";
+  private static final String ES_DATA_MIGRATION_PREFIX = "esDataMigration.";
 
   private final EsClient esClient;
 
@@ -86,6 +87,20 @@ public class MetadataIndexImpl implements MetadataIndex {
   @Override
   public void setDbMetadata(String vendor) {
     setMetadata(DB_VENDOR_KEY, vendor);
+  }
+
+  @Override
+  public Optional<String> getEsDataMigrationState(long version) {
+    return getMetadata(esDataMigrationId(version));
+  }
+
+  @Override
+  public void setEsDataMigrationState(long version, String stateJson) {
+    setMetadata(esDataMigrationId(version), stateJson);
+  }
+
+  private static String esDataMigrationId(long version) {
+    return ES_DATA_MIGRATION_PREFIX + version;
   }
 
   private Optional<String> getMetadata(String id) {

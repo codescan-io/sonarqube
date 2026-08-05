@@ -33,12 +33,18 @@ public class BranchInfo {
   private final boolean isMain;
   @Nullable
   private final String branchTargetName;
+  private final boolean analysed;
 
   public BranchInfo(String name, BranchType type, boolean isMain, @Nullable String branchTargetName) {
+    this(name, type, isMain, branchTargetName, true);
+  }
+
+  public BranchInfo(String name, BranchType type, boolean isMain, @Nullable String branchTargetName, boolean analysed) {
     this.name = name;
     this.type = type;
     this.isMain = isMain;
     this.branchTargetName = branchTargetName;
+    this.analysed = analysed;
   }
 
   @CheckForNull
@@ -56,5 +62,9 @@ public class BranchInfo {
 
   public boolean isMain() {
     return isMain;
+  }
+
+  public boolean isAnalysed() {
+    return analysed;
   }
 }

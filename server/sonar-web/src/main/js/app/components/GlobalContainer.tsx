@@ -47,6 +47,8 @@ import MsaGate from '../../apps/sessions/components/MsaGate';
 import { getEulaVerification } from '../../api/eula';
 import { getValue } from '../../api/settings';
 import { GlobalSettingKeys } from '../../types/settings';
+import { loadSeverityLabelsToCache } from '../../helpers/severityMasking';
+import { AiCreditsContextProvider } from './ai-credits/AiCreditsContextProvider';
 
 /*
  * These pages need a white background (aka 'secondary', rather than the default 'primary')
@@ -114,6 +116,13 @@ export default function GlobalContainer() {
   }, []);
 
   useEffect(() => {
+      async function load() {
+        await loadSeverityLabelsToCache();
+      }
+      load();
+  }, []);
+
+  useEffect(() => {
     async function fetchChatBotFlag() {
       try {
         const chatEnabled = await getChatBotFlag();
@@ -142,7 +151,8 @@ export default function GlobalContainer() {
             >
              <MsaGate enabled={!msaLoading && msaEnabled && !verify} >
               <BranchStatusContextProvider>
-                <Workspace>
+                <AiCreditsContextProvider>
+                  <Workspace>
                   <IndexationContextProvider>
                     <LanguagesContextProvider>
                       <MetricsContextProvider>
@@ -164,6 +174,7 @@ export default function GlobalContainer() {
                     </LanguagesContextProvider>
                   </IndexationContextProvider>
                 </Workspace>
+              </AiCreditsContextProvider>
               </BranchStatusContextProvider>
              </MsaGate>
             </GlobalBackground>

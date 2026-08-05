@@ -145,6 +145,7 @@ import static org.sonar.server.issue.index.IssueIndex.Facet.DIRECTORIES;
 import static org.sonar.server.issue.index.IssueIndex.Facet.FILES;
 import static org.sonar.server.issue.index.IssueIndex.Facet.IMPACT_SEVERITY;
 import static org.sonar.server.issue.index.IssueIndex.Facet.IMPACT_SOFTWARE_QUALITY;
+import static org.sonar.server.issue.index.IssueIndex.Facet.ISSUE_CODEFIX_STATUSES;
 import static org.sonar.server.issue.index.IssueIndex.Facet.ISSUE_STATUSES;
 import static org.sonar.server.issue.index.IssueIndex.Facet.LANGUAGES;
 import static org.sonar.server.issue.index.IssueIndex.Facet.OWASP_ASVS_40;
@@ -188,6 +189,7 @@ import static org.sonar.server.issue.index.IssueIndexDefinition.FIELD_ISSUE_LANG
 import static org.sonar.server.issue.index.IssueIndexDefinition.FIELD_ISSUE_LINE;
 import static org.sonar.server.issue.index.IssueIndexDefinition.FIELD_ISSUE_NEW_CODE_REFERENCE;
 import static org.sonar.server.issue.index.IssueIndexDefinition.FIELD_ISSUE_ORGANIZATION_UUID;
+import static org.sonar.server.issue.index.IssueIndexDefinition.FIELD_ISSUE_CODEFIX_STATUS;
 import static org.sonar.server.issue.index.IssueIndexDefinition.FIELD_ISSUE_NEW_STATUS;
 import static org.sonar.server.issue.index.IssueIndexDefinition.FIELD_ISSUE_OWASP_ASVS_40;
 import static org.sonar.server.issue.index.IssueIndexDefinition.FIELD_ISSUE_OWASP_TOP_10;
@@ -226,6 +228,7 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_DIRECTORIES
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_FILES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_IMPACT_SEVERITIES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_IMPACT_SOFTWARE_QUALITIES;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE_CODEFIX_STATUSES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE_STATUSES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_LANGUAGES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_OWASP_ASVS_40;
@@ -313,6 +316,7 @@ public class IssueIndex {
     // Resolutions facet returns one more element than the number of resolutions to take into account unresolved issues
     RESOLUTIONS(PARAM_RESOLUTIONS, FIELD_ISSUE_RESOLUTION, STICKY, Issue.RESOLUTIONS.size() + 1),
     ISSUE_STATUSES(PARAM_ISSUE_STATUSES, FIELD_ISSUE_NEW_STATUS, STICKY, IssueStatus.values().length),
+    ISSUE_CODEFIX_STATUSES(PARAM_ISSUE_CODEFIX_STATUSES, FIELD_ISSUE_CODEFIX_STATUS, STICKY, 6),
     TYPES(PARAM_TYPES, FIELD_ISSUE_TYPE, STICKY, RuleType.values().length),
     SCOPES(PARAM_SCOPES, FIELD_ISSUE_SCOPE, STICKY, MAX_FACET_SIZE),
     LANGUAGES(PARAM_LANGUAGES, FIELD_ISSUE_LANGUAGE, STICKY, MAX_FACET_SIZE),
@@ -417,11 +421,11 @@ public class IssueIndex {
     this.sorting.add(IssueQuery.SORT_BY_CREATION_DATE, FIELD_ISSUE_KEY);
     this.sorting.add(IssueQuery.SORT_BY_UPDATE_DATE, FIELD_ISSUE_FUNC_UPDATED_AT);
     this.sorting.add(IssueQuery.SORT_BY_UPDATE_DATE, FIELD_ISSUE_KEY);
-    this.sorting.add(IssueQuery.SORT_BY_CLOSE_DATE, FIELD_ISSUE_FUNC_CLOSED_AT);
+    this.sorting.add(IssueQuery.SORT_BY_CLOSE_DATE, FIELD_ISSUE_FUNC_CLOSED_AT).missingValue(0L);
     this.sorting.add(IssueQuery.SORT_BY_CLOSE_DATE, FIELD_ISSUE_KEY);
     this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_PROJECT_UUID);
     this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_FILE_PATH);
-    this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_LINE);
+    this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_LINE).missingValue(0);
     this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_SEVERITY_VALUE).reverse();
     this.sorting.add(IssueQuery.SORT_BY_FILE_LINE, FIELD_ISSUE_KEY);
     this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_VULNERABILITY_PROBABILITY).reverse();
@@ -429,12 +433,12 @@ public class IssueIndex {
     this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_RULE_UUID);
     this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_PROJECT_UUID);
     this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_FILE_PATH);
-    this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_LINE);
+    this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_LINE).missingValue(0);
     this.sorting.add(IssueQuery.SORT_HOTSPOTS, FIELD_ISSUE_KEY);
 
     // by default order by project, line , severity and issue key (in order to be deterministic when same ms)
     this.sorting.addDefault(FIELD_ISSUE_PROJECT_UUID);
-    this.sorting.addDefault(FIELD_ISSUE_LINE);
+    this.sorting.addDefault(FIELD_ISSUE_LINE).missingValue(0);
     this.sorting.addDefault(FIELD_ISSUE_SEVERITY_VALUE).reverse();
     this.sorting.addDefault(FIELD_ISSUE_KEY);
   }
@@ -443,10 +447,9 @@ public class IssueIndex {
     SearchRequest requestBuilder = EsClient.prepareSearch(TYPE_ISSUE.getMainType());
 
     SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
-    // Adding search_after parameter  to retrieve the next page of hits using a set of sort values from the previous page.
-    if (StringUtils.isNotEmpty(query.searchAfter())) {
-      Object[] searchAfterValues = Arrays.stream(query.searchAfter().split(",")).map(String::trim).toArray();
-      sourceBuilder.searchAfter(searchAfterValues);
+    // Use the last hit sort values from the previous page to continue after 10,000 results.
+    if (!query.searchAfter().isEmpty()) {
+      sourceBuilder.searchAfter(query.searchAfter().toArray());
     }
     requestBuilder.source(sourceBuilder);
 
@@ -545,6 +548,7 @@ public class IssueIndex {
         query.ruleUuids()));
     filters.addFilter(FIELD_ISSUE_STATUS, STATUSES.getFilterScope(), createTermsFilter(FIELD_ISSUE_STATUS, query.statuses()));
     filters.addFilter(FIELD_ISSUE_NEW_STATUS, ISSUE_STATUSES.getFilterScope(), createTermsFilter(FIELD_ISSUE_NEW_STATUS, query.issueStatuses()));
+    filters.addFilter(FIELD_ISSUE_CODEFIX_STATUS, ISSUE_CODEFIX_STATUSES.getFilterScope(), createTermsFilter(FIELD_ISSUE_CODEFIX_STATUS, query.issueCodefixStatuses()));
     filters.addFilter(FIELD_ISSUE_CODE_VARIANTS, CODE_VARIANTS.getFilterScope(), createTermsFilter(FIELD_ISSUE_CODE_VARIANTS, query.codeVariants()));
     filters.addFilter(FIELD_PRIORITIZED_RULE, PRIORITIZED_RULE.getFilterScope(), createTermFilter(FIELD_PRIORITIZED_RULE, query.prioritizedRule()));
     filters.addFilter(
@@ -967,6 +971,7 @@ public class IssueIndex {
     AllFilters queryFilters, SearchSourceBuilder esRequest) {
     addFacetIfNeeded(options, aggregationHelper, esRequest, STATUSES, NO_SELECTED_VALUES);
     addFacetIfNeeded(options, aggregationHelper, esRequest, ISSUE_STATUSES, query.issueStatuses().toArray());
+    addFacetIfNeeded(options, aggregationHelper, esRequest, ISSUE_CODEFIX_STATUSES, query.issueCodefixStatuses().toArray());
     addFacetIfNeeded(options, aggregationHelper, esRequest, PROJECT_UUIDS, query.projectUuids().toArray());
     addFacetIfNeeded(options, aggregationHelper, esRequest, DIRECTORIES, query.directories().toArray());
     addFacetIfNeeded(options, aggregationHelper, esRequest, FILES, query.files().toArray());

@@ -61,6 +61,7 @@ public class IssueQuery {
   private final Collection<String> impactSoftwareQualities;
   private final Collection<String> statuses;
   private final Collection<String> issueStatuses;
+  private final Collection<String> issueCodefixStatuses;
   private final Collection<String> resolutions;
   private final Collection<String> components;
   private final Collection<String> projects;
@@ -99,7 +100,7 @@ public class IssueQuery {
   private final String facetMode;
   private final String branchUuid;
   private final Boolean mainBranch;
-  private final String searchAfter;
+  private final List<String> searchAfter;
   private final ZoneId timeZone;
   private final Boolean newCodeOnReference;
   private final Collection<String> newCodeOnReferenceByProjectUuids;
@@ -119,6 +120,7 @@ public class IssueQuery {
     this.statuses = defaultCollection(builder.statuses);
     this.resolutions = defaultCollection(builder.resolutions);
     this.issueStatuses = defaultCollection(builder.issueStatuses);
+    this.issueCodefixStatuses = defaultCollection(builder.issueCodefixStatuses);
     this.components = defaultCollection(builder.components);
     this.projects = defaultCollection(builder.projects);
     this.directories = defaultCollection(builder.directories);
@@ -156,7 +158,7 @@ public class IssueQuery {
     this.facetMode = builder.facetMode;
     this.branchUuid = builder.branchUuid;
     this.mainBranch = builder.mainBranch;
-    this.searchAfter = builder.searchAfter;
+    this.searchAfter = builder.searchAfter == null ? List.of() : List.copyOf(builder.searchAfter);
     this.timeZone = builder.timeZone;
     this.newCodeOnReference = builder.newCodeOnReference;
     this.newCodeOnReferenceByProjectUuids = defaultCollection(builder.newCodeOnReferenceByProjectUuids);
@@ -194,6 +196,10 @@ public class IssueQuery {
 
   public Collection<String> issueStatuses() {
     return issueStatuses;
+  }
+
+  public Collection<String> issueCodefixStatuses() {
+    return issueCodefixStatuses;
   }
 
   public Collection<String> resolutions() {
@@ -362,7 +368,7 @@ public class IssueQuery {
     return mainBranch;
   }
 
-  public String searchAfter() {
+  public List<String> searchAfter() {
     return searchAfter;
   }
 
@@ -414,6 +420,7 @@ public class IssueQuery {
     private Collection<String> statuses;
     private Collection<String> resolutions;
     private Collection<String> issueStatuses;
+    private Collection<String> issueCodefixStatuses;
     private Collection<String> components;
     private Collection<String> projects;
     private Collection<String> directories;
@@ -451,7 +458,7 @@ public class IssueQuery {
     private String facetMode;
     private String branchUuid;
     private Boolean mainBranch = true;
-    private String searchAfter;
+    private List<String> searchAfter;
     private ZoneId timeZone;
     private Boolean newCodeOnReference = null;
     private Collection<String> newCodeOnReferenceByProjectUuids;
@@ -488,6 +495,11 @@ public class IssueQuery {
 
     public Builder issueStatuses(@Nullable Collection<String> l) {
       this.issueStatuses = l;
+      return this;
+    }
+
+    public Builder issueCodefixStatuses(@Nullable Collection<String> l) {
+      this.issueCodefixStatuses = l;
       return this;
     }
 
@@ -725,7 +737,7 @@ public class IssueQuery {
       return this;
     }
 
-    public Builder searchAfter(String searchAfter) {
+    public Builder searchAfter(@Nullable List<String> searchAfter) {
       this.searchAfter = searchAfter;
       return this;
     }

@@ -42,6 +42,7 @@ public class IssuesWsParameters {
   public static final String ACTION_PULL = "pull";
   public static final String ACTION_PULL_TAINT = "pull_taint";
   public static final String ACTION_ANTICIPATED_TRANSITIONS = "anticipated_transitions";
+  public static final String ACTION_SET_CODEFIX_STATUS = "set_codefix_status";
 
   public static final String PARAM_ISSUE = "issue";
   public static final String PARAM_IMPACT = "impact";
@@ -61,6 +62,7 @@ public class IssuesWsParameters {
   public static final String PARAM_STATUSES = "statuses";
   public static final String PARAM_RESOLUTIONS = "resolutions";
   public static final String PARAM_ISSUE_STATUSES = "issueStatuses";
+  public static final String PARAM_ISSUE_CODEFIX_STATUSES = "issueCodefixStatuses";
   public static final String PARAM_RESOLVED = "resolved";
   public static final String PARAM_PRIORITIZED_RULE = "prioritizedRule";
   public static final String PARAM_COMPONENTS = "components";
@@ -78,7 +80,6 @@ public class IssuesWsParameters {
   public static final String PARAM_SET_TYPE = "set_type";
   public static final String PARAM_DO_TRANSITION = "do_transition";
   public static final String PARAM_ISSUE_RESOLUTION_EXPIRY_DATE = "issueResolutionExpiryDate";
-  public static final String PARAM_ISSUE_RESOLUTION_EXPIRY_OFFSET_MINUTES = "issueResolutionExpiryOffsetMinutes";
   public static final String PARAM_ADD_TAGS = "add_tags";
   public static final String PARAM_REMOVE_TAGS = "remove_tags";
   public static final String PARAM_SEND_NOTIFICATIONS = "sendNotifications";

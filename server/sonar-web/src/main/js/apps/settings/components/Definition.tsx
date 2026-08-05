@@ -41,6 +41,7 @@ import {
 import DefinitionActions from './DefinitionActions';
 import DefinitionDescription from './DefinitionDescription';
 import Input from './inputs/Input';
+import { SEVERITIES_PROP_KEYS_SET, loadSeverityLabelsToCache } from '../../../helpers/severityMasking';
 
 interface Props {
   component?: Component;
@@ -62,6 +63,8 @@ export default function Definition(props: Readonly<Props>) {
   const [validationMessage, setValidationMessage] = React.useState<string>();
   const ref = React.useRef<HTMLElement>(null);
   const name = getUniqueName(definition);
+
+  const isValidSeverityInput = (value) => /^[a-zA-Z0-9]+$/.test(value);
 
   const { data: loadedSettingValue, isLoading } = useGetValueQuery({
     key: definition.key,
@@ -93,6 +96,9 @@ export default function Definition(props: Readonly<Props>) {
     try {
       await resetSettingValue({ keys: [definition.key], component: component?.key });
 
+      if (SEVERITIES_PROP_KEYS_SET.has(definition.key)) {
+        loadSeverityLabelsToCache();
+      }
       setChangedValue(undefined);
       setLoading(false);
       setSuccess(true);
@@ -153,6 +159,12 @@ export default function Definition(props: Readonly<Props>) {
       }
     }
 
+    if (SEVERITIES_PROP_KEYS_SET.has(definition.key) && !isValidSeverityInput(value)) {
+        setValidationMessage(translate('settings.state.special_or_spaces_not_allowed'));
+        ref.current?.focus();
+        return false;
+    }
+
     setValidationMessage(undefined);
     return true;
   };
@@ -173,6 +185,9 @@ export default function Definition(props: Readonly<Props>) {
       try {
         await saveSettingValue({ definition, newValue: changedValue, component: component?.key });
 
+        if (SEVERITIES_PROP_KEYS_SET.has(definition.key)) {
+          loadSeverityLabelsToCache();
+        }
         setChangedValue(undefined);
         setIsEditing(false);
         setLoading(false);
