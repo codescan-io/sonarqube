@@ -26,7 +26,7 @@ public interface AiUserAllocationMapper {
     static AiUserAllocationMapper getMapper(DbSession session) {
         return session.getMapper(AiUserAllocationMapper.class);
     }
-    void updateByOrganizationAndUser(@Param("organizationUuid") String organizationUuid, @Param("userUuid") String userUuid);
+    void updateLicenseByOrganizationAndUser(@Param("organizationUuid") String organizationUuid, @Param("userUuid") String userUuid);
 
-    void updateByUser(@Param("userUuid") String userUuid);
+    void updateLicenseByUser(@Param("userUuid") String userUuid);
 }
