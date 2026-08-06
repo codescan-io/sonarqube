@@ -133,7 +133,7 @@ public class MemberUpdater {
     dbClient.propertiesDao().deleteByOrganizationAndUser(dbSession, organizationUuid, userUuid);
     dbClient.propertiesDao().deleteByOrganizationAndMatchingLogin(dbSession, organizationUuid, user.getLogin(), singletonList(DEFAULT_ISSUE_ASSIGNEE));
     dbClient.ideUsageDao().deleteByOrganizationAndUser(dbSession, organizationUuid, userUuid);
-    dbClient.aiUserAllocationDao().updateByOrganizationAndUser(dbSession, organizationUuid, userUuid);
+    dbClient.aiUserAllocationDao().updateLicenseByOrganizationAndUser(dbSession, organizationUuid, userUuid);
     dbClient.organizationMemberDao().delete(dbSession, organizationUuid, userUuid);
   }
 }

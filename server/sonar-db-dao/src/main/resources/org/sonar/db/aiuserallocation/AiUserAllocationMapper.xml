@@ -3,13 +3,13 @@
 
 <mapper namespace="org.sonar.db.aiuserallocation.AiUserAllocationMapper">
 
-    <update id="updateByOrganizationAndUser" parameterType="map">
+    <update id="updateLicenseByOrganizationAndUser" parameterType="map">
         UPDATE cs_ai_user_allocation
         SET licenses = '{}'::text[]
         WHERE organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
         AND user_uuid = #{userUuid,jdbcType=VARCHAR}
     </update>
-    <update id="updateByUser" parameterType="map">
+    <update id="updateLicenseByUser" parameterType="map">
         UPDATE cs_ai_user_allocation
         SET licenses = '{}'::text[]
         WHERE user_uuid = #{userUuid,jdbcType=VARCHAR}

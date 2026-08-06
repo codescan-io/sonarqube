@@ -25,10 +25,10 @@ import org.sonar.db.DbSession;
 import static org.sonar.db.aiuserallocation.AiUserAllocationMapper.getMapper;
 
 public class AiUserAllocationDao implements Dao {
-    public void updateByOrganizationAndUser(DbSession dbSession, String organizationUuid, String userUuid) {
-        getMapper(dbSession).updateByOrganizationAndUser(organizationUuid, userUuid);
+    public void updateLicenseByOrganizationAndUser(DbSession dbSession, String organizationUuid, String userUuid) {
+        getMapper(dbSession).updateLicenseByOrganizationAndUser(organizationUuid, userUuid);
     }
-    public void updateByUser(DbSession dbSession, String userUuid) {
-        getMapper(dbSession).updateByUser(userUuid);
+    public void updateLicenseByUser(DbSession dbSession, String userUuid) {
+        getMapper(dbSession).updateLicenseByUser(userUuid);
     }
 }
