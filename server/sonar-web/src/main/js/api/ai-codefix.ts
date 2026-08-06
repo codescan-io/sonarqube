@@ -182,5 +182,5 @@ export function fetchCredits(orgKee: string | null): Promise<AiCreditsSummary>{
 }
 
 export function fetchUserAiCredits(orgKee: string | null): Promise<UserAiCredits> {
-  return get('/_codescan/ai/credits/user?organizationKey=' + orgKee).then(parseJSON);
+  return get('/_codescan/ai/credits/user', { organizationKey: orgKee }).then(parseJSON);
 }

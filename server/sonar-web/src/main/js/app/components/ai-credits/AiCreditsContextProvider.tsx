@@ -62,29 +62,39 @@ export function AiCreditsContextProvider({ children }: Props) {
     [userOrganizations, orgKee]
   );
 
+  const isOrgMember = React.useMemo(
+    () => userOrganizations?.some((o) => o.kee === orgKee) === true,
+    [userOrganizations, orgKee]
+  );
+
   React.useEffect(() => {
-    if (!orgKee) {
+    if (!orgKee || !isOrgMember) {
       setCreditsData(null);
       setUserCreditsData(null);
       setShowCredits(false);
       setIsLoading(false);
-      return;
+      return undefined;
     }
 
+    // Ignore stale responses when orgKee changes before a request resolves.
+    let cancelled = false;
     setIsLoading(true);
 
     // Top-nav pie indicator always shows the CURRENT user's own credits.
     const userPromise = fetchUserAiCredits(orgKee)
       .then((user) => {
+        if (cancelled) return;
         setUserCreditsData({
           allocatedCredits: user.creditLimit,
           consumedCredits: user.creditsUsed,
           remainingCredits: user.creditsRemaining,
           resetDate: '',
         });
-        setShowCredits(user.hasAiAccess);
+        // show the pie only when the user has access AND a positive allocation,
+        setShowCredits(user.hasAiAccess && user.creditLimit > 0);
       })
       .catch(() => {
+        if (cancelled) return;
         setUserCreditsData(null);
         setShowCredits(false);
       });
@@ -92,13 +102,23 @@ export function AiCreditsContextProvider({ children }: Props) {
     let orgPromise: Promise<unknown> = Promise.resolve();
     if (isOrgAdmin) {
       orgPromise = fetchCredits(orgKee)
-        .then(setCreditsData)
-        .catch(() => setCreditsData(null));
+        .then((data) => {
+          if (!cancelled) setCreditsData(data);
+        })
+        .catch(() => {
+          if (!cancelled) setCreditsData(null);
+        });
     } else {
       setCreditsData(null);
     }
-    Promise.all([userPromise, orgPromise]).finally(() => setIsLoading(false));
-  }, [orgKee, isOrgAdmin]);
+    Promise.all([userPromise, orgPromise]).finally(() => {
+      if (!cancelled) setIsLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orgKee, isOrgAdmin, isOrgMember]);
 
   const value = React.useMemo(() => ({
     creditsData,
