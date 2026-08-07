@@ -45,13 +45,13 @@ export function GlobalNavUser({ currentUser, userOrganizations }: GlobalNavUserP
 
   React.useEffect(() => {
     initializePendo();
-  }, []);
+  }, [currentUser]);
 
   const initializePendo = () => {
     const hasOrganizations = userOrganizations.length > 0;
 
     const isCodescan = window.location.hostname.includes('codescan.io') || window.location.hostname.includes('autorabit.com');
-    if (isLoggedIn(currentUser) && hasOrganizations && !pendoInitialized && isCodescan) {
+    if (isLoggedIn(currentUser) && hasOrganizations && !pendoInitialized && isCodescan && 'pendo' in window) {
       const script = document.createElement('script');
       const sfAccountId = userOrganizations.find?.(o => o.sfAccountId != null)?.sfAccountId || null;
       const host = window.location.hostname;
