@@ -49,6 +49,7 @@ public class WebPagesCache {
 
   private static final String GA_SCRIPT_PLACEHOLDER = "%GA_SCRIPT%";
   private static final String PENDO_SCRIPT_PLACEHOLDER = "%PENDO_SCRIPT%";
+  private static final String ANALYTICS_INIT_SCRIPT_PLACEHOLDER = "%ANALYTICS_INIT_SCRIPT%";
   private static final String GA_NOSCRIPT_PLACEHOLDER = "%GA_NOSCRIPT%";
 
   private static final String GA_HOST_CHECK = "window.location.hostname.includes('codescan.io')";
@@ -68,6 +69,12 @@ public class WebPagesCache {
     + "o[m]=o[m]||function(){o._q[m===v[0]?'unshift':'push']([m].concat([].slice.call(arguments,0)));};})( v[w]);\n"
     + "y=e.createElement(n);y.async=!0;y.src='https://cdn.pendo.io/agent/static/6c4b3816-7b04-42d8-6025-bd01283d95a3/pendo.js';\n"
     + "z=e.getElementsByTagName(n)[0];z.parentNode.insertBefore(y,z);})(window,document,'script','pendo');\n"
+    + "}</script>";
+
+  private static final String ANALYTICS_INIT_SCRIPT_CONTENT = "<script>if (" + PENDO_HOST_CHECK + ") {\n"
+    + "window.__initAnalytics = function(userId, accountId, host) {\n"
+    + "  pendo.initialize({ visitor: { id: userId }, account: { id: accountId, instance: host } });\n"
+    + "};\n"
     + "}</script>";
 
   private static final String GA_NOSCRIPT_CONTENT = "<noscript><iframe src=\"https://www.googletagmanager.com/ns.html?id=GTM-TGN67LR\" height=\"0\" width=\"0\" style=\"display:none;visibility:hidden\"></iframe></noscript>";
@@ -134,6 +141,7 @@ public class WebPagesCache {
         .replace(OFFICIAL_PLACEHOLDER, String.valueOf(officialDistribution.check()))
         .replace(GA_SCRIPT_PLACEHOLDER, gaDisabled ? "" : GA_SCRIPT_CONTENT)
         .replace(PENDO_SCRIPT_PLACEHOLDER, pendoDisabled ? "" : PENDO_SCRIPT_CONTENT)
+        .replace(ANALYTICS_INIT_SCRIPT_PLACEHOLDER, pendoDisabled ? "" : ANALYTICS_INIT_SCRIPT_CONTENT)
         .replace(GA_NOSCRIPT_PLACEHOLDER, gaDisabled ? "" : GA_NOSCRIPT_CONTENT);
     } catch (Exception e) {
       throw new IllegalStateException("Fail to load file " + path, e);
