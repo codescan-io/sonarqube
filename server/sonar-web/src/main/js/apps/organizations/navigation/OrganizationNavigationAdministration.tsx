@@ -23,8 +23,10 @@ import * as React from 'react';
 import { AppStateContext } from '../../../app/components/app-state/AppStateContext';
 import { useCurrentUser } from '../../../app/components/current-user/CurrentUserContext';
 import { translate } from '../../../helpers/l10n';
-import { Organization, OrganizationBillingDetails } from '../../../types/types';
 import { isDeploymentForAmazon } from '../../../helpers/urls';
+import { Organization, OrganizationBillingDetails } from '../../../types/types';
+
+const SALESFORCE_CONNECTION_PAGE_KEY = 'developer/salesforce_connection';
 
 interface Props {
   billing?: OrganizationBillingDetails;
@@ -58,6 +60,9 @@ export default function OrganizationNavigationAdministration({ billing, location
   const hasPaidSubscription =
     subscriptionId !== undefined && subscriptionId !== null && subscriptionId !== '';
 
+  // Salesforce is not available to trial organizations.
+  const isTrialOrganization = organization.isTrial === true;
+
   const adminPathsWithExtensions = adminPages.map((e) => `extension/${e.key}`).concat(ADMIN_PATHS);
   const adminActive = adminPathsWithExtensions.some((path) =>
     location.pathname.endsWith(`organizations/${organization.kee}/${path}`),
@@ -78,6 +83,7 @@ export default function OrganizationNavigationAdministration({ billing, location
               (e) =>
                 isDeploymentForAmazon(whiteLabel) || hasPaidSubscription || canSeeAdministration || e.key !== BILLING_PAGE_KEY
             )
+            .filter((e) => !isTrialOrganization || e.key !== SALESFORCE_CONNECTION_PAGE_KEY)
             .map((extension) => (
               <DropdownMenu.ItemLink
                 isMatchingFullPath

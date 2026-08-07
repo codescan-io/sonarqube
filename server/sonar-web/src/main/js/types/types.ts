@@ -906,6 +906,7 @@ export interface Organization extends OrganizationBase {
   adminPages?: Extension[];
   canUpdateProjectsVisibilityToPrivate?: boolean;
   isDefault?: boolean;
+  isTrial?: boolean;
   pages?: Extension[];
   projectVisibility?: Visibility;
   notifications?: CodeScanNotification[];
