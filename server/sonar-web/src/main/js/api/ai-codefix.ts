@@ -65,6 +65,16 @@ export interface AiCreditsSummary {
   resetDate: string;
 }
 
+export interface UserAiCredits {
+  creditLimit: number;
+  creditsUsed: number;
+  creditsRemaining: number;
+  almostOut: boolean;
+  limitReached: boolean;
+  aiLicenses: string[];
+  hasAiAccess: boolean;
+}
+
 const CODEFIX_BASE = '/_codescan/codefix';
 
 const EMPTY_CODEFIX_STATUS: CodefixStatusResponse = { status: '' };
@@ -169,4 +179,8 @@ export function getBulkCodefixCreatePrDraft(issueKeys: string[]): Promise<Codefi
 
 export function fetchCredits(orgKee: string | null): Promise<AiCreditsSummary>{
   return get('/_codescan/ai/credits/summary?organizationKey=' + orgKee).then(parseJSON);
+}
+
+export function fetchUserAiCredits(orgKee: string | null): Promise<UserAiCredits> {
+  return get('/_codescan/ai/credits/user', { organizationKey: orgKee }).then(parseJSON);
 }
