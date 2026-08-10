@@ -146,6 +146,7 @@ public class PluginClassloaderFactory {
 
         // required for some internal SonarSource plugins (billing, orchestrator, ...)
         "org/sonar/server/platform/",
+        "org/sonar/db/",
 
         // required for commercial plugins at SonarSource
         "com/sonarsource/plugins/license/api/")

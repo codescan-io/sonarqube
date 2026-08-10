@@ -26,11 +26,12 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { lightTheme, themeColor } from '~design-system';
 import A11yProvider from '~sonar-aligned/components/a11y/A11yProvider';
 import A11ySkipLinks from '~sonar-aligned/components/a11y/A11ySkipLinks';
-import { getChatBotFlag } from '../../api/settings';
+import { getChatBotFlag, getValues } from '../../api/settings';
 import SuggestionsProvider from '../../components/embed-docs-modal/SuggestionsProvider';
 import NCDAutoUpdateMessage from '../../components/new-code-definition/NCDAutoUpdateMessage';
 import Workspace from '../../components/workspace/Workspace';
 import BranchStatusContextProvider from './branch-status/BranchStatusContextProvider';
+import CurrentOrganizationKeyProvider from './current-organization/CurrentOrganizationKeyContext';
 import CalculationChangeMessage from './calculation-notification/CalculationChangeMessage';
 import ChatWidget from './ChatWidget';
 import GlobalFooterCodescan from './GlobalFooterCodescan';
@@ -45,10 +46,11 @@ import SystemAnnouncement from './SystemAnnouncement';
 import { UpdateNotification } from './update-notification/UpdateNotification';
 import MsaGate from '../../apps/sessions/components/MsaGate';
 import { getEulaVerification } from '../../api/eula';
-import { getValue } from '../../api/settings';
 import { GlobalSettingKeys } from '../../types/settings';
 import { loadSeverityLabelsToCache } from '../../helpers/severityMasking';
 import { AiCreditsContextProvider } from './ai-credits/AiCreditsContextProvider';
+import { isDeploymentForAmazon } from '../../helpers/urls';
+import { useAppState } from './app-state/withAppStateContext';
 
 /*
  * These pages need a white background (aka 'secondary', rather than the default 'primary')
@@ -88,14 +90,26 @@ const PAGES_WITH_SECONDARY_BACKGROUND = [
 export default function GlobalContainer() {
   const [isChatEnabled, setIsChatEnabled] = useState(false);
   const location = useLocation();
+  const { whiteLabel } = useAppState();
   const [msaEnabled, setMsaEnabled] = React.useState(false);
   const [verify,setMsaVerify]=React.useState(false);
   const [msaLoading, setMsaLoading] = React.useState(true);
   React.useEffect(() => {
     async function fetchMsaPopUpFlag() {
         try {
-          const isMsaEnabled=await getValue({ key: GlobalSettingKeys.CodescanMsaConsentDisplayMessage });
-          const getMsaEnabledValue=isMsaEnabled?.value==='true';
+          const msaSettings = await getValues({
+            keys: [
+              GlobalSettingKeys.CodescanMsaConsentDisplayMessage,
+              GlobalSettingKeys.CodescanMsaConsentDisplayMessageForTrialUser,
+            ],
+          });
+          const isSettingEnabled = (key: string) =>
+            msaSettings.some((setting) => setting?.key === key && setting?.value === 'true');
+          const subscribedUserMsaEnabled = isSettingEnabled(GlobalSettingKeys.CodescanMsaConsentDisplayMessage);
+          const trialUserMsaEnabled =
+            isSettingEnabled(GlobalSettingKeys.CodescanMsaConsentDisplayMessageForTrialUser) &&
+            !isDeploymentForAmazon(whiteLabel);
+          const getMsaEnabledValue = subscribedUserMsaEnabled || trialUserMsaEnabled;
           setMsaEnabled(getMsaEnabledValue);
           if(getMsaEnabledValue){
             try {
@@ -142,6 +156,7 @@ export default function GlobalContainer() {
       <SuggestionsProvider>
         <A11yProvider>
           <A11ySkipLinks />
+          <CurrentOrganizationKeyProvider>
           <GlobalContainerWrapper>
             {isChatEnabled && <ChatWidget />}
             <GlobalBackground
@@ -181,6 +196,7 @@ export default function GlobalContainer() {
             <GlobalFooterCodescan />
           </GlobalContainerWrapper>
           <StartupModal />
+          </CurrentOrganizationKeyProvider>
         </A11yProvider>
       </SuggestionsProvider>
     </ThemeProvider>
