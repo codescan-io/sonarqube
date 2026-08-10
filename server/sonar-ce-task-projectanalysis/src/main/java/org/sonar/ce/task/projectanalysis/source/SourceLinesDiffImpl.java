@@ -19,7 +19,6 @@
  */
 package org.sonar.ce.task.projectanalysis.source;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -28,6 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.config.Configuration;
+import org.sonar.api.utils.TempFolder;
 import org.sonar.ce.task.projectanalysis.analysis.AnalysisMetadataHolder;
 import org.sonar.ce.task.projectanalysis.component.Component;
 import org.sonar.ce.task.projectanalysis.component.ConfigurationRepository;
@@ -59,11 +59,13 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
   private final PeriodHolder periodHolder;
   private final NewCodeReferenceBranchComponentUuids newCodeReferenceBranchComponentUuids;
   private final ConfigurationRepository configurationRepository;
+  private final TempFolder tempFolder;
 
   public SourceLinesDiffImpl(DbClient dbClient, FileSourceDao fileSourceDao, SourceLinesHashRepository sourceLinesHash,
     SourceLinesRepository sourceLinesRepository, ReferenceBranchComponentUuids referenceBranchComponentUuids,
     MovedFilesRepository movedFilesRepository, AnalysisMetadataHolder analysisMetadataHolder, PeriodHolder periodHolder,
-    NewCodeReferenceBranchComponentUuids newCodeReferenceBranchComponentUuids, ConfigurationRepository configurationRepository) {
+    NewCodeReferenceBranchComponentUuids newCodeReferenceBranchComponentUuids, ConfigurationRepository configurationRepository,
+    TempFolder tempFolder) {
     this.dbClient = dbClient;
     this.fileSourceDao = fileSourceDao;
     this.sourceLinesHash = sourceLinesHash;
@@ -74,26 +76,27 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
     this.periodHolder = periodHolder;
     this.newCodeReferenceBranchComponentUuids = newCodeReferenceBranchComponentUuids;
     this.configurationRepository = configurationRepository;
+    this.tempFolder = tempFolder;
   }
 
   @Override
   public int[] computeMatchingLines(Component component) {
     if (isGitCliEnabled() && isSalesforceMetadataFile(component)) {
-      return computeWithHistogramDiff(component);
+      return computeWithGitCliMyers(component);
     }
-    return computeWithMyersDiff(component);
+    return computeWithLineHashMyers(component);
   }
 
-  private int[] computeWithMyersDiff(Component component) {
-    LOG.info("Diff started for {} using Myers algorithm", component.getKey());
+  private int[] computeWithLineHashMyers(Component component) {
+    LOG.debug("Diff started for {} using line-hash Myers algorithm", component.getKey());
     List<String> database = getDBLines(component);
     List<String> report = getReportLines(component);
 
     return new SourceLinesDiffFinder().findMatchingLines(database, report);
   }
 
-  private int[] computeWithHistogramDiff(Component component) {
-    LOG.info("Diff started for {} using Histogram (git-cli) algorithm", component.getKey());
+  private int[] computeWithGitCliMyers(Component component) {
+    LOG.debug("Diff started for {} using git-cli Myers algorithm", component.getKey());
     try {
       List<String> dbSourceLines = getDBSourceContent(component);
       List<String> reportSourceLines = getReportSourceContent(component);
@@ -106,15 +109,15 @@ public class SourceLinesDiffImpl implements SourceLinesDiff {
         return new int[reportSourceLines.size()];
       }
 
-      return new GitDiffFinder().findMatchingLines(dbSourceLines, reportSourceLines);
+      return new GitDiffFinder(tempFolder).findMatchingLines(dbSourceLines, reportSourceLines);
 
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOG.warn("git-cli diff interrupted for {}, falling back to Myers", component.getKey());
-      return computeWithMyersDiff(component);
-    } catch (IOException e) {
-      LOG.warn("git-cli diff failed for {}, falling back to Myers", component.getKey(), e);
-      return computeWithMyersDiff(component);
+      LOG.warn("git-cli diff interrupted for {}, falling back to line-hash Myers", component.getKey());
+      return computeWithLineHashMyers(component);
+    } catch (Exception e) {
+      LOG.warn("git-cli diff failed for {}, falling back to line-hash Myers", component.getKey(), e);
+      return computeWithLineHashMyers(component);
     }
   }
 
