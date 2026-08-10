@@ -185,7 +185,7 @@ import org.sonar.server.notification.NotificationModule;
 import org.sonar.server.notification.email.telemetry.EmailConfigAuthMethodTelemetryProvider;
 import org.sonar.server.notification.email.telemetry.EmailConfigHostTelemetryProvider;
 import org.sonar.server.notification.ws.NotificationWsModule;
-import org.sonar.server.organization.BillingValidationsProxyImpl;
+import org.sonar.server.platform.billing.BillingValidationsProxyImpl;
 import org.sonar.server.organization.ws.OrganizationsWsModule;
 import org.sonar.server.permission.index.PermissionIndexer;
 import org.sonar.server.permission.ws.PermissionsWsModule;
