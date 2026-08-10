@@ -84,6 +84,8 @@ public class DefaultIssue implements Issue, Trackable, org.sonar.api.ce.measure.
   private Set<String> tags = null;
   private Set<String> codeVariants = null;
   private boolean prioritizedRule = false;
+  @Nullable
+  private String codefixStatus = null;
   // temporarily an Object as long as DefaultIssue is used by sonar-batch
   private Object locations = null;
   private Long issueResolutionExpiresAt;
@@ -132,6 +134,7 @@ public class DefaultIssue implements Issue, Trackable, org.sonar.api.ce.measure.
   private Long selectedAt = null;
 
   private boolean quickFixAvailable = false;
+  private String variableType = null;
   private boolean isNewCodeReferenceIssue = false;
 
   // true if the issue is no longer new in its branch
@@ -598,6 +601,15 @@ public class DefaultIssue implements Issue, Trackable, org.sonar.api.ce.measure.
     return this;
   }
 
+  public String getVariableType() {
+    return variableType;
+  }
+
+  public DefaultIssue setVariableType(@Nullable String variableType) {
+    this.variableType = variableType;
+    return this;
+  }
+
   public boolean isNewCodeReferenceIssue() {
     return isNewCodeReferenceIssue;
   }
@@ -820,6 +832,16 @@ public class DefaultIssue implements Issue, Trackable, org.sonar.api.ce.measure.
 
   public DefaultIssue setCveId(@Nullable String cveId) {
     this.cveId = cveId;
+    return this;
+  }
+
+  @Nullable
+  public String getCodefixStatus() {
+    return codefixStatus;
+  }
+
+  public DefaultIssue setCodefixStatus(@Nullable String codefixStatus) {
+    this.codefixStatus = codefixStatus;
     return this;
   }
 }

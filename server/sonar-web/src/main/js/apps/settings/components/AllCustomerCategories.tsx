@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { CUSTOMER_CATEGORY, LANGUAGES_CATEGORY, NEW_CODE_PERIOD_CATEGORY } from '../constants';
+import { CODESCAN_AI, CUSTOMER_CATEGORY, LANGUAGES_CATEGORY, NEW_CODE_PERIOD_CATEGORY } from '../constants';
 import { Dict } from "../../../types/types";
 
 export const ALL_CUSTOMER_CATEGORIES: Dict<String> = {
@@ -26,5 +26,6 @@ export const ALL_CUSTOMER_CATEGORIES: Dict<String> = {
   'exclusions': CUSTOMER_CATEGORY,
   'mule': CUSTOMER_CATEGORY,
   'languages': LANGUAGES_CATEGORY,
-  'new_code_period': NEW_CODE_PERIOD_CATEGORY
+  'new_code_period': NEW_CODE_PERIOD_CATEGORY,
+  'codescan ai': CODESCAN_AI
 };

@@ -25,6 +25,7 @@ import { useCurrentUser } from '../../../app/components/current-user/CurrentUser
 import { translate } from '../../../helpers/l10n';
 import { isDeploymentForAmazon } from '../../../helpers/urls';
 import { Organization, OrganizationBillingDetails } from '../../../types/types';
+import { useAiCreditsContext } from '../../../app/components/ai-credits/AiCreditsContext';
 
 const SALESFORCE_CONNECTION_PAGE_KEY = 'developer/salesforce_connection';
 
@@ -46,6 +47,8 @@ const ADMIN_PATHS = [
 export const BILLING_PAGE_KEY = 'billing/billing';
 
 export default function OrganizationNavigationAdministration({ billing, location, organization }: Props) {
+  const { creditsData, isLoading } = useAiCreditsContext();
+
   const { adminPages = [] } = organization;
   const appState = React.useContext(AppStateContext);
   const { currentUser } = useCurrentUser();
@@ -81,18 +84,23 @@ export default function OrganizationNavigationAdministration({ billing, location
             .filter((e) => organization.inviteUsersEnabled || e.key !== 'developer/invite_users')
             .filter(
               (e) =>
+                e.key !== 'billing/ai_billing' ||
+                (!isLoading && creditsData && creditsData.allocatedCredits > 0),
+            )
+            .filter(
+                (e) =>
                 isDeploymentForAmazon(whiteLabel) || hasPaidSubscription || canSeeAdministration || e.key !== BILLING_PAGE_KEY
             )
             .filter((e) => !isTrialOrganization || e.key !== SALESFORCE_CONNECTION_PAGE_KEY)
             .map((extension) => (
-              <DropdownMenu.ItemLink
-                isMatchingFullPath
-                to={`/organizations/${organization.kee}/extension/${extension.key}`}
-                key={extension.key}
-              >
-                {extension.name}
-              </DropdownMenu.ItemLink>
-            ))}
+            <DropdownMenu.ItemLink
+              isMatchingFullPath
+              to={`/organizations/${organization.kee}/extension/${extension.key}`}
+              key={extension.key}
+            >
+              {extension.name}
+            </DropdownMenu.ItemLink>
+          ))}
 
           <DropdownMenu.ItemLink
             isMatchingFullPath

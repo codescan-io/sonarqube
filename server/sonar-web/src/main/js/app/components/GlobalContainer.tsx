@@ -48,6 +48,7 @@ import MsaGate from '../../apps/sessions/components/MsaGate';
 import { getEulaVerification } from '../../api/eula';
 import { GlobalSettingKeys } from '../../types/settings';
 import { loadSeverityLabelsToCache } from '../../helpers/severityMasking';
+import { AiCreditsContextProvider } from './ai-credits/AiCreditsContextProvider';
 import { isDeploymentForAmazon } from '../../helpers/urls';
 import { useAppState } from './app-state/withAppStateContext';
 
@@ -165,7 +166,8 @@ export default function GlobalContainer() {
             >
              <MsaGate enabled={!msaLoading && msaEnabled && !verify} >
               <BranchStatusContextProvider>
-                <Workspace>
+                <AiCreditsContextProvider>
+                  <Workspace>
                   <IndexationContextProvider>
                     <LanguagesContextProvider>
                       <MetricsContextProvider>
@@ -187,6 +189,7 @@ export default function GlobalContainer() {
                     </LanguagesContextProvider>
                   </IndexationContextProvider>
                 </Workspace>
+              </AiCreditsContextProvider>
               </BranchStatusContextProvider>
              </MsaGate>
             </GlobalBackground>

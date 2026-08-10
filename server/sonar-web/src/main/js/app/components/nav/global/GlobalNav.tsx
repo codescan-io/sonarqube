@@ -29,6 +29,8 @@ import { Organization } from "../../../../types/types";
 import GlobalNavPlus from "./GlobalNavPlus";
 import TrialStatusPill from './TrialStatusPill';
 import { isNonStandardUser } from '../../../utils/userAccess';
+import { AiCreditsIndicator } from './AiCreditsIndicator';
+import { useAiCreditsContext } from '../../ai-credits/AiCreditsContext';
 
 export interface GlobalNavProps {
   currentUser: CurrentUser;
@@ -38,7 +40,7 @@ export interface GlobalNavProps {
 
 export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
-
+  const { creditsData, isLoading } = useAiCreditsContext();
   const showTrialPill = isLoggedIn(currentUser) && !isNonStandardUser(currentUser);
 
   return (
@@ -53,6 +55,9 @@ export function GlobalNav(props: GlobalNavProps) {
 
         <div className="sw-flex sw-items-center sw-ml-2">
           {showTrialPill && <TrialStatusPill />}
+          <div className="sw-flex sw-items-center sw-mr-1">
+            {!isLoading && creditsData && creditsData.allocatedCredits > 0 && <AiCreditsIndicator data={creditsData} />}
+          </div>
           <EmbedDocsPopupHelper />
           {isLoggedIn(currentUser) && (!isNonStandardUser(currentUser))  && (
             <div style={{ height: 36, width: 36 }} className="sw-flex sw-items-center sw-justify-center sw-mr-2">

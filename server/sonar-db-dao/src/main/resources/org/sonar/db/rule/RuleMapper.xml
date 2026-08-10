@@ -39,7 +39,8 @@
     rm.ad_hoc_severity as "adHocSeverity",
     rm.ad_hoc_type as "adHocType",
     r.education_principles as "educationPrinciplesField",
-    r.clean_code_attribute as "cleanCodeAttribute"
+    r.clean_code_attribute as "cleanCodeAttribute",
+    r.ai_code_fix_enabled as "aiCodeFixEnabled"
   </sql>
 
   <sql id="leftOuterJoinRulesMetadata">
@@ -296,7 +297,8 @@
     r.language as "language",
     r.rule_type as "type",
     r.created_at as "createdAt",
-    r.updated_at as "updatedAt"
+    r.updated_at as "updatedAt",
+    r.ai_code_fix_enabled as "aiCodeFixEnabled"
     from rules r
     left outer join rules t on t.uuid = r.template_uuid
   </sql>
@@ -510,6 +512,13 @@
       updated_at=#{updatedAt,jdbcType=BIGINT}
     where
       uuid=#{uuid,jdbcType=VARCHAR}
+  </update>
+
+  <update id="updateAiCodeFixEnabled">
+    update rules set
+    ai_code_fix_enabled=#{aiCodeFixEnabled,jdbcType=BOOLEAN}
+    where
+    uuid=#{ruleUuid,jdbcType=VARCHAR}
   </update>
 
   <delete id="deleteRuleDescriptionSection" parameterType="String">
@@ -769,6 +778,17 @@
       AND (rt.organization_uuid IS NULL OR rt.organization_uuid = #{organizationUuid,jdbcType=VARCHAR})
     ORDER BY value
     <include refid="org.sonar.db.common.Common.pagination"/>
+  </select>
+
+  <!-- Rule uuids eligible for the codefixStatus ES backfill (BackfillCodefixStatusMigration #2026071801): every
+       non-removed ai_code_fix_enabled rule. Used only to terms-filter the fast ES doc-count that backs the
+       migration's dry-run estimate (the actual reindex selects issue keys from IssueMapper). REMOVED rules are
+       excluded so issues of deleted rules are not counted. -->
+  <select id="selectAiCodeFixBackfillRuleUuids" resultType="string">
+    select r.uuid
+    from rules r
+    where r.ai_code_fix_enabled = ${_true}
+      and r.status != 'REMOVED'
   </select>
 
   <select id="selectRules">

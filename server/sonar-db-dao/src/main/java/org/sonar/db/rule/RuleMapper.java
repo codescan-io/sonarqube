@@ -36,6 +36,8 @@ public interface RuleMapper {
 
   List<RuleDto> selectAllRules();
 
+  List<String> selectAiCodeFixBackfillRuleUuids();
+
   List<RuleDto> selectEnabled();
 
   RuleDto selectByUuid(@Param("uuid") String uuid);
@@ -69,6 +71,8 @@ public interface RuleMapper {
   void insertRuleTag(@Param("ruleDto") RuleDto ruleDefinitionDto, @Param("value") String value, @Param("isSystemTag") boolean isSystemTag, @Nullable @Param("organizationUuid") String organizationUuid);
 
   void updateRule(RuleDto ruleDefinitionDto);
+
+  void updateAiCodeFixEnabled(@Param("ruleUuid") String ruleUuid, @Param("aiCodeFixEnabled") boolean aiCodeFixEnabled);
 
   void deleteRuleDescriptionSection(String ruleUuid);
 

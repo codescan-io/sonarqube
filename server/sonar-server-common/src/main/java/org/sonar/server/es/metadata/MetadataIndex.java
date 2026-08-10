@@ -35,4 +35,8 @@ public interface MetadataIndex {
   Optional<String> getDbVendor();
 
   void setDbMetadata(String vendor);
+
+  Optional<String> getEsDataMigrationState(long version);
+
+  void setEsDataMigrationState(long version, String stateJson);
 }

@@ -53,10 +53,12 @@ import { getOrganization, getOrganizationBillingDetails, getOrganizationNavigati
 import { ComponentQualifier } from "~sonar-aligned/types/component";
 import { Feature } from "../../types/features";
 import { getValues } from '../../api/settings';
+import { useCurrentOrg } from './nav/organization/CurrentOrgContext';
 
 const FETCH_STATUS_WAIT_TIME = 3000;
 
 function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>) {
+  const { setOrgKee } = useCurrentOrg();  
   const watchStatusTimer = React.useRef<number>();
   const portalAnchor = React.useRef<Element | null>(null);
   const oldTasksInProgress = React.useRef<Task[]>();
@@ -112,6 +114,7 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
           getValues({ keys: ['codescan.comparison.branches'], component: component.key }),
         ]);
         setOrganization({ ...organization, ...navigation });
+        setOrgKee(component.organization);
         setComparisonBranchesEnabled(settings[0]?.value === "true");
 
         // Feeds the global trial banner. Skipped on the Amazon white-label product,
