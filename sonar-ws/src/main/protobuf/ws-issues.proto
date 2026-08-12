@@ -171,7 +171,6 @@ message Issue {
   // Codescan customization:
   optional Sort sort = 50;
   optional string issueMarkedBy = 51;
-  optional string issueMarkedByUuid = 57;
   optional int64 issueResolutionExpiresAt = 52;
   optional CvssBreakdown cvssBreakdown = 53;
   optional string assignedDate = 54;
@@ -179,6 +178,7 @@ message Issue {
   optional string assignedTo = 56;
   optional bool aiCodeFixEnabled = 57;
   optional string codefixStatus = 58;
+  optional string issueMarkedByUuid = 59;
 }
 
 message Sort {
