@@ -21,6 +21,7 @@ package org.sonar.server.organization.ws;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Sets.difference;
+import static java.net.HttpURLConnection.HTTP_BAD_REQUEST;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.sonar.api.CoreProperties.DEFAULT_ISSUE_ASSIGNEE;
@@ -36,8 +37,9 @@ import org.sonar.db.organization.OrganizationMemberDto;
 import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
 import org.sonar.db.user.UserGroupDto;
-import org.sonar.server.organization.BillingValidations;
-import org.sonar.server.organization.BillingValidationsProxy;
+import org.sonar.server.exceptions.ServerException;
+import org.sonar.server.platform.billing.BillingValidations;
+import org.sonar.server.platform.billing.BillingValidationsProxy;
 import org.sonar.server.usergroups.DefaultGroupFinder;
 
 public class MemberUpdater {
@@ -80,7 +82,7 @@ public class MemberUpdater {
               new BillingValidations.User(user.getUuid(), user.getLogin(), user.getEmail()));
       return true;
     } catch (BillingValidations.BillingValidationsException e) {
-      return false;
+      throw new ServerException(HTTP_BAD_REQUEST, e.getMessage());
     }
   }
 

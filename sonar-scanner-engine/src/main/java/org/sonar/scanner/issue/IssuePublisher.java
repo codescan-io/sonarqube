@@ -141,6 +141,9 @@ public class IssuePublisher {
     }
     applyFlows(builder::addFlow, locationBuilder, textRangeBuilder, issue.flows());
     builder.setQuickFixAvailable(issue.isQuickFixAvailable());
+    if (issue.getVariableType() != null) {
+      builder.setVariableType(issue.getVariableType());
+    }
     issue.ruleDescriptionContextKey().ifPresent(builder::setRuleDescriptionContextKey);
     List<String> codeVariants = issue.codeVariants();
     if (codeVariants != null) {

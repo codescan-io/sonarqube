@@ -47,6 +47,7 @@ public class DefaultIssue extends AbstractDefaultIssue<DefaultIssue> implements 
   private Double gap;
   private Severity overriddenSeverity;
   private boolean quickFixAvailable = false;
+  private String variableType = null;
   private String ruleDescriptionContextKey;
   private List<String> codeVariants;
 
@@ -93,6 +94,12 @@ public class DefaultIssue extends AbstractDefaultIssue<DefaultIssue> implements 
   }
 
   @Override
+  public DefaultIssue setVariableType(@Nullable String variableType) {
+    this.variableType = variableType;
+    return this;
+  }
+
+  @Override
   public NewQuickFix newQuickFix() {
     return new NoOpNewQuickFix();
   }
@@ -122,6 +129,11 @@ public class DefaultIssue extends AbstractDefaultIssue<DefaultIssue> implements 
   @Override
   public boolean isQuickFixAvailable() {
     return quickFixAvailable;
+  }
+
+  @Override
+  public String getVariableType() {
+    return variableType;
   }
 
   @Override

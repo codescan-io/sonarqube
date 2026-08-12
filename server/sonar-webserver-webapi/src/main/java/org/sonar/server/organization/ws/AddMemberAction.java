@@ -33,7 +33,6 @@ import org.sonar.api.server.ws.WebService.NewController;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
-import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.user.GroupMembershipQuery;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.common.avatar.AvatarResolver;
@@ -105,14 +104,16 @@ public class AddMemberAction implements OrganizationsWsAction {
         .organizationUuid(organization.getUuid())
         .membership(IN)
         .build(), user.getUuid());
-      AddMemberWsResponse wsResponse = buildResponse(user, groups);
+      AddMemberWsResponse wsResponse = buildResponse(user, groups, memberType);
       writeProtobuf(wsResponse, request, response);
     }
   }
 
-  private AddMemberWsResponse buildResponse(UserDto user, int groups) {
+  private AddMemberWsResponse buildResponse(UserDto user, int groups, MemberType memberType) {
     AddMemberWsResponse.Builder response = AddMemberWsResponse.newBuilder();
     User.Builder wsUser = User.newBuilder()
+      .setUuid(user.getUuid())
+      .setType(memberType.name())
       .setLogin(user.getLogin())
       .setGroupCount(groups);
     ofNullable(emptyToNull(user.getEmail())).ifPresent(text -> wsUser.setAvatar(avatarResolver.create(user)));

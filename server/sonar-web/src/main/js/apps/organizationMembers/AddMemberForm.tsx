@@ -65,7 +65,6 @@ function AddMemberForm(props: AddMemberFormProps) {
 
       props.addMember(updatedMember);
       closeForm();
-      window.location.reload();
     }
   };
 

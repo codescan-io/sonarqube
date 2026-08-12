@@ -75,26 +75,104 @@ public class IndexCreatorTest {
   }
 
   @Test
-  public void recreate_index_on_definition_changes() {
-    // v1
+  public void update_mapping_in_place_when_definition_change_is_additive() {
+    // v1: key(keyword) + updatedAt(date)
     run(new FakeIndexDefinition());
 
-    IndexMainType fakeIndexType = main(Index.simple("fakes"), "fake");
+    IndexMainType fakeIndexType = FakeIndexDefinition.INDEX_TYPE;
     String id = "1";
-    es.client().index(new IndexRequest(fakeIndexType.getIndex().getName()).id(id).source(new FakeDoc().getFields())
+    // index a doc whose fields are all already mapped (no dynamic field), so the merged mapping stays deterministic
+    es.client().index(new IndexRequest(fakeIndexType.getIndex().getName()).id(id).source(Map.of("key", "foo"))
       .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE));
     assertThat(es.client().get(new GetRequest(fakeIndexType.getIndex().getName()).id(id)).isExists()).isTrue();
+    // simulate completed startup indexing
+    metadataIndex.setInitialized(fakeIndexType, true);
+    String hashV1 = metadataIndex.getHash(fakeIndexType.getIndex()).orElse(null);
 
-    // v2
+    // v2 = v1 + newField(integer): additive -> merged in place, docs preserved
+    logTester.clear();
     run(new FakeIndexDefinitionV2());
 
+    // doc survives (no delete + recreate)
+    assertThat(es.client().get(new GetRequest(fakeIndexType.getIndex().getName()).id(id)).isExists()).isTrue();
+    // mapping now contains the new field
     Map<String, MappingMetadata> mappings = mappings();
     MappingMetadata mapping = mappings.get("fakes");
     assertThat(countMappingFields(mapping)).isEqualTo(3);
     assertThat(field(mapping, "updatedAt")).containsEntry("type", "date");
     assertThat(field(mapping, "newField")).containsEntry("type", "integer");
+    // hash updated to v2
+    assertThat(metadataIndex.getHash(fakeIndexType.getIndex()).orElse(null)).isNotNull().isNotEqualTo(hashV1);
+    // initialized preserved -> IndexerStartupTask does NOT re-run a full indexing
+    assertThat(metadataIndex.getInitialized(fakeIndexType)).isTrue();
+    assertThat(logTester.logs(Level.INFO)).anyMatch(l -> l.contains("in place"));
+    assertThat(logTester.logs(Level.INFO)).noneMatch(l -> l.contains("Delete Elasticsearch index fakes"));
+  }
 
-    assertThat(es.client().get(new GetRequest(fakeIndexType.getIndex().getName()).id(id)).isExists()).isFalse();
+  @Test
+  public void recreate_index_when_definition_change_is_incompatible() {
+    // v1: updatedAt is a date
+    run(new FakeIndexDefinition());
+    putFakeDocument();
+    metadataIndex.setInitialized(FakeIndexDefinition.INDEX_TYPE, true);
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isOne();
+
+    // changing updatedAt to integer is an incompatible mapping change -> ES rejects the in-place merge
+    logTester.clear();
+    run(new FakeIndexDefinitionChangedType());
+
+    // index dropped and recreated empty
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isZero();
+    // initialized reset -> IndexerStartupTask re-runs full indexing
+    assertThat(metadataIndex.getInitialized(FakeIndexDefinition.INDEX_TYPE)).isFalse();
+    assertThat(logTester.logs(Level.INFO)).anyMatch(l -> l.contains("Delete Elasticsearch index fakes"));
+  }
+
+  @Test
+  public void recreate_index_when_only_a_setting_changed() {
+    // v1: 1 shard
+    run(new FakeIndexDefinition());
+    putFakeDocument();
+    metadataIndex.setInitialized(FakeIndexDefinition.INDEX_TYPE, true);
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isOne();
+
+    // v2: identical mapping, but a different shard count -> a setting cannot merge in place -> delete + recreate
+    // (the change is applied via a full rebuild, not silently skipped while the hash advances)
+    logTester.clear();
+    run(new FakeIndexDefinitionMoreShards());
+
+    // index dropped and recreated empty
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isZero();
+    // initialized reset -> IndexerStartupTask re-runs full indexing
+    assertThat(metadataIndex.getInitialized(FakeIndexDefinition.INDEX_TYPE)).isFalse();
+    assertThat(logTester.logs(Level.INFO)).anyMatch(l -> l.contains("Delete Elasticsearch index fakes"));
+    assertThat(logTester.logs(Level.INFO)).noneMatch(l -> l.contains("in place"));
+  }
+
+  @Test
+  public void update_dynamic_setting_in_place_when_only_refresh_interval_changed() {
+    // v1: refresh_interval = 30s (default)
+    run(new FakeIndexDefinition());
+    putFakeDocument();
+    metadataIndex.setInitialized(FakeIndexDefinition.INDEX_TYPE, true);
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isOne();
+    String hashV1 = metadataIndex.getHash(FakeIndexDefinition.INDEX_TYPE.getIndex()).orElse(null);
+
+    // v2: identical mapping, only refresh_interval changed -> a DYNAMIC setting -> pushed in place, NOT a rebuild
+    logTester.clear();
+    run(new FakeIndexDefinitionDifferentRefreshInterval());
+
+    // doc survives (no delete + recreate) and full-reindex is not re-triggered
+    assertThat(es.countDocuments(FakeIndexDefinition.INDEX_TYPE)).isOne();
+    assertThat(metadataIndex.getInitialized(FakeIndexDefinition.INDEX_TYPE)).isTrue();
+    // the new value is actually applied to the live index
+    String indexName = FakeIndexDefinition.INDEX_TYPE.getIndex().getName();
+    assertThat(es.client().getSettings(new GetSettingsRequest().indices(indexName)).getSetting(indexName, "index.refresh_interval"))
+      .isEqualTo("-1");
+    // hash advanced to v2, in-place path taken, no recreate
+    assertThat(metadataIndex.getHash(FakeIndexDefinition.INDEX_TYPE.getIndex()).orElse(null)).isNotNull().isNotEqualTo(hashV1);
+    assertThat(logTester.logs(Level.INFO)).anyMatch(l -> l.contains("applied dynamic setting change"));
+    assertThat(logTester.logs(Level.INFO)).noneMatch(l -> l.contains("Delete Elasticsearch index fakes"));
   }
 
   @Test
@@ -254,6 +332,46 @@ public class IndexCreatorTest {
         .keywordFieldBuilder("key").build()
         .createDateTimeField("updatedAt")
         .createIntegerField("newField");
+    }
+  }
+
+  private static class FakeIndexDefinitionMoreShards implements IndexDefinition {
+    @Override
+    public void define(IndexDefinitionContext context) {
+      Index index = Index.simple("fakes");
+      // same mapping as FakeIndexDefinition, but 2 shards instead of 1 (a setting that cannot change in place)
+      SettingsConfiguration twoShards = newBuilder(new MapSettings().asConfig()).setDefaultNbOfShards(2).build();
+      NewRegularIndex newIndex = context.create(index, twoShards);
+      newIndex.createTypeMapping(IndexType.main(index, "fake"))
+        .keywordFieldBuilder("key").build()
+        .createDateTimeField("updatedAt");
+    }
+  }
+
+  private static class FakeIndexDefinitionDifferentRefreshInterval implements IndexDefinition {
+    @Override
+    public void define(IndexDefinitionContext context) {
+      Index index = Index.simple("fakes");
+      // same mapping and shards as FakeIndexDefinition, but refresh_interval = -1 instead of the default 30s
+      // (a DYNAMIC setting Elasticsearch applies to a live index without a rebuild)
+      SettingsConfiguration manualRefresh = newBuilder(new MapSettings().asConfig())
+        .setRefreshInterval(SettingsConfiguration.MANUAL_REFRESH_INTERVAL).build();
+      NewRegularIndex newIndex = context.create(index, manualRefresh);
+      newIndex.createTypeMapping(IndexType.main(index, "fake"))
+        .keywordFieldBuilder("key").build()
+        .createDateTimeField("updatedAt");
+    }
+  }
+
+  private static class FakeIndexDefinitionChangedType implements IndexDefinition {
+    @Override
+    public void define(IndexDefinitionContext context) {
+      Index index = Index.simple("fakes");
+      NewRegularIndex newIndex = context.create(index, SETTINGS_CONFIGURATION);
+      // updatedAt was a dateTime field in v1; redefining it as an integer is an incompatible change
+      newIndex.createTypeMapping(IndexType.main(index, "fake"))
+        .keywordFieldBuilder("key").build()
+        .createIntegerField("updatedAt");
     }
   }
 }

@@ -45,15 +45,20 @@ import withAvailableFeatures, {
   WithAvailableFeaturesProps,
 } from './available-features/withAvailableFeatures';
 import { ComponentContext } from './componentContext/ComponentContext';
+import { useCurrentOrganizationKey } from './current-organization/CurrentOrganizationKeyContext';
+import { useAppState } from './app-state/withAppStateContext';
+import { isDeploymentForAmazon } from '../../helpers/urls';
 import ComponentNav from './nav/component/ComponentNav';
-import { getOrganization, getOrganizationNavigation } from "../../api/organizations";
+import { getOrganization, getOrganizationBillingDetails, getOrganizationNavigation } from "../../api/organizations";
 import { ComponentQualifier } from "~sonar-aligned/types/component";
 import { Feature } from "../../types/features";
 import { getValues } from '../../api/settings';
+import { useCurrentOrg } from './nav/organization/CurrentOrgContext';
 
 const FETCH_STATUS_WAIT_TIME = 3000;
 
 function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>) {
+  const { setOrgKee } = useCurrentOrg();  
   const watchStatusTimer = React.useRef<number>();
   const portalAnchor = React.useRef<Element | null>(null);
   const oldTasksInProgress = React.useRef<Task[]>();
@@ -65,6 +70,9 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
   const router = useRouter();
 
   const intl = useIntl();
+
+  const { setOrganizationKey, setBilling } = useCurrentOrganizationKey();
+  const appState = useAppState();
 
   const [comparisonBranchesEnabled, setComparisonBranchesEnabled] = React.useState<boolean>();
   const [organization, setOrganization] = React.useState<Organization>();
@@ -106,7 +114,17 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
           getValues({ keys: ['codescan.comparison.branches'], component: component.key }),
         ]);
         setOrganization({ ...organization, ...navigation });
+        setOrgKee(component.organization);
         setComparisonBranchesEnabled(settings[0]?.value === "true");
+
+        // Feeds the global trial banner. Skipped on the Amazon white-label product,
+        // which has no trial concept.
+        if (!isDeploymentForAmazon(appState.whiteLabel)) {
+          const billingOrganization = component.organization;
+          getOrganizationBillingDetails(billingOrganization)
+            .then((details) => setBilling({ organizationKey: billingOrganization, details }))
+            .catch(() => undefined);
+        }
       } catch (e) {
         if (e instanceof Response && e.status === HttpStatus.Forbidden) {
           handleRequiredAuthorization();
@@ -188,6 +206,14 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
       fetchProjectBindingErrors(component);
     }
   }, [component, fetchStatus, fetchProjectBindingErrors]);
+
+  // Expose the component's organization to the global navigation, which lives above the
+  // component route tree and cannot read it from the URL on project pages.
+  React.useEffect(() => {
+    if (component?.organization) {
+      setOrganizationKey(component.organization);
+    }
+  }, [component?.organization, setOrganizationKey]);
 
   // Refetch status when tasks in progress/current task have changed
   // Or refetch component based on computeHasUpdatedTasks
