@@ -18,6 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
 import { BasicSeparator, FlagMessage, Link } from '~design-system';
 import { isBranch, isPullRequest } from '~sonar-aligned/helpers/branch-like';
@@ -61,7 +62,8 @@ import { StandardFacet } from './StandardFacet';
 import { TagFacet } from './TagFacet';
 import { TypeFacet } from './TypeFacet';
 import { VariantFacet } from './VariantFacet';
-import { isAiAssistantEnabled } from 'src/main/js/api/settings';
+import {isAiAssistantEnabled} from '../../../api/settings';
+import {useIsAiCodefixSupportedIntegration} from '../../../queries/ai-codefix';
 
 export interface Props {
   organization?: Organization;
@@ -102,12 +104,17 @@ export function Sidebar(props: Readonly<Props>) {
   const [aiEnabled, setAiEnabled] = React.useState(false);
   React.useEffect(() => {
     async function checkAiEnabled() {
-      const projectKey = props.component.key || "";
+      const projectKey = props.component?.key ?? "";
       const enabled = await isAiAssistantEnabled(projectKey);
       setAiEnabled(enabled);
     }
     checkAiEnabled();
   }, [props.component?.key]);
+
+  const isSupportedIntegration = useIsAiCodefixSupportedIntegration(
+    aiEnabled ? props.component?.key : undefined,
+  );
+
   const renderComponentFacets = () => {
     const hasFileOrDirectory =
       !isApplication(component?.qualifier) && !isPortfolioLike(component?.qualifier);
@@ -486,7 +493,7 @@ export function Sidebar(props: Readonly<Props>) {
                 </>
               )}
 
-              { aiEnabled && (
+              { aiEnabled && isSupportedIntegration && (
                 <>
                   <BasicSeparator className="sw-my-4" />
 
