@@ -41,6 +41,7 @@ import severityMajor from './icons/severity-major.svg';
 import severityMinor from './icons/severity-minor.svg';
 
 import { RuleData, splitXPath } from './aiRuleService';
+export type { RuleData };
 
 interface Props {
   ruleData: RuleData;

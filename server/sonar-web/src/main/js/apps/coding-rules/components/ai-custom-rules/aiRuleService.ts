@@ -17,11 +17,13 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { postJSONBody } from '../../../../helpers/request';
+import { get, parseJSON, postJSONBody } from '../../../../helpers/request';
+import { throwGlobalError } from '~sonar-aligned/helpers/error';
 
 export interface GenerateXPathRequest {
   description: string;
   organization: string;
+  regenerate?: boolean;
 }
 
 export interface GenerateXPathResponse {
@@ -65,6 +67,24 @@ export interface ValidateXPathRequest {
   language: string;
 }
 
+export interface RuleData {
+  ruleName: string;
+  ruleKey: string;
+  ruleType: string;
+  severity: string;
+  message: string;
+  description: string;
+  generatedXPath: string;
+  aiSummary: string;
+}
+
+export interface AiRuleQuota {
+  moduleLicensed: boolean;
+  remainingCredits: number;
+  costPerGenerate: number;
+  costPerRegenerate: number;
+}
+
 /**
  * Generate XPath from natural language description using AI.
  * Does not create a rule — rule creation uses the standard v2 rules API.
@@ -79,6 +99,16 @@ export function generateAIXPath(request: GenerateXPathRequest): Promise<Generate
  */
 export function validateAIXPath(request: ValidateXPathRequest): Promise<ValidationResult> {
   return postJSONBody('/_codescan/ai-rules/validate-xpath', request);
+}
+
+/**
+ * Fetch remaining AI credits + per-call cost. Called before generate/regenerate so the UI can
+ * short-circuit and show a clear error instead of firing the backend just to get a 400 back.
+ */
+export function getAiRuleQuota(organizationKey: string): Promise<AiRuleQuota> {
+  return get('/_codescan/ai-rules/quota', { organizationKey })
+    .then(parseJSON)
+    .catch(throwGlobalError);
 }
 
 /**

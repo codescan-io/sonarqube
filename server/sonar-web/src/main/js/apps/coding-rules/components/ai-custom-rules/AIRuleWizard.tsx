@@ -19,9 +19,11 @@
  */
 
 import * as React from 'react';
+import { addGlobalErrorMessage } from '~design-system';
 import { createRule } from '../../../../api/rules';
+import { translate, translateWithParameters } from '../../../../helpers/l10n';
 import { RuleDetails } from '../../../../types/types';
-import { generateAIXPath } from './aiRuleService';
+import { generateAIXPath, getAiRuleQuota } from './aiRuleService';
 import './AIRuleWizard.css';
 import DefineStep, { AIRuleFormValues } from './DefineStep';
 import GenerateStep from './GenerateStep';
@@ -87,13 +89,29 @@ export default function AIRuleWizard(props: Readonly<Props>) {
 
   const handleDefineSubmit = async (values: AIRuleFormValues) => {
     setFormValues(values);
-    setCurrentStep('generate');
-    setGenerationError(false);
 
     try {
       if (!organization) {
         throw new Error('Organization is required to create a custom rule');
       }
+
+      // Short-circuit on credit shortage — backend would 400 anyway; failing fast here
+      // avoids spending a partial round-trip and gives the user a clearer message.
+      const quota = await getAiRuleQuota(organization);
+      if (!quota.moduleLicensed) {
+        addGlobalErrorMessage(translate('ai_custom_rules.module_not_licensed'));
+        return;
+      }
+      if (quota.remainingCredits < quota.costPerGenerate) {
+        addGlobalErrorMessage(translateWithParameters(
+          'ai_custom_rules.insufficient_credits',
+          String(quota.costPerGenerate),
+          String(quota.remainingCredits)));
+        return;
+      }
+
+      setCurrentStep('generate');
+      setGenerationError(false);
 
       const response = await generateAIXPath({
         description: values.ruleDescription,
@@ -141,13 +159,27 @@ export default function AIRuleWizard(props: Readonly<Props>) {
 
   const handleRegenerate = async () => {
     if (!formValues) return;
-    setCurrentStep('generate');
-    setGenerationError(false);
 
     try {
       if (!organization) {
         throw new Error('Organization is required to create a custom rule');
       }
+
+      const quota = await getAiRuleQuota(organization);
+      if (!quota.moduleLicensed) {
+        addGlobalErrorMessage(translate('ai_custom_rules.module_not_licensed'));
+        return;
+      }
+      if (quota.remainingCredits < quota.costPerRegenerate) {
+        addGlobalErrorMessage(translateWithParameters(
+          'ai_custom_rules.insufficient_credits',
+          String(quota.costPerRegenerate),
+          String(quota.remainingCredits)));
+        return;
+      }
+
+      setCurrentStep('generate');
+      setGenerationError(false);
 
       const previousXPath = ruleData?.generatedXPath;
       const response = await generateAIXPath({
@@ -155,6 +187,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
           ? `${formValues.ruleDescription}\n\n[REGENERATE: The previous XPath was rejected as inaccurate. Generate a different one. Previous: ${previousXPath}]`
           : formValues.ruleDescription,
         organization,
+        regenerate: true,
       });
 
       setRuleData({
