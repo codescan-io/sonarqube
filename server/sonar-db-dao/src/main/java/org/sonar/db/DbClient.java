@@ -399,8 +399,8 @@ public class DbClient {
     return ideUsageDao;
   }
 
-  public AiUserAllocationDao aiUserAllocationDao(){
-      return aiUserAllocationDao;
+  public AiUserAllocationDao aiUserAllocationDao() {
+    return aiUserAllocationDao;
   }
 
   public InternalPropertiesDao internalPropertiesDao() {
