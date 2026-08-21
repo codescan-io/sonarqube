@@ -101,22 +101,32 @@ public class IssueDao implements Dao {
 
   public Cursor<IndexedIssueDto> scrollIssuesForIndexation(DbSession dbSession, @Nullable @Param("branchUuid") String branchUuid,
     @Nullable @Param("issueKeys") Collection<String> issueKeys) {
-    return mapper(dbSession).scrollIssuesForIndexation(branchUuid, issueKeys, null);
+    return mapper(dbSession).scrollIssuesForIndexation(branchUuid, issueKeys);
   }
 
   /**
-   * Streams, in a single server-side scroll cursor ordered by key, every issue whose rule is one of {@code ruleUuids}
-   * (the ai_code_fix_enabled, non-REMOVED rules, resolved once by the caller); see BackfillCodefixStatusMigration.
-   * Filters on the {@code issues.rule_uuid} column directly (not via the joined rules row) so it can use the
-   * {@code ISSUES_RULE_UUID} index. One long-lived cursor rather than keyset pages: much faster (no per-page re-query),
-   * but holds a DB read cursor open for the whole reindex, so it is meant to run in a maintenance window.
-   * <p>Because {@code ruleUuids} is set, the query emits {@code codefixStatus = COALESCE(codefix_status, 'AVAILABLE')}:
-   * a blanket backfill that marks every in-scope issue AVAILABLE (defaulting only the NULLs), WITHOUT the variableType
-   * narrowing that normal analysis indexing applies. Old issues predate {@code issue_ai_metadata}, so that narrowing
-   * would leave the variable-naming rules NULL; the backfill intent is to mark them all.
+   * Streams, in a server-side scroll cursor ordered by key, the issues of ONE branch whose rule is one of
+   * {@code ruleUuids} (the ai_code_fix_enabled, non-REMOVED rules, resolved once by the caller); see
+   * BackfillCodefixStatusMigration. The migration runs one of these per branch, several in parallel, so each cursor
+   * covers a small slice and its ORDER BY sorts a small set — a single whole-table scroll had to sort the entire joined
+   * result before yielding row one, because Postgres cannot stream a sorted result.
+   * <p>Emits {@code codefixStatus = COALESCE(codefix_status, 'AVAILABLE')}: a blanket backfill that marks every
+   * in-scope issue AVAILABLE (defaulting only the NULLs), WITHOUT the variableType narrowing that normal analysis
+   * indexing applies. Old issues predate {@code issue_ai_metadata}, so that narrowing would leave the variable-naming
+   * rules NULL; the backfill intent is to mark them all.
    */
-  public Cursor<IndexedIssueDto> scrollIssuesForIndexationByRuleUuids(DbSession dbSession, Collection<String> ruleUuids) {
-    return mapper(dbSession).scrollIssuesForIndexation(null, null, ruleUuids);
+  public Cursor<IndexedIssueDto> scrollIssuesForIndexationByBranchAndRuleUuids(DbSession dbSession, String branchUuid,
+    Collection<String> ruleUuids) {
+    return mapper(dbSession).scrollIssuesForIndexationForMigration(branchUuid, ruleUuids);
+  }
+
+  /**
+   * The branches ({@code issues.project_uuid}, which holds the branch uuid) that have at least one issue on one of
+   * {@code ruleUuids}. Drives the per-branch fan-out of BackfillCodefixStatusMigration; single pass over the in-scope
+   * issues, no joins, and returns only the branches with work to do.
+   */
+  public List<String> selectBranchUuidsForRuleUuids(DbSession dbSession, Collection<String> ruleUuids) {
+    return mapper(dbSession).selectBranchUuidsForRuleUuids(ruleUuids);
   }
 
   public void insert(DbSession session, IssueDto dto) {

@@ -50,18 +50,18 @@ import org.sonar.server.issue.index.IssueIndexer;
  *
  * <p>Scope is limited to issues of non-REMOVED {@code ai_code_fix_enabled} rules; issues of other rules already hold
  * the correct (absent/NULL) value in the index and are left untouched. The reindex streams the whole in-scope set in a
- * single server-side scroll under one {@link org.sonar.server.es.BulkIndexer.Size#LARGE} bulk
- * (see {@link IssueIndexer#reindexByRuleUuids}) — the fast bulk-load path. It is idempotent: each doc is simply
- * rewritten with its current canonical value, so a re-run (e.g. after a partial failure) is safe.
+ * single server-side scroll under one {@link org.sonar.server.es.BulkIndexer.Size#REGULAR} bulk
+ * (see {@link IssueIndexer#reindexByRuleUuids}). REGULAR, not {@code LARGE}: the from-scratch bulk-load path would
+ * force-merge and re-replicate the ENTIRE {@code issues} index on completion — a cost proportional to the whole index
+ * rather than to the subset rewritten, which on a large index dominates the run. It is idempotent: each doc is simply
+ * rewritten with its current canonical value, so a re-run (e.g. after a partial failure) is safe, and an interrupted
+ * run leaves no index settings to clean up.
  *
- * <p><b>Run this only inside a maintenance/downtime window, with issue search and analyses of the
- * {@code ai_code_fix_enabled} projects stopped.</b> The LARGE bulk disables the index's replicas and periodic refresh
- * for the whole run (search is degraded until it completes) and the single scroll holds one DB read cursor open
- * throughout. Because no analyses run concurrently, there are no competing writers, so the doc-vs-analysis race the
- * resilient indexing paths guard against cannot happen and the plain last-write-wins index requests are safe. If the
- * run is interrupted (e.g. the server is restarted mid-migration) the LARGE settings can be left stranded on the index
- * — see {@link IssueIndexer#reindexByRuleUuids}; because the migration is idempotent, simply re-running it to
- * completion restores the settings and finishes the backfill.
+ * <p><b>Run this in a quiet period, with analyses of the {@code ai_code_fix_enabled} projects stopped.</b> Issue search
+ * is not degraded (REGULAR leaves replicas and refresh alone), but the single scroll holds one DB read cursor open for
+ * the whole run, and these are plain last-write-wins index requests outside the resilient indexing path. With no
+ * analyses running there are no competing writers, so the doc-vs-analysis race the resilient paths guard against cannot
+ * happen. An interrupted run is recovered by simply re-running the migration to completion.
  */
 @ServerSide
 public class BackfillCodefixStatusMigration implements EsDataMigration {
@@ -111,12 +111,13 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
   public EsDataMigrationExecution execute(DbSession dbSession) {
     // The migration can only run against an EXISTING index. If the issues index is absent it will be recreated and
     // fully repopulated (codefixStatus included) by the normal startup reindex flow, so there is nothing to backfill —
-    // and the LARGE bulk below would in any case fail while reading settings off a missing index. Step aside cleanly.
+    // and bulk-indexing into a missing index would have Elasticsearch auto-create it with a dynamic mapping instead of
+    // the definition in IssueIndexDefinition, which is worse than doing nothing. Step aside cleanly.
     if (!issuesIndexExists()) {
       return EsDataMigrationExecution.completed("nothing to do: issues index absent; the full reindex will repopulate codefixStatus");
     }
     // Resolve the (typically handful of) eligible rule uuids once, then stream-reindex every issue of those rules in a
-    // single scroll under a LARGE bulk (IssueIndexer.reindexByRuleUuids). Meant to run inside a downtime window.
+    // single scroll (IssueIndexer.reindexByRuleUuids). Meant to run in a quiet period.
     List<String> ruleUuids = dbClient.ruleDao().selectAiCodeFixBackfillRuleUuids(dbSession);
     if (ruleUuids.isEmpty()) {
       return EsDataMigrationExecution.completed("nothing to do: no ai_code_fix_enabled rules");

@@ -100,7 +100,7 @@ public class BulkIndexer {
       client::bulkAsync,
       bulkProcessorListener)
       .setBackoffPolicy(BackoffPolicy.exponentialBackoff())
-      .setBulkSize(FLUSH_BYTE_SIZE)
+      .setBulkSize(sizeHandler.getFlushByteSize())
       .setBulkActions(FLUSH_ACTIONS)
       .setConcurrentRequests(sizeHandler.getConcurrentRequests())
       .build();
@@ -344,6 +344,21 @@ public class BulkIndexer {
       SizeHandler createHandler(Runtime2 runtime2) {
         return new LargeSizeHandler(runtime2);
       }
+    },
+
+    /**
+     * Rewrites a large SUBSET of an existing index, from several producer threads sharing one indexer — a one-shot data
+     * migration. Like {@link #REGULAR} it leaves index settings alone and does not force-merge: those {@link #LARGE}
+     * costs scale with the whole index rather than with the subset being rewritten, so they can dominate a partial
+     * rewrite. Unlike REGULAR it flushes bigger bulks and keeps several in flight, because with
+     * {@code concurrentRequests == 0} the thread that trips the flush threshold performs the flush inline and the other
+     * producers block behind it, serialising the write path.
+     */
+    MIGRATION {
+      @Override
+      SizeHandler createHandler(Runtime2 runtime2) {
+        return new MigrationSizeHandler(runtime2);
+      }
     };
 
     abstract SizeHandler createHandler(Runtime2 runtime2);
@@ -367,12 +382,48 @@ public class BulkIndexer {
       return 0;
     }
 
+    /**
+     * Payload size at which a bulk request is sent on the wire.
+     *
+     * @see BulkProcessor.Builder#setBulkSize(ByteSizeValue)
+     */
+    ByteSizeValue getFlushByteSize() {
+      return FLUSH_BYTE_SIZE;
+    }
+
     void beforeStart(BulkIndexer bulkIndexer) {
       // nothing to do, to be overridden if needed
     }
 
     void afterStop(BulkIndexer bulkIndexer) {
       // nothing to do, to be overridden if needed
+    }
+  }
+
+  /**
+   * Leaves index settings untouched like {@link SizeHandler}, but sized for several producer threads feeding one shared
+   * indexer during a one-shot migration: bigger bulks, and enough in flight that a flush never stalls a producer.
+   */
+  static class MigrationSizeHandler extends SizeHandler {
+    private static final ByteSizeValue MIGRATION_FLUSH_BYTE_SIZE = new ByteSizeValue(5, ByteSizeUnit.MB);
+    private static final int MAX_CONCURRENT_REQUESTS = 4;
+
+    private final Runtime2 runtime2;
+
+    MigrationSizeHandler(Runtime2 runtime2) {
+      this.runtime2 = runtime2;
+    }
+
+    @Override
+    int getConcurrentRequests() {
+      // At least 1 so flushing is always off the producer threads, capped so a migration cannot monopolise
+      // Elasticsearch's write threadpool.
+      return Math.max(1, Math.min(MAX_CONCURRENT_REQUESTS, runtime2.getCores() / 2));
+    }
+
+    @Override
+    ByteSizeValue getFlushByteSize() {
+      return MIGRATION_FLUSH_BYTE_SIZE;
     }
   }
 

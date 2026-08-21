@@ -32,6 +32,12 @@ dependencies {
 
   compileOnlyApi 'com.github.spotbugs:spotbugs-annotations'
   testImplementation 'org.elasticsearch.plugin:transport-netty4-client'
+  // EsTester boots an in-JVM Elasticsearch node, whose Netty4HttpServerTransport references
+  // io.netty.handler.codec.compression.BrotliEncoder. That class shipped in netty-codec on 4.1.x, which is what
+  // transport-netty4-client expects, but the root build forces netty-bom 4.2.15.Final (build.gradle) where the
+  // compression codecs were split out into netty-codec-compression. Without this the node fails to start its HTTP
+  // transport with NoClassDefFoundError and every ES-backed test in this module dies on connection reset.
+  testImplementation 'io.netty:netty-codec-compression'
   testImplementation 'ch.qos.logback:logback-core'
   testImplementation 'com.github.spotbugs:spotbugs-annotations'
   testImplementation 'org.subethamail:subethasmtp'
