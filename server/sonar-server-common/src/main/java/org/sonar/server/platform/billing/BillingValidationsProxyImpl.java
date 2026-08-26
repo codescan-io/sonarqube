@@ -17,22 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.server.organization;
+package org.sonar.server.platform.billing;
 
 import javax.annotation.Nullable;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class BillingValidationsProxyImpl implements BillingValidationsProxy {
 
   @Nullable
   private final BillingValidationsExtension billingValidationsExtension;
 
-  public BillingValidationsProxyImpl() {
-    this.billingValidationsExtension = null;
-  }
-
-  @Autowired(required = false)
-  public BillingValidationsProxyImpl(BillingValidationsExtension e) {
+  public BillingValidationsProxyImpl(@Nullable BillingValidationsExtension e) {
     this.billingValidationsExtension = e;
   }
 

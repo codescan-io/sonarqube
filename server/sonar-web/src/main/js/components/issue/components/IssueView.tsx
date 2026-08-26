@@ -42,8 +42,10 @@ import IssueActionsBar from './IssueActionsBar';
 import IssueMetaBar from './IssueMetaBar';
 import IssueTags from './IssueTags';
 import IssueTitleBar from './IssueTitleBar';
+import '../IssueView.css';
 
 interface Props {
+  aiAssistantEnabled?: boolean;
   branchLike?: BranchLike;
   checked?: boolean;
   currentPopup?: string;
@@ -70,6 +72,7 @@ export default function IssueView(props: Readonly<Props>) {
     togglePopup,
     selected,
     onCheck,
+    aiAssistantEnabled,
   } = props;
   const intl = useIntl();
   const nodeRef = useRef<HTMLLIElement>(null);
@@ -206,6 +209,8 @@ export default function IssueView(props: Readonly<Props>) {
               onAssign={onAssign}
               onChange={onChange}
               togglePopup={togglePopup}
+              showAiAssistantBadge={(aiAssistantEnabled && issue.aiCodeFixEnabled) ||
+                (!aiAssistantEnabled && (issue.assignee === 'ai-code-assistant' || Boolean(issue.codefixStatus)))}
             />
             <IssueMetaBar issue={issue} />
           </div>

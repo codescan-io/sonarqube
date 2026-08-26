@@ -46,6 +46,7 @@ message SearchWsResponse {
   optional ActionPlans unusedActionPlans = 10;
   optional Languages languages = 11;
   optional sonarqube.ws.commons.Facets facets = 12;
+  optional bool aiCodeFixEnabled = 14;
 }
 
 message Operation {
@@ -175,6 +176,8 @@ message Issue {
   optional string assignedDate = 54;
   optional string exceptionReason = 55;
   optional string assignedTo = 56;
+  optional bool aiCodeFixEnabled = 57;
+  optional string codefixStatus = 58;
 }
 
 message Sort {

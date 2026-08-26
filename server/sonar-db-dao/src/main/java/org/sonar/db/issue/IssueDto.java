@@ -23,6 +23,8 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableSet;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.protobuf.InvalidProtocolBufferException;
 import java.io.Serializable;
 import java.util.Collection;
@@ -85,9 +87,14 @@ public final class IssueDto implements Serializable {
   private long createdAt;
   private long updatedAt;
   private boolean quickFixAvailable;
+  private String issueAiMetadata;
+  private static final String VARIABLE_TYPE_KEY = "variableType";
   private boolean isNewCodeReferenceIssue;
   private String ruleDescriptionContextKey;
   private boolean prioritizedRule;
+
+  @Nullable
+  private String codefixStatus;
 
   @Nullable
   private Long issueResolutionExpiresAt;
@@ -163,6 +170,7 @@ public final class IssueDto implements Serializable {
       .setIssueUpdateDate(issue.updateDate())
       .setSelectedAt(issue.selectedAt())
       .setQuickFixAvailable(issue.isQuickFixAvailable())
+      .setIssueAiMetadata(buildAiMetadata(issue.getVariableType()))
       .setIsNewCodeReferenceIssue(issue.isNewCodeReferenceIssue())
       .setCodeVariants(issue.codeVariants())
       .setCleanCodeAttribute(issue.getCleanCodeAttribute())
@@ -218,10 +226,12 @@ public final class IssueDto implements Serializable {
       .setIssueUpdateDate(issue.updateDate())
       .setSelectedAt(issue.selectedAt())
       .setQuickFixAvailable(issue.isQuickFixAvailable())
+      .setIssueAiMetadata(buildAiMetadata(issue.getVariableType()))
       .setIsNewCodeReferenceIssue(issue.isNewCodeReferenceIssue())
       .setCodeVariants(issue.codeVariants())
       .setCleanCodeAttribute(issue.getCleanCodeAttribute())
       .setPrioritizedRule(issue.isPrioritizedRule())
+      .setCodefixStatus(issue.getCodefixStatus())
       .setIssueResolutionExpiresAt(issue.issueResolutionExpiresAt())
       // technical date
       .setUpdatedAt(now);
@@ -773,6 +783,41 @@ public final class IssueDto implements Serializable {
     return this;
   }
 
+  @CheckForNull
+  public String getIssueAiMetadata() {
+    return issueAiMetadata;
+  }
+
+  public IssueDto setIssueAiMetadata(@Nullable String issueAiMetadata) {
+    this.issueAiMetadata = issueAiMetadata;
+    return this;
+  }
+
+  @CheckForNull
+  public String getVariableType() {
+    if (issueAiMetadata == null || issueAiMetadata.isBlank()) {
+      return null;
+    }
+    try {
+      JsonObject json = JsonParser.parseString(issueAiMetadata).getAsJsonObject();
+      return (json.has(VARIABLE_TYPE_KEY) && !json.get(VARIABLE_TYPE_KEY).isJsonNull())
+        ? json.get(VARIABLE_TYPE_KEY).getAsString()
+        : null;
+    } catch (RuntimeException e) {
+      return null;
+    }
+  }
+
+  @CheckForNull
+  public static String buildAiMetadata(@Nullable String variableType) {
+    if (variableType == null) {
+      return null;
+    }
+    JsonObject json = new JsonObject();
+    json.addProperty(VARIABLE_TYPE_KEY, variableType);
+    return json.toString();
+  }
+
   public boolean isNewCodeReferenceIssue() {
     return isNewCodeReferenceIssue;
   }
@@ -888,6 +933,16 @@ public final class IssueDto implements Serializable {
     return this;
   }
 
+  @Nullable
+  public String getCodefixStatus() {
+    return codefixStatus;
+  }
+
+  public IssueDto setCodefixStatus(@Nullable String codefixStatus) {
+    this.codefixStatus = codefixStatus;
+    return this;
+  }
+
   public String getCveId() {
     return cveId;
   }
@@ -916,6 +971,7 @@ public final class IssueDto implements Serializable {
     issue.setChecksum(checksum);
     issue.setSeverity(severity);
     issue.setPrioritizedRule(prioritizedRule);
+    issue.setCodefixStatus(codefixStatus);
     issue.setAssigneeUuid(assigneeUuid);
     issue.setAssigneeLogin(assigneeLogin);
     issue.setComponentKey(componentKey);
@@ -936,6 +992,7 @@ public final class IssueDto implements Serializable {
     issue.setLocations(parseLocations());
     issue.setIsFromExternalRuleEngine(isExternal);
     issue.setQuickFixAvailable(quickFixAvailable);
+    issue.setVariableType(getVariableType());
     issue.setIsNewCodeReferenceIssue(isNewCodeReferenceIssue);
     issue.setCodeVariants(getCodeVariants());
     issue.setCleanCodeAttribute(cleanCodeAttribute);

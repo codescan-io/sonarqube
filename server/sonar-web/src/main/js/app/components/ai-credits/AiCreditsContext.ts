@@ -17,17 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.server.organization;
+import * as React from 'react';
+import { AiCreditsSummary } from '../../../api/ai-codefix';
 
-import org.sonar.api.ExtensionPoint;
-import org.sonar.api.ce.ComputeEngineSide;
-import org.sonar.api.server.ServerSide;
+export interface AiCreditsContextInterface {
+  creditsData: AiCreditsSummary | null;
+  isLoading: boolean;
+}
 
-/**
- * The billing plugin must implement this interface
- */
-@ServerSide
-@ComputeEngineSide
-@ExtensionPoint
-public interface BillingValidationsExtension extends BillingValidations {
+export const AiCreditsContext = React.createContext<AiCreditsContextInterface>({
+  creditsData: null,
+  isLoading: false,
+});
+
+export function useAiCreditsContext() {
+  return React.useContext(AiCreditsContext);
 }

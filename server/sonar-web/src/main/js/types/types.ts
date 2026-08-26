@@ -257,6 +257,7 @@ export interface Issue extends Omit<RawIssue, 'flows' | 'comments'> {
   pullRequest?: string;
   ruleName: string;
   secondaryLocations: FlowLocation[];
+  aiCodeFixEnabled?: boolean;
 }
 
 export interface IssueChangelog {
@@ -906,6 +907,7 @@ export interface Organization extends OrganizationBase {
   adminPages?: Extension[];
   canUpdateProjectsVisibilityToPrivate?: boolean;
   isDefault?: boolean;
+  isTrial?: boolean;
   pages?: Extension[];
   projectVisibility?: Visibility;
   notifications?: CodeScanNotification[];
@@ -919,6 +921,12 @@ export interface OrganizationBase {
   description?: string;
   url?: string;
   inviteUsersEnabled: boolean;
+}
+
+export interface OrganizationBillingDetails {
+  status?: string;
+  subscriptionId?: string | null;
+  trialEnds?: number;
 }
 
 export interface OrganizationMember extends UserActive {

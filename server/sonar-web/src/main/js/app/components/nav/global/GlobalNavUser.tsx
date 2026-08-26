@@ -41,35 +41,20 @@ export function GlobalNavUser({ currentUser, userOrganizations }: GlobalNavUserP
 
   const { settings } = React.useContext(AppStateContext);
 
-  const [pendoInitialized, setPendoInitialized] = React.useState<boolean>();
+  const [analyticsInitialized, setAnalyticsInitialized] = React.useState<boolean>();
 
   React.useEffect(() => {
-    initializePendo();
-  }, []);
+    initializeAnalytics();
+  }, [currentUser]);
 
-  const initializePendo = () => {
+  const initializeAnalytics = () => {
     const hasOrganizations = userOrganizations.length > 0;
-
-    const isCodescan = window.location.hostname.includes('codescan.io') || window.location.hostname.includes('autorabit.com');
-    if (isLoggedIn(currentUser) && hasOrganizations && !pendoInitialized && isCodescan) {
-      const script = document.createElement('script');
+    if (isLoggedIn(currentUser) && hasOrganizations && !analyticsInitialized && typeof (window as any).__initAnalytics === 'function') {
       const sfAccountId = userOrganizations.find?.(o => o.sfAccountId != null)?.sfAccountId || null;
+      const userId = currentUser.email ?? currentUser.login;
       const host = window.location.hostname;
-
-      script.innerHTML =
-        "  pendo.initialize({\n" +
-        "        visitor: {\n" +
-        "          id: '" + (currentUser.email ? currentUser.email : currentUser.login) + "'\n" +
-        "        },\n" +
-        "        account: {\n" +
-        "          id: '" + sfAccountId + "',\n" +
-        "          instance: '" + host + "'\n" +
-        "        }\n" +
-        "      });";
-
-      document.body.appendChild(script);
-
-      setPendoInitialized(true);
+      (window as any).__initAnalytics(userId, sfAccountId, host);
+      setAnalyticsInitialized(true);
     }
   }
 

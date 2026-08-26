@@ -62,6 +62,9 @@ dependencies {
   testFixturesImplementation 'org.elasticsearch.plugin:transport-netty4-client'
   testFixturesImplementation 'org.codelibs.elasticsearch.module:analysis-common'
   testFixturesImplementation 'org.codelibs.elasticsearch.module:reindex'
+  // painless is required by the embedded ES test node to run update_by_query inline scripts
+  // (e.g. BackfillCodefixStatusMigrationIT). Real ES distributions bundle painless by default.
+  testFixturesImplementation 'org.codelibs.elasticsearch.module:lang-painless'
   testFixturesImplementation 'org.elasticsearch:mocksocket'
   testFixturesImplementation 'org.junit.jupiter:junit-jupiter-api'
 
