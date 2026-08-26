@@ -27,6 +27,7 @@ import { GlobalNavUser } from './GlobalNavUser';
 import MainSonarQubeBar from './MainSonarQubeBar';
 import { Organization } from "../../../../types/types";
 import GlobalNavPlus from "./GlobalNavPlus";
+import TrialStatusPill from './TrialStatusPill';
 import { isNonStandardUser } from '../../../utils/userAccess';
 import { AiCreditsIndicator } from './AiCreditsIndicator';
 import { useAiCreditsContext } from '../../ai-credits/AiCreditsContext';
@@ -39,6 +40,7 @@ export interface GlobalNavProps {
 
 export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
+  const showTrialPill = isLoggedIn(currentUser) && !isNonStandardUser(currentUser);
   const { userCreditsData, isLoading, showCredits } = useAiCreditsContext();
 
   return (
@@ -52,6 +54,7 @@ export function GlobalNav(props: GlobalNavProps) {
         </div>
 
         <div className="sw-flex sw-items-center sw-ml-2">
+          {showTrialPill && <TrialStatusPill />}
           <div className="sw-flex sw-items-center sw-mr-1">
             {!isLoading && showCredits && userCreditsData && <AiCreditsIndicator data={userCreditsData} />}
           </div>

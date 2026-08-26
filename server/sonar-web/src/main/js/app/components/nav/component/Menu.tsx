@@ -29,12 +29,17 @@ import { DEFAULT_ISSUES_QUERY } from '../../../../components/shared/utils';
 import { hasMessage, translate, translateWithParameters } from '../../../../helpers/l10n';
 import { getPortfolioUrl, getProjectQueryUrl } from '../../../../helpers/urls';
 import { useBranchesQuery, useCurrentBranchQuery } from '../../../../queries/branch';
+import { useGetValuesQuery } from '../../../../queries/settings';
 import { isApplication, isProject } from '../../../../types/component';
 import { Feature } from '../../../../types/features';
 import { Component, Dict, Extension } from '../../../../types/types';
 import withAvailableFeatures, {
   WithAvailableFeaturesProps,
 } from '../../available-features/withAvailableFeatures';
+
+// CodeScan AI pages ("More" dropdown) are gated behind this global setting.
+const AI_FIX_JOB_ENABLED_KEY = 'codescan.cloud.aiAssistant.fixJob.enabled';
+const AI_EXTENSION_KEYS = ['developer/codescan_ai', 'developer/debt_report'];
 
 const SETTINGS_URLS = [
   '/project/admin',
@@ -67,6 +72,10 @@ export function Menu(props: Readonly<Props>) {
 
   const { data: branchLikes = [] } = useBranchesQuery(component);
   const { data: branchLike } = useCurrentBranchQuery(component);
+
+  const { data: aiSettings } = useGetValuesQuery([AI_FIX_JOB_ENABLED_KEY]);
+  const isAiCodeAssistEnabled =
+    aiSettings?.find((s) => s?.key === AI_FIX_JOB_ENABLED_KEY)?.value === 'true';
 
   const isApplicationChildInaccessble = isApplication(qualifier) && !canBrowseAllChildProjects;
 
@@ -541,8 +550,15 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
 
-    withoutSecurityExtension = withoutSecurityExtension.filter((e)=>{
-      return e.name  !== "Project Job"
+    withoutSecurityExtension = withoutSecurityExtension.filter((e) => {
+      if (e.name === "Project Job") {
+        return false;
+      }
+      // Hide the CodeScan AI pages unless the AI Fix Jobs feature toggle is enabled.
+      if (!isAiCodeAssistEnabled && AI_EXTENSION_KEYS.includes(e.key)) {
+        return false;
+      }
+      return true;
     });
 
     return (

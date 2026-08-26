@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import {Extension, MemberType, Organization, OrganizationBase, OrganizationMember, ArchivedOrganization, Paging} from "../types/types";
+import {Extension, MemberType, Organization, OrganizationBase, OrganizationBillingDetails, OrganizationMember, ArchivedOrganization, Paging} from "../types/types";
 import { archiveRequest, deleteRequest, post, postJSON, postJSONBody, putJsonBody } from "../helpers/request";
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
@@ -128,6 +128,17 @@ export interface OrganizationBilling {
 
 export function getOrganizationBilling(organization: string): Promise<OrganizationBilling> {
   return getJSON('/api/billing/show', { organization, p: 1, ps: 1 });
+}
+
+/**
+ * Trial/billing details served by the codescanng backend for a single organization.
+ * `trialEnds` is epoch millis; `status` is empty for an active trial and holds the
+ * subscription status name once the org is on a paid (Chargebee) subscription.
+ */
+export function getOrganizationBillingDetails(
+  organizationKee: string,
+): Promise<OrganizationBillingDetails> {
+  return getJSON(`/_codescan/organizations/${organizationKee}/billing`);
 }
 
 export function setOrganizationMemberSync(data: { enabled: boolean; organization: string }) {

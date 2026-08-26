@@ -20,11 +20,17 @@
 import { DropdownMenu } from '@sonarsource/echoes-react';
 import { NavBarTabLink } from '~design-system';
 import * as React from 'react';
+import { AppStateContext } from '../../../app/components/app-state/AppStateContext';
+import { useCurrentUser } from '../../../app/components/current-user/CurrentUserContext';
 import { translate } from '../../../helpers/l10n';
-import { Organization } from '../../../types/types';
+import { isDeploymentForAmazon } from '../../../helpers/urls';
+import { Organization, OrganizationBillingDetails } from '../../../types/types';
 import { useAiCreditsContext } from '../../../app/components/ai-credits/AiCreditsContext';
 
+const SALESFORCE_CONNECTION_PAGE_KEY = 'developer/salesforce_connection';
+
 interface Props {
+  billing?: OrganizationBillingDetails;
   location: { pathname: string };
   organization: Organization;
 }
@@ -38,10 +44,28 @@ const ADMIN_PATHS = [
   'webhooks',
 ];
 
-export default function OrganizationNavigationAdministration({ location, organization }: Props) {
+export const BILLING_PAGE_KEY = 'billing/billing';
+
+export default function OrganizationNavigationAdministration({ billing, location, organization }: Props) {
   const { creditsData, isLoading } = useAiCreditsContext();
 
   const { adminPages = [] } = organization;
+  const appState = React.useContext(AppStateContext);
+  const { currentUser } = useCurrentUser();
+
+
+  const canSeeAdministration =
+    currentUser.isLoggedIn &&
+    ((appState.canAdmin) || (!appState.canAdmin && appState.canCustomerAdmin));
+
+  const { whiteLabel } = appState;
+  const subscriptionId = billing?.subscriptionId;
+  const hasPaidSubscription =
+    subscriptionId !== undefined && subscriptionId !== null && subscriptionId !== '';
+
+  // Salesforce is not available to trial organizations.
+  const isTrialOrganization = organization.isTrial === true;
+
   const adminPathsWithExtensions = adminPages.map((e) => `extension/${e.key}`).concat(ADMIN_PATHS);
   const adminActive = adminPathsWithExtensions.some((path) =>
     location.pathname.endsWith(`organizations/${organization.kee}/${path}`),
@@ -63,6 +87,11 @@ export default function OrganizationNavigationAdministration({ location, organiz
                 e.key !== 'billing/ai_billing' ||
                 (!isLoading && creditsData && creditsData.allocatedCredits > 0),
             )
+            .filter(
+                (e) =>
+                isDeploymentForAmazon(whiteLabel) || hasPaidSubscription || canSeeAdministration || e.key !== BILLING_PAGE_KEY
+            )
+            .filter((e) => !isTrialOrganization || e.key !== SALESFORCE_CONNECTION_PAGE_KEY)
             .map((extension) => (
             <DropdownMenu.ItemLink
               isMatchingFullPath
