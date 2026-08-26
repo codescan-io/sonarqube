@@ -101,18 +101,18 @@ export function Sidebar(props: Readonly<Props>) {
   const { settings } = useAppState();
   const { hasFeature } = useAvailableFeatures();
   const { data: isStandardMode } = useStandardExperienceModeQuery();
+  const projectKey = props.component?.key ?? "";
   const [aiEnabled, setAiEnabled] = React.useState(false);
   React.useEffect(() => {
     async function checkAiEnabled() {
-      const projectKey = props.component?.key ?? "";
       const enabled = await isAiAssistantEnabled(projectKey);
       setAiEnabled(enabled);
     }
     checkAiEnabled();
-  }, [props.component?.key]);
+  }, [projectKey]);
 
   const isSupportedIntegration = useIsAiCodefixSupportedIntegration(
-    aiEnabled ? props.component?.key : undefined,
+    aiEnabled ? projectKey : undefined,
   );
 
   const renderComponentFacets = () => {
