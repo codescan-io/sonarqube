@@ -159,7 +159,10 @@ assemble.dependsOn cleanLocalUnzippedDir
 
 artifacts { zip zip }
 
-ext.publishToCodeArtifact = true
+// Product zip is uploaded to S3 bucket codescanng-build by the codescanng
+// BuildSonarqube pipeline (aws-s3-deploy). Do not publish the zip to CodeArtifact;
+// that repo is for Maven JARs consumed by codescanng (sonar-db-dao, etc.).
+ext.publishToCodeArtifact = false
 
 def bomFile = layout.buildDirectory.file('reports/bom.json')
 cyclonedxBom {

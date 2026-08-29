@@ -374,7 +374,9 @@ assemble.dependsOn cleanLocalUnzippedDir
 
 artifacts { zip zip }
 
-ext.publishToCodeArtifact = deployCommunity
+// OSS zip is not a Maven dependency of codescanng. The CodeScan product zip
+// goes to S3 (codescanng-build) from codescan-application, not CodeArtifact.
+ext.publishToCodeArtifact = false
 
 def bomFile = layout.buildDirectory.file('reports/bom.json')
 cyclonedxBom {

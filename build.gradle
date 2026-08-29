@@ -141,12 +141,19 @@ allprojects {
       metadataSources { artifact() }
     }
 
-    maven {
-      name = 'codeartifact'
-      url = codeartifactUrl
-      credentials {
-        username = 'aws'
-        password = codeartifactToken
+    // Resolve from CodeArtifact only when a token is present. An empty password
+    // yields 401 and Gradle treats that as a hard failure for private coords
+    // such as sonar-plugin-api:10.14-CODESCAN. Local `./gradlew build` then
+    // uses mavenLocal() (after `./gradlew publishLocal` in sonar-plugin-api).
+    // `./ca-gradlew build` supplies the token so those artifacts can be pulled.
+    if (codeartifactToken) {
+      maven {
+        name = 'codeartifact'
+        url = codeartifactUrl
+        credentials {
+          username = 'aws'
+          password = codeartifactToken
+        }
       }
     }
     mavenLocal()
@@ -160,10 +167,21 @@ allprojects {
     dependsOn 'dependencies'
   }
 
-  // `./gradlew artifactPublish` publishes the Maven artifacts to AWS CodeArtifact.
-  // Replaces the former com.jfrog.artifactory `artifactoryPublish` task; the publish
-  // repository is configured in the subprojects `publishing {}` block below.
+  // Local install only: `./gradlew publishLocal` → ~/.m2/repository.
+  // Does not publish to CodeArtifact. Use this after a local `build` so other
+  // local projects (e.g. codescanng) can resolve the fork from mavenLocal().
+  tasks.register('publishLocal') {
+    group = 'publishing'
+    description = 'Publishes Maven artifacts to the local Maven repository (~/.m2/repository). Does not publish to CodeArtifact.'
+    dependsOn 'publishToMavenLocal'
+  }
+
+  // Remote publish: `./ca-gradlew artifactPublish` → AWS CodeArtifact.
+  // Replaces the former com.jfrog.artifactory `artifactoryPublish` task. Not
+  // invoked by `build` or `publishLocal`.
   tasks.register('artifactPublish') {
+    group = 'publishing'
+    description = 'Publishes Maven artifacts to AWS CodeArtifact. Not used by local build or publishLocal.'
     dependsOn 'publish'
   }
 }
@@ -705,9 +723,37 @@ subprojects {
     enabled = false
   }
 
-  // Only publish modules that opt in via `ext.publishToCodeArtifact = true`.
+  // Remote CodeArtifact publish is opt-in at *invocation* time: the module must
+  // set publishToCodeArtifact=true AND the invoked tasks must include artifactPublish
+  // (checked via startParameter so `build` / `publish` / `publishLocal` never push).
+  def artifactPublishRequested = gradle.startParameter.taskNames.any { name ->
+    def simple = name.contains(':') ? name.substring(name.lastIndexOf(':') + 1) : name
+    simple == 'artifactPublish'
+  }
   tasks.withType(PublishToMavenRepository).configureEach {
+    onlyIf {
+      def enabled = project.publishToCodeArtifact && artifactPublishRequested
+      if (!enabled) {
+        logger.info("Skipping ${path}: CodeArtifact publish requires artifactPublish (module publishToCodeArtifact=${project.publishToCodeArtifact})")
+      }
+      return enabled
+    }
+    doFirst {
+      if (!project.codeartifactToken) {
+        throw new GradleException(
+          "CODEARTIFACT_AUTH_TOKEN is empty — cannot publish ${project.path} to ${project.codeartifactUrl}. Use ./ca-gradlew artifactPublish, or ./gradlew publishLocal for ~/.m2.")
+      }
+      logger.lifecycle("Publishing ${project.group}:${project.name}:${project.version} -> ${project.codeartifactUrl}")
+    }
+  }
+
+  // `publishLocal` / `publishToMavenLocal` should only install modules that CI
+  // would publish (the ones codescanng actually depends on).
+  tasks.withType(PublishToMavenLocal).configureEach {
     onlyIf { project.publishToCodeArtifact }
+    doFirst {
+      logger.lifecycle("Publishing ${project.group}:${project.name}:${project.version} -> mavenLocal (~/.m2/repository)")
+    }
   }
 
   publishing {
