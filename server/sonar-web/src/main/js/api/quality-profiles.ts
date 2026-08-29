@@ -363,7 +363,7 @@ export interface ActivateRuleParameters {
 
 export function activateRule(data: ActivateRuleParameters) {
   const params =
-    data.params && map(data.params, (value, key) => `${key}=${csvEscape(value)}`).join(';');
+    data.params && Object.keys(data.params) .sort() .map((key) => `${key}=${csvEscape(data.params[key])}`).join(';');
   const impacts = data.impacts && map(data.impacts, (value, key) => `${key}=${value}`).join(';');
   return post('/api/qualityprofiles/activate_rule', {
     ...data,
