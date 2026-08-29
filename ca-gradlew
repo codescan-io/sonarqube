@@ -4,9 +4,13 @@
 # authorization token (via scripts/codeartifact-bootstrap.sh) and exports it as
 # CODEARTIFACT_AUTH_TOKEN, which build.gradle uses to authenticate to CodeArtifact.
 #
-# Usage (identical to gradlew):
-#   ./ca-gradlew build
-#   ./ca-gradlew clean build artifactPublish -x test
+# Usage (identical to gradlew). Prefer plain ./gradlew for local compile:
+#   ./gradlew build                                      # compile only; does not publish
+#   ./gradlew publishLocal                               # install JARs to ~/.m2
+#   ./ca-gradlew artifactPublish                         # push JARs to CodeArtifact (CI)
+# CodeArtifact versions are immutable. Republishing 24.12.0.100206 requires:
+#   ./scripts/codeartifact-delete-version.sh 24.12.0.100206
+#   ./ca-gradlew -DbuildNumber=100206 artifactPublish -x test
 #
 # If CODEARTIFACT_AUTH_TOKEN is already set (e.g. in CI), it is reused as-is.
 
