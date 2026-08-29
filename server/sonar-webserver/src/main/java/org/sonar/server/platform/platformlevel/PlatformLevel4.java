@@ -135,6 +135,7 @@ import org.sonar.server.extension.CoreExtensionStopper;
 import org.sonar.server.favorite.FavoriteModule;
 import org.sonar.server.favorite.ws.FavoriteWsModule;
 import org.sonar.server.feature.ws.FeatureWsModule;
+import org.sonar.server.health.NodeHealthModule;
 import org.sonar.server.hotspot.ws.HotspotsWsModule;
 import org.sonar.server.issue.AddTagsAction;
 import org.sonar.server.issue.AssignAction;
@@ -323,7 +324,7 @@ public class PlatformLevel4 extends PlatformLevel {
       MetadataIndexDefinition.class,
       EsDbCompatibilityImpl.class);
 
-    // addIfCluster(new NodeHealthModule());
+    addIfCluster(new NodeHealthModule());
 
     add(
       RuleDescriptionFormatter.class,
