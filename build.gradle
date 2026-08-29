@@ -730,6 +730,66 @@ subprojects {
     def simple = name.contains(':') ? name.substring(name.lastIndexOf(':') + 1) : name
     simple == 'artifactPublish'
   }
+
+  // CodeArtifact release versions are immutable (409 Conflict). Artifactory
+  // overwrote; we delete the Published version immediately before PUT.
+  def deletePublishedCodeArtifactVersion = { String packageName, String packageVersion ->
+    def awsBin = System.getenv('AWS_BIN') ?: 'aws'
+    def domain = System.getenv('CODEARTIFACT_DOMAIN') ?: 'autorabit-artifacts-domain'
+    def owner = System.getenv('CODEARTIFACT_DOMAIN_OWNER') ?: '261140574810'
+    def region = System.getenv('CODEARTIFACT_REGION') ?: 'us-east-1'
+    def repo = System.getenv('CODEARTIFACT_REPOSITORY') ?: 'autorabit-libs-release'
+    def namespace = project.group.toString()
+    def cmd = [
+      awsBin, 'codeartifact', 'delete-package-versions',
+      '--domain', domain,
+      '--domain-owner', owner,
+      '--repository', repo,
+      '--format', 'maven',
+      '--namespace', namespace,
+      '--package', packageName,
+      '--versions', packageVersion,
+      '--expected-status', 'Published',
+      '--region', region
+    ]
+    def pb = new ProcessBuilder(cmd)
+    pb.redirectErrorStream(true)
+    def env = pb.environment()
+    def caKey = System.getenv('CODEARTIFACT_AWS_ACCESS_KEY_ID')
+    if (caKey) {
+      env.put('AWS_ACCESS_KEY_ID', caKey)
+      env.put('AWS_SECRET_ACCESS_KEY', System.getenv('CODEARTIFACT_AWS_SECRET_ACCESS_KEY') ?: '')
+      def caToken = System.getenv('CODEARTIFACT_AWS_SESSION_TOKEN')
+      if (caToken) {
+        env.put('AWS_SESSION_TOKEN', caToken)
+      } else {
+        env.remove('AWS_SESSION_TOKEN')
+      }
+      env.remove('AWS_PROFILE')
+    }
+    def proc
+    try {
+      proc = pb.start()
+    } catch (Exception ex) {
+      throw new GradleException(
+        "aws CLI not found (tried '${awsBin}'). Cannot delete ${namespace}:${packageName}:${packageVersion} before republish.",
+        ex)
+    }
+    def out = proc.inputStream.getText('UTF-8')
+    def exit = proc.waitFor()
+    logger.lifecycle("CodeArtifact delete ${namespace}:${packageName}:${packageVersion} (exit=${exit})\n${out.trim()}")
+    def missing = exit != 0 && (
+      out.contains('ResourceNotFoundException') ||
+      out.contains('does not exist') ||
+      out.contains('not found'))
+    if (exit != 0 && !missing) {
+      throw new GradleException(
+        "Failed to delete CodeArtifact ${namespace}:${packageName}:${packageVersion} (needed to avoid 409 Conflict). Output:\n${out}")
+    }
+    // CodeArtifact needs a moment after delete before the same GAV can be PUT again.
+    Thread.sleep(3000)
+  }
+
   tasks.withType(PublishToMavenRepository).configureEach {
     onlyIf {
       def enabled = project.publishToCodeArtifact && artifactPublishRequested
@@ -743,6 +803,7 @@ subprojects {
         throw new GradleException(
           "CODEARTIFACT_AUTH_TOKEN is empty — cannot publish ${project.path} to ${project.codeartifactUrl}. Use ./ca-gradlew artifactPublish, or ./gradlew publishLocal for ~/.m2.")
       }
+      deletePublishedCodeArtifactVersion(project.name, project.version.toString())
       logger.lifecycle("Publishing ${project.group}:${project.name}:${project.version} -> ${project.codeartifactUrl}")
     }
   }

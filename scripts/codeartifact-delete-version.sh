@@ -53,6 +53,7 @@ for pkg in "${PACKAGES[@]}"; do
       --namespace "$NAMESPACE" \
       --package "$pkg" \
       --versions "$PACKAGE_VERSION" \
+      --expected-status Published \
       --region "$REGION"; then
     echo "Deleted ${pkg}:${PACKAGE_VERSION}"
   else
