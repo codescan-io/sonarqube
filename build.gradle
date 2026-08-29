@@ -1,4 +1,5 @@
 import groovy.text.SimpleTemplateEngine
+import org.gradle.api.tasks.StopExecutionException
 import org.sonar.build.BlackBoxTest
 
 import static org.gradle.api.JavaVersion.VERSION_17
@@ -731,11 +732,9 @@ subprojects {
     simple == 'artifactPublish'
   }
 
-  // CodeArtifact will 409 if this GAV is reachable from an upstream (Maven Central
-  // or another CodeArtifact repo) even when it is not stored in this repository.
-  // DeletePackageVersions only looks at the target repo (ResourceNotFound), so we
-  // first set origin controls to Publish=ALLOW / Upstream=BLOCK, then delete any
-  // local copy, then PUT. See: package origin controls in the CodeArtifact User Guide.
+  // Best-effort AWS CLI helper. The Bitbucket OIDC role
+  // (armor-bitbucket-runner-role) can get a Maven token and PUT, but is not
+  // granted PutPackageOriginConfiguration — those calls must not fail the build.
   def runCodeArtifactAws = { List<String> args ->
     def awsBin = System.getenv('AWS_BIN') ?: 'aws'
     def pb = new ProcessBuilder([awsBin] + args)
@@ -757,11 +756,48 @@ subprojects {
     try {
       proc = pb.start()
     } catch (Exception ex) {
-      throw new GradleException("aws CLI not found (tried '${awsBin}').", ex)
+      return [exit: 127, out: "aws CLI not found (tried '${awsBin}'): ${ex.message}"]
     }
     def out = proc.inputStream.getText('UTF-8')
     def exit = proc.waitFor()
     return [exit: exit, out: out]
+  }
+
+  def codeArtifactJarExists = { String packageName, String packageVersion ->
+    def token = project.codeartifactToken?.toString()
+    if (!token) {
+      return false
+    }
+    def base = project.codeartifactUrl.toString()
+    if (!base.endsWith('/')) {
+      base += '/'
+    }
+    def groupPath = project.group.toString().replace('.', '/')
+    def url = new URL("${base}${groupPath}/${packageName}/${packageVersion}/${packageName}-${packageVersion}.jar")
+    def conn = (HttpURLConnection) url.openConnection()
+    conn.setRequestMethod('HEAD')
+    conn.setConnectTimeout(15000)
+    conn.setReadTimeout(15000)
+    conn.setInstanceFollowRedirects(true)
+    def basic = "aws:${token}".getBytes('UTF-8').encodeBase64().toString()
+    conn.setRequestProperty('Authorization', "Basic ${basic}")
+    def code
+    try {
+      code = conn.responseCode
+      if (code == 405 || code == 403) {
+        conn.disconnect()
+        conn = (HttpURLConnection) url.openConnection()
+        conn.setRequestMethod('GET')
+        conn.setConnectTimeout(15000)
+        conn.setReadTimeout(15000)
+        conn.setRequestProperty('Authorization', "Basic ${basic}")
+        code = conn.responseCode
+      }
+    } finally {
+      conn.disconnect()
+    }
+    logger.lifecycle("CodeArtifact probe ${url} -> ${code}")
+    return code == 200
   }
 
   def prepareCodeArtifactPackageForPublish = { String packageName, String packageVersion ->
@@ -783,26 +819,31 @@ subprojects {
     def origin = runCodeArtifactAws(['codeartifact', 'put-package-origin-configuration'] + common + [
       '--restrictions', 'publish=ALLOW,upstream=BLOCK'
     ])
-    logger.lifecycle("CodeArtifact origin ${namespace}:${packageName} (exit=${origin.exit})\n${origin.out.trim()}")
-    if (origin.exit != 0) {
-      throw new GradleException(
-        "Failed to set CodeArtifact origin controls on ${namespace}:${packageName} (needed to publish past upstream 409). Output:\n${origin.out}")
+    if (origin.exit == 0) {
+      logger.lifecycle("CodeArtifact origin ${namespace}:${packageName} set to publish=ALLOW,upstream=BLOCK")
+    } else if (origin.out.contains('AccessDeniedException')) {
+      logger.lifecycle("CodeArtifact origin skipped (IAM: armor-bitbucket-runner-role lacks PutPackageOriginConfiguration). Will not overwrite an upstream GAV.")
+    } else {
+      logger.warn("CodeArtifact origin ${namespace}:${packageName} failed (exit=${origin.exit}): ${origin.out.trim()}")
     }
 
     def deleted = runCodeArtifactAws(['codeartifact', 'delete-package-versions'] + common + [
       '--versions', packageVersion,
       '--expected-status', 'Published'
     ])
-    logger.lifecycle("CodeArtifact delete ${namespace}:${packageName}:${packageVersion} (exit=${deleted.exit})\n${deleted.out.trim()}")
     def missing = deleted.exit != 0 && (
       deleted.out.contains('ResourceNotFoundException') ||
       deleted.out.contains('does not exist') ||
-      deleted.out.contains('not found'))
-    if (deleted.exit != 0 && !missing) {
-      throw new GradleException(
-        "Failed to delete CodeArtifact ${namespace}:${packageName}:${packageVersion}. Output:\n${deleted.out}")
+      deleted.out.contains('not found') ||
+      deleted.out.contains('AccessDeniedException'))
+    if (deleted.exit == 0) {
+      logger.lifecycle("CodeArtifact deleted ${namespace}:${packageName}:${packageVersion}")
+      Thread.sleep(2000)
+    } else if (missing) {
+      logger.lifecycle("CodeArtifact delete ${namespace}:${packageName}:${packageVersion} skipped: ${deleted.out.trim().readLines().find { it }}")
+    } else {
+      logger.warn("CodeArtifact delete ${namespace}:${packageName}:${packageVersion} failed (exit=${deleted.exit}): ${deleted.out.trim()}")
     }
-    Thread.sleep(2000)
   }
 
   tasks.withType(PublishToMavenRepository).configureEach {
@@ -818,8 +859,14 @@ subprojects {
         throw new GradleException(
           "CODEARTIFACT_AUTH_TOKEN is empty — cannot publish ${project.path} to ${project.codeartifactUrl}. Use ./ca-gradlew artifactPublish, or ./gradlew publishLocal for ~/.m2.")
       }
-      prepareCodeArtifactPackageForPublish(project.name, project.version.toString())
-      logger.lifecycle("Publishing ${project.group}:${project.name}:${project.version} -> ${project.codeartifactUrl}")
+      def packageName = project.name
+      def packageVersion = project.version.toString()
+      prepareCodeArtifactPackageForPublish(packageName, packageVersion)
+      if (codeArtifactJarExists(packageName, packageVersion)) {
+        logger.lifecycle("Skipping PUT of ${project.group}:${packageName}:${packageVersion} — already reachable from CodeArtifact (this repo or an upstream). To replace it, grant codeartifact:PutPackageOriginConfiguration and republish.")
+        throw new StopExecutionException()
+      }
+      logger.lifecycle("Publishing ${project.group}:${packageName}:${packageVersion} -> ${project.codeartifactUrl}")
     }
   }
 
