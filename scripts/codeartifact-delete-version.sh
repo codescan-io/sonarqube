@@ -43,8 +43,20 @@ PACKAGES=(
   sonar-telemetry-core
 )
 
-echo "Deleting CodeArtifact ${NAMESPACE}:*:${PACKAGE_VERSION} from ${REPO}"
+echo "Allowing direct publish of ${NAMESPACE}:* (blocking upstream) in ${REPO}"
 for pkg in "${PACKAGES[@]}"; do
+  aws codeartifact put-package-origin-configuration \
+      --domain "$DOMAIN" \
+      --domain-owner "$OWNER" \
+      --repository "$REPO" \
+      --format maven \
+      --namespace "$NAMESPACE" \
+      --package "$pkg" \
+      --restrictions publish=ALLOW,upstream=BLOCK \
+      --region "$REGION" \
+    && echo "Origin ALLOW/BLOCK set on ${pkg}" \
+    || echo "Failed to set origin on ${pkg}"
+
   if aws codeartifact delete-package-versions \
       --domain "$DOMAIN" \
       --domain-owner "$OWNER" \
@@ -57,6 +69,6 @@ for pkg in "${PACKAGES[@]}"; do
       --region "$REGION"; then
     echo "Deleted ${pkg}:${PACKAGE_VERSION}"
   else
-    echo "No existing ${pkg}:${PACKAGE_VERSION} to delete (first publish)"
+    echo "No local ${pkg}:${PACKAGE_VERSION} in ${REPO} (may only exist upstream)"
   fi
 done

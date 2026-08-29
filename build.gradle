@@ -731,28 +731,14 @@ subprojects {
     simple == 'artifactPublish'
   }
 
-  // CodeArtifact release versions are immutable (409 Conflict). Artifactory
-  // overwrote; we delete the Published version immediately before PUT.
-  def deletePublishedCodeArtifactVersion = { String packageName, String packageVersion ->
+  // CodeArtifact will 409 if this GAV is reachable from an upstream (Maven Central
+  // or another CodeArtifact repo) even when it is not stored in this repository.
+  // DeletePackageVersions only looks at the target repo (ResourceNotFound), so we
+  // first set origin controls to Publish=ALLOW / Upstream=BLOCK, then delete any
+  // local copy, then PUT. See: package origin controls in the CodeArtifact User Guide.
+  def runCodeArtifactAws = { List<String> args ->
     def awsBin = System.getenv('AWS_BIN') ?: 'aws'
-    def domain = System.getenv('CODEARTIFACT_DOMAIN') ?: 'autorabit-artifacts-domain'
-    def owner = System.getenv('CODEARTIFACT_DOMAIN_OWNER') ?: '261140574810'
-    def region = System.getenv('CODEARTIFACT_REGION') ?: 'us-east-1'
-    def repo = System.getenv('CODEARTIFACT_REPOSITORY') ?: 'autorabit-libs-release'
-    def namespace = project.group.toString()
-    def cmd = [
-      awsBin, 'codeartifact', 'delete-package-versions',
-      '--domain', domain,
-      '--domain-owner', owner,
-      '--repository', repo,
-      '--format', 'maven',
-      '--namespace', namespace,
-      '--package', packageName,
-      '--versions', packageVersion,
-      '--expected-status', 'Published',
-      '--region', region
-    ]
-    def pb = new ProcessBuilder(cmd)
+    def pb = new ProcessBuilder([awsBin] + args)
     pb.redirectErrorStream(true)
     def env = pb.environment()
     def caKey = System.getenv('CODEARTIFACT_AWS_ACCESS_KEY_ID')
@@ -771,23 +757,52 @@ subprojects {
     try {
       proc = pb.start()
     } catch (Exception ex) {
-      throw new GradleException(
-        "aws CLI not found (tried '${awsBin}'). Cannot delete ${namespace}:${packageName}:${packageVersion} before republish.",
-        ex)
+      throw new GradleException("aws CLI not found (tried '${awsBin}').", ex)
     }
     def out = proc.inputStream.getText('UTF-8')
     def exit = proc.waitFor()
-    logger.lifecycle("CodeArtifact delete ${namespace}:${packageName}:${packageVersion} (exit=${exit})\n${out.trim()}")
-    def missing = exit != 0 && (
-      out.contains('ResourceNotFoundException') ||
-      out.contains('does not exist') ||
-      out.contains('not found'))
-    if (exit != 0 && !missing) {
+    return [exit: exit, out: out]
+  }
+
+  def prepareCodeArtifactPackageForPublish = { String packageName, String packageVersion ->
+    def domain = System.getenv('CODEARTIFACT_DOMAIN') ?: 'autorabit-artifacts-domain'
+    def owner = System.getenv('CODEARTIFACT_DOMAIN_OWNER') ?: '261140574810'
+    def region = System.getenv('CODEARTIFACT_REGION') ?: 'us-east-1'
+    def repo = System.getenv('CODEARTIFACT_REPOSITORY') ?: 'autorabit-libs-release'
+    def namespace = project.group.toString()
+    def common = [
+      '--domain', domain,
+      '--domain-owner', owner,
+      '--repository', repo,
+      '--format', 'maven',
+      '--namespace', namespace,
+      '--package', packageName,
+      '--region', region
+    ]
+
+    def origin = runCodeArtifactAws(['codeartifact', 'put-package-origin-configuration'] + common + [
+      '--restrictions', 'publish=ALLOW,upstream=BLOCK'
+    ])
+    logger.lifecycle("CodeArtifact origin ${namespace}:${packageName} (exit=${origin.exit})\n${origin.out.trim()}")
+    if (origin.exit != 0) {
       throw new GradleException(
-        "Failed to delete CodeArtifact ${namespace}:${packageName}:${packageVersion} (needed to avoid 409 Conflict). Output:\n${out}")
+        "Failed to set CodeArtifact origin controls on ${namespace}:${packageName} (needed to publish past upstream 409). Output:\n${origin.out}")
     }
-    // CodeArtifact needs a moment after delete before the same GAV can be PUT again.
-    Thread.sleep(3000)
+
+    def deleted = runCodeArtifactAws(['codeartifact', 'delete-package-versions'] + common + [
+      '--versions', packageVersion,
+      '--expected-status', 'Published'
+    ])
+    logger.lifecycle("CodeArtifact delete ${namespace}:${packageName}:${packageVersion} (exit=${deleted.exit})\n${deleted.out.trim()}")
+    def missing = deleted.exit != 0 && (
+      deleted.out.contains('ResourceNotFoundException') ||
+      deleted.out.contains('does not exist') ||
+      deleted.out.contains('not found'))
+    if (deleted.exit != 0 && !missing) {
+      throw new GradleException(
+        "Failed to delete CodeArtifact ${namespace}:${packageName}:${packageVersion}. Output:\n${deleted.out}")
+    }
+    Thread.sleep(2000)
   }
 
   tasks.withType(PublishToMavenRepository).configureEach {
@@ -803,7 +818,7 @@ subprojects {
         throw new GradleException(
           "CODEARTIFACT_AUTH_TOKEN is empty — cannot publish ${project.path} to ${project.codeartifactUrl}. Use ./ca-gradlew artifactPublish, or ./gradlew publishLocal for ~/.m2.")
       }
-      deletePublishedCodeArtifactVersion(project.name, project.version.toString())
+      prepareCodeArtifactPackageForPublish(project.name, project.version.toString())
       logger.lifecycle("Publishing ${project.group}:${project.name}:${project.version} -> ${project.codeartifactUrl}")
     }
   }
