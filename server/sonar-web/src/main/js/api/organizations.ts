@@ -161,12 +161,16 @@ export interface PendingInvitation {
   invitedOn: string;
 }
 
-export interface PageResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
+export interface PageEnvelope {
   number: number;
   size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  page: PageEnvelope;
 }
 
 export function getPendingInvitations(data: {
