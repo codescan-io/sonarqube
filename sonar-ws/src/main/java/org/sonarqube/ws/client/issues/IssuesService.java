@@ -115,7 +115,8 @@ public class IssuesService extends BaseService {
         .setParam("remove_tags", request.getRemoveTags())
         .setParam("sendNotifications", request.getSendNotifications())
         .setParam("set_severity", request.getSetSeverity() == null ? null : request.getSetSeverity().stream().collect(Collectors.joining(",")))
-        .setParam("set_type", request.getSetType() == null ? null : request.getSetType().stream().collect(Collectors.joining(","))),
+        .setParam("set_type", request.getSetType() == null ? null : request.getSetType().stream().collect(Collectors.joining(",")))
+        .setParam("changeAuthor", request.getChangeAuthor()),
       BulkChangeWsResponse.parser());
   }
 
@@ -252,6 +253,7 @@ public class IssuesService extends BaseService {
         .setParam("severities", request.getSeverities() == null ? null : request.getSeverities().stream().collect(Collectors.joining(",")))
         .setParam("inNewCodePeriod", request.isInNewCodePeriod())
         .setParam("statuses", request.getStatuses() == null ? null : request.getStatuses().stream().collect(Collectors.joining(",")))
+        .setParam("issueStatuses", request.getIssueStatuses() == null ? null : request.getIssueStatuses().stream().collect(Collectors.joining(",")))
         .setParam("tags", request.getTags() == null ? null : request.getTags().stream().collect(Collectors.joining(",")))
         .setParam("types", request.getTypes() == null ? null : request.getTypes().stream().collect(Collectors.joining(","))),
       SearchWsResponse.parser());
