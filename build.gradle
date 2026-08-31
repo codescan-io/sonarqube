@@ -39,10 +39,17 @@ allprojects {
 
   // AWS CodeArtifact (migrated off artifactory.autorabit.com). The auth token is provided by
   // CODEARTIFACT_AUTH_TOKEN (OIDC in CI, `aws sso` locally via scripts/codeartifact-bootstrap.sh).
+   // The domain host comes from CODEARTIFACTORY_URL (Bitbucket repository variable, injected by
+  // codescanng/bitbucket-pipelines.yml). Do not hardcode the account-specific URL here.
+  def codeartifactoryUrl = System.getenv('CODEARTIFACTORY_URL')?.replaceAll(/\/+$/, '')
   ext.codeartifactUrl = System.getenv('CODEARTIFACT_MAVEN_URL') ?:
-    'https://autorabit-artifacts-domain-261140574810.d.codeartifact.us-east-1.amazonaws.com/maven/autorabit-libs-release/'
+    (codeartifactoryUrl ? "${codeartifactoryUrl}/maven/autorabit-libs-release/" : '')
   ext.codeartifactToken = System.getenv('CODEARTIFACT_AUTH_TOKEN') ?:
     (project.hasProperty('codeartifactToken') ? project.getProperty('codeartifactToken') : '')
+  if (codeartifactToken && !codeartifactUrl) {
+    throw new GradleException(
+      'CODEARTIFACTORY_URL is not set. Configure it in Bitbucket repository variables, or export it locally to the CodeArtifact domain host (no /maven/... path).')
+  }
 
   // Opt-in publishing flag (replaces the former `artifactoryPublish.skip`). Individual modules
   // set `ext.publishToCodeArtifact = true` (or `= deployCommunity`) to be published by `artifactPublish`.
@@ -881,12 +888,14 @@ subprojects {
 
   publishing {
     repositories {
-      maven {
-        name = 'codeartifact'
-        url = codeartifactUrl
-        credentials {
-          username = 'aws'
-          password = codeartifactToken
+      if (codeartifactUrl) {
+        maven {
+          name = 'codeartifact'
+          url = codeartifactUrl
+          credentials {
+            username = 'aws'
+            password = codeartifactToken
+          }
         }
       }
     }
