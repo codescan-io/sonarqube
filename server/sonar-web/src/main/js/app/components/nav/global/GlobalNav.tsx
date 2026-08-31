@@ -31,6 +31,9 @@ import TrialStatusPill from './TrialStatusPill';
 import { isNonStandardUser } from '../../../utils/userAccess';
 import { AiCreditsIndicator } from './AiCreditsIndicator';
 import { useAiCreditsContext } from '../../ai-credits/AiCreditsContext';
+import { useContext } from 'react';
+import { AppStateContext } from '../../app-state/AppStateContext';
+import { GlobalSettingKeys } from '../../../../types/settings';
 
 export interface GlobalNavProps {
   currentUser: CurrentUser;
@@ -42,6 +45,11 @@ export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
   const showTrialPill = isLoggedIn(currentUser) && !isNonStandardUser(currentUser);
   const { userCreditsData, isLoading, showCredits } = useAiCreditsContext();
+  const { canAdmin, canCustomerAdmin, settings } = useContext(AppStateContext);
+  const isAdmin = Boolean(canAdmin || canCustomerAdmin);
+  const anyoneCanCreate = settings[GlobalSettingKeys.OrganizationsAnyoneCanCreate] === 'true';
+  const canCreateProject = isAdmin || userOrganizations.length > 0;
+  const canCreateOrganization = isAdmin || anyoneCanCreate;
 
   return (
     <MainSonarQubeBar>
@@ -59,7 +67,7 @@ export function GlobalNav(props: GlobalNavProps) {
             {!isLoading && showCredits && userCreditsData && <AiCreditsIndicator data={userCreditsData} />}
           </div>
           <EmbedDocsPopupHelper />
-          {isLoggedIn(currentUser) && (!isNonStandardUser(currentUser))  && (
+          {isLoggedIn(currentUser) && !(isNonStandardUser(currentUser) && (currentUser?.platformOrgs?.length ?? 0) > 0) && (canCreateProject || canCreateOrganization) && (
             <div style={{ height: 36, width: 36 }} className="sw-flex sw-items-center sw-justify-center sw-mr-2">
               <GlobalNavPlus />
             </div>
