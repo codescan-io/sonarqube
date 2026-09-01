@@ -41,6 +41,8 @@ interface Props {
   onSubmit: (values: AIRuleFormValues) => void;
   onBack: () => void;
   initialValues?: AIRuleFormValues | null;
+  /** Message from the api's pre-generation rule key validation, shown against the key field. */
+  serverError?: string;
 }
 
 const MAX_CHAR_COUNT = 5000;
@@ -78,7 +80,7 @@ const SparkleIcon = () => (
 );
 
 export default function DefineStep(props: Readonly<Props>) {
-  const { onSubmit, onBack, initialValues } = props;
+  const { onSubmit, onBack, initialValues, serverError } = props;
 
   const [ruleName, setRuleName] = useState(initialValues?.ruleName || '');
   const [ruleKey, setRuleKey] = useState(initialValues?.ruleKey || '');
@@ -192,6 +194,12 @@ export default function DefineStep(props: Readonly<Props>) {
                 <div className="define-step-error">
                   <img src={AlertCircleSvg} alt="" className="define-step-error-icon" />
                   Rule key is required.
+                </div>
+              )}
+              {serverError && (
+                <div className="define-step-error">
+                  <img src={AlertCircleSvg} alt="" className="define-step-error-icon" />
+                  {serverError}
                 </div>
               )}
             </div>
