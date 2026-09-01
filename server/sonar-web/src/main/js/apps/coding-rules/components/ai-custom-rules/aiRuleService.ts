@@ -24,6 +24,10 @@ export interface GenerateXPathRequest {
   description: string;
   organization: string;
   regenerate?: boolean;
+  /** Bare custom rule key, as typed into the Define step. */
+  ruleKey: string;
+  /** Key of the template the rule derives from; its repository half completes the rule key. */
+  templateKey: string;
 }
 
 export interface GenerateXPathResponse {
@@ -91,6 +95,24 @@ export interface AiRuleQuota {
  */
 export function generateAIXPath(request: GenerateXPathRequest): Promise<GenerateXPathResponse> {
   return postJSONBody('/_codescan/ai-rules/generate-xpath', request);
+}
+
+/**
+ * Reads the message out of a rejected codescanng api call. codescanng returns `{ error: "..." }`,
+ * which the shared `parseErrorResponse` does not understand — it looks for `message`/`errors`.
+ * Returns undefined for anything that is not a codescanng error body, so callers can fall back
+ * to their generic handling.
+ */
+export async function parseCodescanErrorMessage(error: unknown): Promise<string | undefined> {
+  if (!(error instanceof Response)) {
+    return undefined;
+  }
+  try {
+    const body = await error.clone().json();
+    return typeof body?.error === 'string' ? body.error : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**

@@ -23,7 +23,7 @@ import { addGlobalErrorMessage } from '~design-system';
 import { createRule } from '../../../../api/rules';
 import { translate, translateWithParameters } from '../../../../helpers/l10n';
 import { RuleDetails } from '../../../../types/types';
-import { generateAIXPath, getAiRuleQuota } from './aiRuleService';
+import { generateAIXPath, getAiRuleQuota, parseCodescanErrorMessage } from './aiRuleService';
 import './AIRuleWizard.css';
 import DefineStep, { AIRuleFormValues } from './DefineStep';
 import GenerateStep from './GenerateStep';
@@ -52,6 +52,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
   const [formValues, setFormValues] = React.useState<AIRuleFormValues | null>(null);
   const [ruleData, setRuleData] = React.useState<RuleData | null>(null);
   const [generationError, setGenerationError] = React.useState(false);
+  const [defineError, setDefineError] = React.useState<string | undefined>(undefined);
   const [loading, setLoading] = React.useState(false);
 
   const handleClose = () => {
@@ -89,6 +90,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
 
   const handleDefineSubmit = async (values: AIRuleFormValues) => {
     setFormValues(values);
+    setDefineError(undefined);
 
     try {
       if (!organization) {
@@ -116,6 +118,8 @@ export default function AIRuleWizard(props: Readonly<Props>) {
       const response = await generateAIXPath({
         description: values.ruleDescription,
         organization,
+        ruleKey: values.ruleKey,
+        templateKey: templateRule.key,
       });
 
       // Check if AI rejected the input (invalid/unrelated description)
@@ -134,6 +138,15 @@ export default function AIRuleWizard(props: Readonly<Props>) {
       });
       setGenerationError(isInvalidInput);
     } catch (error) {
+      // The api validates the rule key before spending credits, so a rejection here is a
+      // correctable input error, not a generation failure — keep the user on the Define step
+      // with the message rather than showing them a failed generation.
+      const message = await parseCodescanErrorMessage(error);
+      if (message !== undefined) {
+        setCurrentStep('define');
+        setDefineError(message);
+        return;
+      }
       setGenerationError(true);
       setRuleData({
         ruleName: values.ruleName,
@@ -187,6 +200,8 @@ export default function AIRuleWizard(props: Readonly<Props>) {
           ? `${formValues.ruleDescription}\n\n[REGENERATE: The previous XPath was rejected as inaccurate. Generate a different one. Previous: ${previousXPath}]`
           : formValues.ruleDescription,
         organization,
+        ruleKey: formValues.ruleKey,
+        templateKey: templateRule.key,
         regenerate: true,
       });
 
@@ -203,6 +218,10 @@ export default function AIRuleWizard(props: Readonly<Props>) {
       });
       setGenerationError(false);
     } catch (error) {
+      const message = await parseCodescanErrorMessage(error);
+      if (message !== undefined) {
+        addGlobalErrorMessage(message);
+      }
       setGenerationError(true);
     }
   };
@@ -301,7 +320,14 @@ export default function AIRuleWizard(props: Readonly<Props>) {
   const renderContent = () => {
     switch (currentStep) {
       case 'define':
-        return <DefineStep onSubmit={handleDefineSubmit} onBack={onBack || handleClose} initialValues={formValues} />;
+        return (
+          <DefineStep
+            onSubmit={handleDefineSubmit}
+            onBack={onBack || handleClose}
+            initialValues={formValues}
+            serverError={defineError}
+          />
+        );
       case 'generate':
         return (
           <GenerateStep
