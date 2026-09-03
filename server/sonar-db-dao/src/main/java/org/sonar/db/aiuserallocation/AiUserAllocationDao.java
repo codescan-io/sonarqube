@@ -17,23 +17,18 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
-import { AiCreditsSummary } from '../../../api/ai-codefix';
+package org.sonar.db.aiuserallocation;
 
-export interface AiCreditsContextInterface {
-  creditsData: AiCreditsSummary | null;
-  userCreditsData: AiCreditsSummary | null;
-  isLoading: boolean;
-  showCredits: boolean;
-}
+import org.sonar.db.Dao;
+import org.sonar.db.DbSession;
 
-export const AiCreditsContext = React.createContext<AiCreditsContextInterface>({
-  creditsData: null,
-  userCreditsData: null,
-  isLoading: false,
-  showCredits: false,
-});
+import static org.sonar.db.aiuserallocation.AiUserAllocationMapper.getMapper;
 
-export function useAiCreditsContext() {
-  return React.useContext(AiCreditsContext);
+public class AiUserAllocationDao implements Dao {
+    public void updateLicenseByOrganizationAndUser(DbSession dbSession, String organizationUuid, String userUuid) {
+        getMapper(dbSession).updateLicenseByOrganizationAndUser(organizationUuid, userUuid);
+    }
+    public void updateLicenseByUser(DbSession dbSession, String userUuid) {
+        getMapper(dbSession).updateLicenseByUser(userUuid);
+    }
 }

@@ -32,6 +32,7 @@ import static org.sonar.server.exceptions.BadRequestException.checkRequest;
 import static org.sonar.server.exceptions.NotFoundException.checkFound;
 
 public class UserDeactivator {
+
   private final DbClient dbClient;
   private final UserAnonymizer userAnonymizer;
 
@@ -85,6 +86,7 @@ public class UserDeactivator {
     dbClient.sessionTokensDao().deleteByUser(dbSession, user);
     dbClient.userDismissedMessagesDao().deleteByUser(dbSession, user);
     dbClient.qualityGateUserPermissionDao().deleteByUser(dbSession, user);
+    dbClient.aiUserAllocationDao().updateLicenseByUser(dbSession, userUuid);
     dbClient.organizationMemberDao().deleteByUserUuid(dbSession, userUuid);
   }
 

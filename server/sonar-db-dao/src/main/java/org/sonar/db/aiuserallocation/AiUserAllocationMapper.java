@@ -17,23 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
-import { AiCreditsSummary } from '../../../api/ai-codefix';
+package org.sonar.db.aiuserallocation;
 
-export interface AiCreditsContextInterface {
-  creditsData: AiCreditsSummary | null;
-  userCreditsData: AiCreditsSummary | null;
-  isLoading: boolean;
-  showCredits: boolean;
-}
+import org.apache.ibatis.annotations.Param;
+import org.sonar.db.DbSession;
 
-export const AiCreditsContext = React.createContext<AiCreditsContextInterface>({
-  creditsData: null,
-  userCreditsData: null,
-  isLoading: false,
-  showCredits: false,
-});
+public interface AiUserAllocationMapper {
+    static AiUserAllocationMapper getMapper(DbSession session) {
+        return session.getMapper(AiUserAllocationMapper.class);
+    }
+    void updateLicenseByOrganizationAndUser(@Param("organizationUuid") String organizationUuid, @Param("userUuid") String userUuid);
 
-export function useAiCreditsContext() {
-  return React.useContext(AiCreditsContext);
+    void updateLicenseByUser(@Param("userUuid") String userUuid);
 }
