@@ -79,7 +79,7 @@ public class WebPagesCache {
 
   private static final String GA_NOSCRIPT_CONTENT = "<noscript><iframe src=\"https://www.googletagmanager.com/ns.html?id=GTM-TGN67LR\" height=\"0\" width=\"0\" style=\"display:none;visibility:hidden\"></iframe></noscript>";
 
-  private static final String SONARQUBE_INSTANCE_VALUE = "CodeScanCloud";
+  private static final String SONARQUBE_INSTANCE_VALUE = "AutoRABIT CodeScan";
 
   private static final String INDEX_HTML_PATH = "/index.html";
 
