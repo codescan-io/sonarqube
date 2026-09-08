@@ -20,6 +20,7 @@
 import * as React from 'react';
 import OrganizationNavigationExtensions from './OrganizationNavigationExtensions';
 import OrganizationNavigationAdministration from './OrganizationNavigationAdministration';
+import OrganizationNavigationRules from './OrganizationNavigationRules';
 import { getQualityGatesUrl } from '../../../helpers/urls';
 import { translate } from "../../../helpers/l10n";
 import { Organization } from "../../../types/types";
@@ -46,7 +47,7 @@ export default function OrganizationNavigationMenu({ location, organization }: O
           text={translate('issues.facet.mode.count')}
       />
       <NavBarTabLink to={getProfilesPath(organization.kee)} text={translate('quality_profiles.page')} />
-      <NavBarTabLink to={`/organizations/${organization.kee}/rules`} text={translate('coding_rules.page')} />
+      <OrganizationNavigationRules location={location} organization={organization} />
       <NavBarTabLink to={getQualityGatesUrl(organization.kee)} text={translate('quality_gates.page')} />
       <NavBarTabLink to={`/organizations/${organization.kee}/members`} text={translate('organization.members.page')} />
       <OrganizationNavigationExtensions location={location} organization={organization}/>

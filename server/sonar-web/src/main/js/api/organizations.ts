@@ -17,11 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import {Extension, MemberType, Organization, OrganizationBase, OrganizationBillingDetails, OrganizationMember, ArchivedOrganization, Paging} from "../types/types";
-import { archiveRequest, deleteRequest, post, postJSON, postJSONBody, putJsonBody } from "../helpers/request";
+import axios from "axios";
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
-import axios from "axios";
+import { archiveRequest, deleteRequest, post, postJSON, postJSONBody, putJsonBody } from "../helpers/request";
+import { ArchivedOrganization, Extension, MemberType, Organization, OrganizationBase, OrganizationMember, Paging } from "../types/types";
 
 export function checkOrganizationKeyExistence(key: string): Promise<Organization | undefined> {
   return getJSON(`/_codescan/organizations/${key}/exists`).then(
@@ -68,6 +68,10 @@ export function restoreArchivedOrganization(key: string) {
 
 export function toggleInviteUsersVisibility(key: string, invite_users_enabled: boolean){
   return axios.patch(`/_codescan/organizations/${key}/update_invite_users?inviteUsersEnabled=${invite_users_enabled}`).catch(throwGlobalError);
+}
+
+export function toggleAiCustomRulesEnabled(key: string, aiCustomRulesEnabled: boolean){
+  return axios.patch(`/_codescan/organizations/${key}/update_ai_custom_rules?aiCustomRulesEnabled=${aiCustomRulesEnabled}`).catch(throwGlobalError);
 }
 
 interface GetOrganizationNavigation {

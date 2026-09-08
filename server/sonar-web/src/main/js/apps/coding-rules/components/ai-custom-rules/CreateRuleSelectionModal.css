@@ -1,0 +1,231 @@
+/*
+ * SonarQube
+ * Copyright (C) 2009-2024 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+/* Modal overlay */
+.create-rule-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Modal container */
+.create-rule-modal {
+  display: flex;
+  width: 690.487px;
+  min-height: 579.118px;
+  flex-direction: column;
+  align-items: flex-start;
+  border-radius: 4.455px;
+  border: 1.114px solid #EBEBEB;
+  background: #FFF;
+  box-shadow: 0 8.91px 35.638px 0 rgba(0, 0, 0, 0.18);
+}
+
+/* Modal header */
+.create-rule-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 24px 28px;
+  box-sizing: border-box;
+  border-bottom: 1.114px solid #EBEBEB;
+}
+
+.create-rule-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2A2F40;
+  margin: 0;
+}
+
+.create-rule-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #637192;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.create-rule-modal-close:hover {
+  color: #2A2F40;
+}
+
+/* Modal body */
+.create-rule-modal-body {
+  padding: 20px 28px 28px 28px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-description {
+  color: #637192;
+  margin: 0 0 24px 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Cards container */
+.selection-cards {
+  display: flex;
+  gap: 20px;
+}
+
+/* Card base */
+.selection-card {
+  flex: 1;
+  border-radius: 4.455px;
+  padding: 24px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  border: 2.114px solid #EBEBEB;
+  background: #FFFFFF;
+}
+
+.selection-card:hover {
+  border-color: var(--color-primary-brand, #5C6BD1);
+  box-shadow: 0 2px 8px 0 rgba(92, 107, 209, 0.12);
+  background: #F0F2FA;
+}
+
+/* Card header */
+.selection-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.card-icon-wrapper {
+  display: flex;
+  width: 44.548px;
+  height: 44.548px;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: 4.455px;
+  background: #F0F2FA;
+  border: 1.114px solid #EBEBEB;
+}
+
+.selection-card .card-icon {
+  width: 20.05px;
+  height: 20.05px;
+}
+
+.selection-card:hover .card-icon-wrapper {
+  background: var(--color-primary-brand, #5D6CD0);
+  border-color: var(--color-primary-brand, #5D6CD0);
+}
+
+.selection-card:hover .card-icon {
+  filter: brightness(0) invert(1);
+}
+
+/* Recommended badge */
+.recommended-badge {
+  background: #F0F2FA;
+  color: var(--color-primary-brand, #5C6BD1);
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Card title */
+.selection-card h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2A2F40;
+}
+
+/* Card description */
+.selection-card .card-description {
+  color: #637192;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 16px 0;
+}
+
+/* Feature list */
+.feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+}
+
+.feature-list li {
+  color: #637192;
+  font-size: 13px;
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feature-list li .check-icon {
+  width: 14.48px;
+  height: 14.48px;
+  flex-shrink: 0;
+}
+
+/* Get started link */
+.get-started-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-primary-brand, #5C6BD1);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.get-started-link:hover {
+  color: var(--color-primary-brand, #5C6BD1);
+  text-decoration: underline;
+}
+
+.get-started-link .chevron-icon {
+  width: 15.59px;
+  height: 15.59px;
+}
+
+/* AI disabled message */
+.ai-disabled-message {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid #E1BD6D;
+  border-radius: 8px;
+  background: #FCF4E1;
+  color: #6D5A1F;
+  font-size: 13px;
+  line-height: 1.5;
+}

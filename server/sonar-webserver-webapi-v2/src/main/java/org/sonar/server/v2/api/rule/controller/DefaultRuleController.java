@@ -75,6 +75,7 @@ public class DefaultRuleController implements RuleController {
       .setImpacts(request.impacts().stream().map(DefaultRuleController::toNewCustomRuleImpact).toList())
       .setType(request.type())
       .setSeverity(request.severity())
+      .setAiGenerated(request.aiGenerated() != null && request.aiGenerated())
       .setPreventReactivation(true);
     if (request.parameters() != null) {
       Map<String, String> params = new HashMap<>();
