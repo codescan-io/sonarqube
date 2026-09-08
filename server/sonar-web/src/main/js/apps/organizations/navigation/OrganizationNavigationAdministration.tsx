@@ -24,10 +24,12 @@ import { AppStateContext } from '../../../app/components/app-state/AppStateConte
 import { useCurrentUser } from '../../../app/components/current-user/CurrentUserContext';
 import { translate } from '../../../helpers/l10n';
 import { isDeploymentForAmazon } from '../../../helpers/urls';
+import { GlobalSettingKeys } from '../../../types/settings';
 import { Organization, OrganizationBillingDetails } from '../../../types/types';
 import { useAiCreditsContext } from '../../../app/components/ai-credits/AiCreditsContext';
 
 const SALESFORCE_CONNECTION_PAGE_KEY = 'developer/salesforce_connection';
+const RESOLUTION_TRANSFER_PAGE_KEY = 'developer/resolution_transfer';
 
 interface Props {
   billing?: OrganizationBillingDetails;
@@ -52,6 +54,11 @@ export default function OrganizationNavigationAdministration({ billing, location
   const { adminPages = [] } = organization;
   const appState = React.useContext(AppStateContext);
   const { currentUser } = useCurrentUser();
+
+  // Resolution Transfer feature flag, surfaced into appState.settings by GlobalAction. Reading it here (rather
+  // than via a separate request) hides/shows the menu entry with no restart. Fail closed (hidden) if unset.
+  const resolutionTransferEnabled =
+    appState.settings?.[GlobalSettingKeys.CodescanResolutionTransferEnabled] === 'true';
 
 
   const canSeeAdministration =
@@ -92,6 +99,7 @@ export default function OrganizationNavigationAdministration({ billing, location
                 isDeploymentForAmazon(whiteLabel) || hasPaidSubscription || canSeeAdministration || e.key !== BILLING_PAGE_KEY
             )
             .filter((e) => !isTrialOrganization || e.key !== SALESFORCE_CONNECTION_PAGE_KEY)
+            .filter((e) => resolutionTransferEnabled || e.key !== RESOLUTION_TRANSFER_PAGE_KEY)
             .map((extension) => (
             <DropdownMenu.ItemLink
               isMatchingFullPath
