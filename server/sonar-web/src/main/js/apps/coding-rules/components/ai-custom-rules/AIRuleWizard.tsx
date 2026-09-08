@@ -144,7 +144,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
       const message = await parseCodescanErrorMessage(error);
       if (message !== undefined) {
         setCurrentStep('define');
-        setDefineError(message);
+        addGlobalErrorMessage(message);
         return;
       }
       setGenerationError(true);
