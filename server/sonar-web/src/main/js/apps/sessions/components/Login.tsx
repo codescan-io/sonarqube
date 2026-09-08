@@ -62,7 +62,7 @@ export default function Login(props: Readonly<LoginProps>) {
 
       <Card className="sw-my-14 sw-p-0 sw-w-abs-350">
         <PageContentFontWrapper className="sw-typo-lg sw-flex sw-flex-col sw-items-center sw-py-8 sw-px-4">
-           <Image alt="" className="sw-mb-6" src="/images/embed-doc/codescan.svg" width={100} />
+           <Image alt="" className="sw-mb-6" src="/images/autorabit-logo.svg" width={130} />
           <Title className="sw-mb-6 sw-text-center">
             <FormattedMessage id="login.login_to_sonarqube" />
           </Title>
