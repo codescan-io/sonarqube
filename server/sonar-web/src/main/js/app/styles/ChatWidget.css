@@ -262,17 +262,6 @@
   }
 }
 
-.chat-logo-text {
-  font-weight: 400;
-  font-size: 1.25rem;
-  color: #fff;
-}
-
-.chat-slash {
-  display: inline-block;
-  transform: rotate3d(2, 1, 1, 45deg);
-  padding-bottom: 0.1rem;
-}
 /* Headings inside bot bubbles */
 .bubble-text h1,
 .bubble-text h2,
