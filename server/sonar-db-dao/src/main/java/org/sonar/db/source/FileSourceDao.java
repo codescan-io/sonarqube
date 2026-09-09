@@ -24,6 +24,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -57,23 +58,75 @@ public class FileSourceDao implements Dao {
     mapper(dbSession).scrollHashesForProject(projectUuid, rowHandler);
   }
 
+  // The line_hashes column stores one MD5 hash per line, newline-separated.  For very large
+  // files (e.g. 250k-line Salesforce Profiles) the value can exceed 8 MB.  Loading it in a
+  // single JDBC fetch causes OutOfMemoryError inside the PostgreSQL driver's receive buffer
+  // before Java code ever sees the data (ZD-264349).
+  //
+  // Fix: fetch the column in 1 MB chunks using SQL SUBSTRING so the JDBC driver never needs
+  // to buffer more than ~1 MB at a time.  Each chunk is parsed immediately, keeping peak heap
+  // usage proportional to the chunk size rather than the total column size.  All hashes are
+  // still returned, so issue history is fully preserved.
+  //
+  // Performance: for normal files whose line_hashes fit in one chunk the loop runs exactly
+  // once — identical query count to the original implementation.
+  private static final int LINE_HASHES_CHUNK_SIZE = 1_000_000; // characters per SQL SUBSTRING fetch
+
   @CheckForNull
   public List<String> selectLineHashes(DbSession dbSession, String fileUuid) {
     Connection connection = dbSession.getConnection();
     PreparedStatement pstmt = null;
     ResultSet rs = null;
     try {
-      pstmt = connection.prepareStatement("SELECT line_hashes FROM file_sources WHERE file_uuid=?");
-      pstmt.setString(1, fileUuid);
-      rs = pstmt.executeQuery();
-      if (rs.next()) {
-        String string = rs.getString(1);
-        if (string == null) {
+      pstmt = connection.prepareStatement(
+        "SELECT substring(line_hashes FROM ? FOR ?) FROM file_sources WHERE file_uuid=?");
+
+      List<String> hashes = new ArrayList<>();
+      String leftover = "";
+
+      for (int offset = 1; ; offset += LINE_HASHES_CHUNK_SIZE) {
+        pstmt.setInt(1, offset);
+        pstmt.setInt(2, LINE_HASHES_CHUNK_SIZE);
+        pstmt.setString(3, fileUuid);
+        rs = pstmt.executeQuery();
+        boolean rowExists = rs.next();
+        String chunk = rowExists ? rs.getString(1) : null;
+        DatabaseUtils.closeQuietly(rs);
+        rs = null;
+
+        if (!rowExists) {
+          // File row absent — only expected on the very first iteration.
+          return offset == 1 ? null : hashes;
+        }
+        if (chunk == null) {
+          // line_hashes IS NULL in the database.
           return Collections.emptyList();
         }
-        return END_OF_LINE_SPLITTER.splitToList(string);
+        if (chunk.isEmpty()) {
+          // substring() past end of string — no more data.
+          break;
+        }
+
+        // Split on newlines: every element except the last is a complete hash.
+        // The last element is either a partial hash (no newline yet) or "" (chunk
+        // ended exactly on a newline).  Either way it becomes the leftover for the
+        // next iteration, and is added after the loop once all chunks are read.
+        List<String> lines = END_OF_LINE_SPLITTER.splitToList(leftover + chunk);
+        for (int i = 0; i < lines.size() - 1; i++) {
+          hashes.add(lines.get(i));
+        }
+        leftover = lines.get(lines.size() - 1);
+
+        if (chunk.length() < LINE_HASHES_CHUNK_SIZE) {
+          // Received less than requested — this was the last chunk.
+          break;
+        }
       }
-      return null;
+
+      if (!leftover.isEmpty()) {
+        hashes.add(leftover);
+      }
+      return hashes;
     } catch (SQLException e) {
       throw new IllegalStateException("Fail to read FILE_SOURCES.LINE_HASHES of file " + fileUuid, e);
     } finally {
