@@ -190,6 +190,8 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
       branchUuids = dbClient.issueDao().selectBranchUuidsForRuleUuids(dbSession, ruleUuids);
     }
     if (branchUuids.isEmpty()) {
+      // Nothing to drain. Returning here avoids spinning up a pool and, more usefully, avoids the index refresh that
+      // BulkIndexer.stop() would otherwise issue for no reason.
       return 0;
     }
     int threads = Math.max(1, Math.min(REINDEX_MAX_THREADS, branchUuids.size()));
@@ -228,15 +230,15 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
         throw drainFailure;
       }
     } catch (RuntimeException e) {
-      // Remember the real cause (fetch/build/bulk error) so a failure while flushing below cannot mask it — that root
-      // cause is what ends up in the migration's FAILED status and drives diagnosis.
+      // Remember the real cause so a failure while flushing below cannot mask it — that root cause is what ends up in
+      // the migration's FAILED status and drives diagnosis.
       drainFailure = e;
       throw e;
     } finally {
       executor.shutdownNow();
       // stop() flushes queued bulk requests and refreshes the index. It must run even if a drain failed, to flush what
-      // was queued. Isolate its own failure: if the drain already failed keep that as the primary error and only attach
-      // the stop() failure; else a flush failure on an otherwise-successful drain is itself the failure and propagates.
+      // was already queued. Isolate its own failure: if the drain already failed keep that as the primary error and only
+      // attach the stop() failure; else a flush failure on an otherwise-successful drain is itself the failure.
       try {
         long flushStart = System.currentTimeMillis();
         bulkIndexer.stop();

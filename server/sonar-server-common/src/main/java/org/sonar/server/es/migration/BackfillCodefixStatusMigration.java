@@ -40,28 +40,29 @@ import org.sonar.server.issue.index.IssueIndexer;
  * with {@code _source} disabled (see {@link org.sonar.server.issue.index.IssueIndexDefinition}), and
  * {@code update_by_query} rebuilds every matched doc from its {@code _source} — so it fails on every document with
  * {@code "didn't store _source"}. The DB is the source of truth for the index, so we reindex the affected issues
- * straight from it instead. This is a one-off BLANKET backfill: the by-rule scroll writes
- * {@code codefixStatus = COALESCE(codefix_status, 'AVAILABLE')}, marking every in-scope issue AVAILABLE and defaulting
- * only the NULLs (any already-persisted value is preserved). It deliberately SKIPS the {@code variableType} narrowing
+ * straight from it instead. This is a one-off BLANKET backfill: {@code IssueMapper#scrollIssuesForIndexationForMigration}
+ * writes {@code codefixStatus = COALESCE(codefix_status, 'AVAILABLE')}, marking every in-scope issue AVAILABLE and
+ * defaulting only the NULLs (any already-persisted value is preserved). It deliberately SKIPS the {@code variableType}
+ * narrowing
  * that normal analysis indexing applies to variable-naming rules: old issues predate {@code issue_ai_metadata}, so
  * that narrowing would leave those rules' issues NULL, whereas the backfill intent is to mark them all. As a result the
  * backfilled value for an old INSTANCE-variable issue can differ from what its next analysis would write (which would
  * set it back to NULL) — accepted, as these are historical issues.
  *
  * <p>Scope is limited to issues of non-REMOVED {@code ai_code_fix_enabled} rules; issues of other rules already hold
- * the correct (absent/NULL) value in the index and are left untouched. The reindex streams the whole in-scope set in a
- * single server-side scroll under one {@link org.sonar.server.es.BulkIndexer.Size#REGULAR} bulk
- * (see {@link IssueIndexer#reindexByRuleUuids}). REGULAR, not {@code LARGE}: the from-scratch bulk-load path would
- * force-merge and re-replicate the ENTIRE {@code issues} index on completion — a cost proportional to the whole index
- * rather than to the subset rewritten, which on a large index dominates the run. It is idempotent: each doc is simply
- * rewritten with its current canonical value, so a re-run (e.g. after a partial failure) is safe, and an interrupted
- * run leaves no index settings to clean up.
+ * the correct (absent/NULL) value in the index and are left untouched. The reindex is partitioned by branch and drained
+ * in parallel — one scroll cursor per branch on its own DB session, several branches at a time, all feeding one shared
+ * {@link org.sonar.server.es.BulkIndexer.Size#MIGRATION} bulk indexer; see {@link IssueIndexer#reindexByRuleUuids} for
+ * why that shape (and not a single whole-table scroll, nor {@code Size.LARGE}) is what makes it fast. It is idempotent:
+ * each doc is simply rewritten with its current canonical value, so a re-run (e.g. after a partial failure) is safe,
+ * and an interrupted run leaves no index settings to clean up.
  *
  * <p><b>Run this in a quiet period, with analyses of the {@code ai_code_fix_enabled} projects stopped.</b> Issue search
- * is not degraded (REGULAR leaves replicas and refresh alone), but the single scroll holds one DB read cursor open for
- * the whole run, and these are plain last-write-wins index requests outside the resilient indexing path. With no
- * analyses running there are no competing writers, so the doc-vs-analysis race the resilient paths guard against cannot
- * happen. An interrupted run is recovered by simply re-running the migration to completion.
+ * is not degraded (MIGRATION leaves replicas and refresh alone), but the run holds one DB connection and one open
+ * scroll cursor per worker thread for its duration, and these are plain last-write-wins index requests outside the
+ * resilient indexing path. With no analyses running there are no competing writers, so the doc-vs-analysis race the
+ * resilient paths guard against cannot happen. A failure on any branch fails the whole run rather than reporting a
+ * partial backfill as COMPLETED; recovery is simply re-running the migration to completion.
  */
 @ServerSide
 public class BackfillCodefixStatusMigration implements EsDataMigration {
@@ -116,8 +117,8 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
     if (!issuesIndexExists()) {
       return EsDataMigrationExecution.completed("nothing to do: issues index absent; the full reindex will repopulate codefixStatus");
     }
-    // Resolve the (typically handful of) eligible rule uuids once, then stream-reindex every issue of those rules in a
-    // single scroll (IssueIndexer.reindexByRuleUuids). Meant to run in a quiet period.
+    // Resolve the (typically handful of) eligible rule uuids once, then reindex every issue of those rules branch by
+    // branch, several branches in parallel (IssueIndexer.reindexByRuleUuids). Meant to run in a quiet period.
     List<String> ruleUuids = dbClient.ruleDao().selectAiCodeFixBackfillRuleUuids(dbSession);
     if (ruleUuids.isEmpty()) {
       return EsDataMigrationExecution.completed("nothing to do: no ai_code_fix_enabled rules");
