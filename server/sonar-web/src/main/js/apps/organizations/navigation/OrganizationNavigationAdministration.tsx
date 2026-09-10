@@ -25,11 +25,15 @@ import { useCurrentUser } from '../../../app/components/current-user/CurrentUser
 import { translate } from '../../../helpers/l10n';
 import { isDeploymentForAmazon } from '../../../helpers/urls';
 import { GlobalSettingKeys } from '../../../types/settings';
+import { useGetValuesQuery } from '../../../queries/settings';
 import { Organization, OrganizationBillingDetails } from '../../../types/types';
 import { useAiCreditsContext } from '../../../app/components/ai-credits/AiCreditsContext';
 
 const SALESFORCE_CONNECTION_PAGE_KEY = 'developer/salesforce_connection';
 const RESOLUTION_TRANSFER_PAGE_KEY = 'developer/resolution_transfer';
+
+// Module-level so the react-query key is a stable reference across renders.
+const RESOLUTION_TRANSFER_SETTING_KEYS = [GlobalSettingKeys.CodescanResolutionTransferEnabled];
 
 interface Props {
   billing?: OrganizationBillingDetails;
@@ -55,10 +59,14 @@ export default function OrganizationNavigationAdministration({ billing, location
   const appState = React.useContext(AppStateContext);
   const { currentUser } = useCurrentUser();
 
-  // Resolution Transfer feature flag, surfaced into appState.settings by GlobalAction. Reading it here (rather
-  // than via a separate request) hides/shows the menu entry with no restart. Fail closed (hidden) if unset.
+
+  const { data: resolutionTransferSettings } = useGetValuesQuery(RESOLUTION_TRANSFER_SETTING_KEYS);
   const resolutionTransferEnabled =
-    appState.settings?.[GlobalSettingKeys.CodescanResolutionTransferEnabled] === 'true';
+    resolutionTransferSettings === undefined
+      ? appState.settings?.[GlobalSettingKeys.CodescanResolutionTransferEnabled] === 'true'
+      : resolutionTransferSettings.find(
+          (setting) => setting?.key === GlobalSettingKeys.CodescanResolutionTransferEnabled,
+        )?.value === 'true';
 
 
   const canSeeAdministration =
