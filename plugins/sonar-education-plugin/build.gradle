@@ -30,7 +30,7 @@ jar {
     }
 }
 
-artifactoryPublish.skip = !deployCommunity
+ext.publishToCodeArtifact = deployCommunity
 
 publishing {
     publications {

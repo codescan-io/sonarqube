@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+#
+# Deletes a Maven version from CodeArtifact so `artifactPublish` can republish it.
+# CodeArtifact release packages are immutable (409 Conflict on a second PUT).
+# Artifactory used to overwrite; this is the equivalent.
+#
+# Usage:
+#   ./scripts/codeartifact-delete-version.sh              # defaults to 24.12.0.100206
+#   ./scripts/codeartifact-delete-version.sh 24.12.0.100206
+#
+# Does not delete product zips (those go to S3 bucket codescanng-build).
+
+set -uo pipefail
+
+PACKAGE_VERSION="${1:-24.12.0.100206}"
+DOMAIN="${CODEARTIFACT_DOMAIN:-autorabit-artifacts-domain}"
+OWNER="${CODEARTIFACT_DOMAIN_OWNER:-261140574810}"
+REGION="${CODEARTIFACT_REGION:-us-east-1}"
+REPO="${CODEARTIFACT_REPOSITORY:-autorabit-libs-release}"
+NAMESPACE="org.sonarsource.sonarqube"
+
+# JARs opted in via publishToCodeArtifact (not codescan-application / sonar-application zips).
+PACKAGES=(
+  sonar-core
+  sonar-sarif
+  sonar-plugin-api-impl
+  sonar-scanner-engine
+  sonar-ws
+  sonar-scanner-protocol
+  sonar-markdown
+  sonar-xoo-plugin
+  sonar-education-plugin
+  sonar-db-core
+  sonar-testing-harness
+  sonar-db-dao
+  sonar-db-migration
+  sonar-webserver-api
+  sonar-auth-ldap
+  sonar-server-common
+  sonar-webserver-auth
+  sonar-ce-task-projectanalysis
+  sonar-process
+  sonar-telemetry-core
+)
+
+echo "Allowing direct publish of ${NAMESPACE}:* (blocking upstream) in ${REPO}"
+for pkg in "${PACKAGES[@]}"; do
+  aws codeartifact put-package-origin-configuration \
+      --domain "$DOMAIN" \
+      --domain-owner "$OWNER" \
+      --repository "$REPO" \
+      --format maven \
+      --namespace "$NAMESPACE" \
+      --package "$pkg" \
+      --restrictions publish=ALLOW,upstream=BLOCK \
+      --region "$REGION" \
+    && echo "Origin ALLOW/BLOCK set on ${pkg}" \
+    || echo "Failed to set origin on ${pkg}"
+
+  if aws codeartifact delete-package-versions \
+      --domain "$DOMAIN" \
+      --domain-owner "$OWNER" \
+      --repository "$REPO" \
+      --format maven \
+      --namespace "$NAMESPACE" \
+      --package "$pkg" \
+      --versions "$PACKAGE_VERSION" \
+      --expected-status Published \
+      --region "$REGION"; then
+    echo "Deleted ${pkg}:${PACKAGE_VERSION}"
+  else
+    echo "No local ${pkg}:${PACKAGE_VERSION} in ${REPO} (may only exist upstream)"
+  fi
+done

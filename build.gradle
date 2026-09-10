@@ -1,4 +1,5 @@
 import groovy.text.SimpleTemplateEngine
+import org.gradle.api.tasks.StopExecutionException
 import org.sonar.build.BlackBoxTest
 
 import static org.gradle.api.JavaVersion.VERSION_17
@@ -9,8 +10,6 @@ plugins {
   id "com.github.hierynomus.license-report" version "0.16.1" apply false
   id 'com.gradleup.shadow' version '8.3.3' apply false
   id 'com.google.protobuf' version '0.8.19' apply false
-  // dont update com.jfrog.artifactory, new version contains a bug
-  id 'com.jfrog.artifactory' version '5.2.5'
   id "de.undercouch.download" version "5.6.0" apply false
   id 'io.spring.dependency-management' version '1.1.6'
   id "org.cyclonedx.bom" version "1.10.0" apply false
@@ -36,8 +35,25 @@ boolean enableBom = System.getenv('CI') == "true" && (isMainBranch) ||
   gradle.startParameter.taskNames.findAll({ it.matches(".*:($bomTasks)") })
 
 allprojects {
-  apply plugin: 'com.jfrog.artifactory'
   apply plugin: 'maven-publish'
+
+  // AWS CodeArtifact (migrated off artifactory.autorabit.com). The auth token is provided by
+  // CODEARTIFACT_AUTH_TOKEN (OIDC in CI, `aws sso` locally via scripts/codeartifact-bootstrap.sh).
+   // The domain host comes from CODEARTIFACTORY_URL (Bitbucket repository variable, injected by
+  // codescanng/bitbucket-pipelines.yml). Do not hardcode the account-specific URL here.
+  def codeartifactoryUrl = System.getenv('CODEARTIFACTORY_URL')?.replaceAll(/\/+$/, '')
+  ext.codeartifactUrl = System.getenv('CODEARTIFACT_MAVEN_URL') ?:
+    (codeartifactoryUrl ? "${codeartifactoryUrl}/maven/autorabit-libs-release/" : '')
+  ext.codeartifactToken = System.getenv('CODEARTIFACT_AUTH_TOKEN') ?:
+    (project.hasProperty('codeartifactToken') ? project.getProperty('codeartifactToken') : '')
+  if (codeartifactToken && !codeartifactUrl) {
+    throw new GradleException(
+      'CODEARTIFACTORY_URL is not set. Configure it in Bitbucket repository variables, or export it locally to the CodeArtifact domain host (no /maven/... path).')
+  }
+
+  // Opt-in publishing flag (replaces the former `artifactoryPublish.skip`). Individual modules
+  // set `ext.publishToCodeArtifact = true` (or `= deployCommunity`) to be published by `artifactPublish`.
+  ext.publishToCodeArtifact = false
 
   ext.versionInSources = version
   ext.buildNumber = System.getProperty("buildNumber")
@@ -133,12 +149,19 @@ allprojects {
       metadataSources { artifact() }
     }
 
-    maven {
-      def autorabitRepository = System.env.'ARTIFACTORY_CODESCAN_REPO' ?: (project.hasProperty('artifactoryRepo') ? project.getProperty('artifactoryRepo') : 'libs-release')
-      url "https://artifactory.autorabit.com/artifactory/${autorabitRepository}"
-      credentials {
-         username = System.env.'ARTIFACTORY_USER' ?: (project.hasProperty('artifactoryUsername') ? project.getProperty('artifactoryUsername') : '')
-         password = System.env.'ARTIFACTORY_PWD' ?: (project.hasProperty('artifactoryPassword') ? project.getProperty('artifactoryPassword') : '')
+    // Resolve from CodeArtifact only when a token is present. An empty password
+    // yields 401 and Gradle treats that as a hard failure for private coords
+    // such as sonar-plugin-api:10.14-CODESCAN. Local `./gradlew build` then
+    // uses mavenLocal() (after `./gradlew publishLocal` in sonar-plugin-api).
+    // `./ca-gradlew build` supplies the token so those artifacts can be pulled.
+    if (codeartifactToken) {
+      maven {
+        name = 'codeartifact'
+        url = codeartifactUrl
+        credentials {
+          username = 'aws'
+          password = codeartifactToken
+        }
       }
     }
     mavenLocal()
@@ -152,37 +175,22 @@ allprojects {
     dependsOn 'dependencies'
   }
 
-  artifactory {
-    clientConfig.setIncludeEnvVars(false)
-    clientConfig.setEnvVarsExcludePatterns('*pass*,*psw*,*secret*,*MAVEN_CMD_LINE_ARGS*,sun.java.command,*token*,*login*,*key*,*signing*,*auth*,*pwd*')
-    contextUrl = System.getenv('ARTIFACTORY_URL') ?: 'https://artifactory.autorabit.com/artifactory/'
-    publish {
-      repository {
-        repoKey = System.env.'ARTIFACTORY_CODESCAN_REPO' ?: (project.hasProperty('artifactoryRepo') ? project.getProperty('artifactoryRepo') : 'libs-release')
-        username = System.env.'ARTIFACTORY_USER' ?: (project.hasProperty('artifactoryUsername') ? project.getProperty('artifactoryUsername') : '')
-        password = System.env.'ARTIFACTORY_PWD' ?: (project.hasProperty('artifactoryPassword') ? project.getProperty('artifactoryPassword') : '')
-      }
-      defaults {
-        properties = [
-            'build.name': 'codescan-cloud',
-            'build.number': System.getenv('BUILD_NUMBER'),
-            'pr.branch.target': System.getenv('GITHUB_BASE_BRANCH'),
-            'pr.number': System.getenv('PULL_REQUEST'),
-            'vcs.branch': ghBranch,
-            'vcs.revision': System.getenv('GIT_SHA1'),
-            'version': version
-        ]
-        publications('mavenJava')
-        publishPom = true
-        publishIvy = false
-      }
-    }
-    clientConfig.info.setBuildName('codescan-cloud')
-    clientConfig.info.setBuildNumber(System.getenv('BUILD_NUMBER'))
-    // Define the artifacts to be deployed to https://binaries.sonarsource.com on releases
-    clientConfig.info.addEnvironmentProperty('ARTIFACTS_TO_PUBLISH', "${project.group}:codescan-application:zip")
-    // The name of this variable is important because it's used by the delivery process when extracting version from Artifactory build info.
-    clientConfig.info.addEnvironmentProperty('PROJECT_VERSION', "${version}")
+  // Local install only: `./gradlew publishLocal` → ~/.m2/repository.
+  // Does not publish to CodeArtifact. Use this after a local `build` so other
+  // local projects (e.g. codescanng) can resolve the fork from mavenLocal().
+  tasks.register('publishLocal') {
+    group = 'publishing'
+    description = 'Publishes Maven artifacts to the local Maven repository (~/.m2/repository). Does not publish to CodeArtifact.'
+    dependsOn 'publishToMavenLocal'
+  }
+
+  // Remote publish: `./ca-gradlew artifactPublish` → AWS CodeArtifact.
+  // Replaces the former com.jfrog.artifactory `artifactoryPublish` task. Not
+  // invoked by `build` or `publishLocal`.
+  tasks.register('artifactPublish') {
+    group = 'publishing'
+    description = 'Publishes Maven artifacts to AWS CodeArtifact. Not used by local build or publishLocal.'
+    dependsOn 'publish'
   }
 }
 
@@ -206,9 +214,6 @@ subprojects {
   apply plugin: 'java-library'
   apply plugin: 'idea'
   apply plugin: 'signing'
-
-  // do not deploy to Artifactory by default
-  artifactoryPublish.skip = true
 
   compileJava.options.encoding = "UTF-8"
   compileTestJava.options.encoding = "UTF-8"
@@ -726,7 +731,174 @@ subprojects {
     enabled = false
   }
 
+  // Remote CodeArtifact publish is opt-in at *invocation* time: the module must
+  // set publishToCodeArtifact=true AND the invoked tasks must include artifactPublish
+  // (checked via startParameter so `build` / `publish` / `publishLocal` never push).
+  def artifactPublishRequested = gradle.startParameter.taskNames.any { name ->
+    def simple = name.contains(':') ? name.substring(name.lastIndexOf(':') + 1) : name
+    simple == 'artifactPublish'
+  }
+
+  // Best-effort AWS CLI helper. The Bitbucket OIDC role
+  // (armor-bitbucket-runner-role) can get a Maven token and PUT, but is not
+  // granted PutPackageOriginConfiguration — those calls must not fail the build.
+  def runCodeArtifactAws = { List<String> args ->
+    def awsBin = System.getenv('AWS_BIN') ?: 'aws'
+    def pb = new ProcessBuilder([awsBin] + args)
+    pb.redirectErrorStream(true)
+    def env = pb.environment()
+    def caKey = System.getenv('CODEARTIFACT_AWS_ACCESS_KEY_ID')
+    if (caKey) {
+      env.put('AWS_ACCESS_KEY_ID', caKey)
+      env.put('AWS_SECRET_ACCESS_KEY', System.getenv('CODEARTIFACT_AWS_SECRET_ACCESS_KEY') ?: '')
+      def caToken = System.getenv('CODEARTIFACT_AWS_SESSION_TOKEN')
+      if (caToken) {
+        env.put('AWS_SESSION_TOKEN', caToken)
+      } else {
+        env.remove('AWS_SESSION_TOKEN')
+      }
+      env.remove('AWS_PROFILE')
+    }
+    def proc
+    try {
+      proc = pb.start()
+    } catch (Exception ex) {
+      return [exit: 127, out: "aws CLI not found (tried '${awsBin}'): ${ex.message}"]
+    }
+    def out = proc.inputStream.getText('UTF-8')
+    def exit = proc.waitFor()
+    return [exit: exit, out: out]
+  }
+
+  def codeArtifactJarExists = { String packageName, String packageVersion ->
+    def token = project.codeartifactToken?.toString()
+    if (!token) {
+      return false
+    }
+    def base = project.codeartifactUrl.toString()
+    if (!base.endsWith('/')) {
+      base += '/'
+    }
+    def groupPath = project.group.toString().replace('.', '/')
+    def url = new URL("${base}${groupPath}/${packageName}/${packageVersion}/${packageName}-${packageVersion}.jar")
+    def conn = (HttpURLConnection) url.openConnection()
+    conn.setRequestMethod('HEAD')
+    conn.setConnectTimeout(15000)
+    conn.setReadTimeout(15000)
+    conn.setInstanceFollowRedirects(true)
+    def basic = "aws:${token}".getBytes('UTF-8').encodeBase64().toString()
+    conn.setRequestProperty('Authorization', "Basic ${basic}")
+    def code
+    try {
+      code = conn.responseCode
+      if (code == 405 || code == 403) {
+        conn.disconnect()
+        conn = (HttpURLConnection) url.openConnection()
+        conn.setRequestMethod('GET')
+        conn.setConnectTimeout(15000)
+        conn.setReadTimeout(15000)
+        conn.setRequestProperty('Authorization', "Basic ${basic}")
+        code = conn.responseCode
+      }
+    } finally {
+      conn.disconnect()
+    }
+    logger.lifecycle("CodeArtifact probe ${url} -> ${code}")
+    return code == 200
+  }
+
+  def prepareCodeArtifactPackageForPublish = { String packageName, String packageVersion ->
+    def domain = System.getenv('CODEARTIFACT_DOMAIN') ?: 'autorabit-artifacts-domain'
+    def owner = System.getenv('CODEARTIFACT_DOMAIN_OWNER') ?: '261140574810'
+    def region = System.getenv('CODEARTIFACT_REGION') ?: 'us-east-1'
+    def repo = System.getenv('CODEARTIFACT_REPOSITORY') ?: 'autorabit-libs-release'
+    def namespace = project.group.toString()
+    def common = [
+      '--domain', domain,
+      '--domain-owner', owner,
+      '--repository', repo,
+      '--format', 'maven',
+      '--namespace', namespace,
+      '--package', packageName,
+      '--region', region
+    ]
+
+    def origin = runCodeArtifactAws(['codeartifact', 'put-package-origin-configuration'] + common + [
+      '--restrictions', 'publish=ALLOW,upstream=BLOCK'
+    ])
+    if (origin.exit == 0) {
+      logger.lifecycle("CodeArtifact origin ${namespace}:${packageName} set to publish=ALLOW,upstream=BLOCK")
+    } else if (origin.out.contains('AccessDeniedException')) {
+      logger.lifecycle("CodeArtifact origin skipped (IAM: armor-bitbucket-runner-role lacks PutPackageOriginConfiguration). Will not overwrite an upstream GAV.")
+    } else {
+      logger.warn("CodeArtifact origin ${namespace}:${packageName} failed (exit=${origin.exit}): ${origin.out.trim()}")
+    }
+
+    def deleted = runCodeArtifactAws(['codeartifact', 'delete-package-versions'] + common + [
+      '--versions', packageVersion,
+      '--expected-status', 'Published'
+    ])
+    def missing = deleted.exit != 0 && (
+      deleted.out.contains('ResourceNotFoundException') ||
+      deleted.out.contains('does not exist') ||
+      deleted.out.contains('not found') ||
+      deleted.out.contains('AccessDeniedException'))
+    if (deleted.exit == 0) {
+      logger.lifecycle("CodeArtifact deleted ${namespace}:${packageName}:${packageVersion}")
+      Thread.sleep(2000)
+    } else if (missing) {
+      logger.lifecycle("CodeArtifact delete ${namespace}:${packageName}:${packageVersion} skipped: ${deleted.out.trim().readLines().find { it }}")
+    } else {
+      logger.warn("CodeArtifact delete ${namespace}:${packageName}:${packageVersion} failed (exit=${deleted.exit}): ${deleted.out.trim()}")
+    }
+  }
+
+  tasks.withType(PublishToMavenRepository).configureEach {
+    onlyIf {
+      def enabled = project.publishToCodeArtifact && artifactPublishRequested
+      if (!enabled) {
+        logger.info("Skipping ${path}: CodeArtifact publish requires artifactPublish (module publishToCodeArtifact=${project.publishToCodeArtifact})")
+      }
+      return enabled
+    }
+    doFirst {
+      if (!project.codeartifactToken) {
+        throw new GradleException(
+          "CODEARTIFACT_AUTH_TOKEN is empty — cannot publish ${project.path} to ${project.codeartifactUrl}. Use ./ca-gradlew artifactPublish, or ./gradlew publishLocal for ~/.m2.")
+      }
+      def packageName = project.name
+      def packageVersion = project.version.toString()
+      prepareCodeArtifactPackageForPublish(packageName, packageVersion)
+      if (codeArtifactJarExists(packageName, packageVersion)) {
+        logger.lifecycle("Skipping PUT of ${project.group}:${packageName}:${packageVersion} — already reachable from CodeArtifact (this repo or an upstream). To replace it, grant codeartifact:PutPackageOriginConfiguration and republish.")
+        throw new StopExecutionException()
+      }
+      logger.lifecycle("Publishing ${project.group}:${packageName}:${packageVersion} -> ${project.codeartifactUrl}")
+    }
+  }
+
+  // `publishLocal` / `publishToMavenLocal` should only install modules that CI
+  // would publish (the ones codescanng actually depends on).
+  tasks.withType(PublishToMavenLocal).configureEach {
+    onlyIf { project.publishToCodeArtifact }
+    doFirst {
+      logger.lifecycle("Publishing ${project.group}:${project.name}:${project.version} -> mavenLocal (~/.m2/repository)")
+    }
+  }
+
   publishing {
+    repositories {
+      if (codeartifactUrl) {
+        maven {
+          name = 'codeartifact'
+          url = codeartifactUrl
+          credentials {
+            username = 'aws'
+            password = codeartifactToken
+          }
+        }
+      }
+    }
     publications {
       mavenJava(MavenPublication) {
         pom {
@@ -806,14 +978,14 @@ subprojects {
     def signingPassword = findProperty("signingPassword")
     useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     required {
-      return isMainBranch && gradle.taskGraph.hasTask(":artifactoryPublish")
+      return isMainBranch && gradle.taskGraph.hasTask(":artifactPublish")
     }
     sign publishing.publications
   }
 
   tasks.withType(Sign) {
     onlyIf {
-      return !artifactoryPublish.skip && isMainBranch && gradle.taskGraph.hasTask(":artifactoryPublish")
+      return isMainBranch && gradle.taskGraph.hasTask(":artifactPublish")
     }
   }
 }
