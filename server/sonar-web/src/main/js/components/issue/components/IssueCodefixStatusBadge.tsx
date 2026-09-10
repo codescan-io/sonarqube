@@ -23,6 +23,7 @@ import classNames from 'classnames';
 import * as React from 'react';
 import { getCodefixStatus } from '../../../api/ai-codefix';
 import { getValues } from '../../../api/settings';
+import { useIsAiCodefixSupportedIntegration } from '../../../queries/ai-codefix';
 import { AiCodefixIconKind, AiCodefixStatusIcon } from '../../icons/AiCodefixStatusIcon';
 import { Issue } from '../../../types/types';
 
@@ -101,6 +102,8 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
   const hasAiFix = hasAiCodefix(issue);
   const queryClient = useQueryClient();
 
+  const isSupportedAlm = useIsAiCodefixSupportedIntegration(issue.project);
+
   // Automation mode tells us whether a FIX_GENERATED job will get a PR automatically. No staleTime, but the
   // per-project query key dedupes to ~1 settings call per project, only on mount (never polled).
   const { data: automationMode } = useQuery({
@@ -169,6 +172,9 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
     isAutomaticFixGenerated && prInProgressVisible ? 'PULL_REQUEST_IN_PROGRESS' : rawStatus;
 
   if (!hasAiFix || isError || !displayStatus) {
+    if (!isSupportedAlm) {
+      return null;
+    }
     return (
       <div className="sparkle-label sw-mr-5 magic-wand-text">
         <AiCodefixStatusIcon kind="available" />
@@ -178,6 +184,10 @@ export default function AiCodefixBadge({ issue }: { issue: Issue }) {
   }
 
   const { kind, text, textClassName } = getAiCodefixStatusDisplay(displayStatus);
+
+  if (kind === 'available' && !isSupportedAlm) {
+    return null;
+  }
   return (
     <div className={classNames('codefix-status-label sw-mr-5', textClassName)}>
       <AiCodefixStatusIcon kind={kind} spinning={kind === 'in-progress'} />

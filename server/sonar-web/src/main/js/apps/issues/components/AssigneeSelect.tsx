@@ -27,12 +27,15 @@ import { isDefined } from '../../../helpers/types';
 import { Issue } from '../../../types/types';
 import { RestUser, UserActive, isLoggedIn, isUserActive } from '../../../types/users';
 import { searchAssignees } from '../utils';
-import { isAiAssistantEnabled } from 'src/main/js/api/settings';
+import { isAiAssistantEnabled } from '../../../api/settings';
+import { useAreAllAiCodefixSupportedIntegrations } from '../../../queries/ai-codefix';
 
 // exported for test
 export const MIN_QUERY_LENGTH = 2;
 
 const UNASSIGNED: Option = { value: '', label: translate('unassigned') };
+
+const AI_CODE_ASSISTANT_LOGIN = 'ai-code-assistant';
 
 interface Option extends SelectOption {
   Icon?: React.JSX.Element;
@@ -73,6 +76,13 @@ export default function AssigneeSelect(props: Readonly<AssigneeSelectProps>) {
 
     checkAiEnabled();
   }, [issues]);
+
+  const allIssuesAiCodeFixEnabled = issues.every((issue) => issue.aiCodeFixEnabled === true);
+  const mayOfferAiAssistant = aiEnabled && allIssuesAiCodeFixEnabled;
+  const allIntegrationsSupported = useAreAllAiCodefixSupportedIntegrations(
+      mayOfferAiAssistant ? issues.map((issue) => issue.project) : [],
+  );
+  const canAssignAiAssistant = mayOfferAiAssistant && allIntegrationsSupported;
   const defaultOptions = React.useMemo((): Option[] => {
     const allowCurrentUserSelection =
       isLoggedIn(currentUser) && issues.some((issue) => currentUser.login !== issue.assignee);
@@ -84,21 +94,21 @@ export default function AssigneeSelect(props: Readonly<AssigneeSelectProps>) {
 const defaultOptionsWithAi = React.useMemo((): Option[] => {
   return [
     ...defaultOptions,
-    ...(aiEnabled
+    ...(canAssignAiAssistant
       ? [
           {
-            value: "ai-code-assistant",
+            value: AI_CODE_ASSISTANT_LOGIN,
             label: "AI Code Assistant",
             Icon: <img className="ai-assistant-icon" src='/images/ai-assistant.svg' alt="AI Code Assistant" />
           }
         ]
       : [])
   ];
-}, [defaultOptions, aiEnabled]); 
+}, [defaultOptions, canAssignAiAssistant]);
 
 React.useEffect(() => {
   setOptions(undefined); // Clear search results when AI status changes
-}, [aiEnabled]);  
+}, [canAssignAiAssistant]);
 
   const handleAssigneeSearch = React.useCallback(
     async (query: string) => {
@@ -106,13 +116,15 @@ React.useEffect(() => {
         setOptions(undefined);
         return;
       }
-      const assignees = await searchAssignees(query, props.organization).then(({ results }) =>              
-        results.map(userToOption),      
+      const assignees = await searchAssignees(query, props.organization).then(({ results }) =>
+        results
+          .filter((user) => canAssignAiAssistant || user.login !== AI_CODE_ASSISTANT_LOGIN)
+          .map(userToOption),
       );
 
       setOptions(assignees);
     },
-    [props.issues[0]?.projectKey],
+    [props.issues[0]?.project, canAssignAiAssistant],
   );
 
   return (
