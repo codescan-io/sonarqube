@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -63,34 +64,42 @@ class IssueIteratorForSingleChunk implements IssueIterator {
   private final Cursor<IndexedIssueDto> indexCursor;
   private final Iterator<IndexedIssueDto> iterator;
 
-  IssueIteratorForSingleChunk(DbClient dbClient, @Nullable String branchUuid, @Nullable Collection<String> issueKeys) {
-    checkArgument(issueKeys == null || issueKeys.size() <= DatabaseUtils.PARTITION_SIZE_FOR_ORACLE,
-      "Cannot search for more than " + DatabaseUtils.PARTITION_SIZE_FOR_ORACLE + " issue keys at once. Please provide the keys in smaller chunks.");
+  /**
+   * Opens the scroll cursor produced by {@code cursorFactory} on its own session, closing that session if opening the
+   * cursor fails. Two factories feed this: {@link #forBranchOrKeys} (the analysis indexing paths) and
+   * {@link #forBranchAndRuleUuids} (the codefixStatus backfill migration). They cannot be constructors — both erase to
+   * {@code (DbClient, String, Collection)}.
+   */
+  private IssueIteratorForSingleChunk(DbClient dbClient, Function<DbSession, Cursor<IndexedIssueDto>> cursorFactory, String failureMessage) {
     this.session = dbClient.openSession(false);
     try {
-      indexCursor = dbClient.issueDao().scrollIssuesForIndexation(session, branchUuid, issueKeys);
+      indexCursor = cursorFactory.apply(session);
       iterator = indexCursor.iterator();
     } catch (Exception e) {
       session.close();
-      throw new IllegalStateException("Fail to prepare SQL request to select all issues", e);
+      throw new IllegalStateException(failureMessage, e);
     }
   }
 
+  static IssueIteratorForSingleChunk forBranchOrKeys(DbClient dbClient, @Nullable String branchUuid, @Nullable Collection<String> issueKeys) {
+    checkArgument(issueKeys == null || issueKeys.size() <= DatabaseUtils.PARTITION_SIZE_FOR_ORACLE,
+      "Cannot search for more than " + DatabaseUtils.PARTITION_SIZE_FOR_ORACLE + " issue keys at once. Please provide the keys in smaller chunks.");
+    return new IssueIteratorForSingleChunk(dbClient,
+      session -> dbClient.issueDao().scrollIssuesForIndexation(session, branchUuid, issueKeys),
+      "Fail to prepare SQL request to select all issues");
+  }
+
   /**
-   * Streams every issue of the given rule uuids in one server-side scroll cursor (used by the codefixStatus backfill
-   * migration). The rule set is a small handful, so it is not chunked; the check guards the Oracle IN-list limit anyway.
+   * Streams the issues of ONE branch that belong to the given rule uuids, in one server-side scroll cursor (used by the
+   * codefixStatus backfill migration, which runs one of these per branch in parallel). The rule set is a small handful,
+   * so it is not chunked; the check guards the Oracle IN-list limit anyway.
    */
-  IssueIteratorForSingleChunk(DbClient dbClient, Collection<String> ruleUuids) {
+  static IssueIteratorForSingleChunk forBranchAndRuleUuids(DbClient dbClient, String branchUuid, Collection<String> ruleUuids) {
     checkArgument(ruleUuids != null && ruleUuids.size() <= DatabaseUtils.PARTITION_SIZE_FOR_ORACLE,
       "Cannot search for more than " + DatabaseUtils.PARTITION_SIZE_FOR_ORACLE + " rule uuids at once.");
-    this.session = dbClient.openSession(false);
-    try {
-      indexCursor = dbClient.issueDao().scrollIssuesForIndexationByRuleUuids(session, ruleUuids);
-      iterator = indexCursor.iterator();
-    } catch (Exception e) {
-      session.close();
-      throw new IllegalStateException("Fail to prepare SQL request to select issues by rule", e);
-    }
+    return new IssueIteratorForSingleChunk(dbClient,
+      session -> dbClient.issueDao().scrollIssuesForIndexationByBranchAndRuleUuids(session, branchUuid, ruleUuids),
+      "Fail to prepare SQL request to select issues by branch and rule");
   }
 
   @Override

@@ -36,7 +36,7 @@ public class IssueIteratorFactory {
   }
 
   public IssueIterator createForBranch(@Nullable String branchUuid) {
-    return new IssueIteratorForSingleChunk(dbClient, branchUuid, null);
+    return IssueIteratorForSingleChunk.forBranchOrKeys(dbClient, branchUuid, null);
   }
 
   public IssueIterator createForIssueKeys(Collection<String> issueKeys) {
@@ -44,10 +44,10 @@ public class IssueIteratorFactory {
   }
 
   /**
-   * Streams every issue of the given rule uuids in a single server-side scroll cursor. Used by the codefixStatus
-   * backfill migration to reindex the whole in-scope set in one pass (no key pagination / per-chunk re-query).
+   * Streams the issues of one branch that belong to the given rule uuids, in a single server-side scroll cursor. Used by
+   * the codefixStatus backfill migration, which fans out one of these per branch and runs several in parallel.
    */
-  public IssueIterator createForRuleUuids(Collection<String> ruleUuids) {
-    return new IssueIteratorForSingleChunk(dbClient, ruleUuids);
+  public IssueIterator createForBranchAndRuleUuids(String branchUuid, Collection<String> ruleUuids) {
+    return IssueIteratorForSingleChunk.forBranchAndRuleUuids(dbClient, branchUuid, ruleUuids);
   }
 }

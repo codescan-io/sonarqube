@@ -56,6 +56,16 @@ public interface Dialect {
   }
 
   /**
+   * Fetch size for one-shot data-migration scrolls, which stream a whole table's worth of rows in a single pass and are
+   * dominated by JDBC round trips at {@link #getScrollDefaultFetchSize()}. Higher at the cost of a bigger per-cursor row
+   * buffer; a migration running N cursors in parallel holds N of these, so keep it within an order of magnitude of the
+   * default rather than maximal.
+   */
+  default int getMigrationScrollFetchSize() {
+    return 4000;
+  }
+
+  /**
    * Indicates whether DB migration can be perform on the DB vendor implementation associated with the current dialect.
    */
   boolean supportsMigration();

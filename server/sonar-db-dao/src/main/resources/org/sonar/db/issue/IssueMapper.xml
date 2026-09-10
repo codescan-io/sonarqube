@@ -372,9 +372,10 @@
     </collection>
   </resultMap>
 
-  <select id="scrollIssuesForIndexation" parameterType="map" resultMap="indexedIssueResultMap" fetchSize="${_scrollFetchSize}"
-           resultSetType="FORWARD_ONLY" resultOrdered="true">
-    select
+  <!-- Column list shared by both indexation scrolls, EXCLUDING the codefixStatus expression, which is the one thing
+       that differs between them (see scrollIssuesForIndexation vs scrollIssuesForIndexationForMigration). Kept as a
+       fragment so the two statements cannot drift apart in the other 30 columns. -->
+  <sql id="indexedIssueColumnsBeforeCodefix">
       i.kee as issueKey,
       i.assignee,
       i.line,
@@ -404,31 +405,16 @@
       i.code_variants as codeVariants,
       i.prioritized_rule as prioritizedRule,
       i.issue_ai_metadata as issueAiMetadata,
-      <choose>
-        <!-- BackfillCodefixStatusMigration (the by-rule scroll: ruleUuids set) is a one-off blanket backfill and marks
-             EVERY in-scope issue AVAILABLE. Old issues predate issue_ai_metadata, so the variableType narrowing in the
-             <otherwise> branch would leave the variable-naming rules (ShortVariable/LongVariable/VariableNamingConventions)
-             NULL — but the backfill intent is to mark them all. COALESCE keeps any codefix_status already persisted and
-             only defaults the NULLs to AVAILABLE (no clobber of a real computed value). Normal analysis indexing takes
-             the <otherwise> branch and is unchanged. -->
-        <when test="ruleUuids != null">
-          COALESCE(i.codefix_status, 'AVAILABLE') as codefixStatus,
-        </when>
-        <otherwise>
-          COALESCE(i.codefix_status,
-            CASE WHEN r.ai_code_fix_enabled = true
-                  AND (
-                    r.plugin_rule_key not in (<include refid="aiFixVariableNamingRuleKeys"/>)
-                    OR (i.issue_ai_metadata is not null
-                        AND i.issue_ai_metadata not like '%"variableType":"INSTANCE"%')
-                  )
-                 THEN 'AVAILABLE' END) as codefixStatus,
-        </otherwise>
-      </choose>
+  </sql>
+
+  <sql id="indexedIssueColumnsAfterCodefix">
       <include refid="issueImpactsColumns"/>
       <include refid="ruleDefaultImpactsColumns"/>
       <include refid="issuesDependencyColumns"/>
       <include refid="isNewCodeReferenceIssue"/>
+  </sql>
+
+  <sql id="indexedIssueFrom">
     from issues i
     inner join rules r on r.uuid = i.rule_uuid
     inner join components c on c.uuid = i.component_uuid
@@ -438,6 +424,22 @@
     left outer join rules_default_impacts rdi on r.uuid = rdi.rule_uuid
     left join issues_dependency dep on i.kee = dep.issue_uuid
     left join cves cve on dep.cve_uuid = cve.uuid
+  </sql>
+
+  <select id="scrollIssuesForIndexation" parameterType="map" resultMap="indexedIssueResultMap" fetchSize="${_scrollFetchSize}"
+           resultSetType="FORWARD_ONLY" resultOrdered="true">
+    select
+      <include refid="indexedIssueColumnsBeforeCodefix"/>
+      COALESCE(i.codefix_status,
+        CASE WHEN r.ai_code_fix_enabled = true
+              AND (
+                r.plugin_rule_key not in (<include refid="aiFixVariableNamingRuleKeys"/>)
+                OR (i.issue_ai_metadata is not null
+                    AND i.issue_ai_metadata not like '%"variableType":"INSTANCE"%')
+              )
+             THEN 'AVAILABLE' END) as codefixStatus,
+      <include refid="indexedIssueColumnsAfterCodefix"/>
+    <include refid="indexedIssueFrom"/>
     <where>
       <if test="branchUuid != null">
             and c.branch_uuid = #{branchUuid,jdbcType=VARCHAR} and i.project_uuid = #{branchUuid,jdbcType=VARCHAR}
@@ -448,19 +450,57 @@
             #{key,jdbcType=VARCHAR}
         </foreach>
       </if>
-      <!-- Used by the codefixStatus ES backfill (BackfillCodefixStatusMigration): stream, in one server-side scroll
-           ordered by kee, every issue of the given (ai_code_fix_enabled, non-REMOVED) rule uuids. Filters on the
-           issues.rule_uuid column directly (not via the joined rules row) so it can use the ISSUES_RULE_UUID index.
-           The rule set is a small handful, so it is passed unchunked. This same ruleUuids-set condition also switches
-           the codefixStatus SELECT expression above to the blanket-AVAILABLE backfill (see the <choose> there). -->
-      <if test="ruleUuids != null">
-           and i.rule_uuid in
-        <foreach collection="ruleUuids" open="(" close=")" item="ruleUuid" separator=",">
-            #{ruleUuid,jdbcType=VARCHAR}
-        </foreach>
-      </if>
     </where>
     order by i.kee
+  </select>
+
+  <!-- BRANCH-SCOPED slice of the codefixStatus ES backfill (BackfillCodefixStatusMigration). The migration resolves the
+       branches holding in-scope issues (selectBranchUuidsForRuleUuids) and runs one of these per branch, several in
+       parallel — the same per-branch partitioning SonarQube's own startup reindex uses. That keeps each ORDER BY sort
+       small (a whole-table `rule_uuid IN (...)` scroll had to sort the entire joined result set before returning row one,
+       since Postgres cannot stream a sorted result) and makes every resulting ES bulk routing-homogeneous, because
+       routing is derived from the project.
+
+       Partitions on i.project_uuid ALONE — which in this schema holds the BRANCH uuid, see IssueIndexer's
+       ID_TYPE_BRANCH_UUID comment. Deliberately not also `c.branch_uuid = #{branchUuid}` like the analysis statement
+       above: partitioning on exactly the column the branch list was grouped by makes the union over all branches
+       provably identical to the old single whole-table scroll, with no dependency on c.branch_uuid == i.project_uuid
+       holding for every row.
+
+       codefixStatus is the blanket backfill: marks EVERY in-scope issue AVAILABLE. Old issues predate
+       issue_ai_metadata, so the variableType narrowing the analysis statement applies would leave the variable-naming
+       rules (ShortVariable/LongVariable/VariableNamingConventions) NULL — but the backfill intent is to mark them all.
+       COALESCE keeps any codefix_status already persisted and only defaults the NULLs (no clobber of a real value).
+
+       Larger fetchSize than the analysis scroll: this statement streams the bulk of a 500k+ issue rewrite, and the
+       joined row count is a multiple of the issue count (the impacts/dependency collections), so the default 200-row
+       fetch costs thousands of round trips. Sized for a handful of these running concurrently — the buffer is per open
+       cursor, so it multiplies by the migration's thread count. -->
+  <select id="scrollIssuesForIndexationForMigration" parameterType="map" resultMap="indexedIssueResultMap"
+           fetchSize="${_migrationScrollFetchSize}" resultSetType="FORWARD_ONLY" resultOrdered="true">
+    select
+      <include refid="indexedIssueColumnsBeforeCodefix"/>
+      COALESCE(i.codefix_status, 'AVAILABLE') as codefixStatus,
+      <include refid="indexedIssueColumnsAfterCodefix"/>
+    <include refid="indexedIssueFrom"/>
+    where i.project_uuid = #{branchUuid,jdbcType=VARCHAR}
+      and i.rule_uuid in
+      <foreach collection="ruleUuids" open="(" close=")" item="ruleUuid" separator=",">
+        #{ruleUuid,jdbcType=VARCHAR}
+      </foreach>
+    order by i.kee
+  </select>
+
+  <!-- Branches (i.project_uuid holds the branch uuid) that actually have issues on the given rules. Drives the
+       migration's per-branch fan-out; returns a handful-to-thousands of rows off a single pass over the in-scope
+       issues, with no joins. -->
+  <select id="selectBranchUuidsForRuleUuids" parameterType="map" resultType="string">
+    select distinct i.project_uuid
+    from issues i
+    where i.rule_uuid in
+    <foreach collection="ruleUuids" open="(" close=")" item="ruleUuid" separator=",">
+      #{ruleUuid,jdbcType=VARCHAR}
+    </foreach>
   </select>
 
   <select id="selectComponentUuidsOfOpenIssuesForProjectUuid" parameterType="string" resultType="string">
