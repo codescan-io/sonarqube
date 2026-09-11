@@ -108,6 +108,16 @@ it('does not advertise availability for an unrecognised status on an unsupported
   expect(screen.queryByText(AI_FIX_AVAILABLE)).not.toBeInTheDocument();
 });
 
+it('reports a violation AI Fix will not touch as not supported', async () => {
+  // CD-9710: codescanng reports NOT_SUPPORTED for a global field under sf:AvoidPublicFields. The badge must
+  // name that outcome rather than falling through to "AI Fix Available" and inviting the user to assign it.
+  jest.mocked(getCodefixStatus).mockResolvedValue({ status: 'NOT_SUPPORTED' });
+  renderBadge('github', { codefixStatus: 'NOT_SUPPORTED' });
+
+  expect(await screen.findByText('AI Fix is not supported')).toBeInTheDocument();
+  expect(screen.queryByText(AI_FIX_AVAILABLE)).not.toBeInTheDocument();
+});
+
 function renderBadge(integrationType: string, issueOverrides = {}) {
   jest.mocked(getCodefixIntegration).mockResolvedValue({
     integrationType,
