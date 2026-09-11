@@ -19,6 +19,7 @@
  */
 
 import userEvent from '@testing-library/user-event';
+import { Outlet, Route } from 'react-router-dom';
 import { addGlobalSuccessMessage } from '~design-system';
 import { byLabelText, byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import {
@@ -29,11 +30,12 @@ import {
 } from '../../../api/quality-profiles';
 import handleRequiredAuthorization from '../../../app/utils/handleRequiredAuthorization';
 import { mockComponent } from '../../../helpers/mocks/component';
+import { mockQualityProfile } from '../../../helpers/testMocks';
 import {
   RenderContext,
   renderAppWithComponentContext,
 } from '../../../helpers/testReactTestingUtils';
-import { Component } from '../../../types/types';
+import { Component, Organization } from '../../../types/types';
 import routes from '../routes';
 
 jest.mock('../../../api/quality-profiles', () => {
@@ -138,6 +140,8 @@ const ui = {
   radioButtonUseSpecific: byRole('radio', { name: /project_quality_profile.always_use_specific/ }),
   newAnalysisWarningMessage: byText('project_quality_profile.requires_new_analysis'),
   builtInTag: byText('quality_profiles.built_in'),
+  instanceDefaultTagText: 'project_quality_profile.instance_default',
+  rowByProfileName: (name: RegExp) => byRole('row', { name }),
 };
 
 it('should be able to add and change profile for languages', async () => {
@@ -189,7 +193,7 @@ it('should be able to add and change profile for languages', async () => {
 
   // Updates the page after API call
   const htmlRow = byRole('row', {
-    name: 'HTML html profile 10',
+    name: 'HTML html profile 10 Change profile',
   });
 
   expect(ui.htmlLanguage.get()).toBeInTheDocument();
@@ -198,7 +202,7 @@ it('should be able to add and change profile for languages', async () => {
   expect(htmlRow.get()).toBeInTheDocument();
   expect(htmlRow.byRole('link', { name: '10' }).get()).toHaveAttribute(
     'href',
-    '/coding_rules?activation=true&qprofile=html',
+    '/organizations/my-org/rules?activation=true&qprofile=html',
   );
   expect(ui.builtInTag.query()).not.toBeInTheDocument();
 
@@ -227,6 +231,71 @@ it('should be able to add and change profile for languages', async () => {
   expect(ui.builtInTag.get()).toBeInTheDocument();
 });
 
+it('should name the instance default profile and badge it for inherited languages', async () => {
+  jest.mocked(searchQualityProfiles).mockResolvedValueOnce({
+    profiles: [
+      mockQualityProfile({
+        key: 'html_default',
+        language: 'html',
+        isDefault: true,
+        isBuiltIn: true,
+        name: 'html default profile',
+        languageName: 'HTML',
+      }),
+      mockQualityProfile({
+        key: 'py_default',
+        language: 'py',
+        isDefault: true,
+        name: 'py default profile',
+        languageName: 'Python',
+      }),
+    ],
+  });
+
+  // Neither language is explicitly associated with the project, so both rows
+  // inherit the instance default profile.
+  renderProjectQualityProfilesApp(
+    { languages: { html: { key: 'html', name: 'HTML' }, py: { key: 'py', name: 'Python' } } },
+    {
+      configuration: { showQualityProfiles: true },
+      qualityProfiles: [
+        { deleted: false, key: 'html_default', language: 'html', name: 'html default profile' },
+        { deleted: false, key: 'py_default', language: 'py', name: 'py default profile' },
+      ],
+    },
+  );
+
+  const htmlRow = ui.rowByProfileName(/html default profile/);
+  const pyRow = ui.rowByProfileName(/py default profile/);
+
+  // Every inherited row names the profile that is actually applied.
+  expect(await htmlRow.find()).toBeInTheDocument();
+  expect(pyRow.get()).toBeInTheDocument();
+  expect(ui.htmlDefaultProfile.get()).toBeInTheDocument();
+  expect(
+    ui
+      .rowByProfileName(
+        /^HTML html default profile quality_profiles\.built_in project_quality_profile\.instance_default 10 Change profile$/,
+      )
+      .get(),
+  ).toBeInTheDocument();
+  expect(
+    ui
+      .rowByProfileName(
+        /^Python py default profile project_quality_profile\.instance_default 10 Change profile$/,
+      )
+      .get(),
+  ).toBeInTheDocument();
+
+  // The instance-default distinction is kept as a badge on each inherited row.
+  expect(htmlRow.byText(ui.instanceDefaultTagText).get()).toBeInTheDocument();
+  expect(pyRow.byText(ui.instanceDefaultTagText).get()).toBeInTheDocument();
+
+  // A profile that is both built-in and the instance default carries both badges.
+  expect(htmlRow.byText('quality_profiles.built_in').get()).toBeInTheDocument();
+  expect(pyRow.byText('quality_profiles.built_in').query()).not.toBeInTheDocument();
+});
+
 it('should call authorization api when permissions is not proper', () => {
   renderProjectQualityProfilesApp({}, { configuration: { showQualityProfiles: false } });
   expect(handleRequiredAuthorization).toHaveBeenCalled();
@@ -242,11 +311,26 @@ it('should still show page with add language button when api fails', async () =>
   expect(await ui.addLanguageButton.find()).toBeInTheDocument();
 });
 
+const organization: Organization = {
+  kee: 'my-org',
+  name: 'My organization',
+  inviteUsersEnabled: false,
+};
+
 function renderProjectQualityProfilesApp(
   context?: RenderContext,
   componentOverrides: Partial<Component> = { configuration: { showQualityProfiles: true } },
 ) {
-  return renderAppWithComponentContext('project/quality_profiles', routes, context, {
-    component: mockComponent(componentOverrides),
-  });
+  // The app is wrapped in withOrganizationContext, which reads the organization
+  // from the router outlet context.
+  const routesWithOrganization = () => (
+    <Route element={<Outlet context={{ organization }} />}>{routes()}</Route>
+  );
+
+  return renderAppWithComponentContext(
+    'project/quality_profiles',
+    routesWithOrganization,
+    context,
+    { component: mockComponent({ organization: organization.kee, ...componentOverrides }) },
+  );
 }
