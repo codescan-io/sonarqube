@@ -138,8 +138,8 @@ class Home extends React.PureComponent<Props, State> {
                 >
             <div className="landing">
                 <div className="home">
-                    <img className="light-emblem" src='/images/grc/CodeScanShieldEmblem.svg' alt="" />
-                    <h1>Welcome to CodeScan</h1>
+                    <img className="light-emblem" src='/images/autorabit-icon-logo.svg' alt="" style={{ width: '52px', height: '52px' }} />
+                    <h1 style={{ paddingTop: '32px', paddingBottom: '32px' }}>Welcome to CodeScan</h1>
                     {
                         loading?(<div className="welcome-block"><i className="spinner"></i></div>):(
                             <div className="welcome-block">

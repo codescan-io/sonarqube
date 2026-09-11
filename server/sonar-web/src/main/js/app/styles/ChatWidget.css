@@ -71,7 +71,7 @@
   align-items: center;
   justify-content: space-between;
   background: #030916;
-  padding: 0.5rem 1rem;
+  padding: 12px 22px;
   color: #fff;
   font-weight: bold;
 }
@@ -85,6 +85,7 @@
 .chat-logo {
   width: 1.25rem;
   height: 1.25rem;
+  padding-right: 8px;
 }
 
 .chat-title {
@@ -133,8 +134,8 @@
 }
 
 .avatar {
-  width: 1.875rem;
-  height: 1.875rem;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
 }
 
@@ -262,17 +263,6 @@
   }
 }
 
-.chat-logo-text {
-  font-weight: 400;
-  font-size: 1.25rem;
-  color: #fff;
-}
-
-.chat-slash {
-  display: inline-block;
-  transform: rotate3d(2, 1, 1, 45deg);
-  padding-bottom: 0.1rem;
-}
 /* Headings inside bot bubbles */
 .bubble-text h1,
 .bubble-text h2,
