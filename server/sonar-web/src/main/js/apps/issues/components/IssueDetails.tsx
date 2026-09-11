@@ -46,6 +46,8 @@ import IssueReviewHistoryAndComments from './IssueReviewHistoryAndComments';
 import IssuesSourceViewer from './IssuesSourceViewer';
 
 const AI_CODE_ASSISTANT_ASSIGNEE = 'ai-code-assistant';
+/** AI Fix routed the issue to human review; there is no generated fix to show. */
+const CODEFIX_STATUS_NOT_SUPPORTED = 'NOT_SUPPORTED';
 
 function hasAiCodefix(issue: Issue): boolean {
   return (
@@ -200,7 +202,8 @@ export default function IssueDetails({
                             />
                           }
                           fixDiffContent={
-                            hasAiCodefix(openIssue)
+                            hasAiCodefix(openIssue) &&
+                            openIssue.codefixStatus !== CODEFIX_STATUS_NOT_SUPPORTED
                               ? (
                                   <FixDiffTab
                                     branchLike={fillBranchLike(openIssue.branch, openIssue.pullRequest)}

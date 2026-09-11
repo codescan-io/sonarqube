@@ -437,6 +437,10 @@
                 OR (i.issue_ai_metadata is not null
                     AND i.issue_ai_metadata not like '%"variableType":"INSTANCE"%')
               )
+              <!-- sf:AvoidPublicFields on a global field is routed to human review, never auto-fixed (CD-9710). -->
+              AND NOT (r.plugin_rule_key = 'AvoidPublicFields'
+                    AND i.issue_ai_metadata is not null
+                    AND i.issue_ai_metadata like '%"variableType":"GLOBAL"%')
              THEN 'AVAILABLE' END) as codefixStatus,
       <include refid="indexedIssueColumnsAfterCodefix"/>
     <include refid="indexedIssueFrom"/>

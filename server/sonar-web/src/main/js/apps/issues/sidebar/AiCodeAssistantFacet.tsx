@@ -39,12 +39,14 @@ export const AI_CODEFIX_STATUSES: IssueCodefixStatus[] = [
   IssueCodefixStatus.AiFixGenerated,
   IssueCodefixStatus.PullRequestCreated,
   IssueCodefixStatus.AiFixFailed,
+  IssueCodefixStatus.AiFixNotSupported,
 ];
 
 const STATUS_LABEL_IDS: Record<IssueCodefixStatus, string> = {
   [IssueCodefixStatus.AiFixAvailable]: 'issues.facet.ai_code_assistant.ai_fix_available',
   [IssueCodefixStatus.AiFixGenerated]: 'issues.facet.ai_code_assistant.ai_fix_generated',
   [IssueCodefixStatus.AiFixFailed]: 'issues.facet.ai_code_assistant.ai_fix_failed',
+  [IssueCodefixStatus.AiFixNotSupported]: 'issues.facet.ai_code_assistant.ai_fix_not_supported',
   [IssueCodefixStatus.AiFixInProgress]: 'issues.facet.ai_code_assistant.ai_fix_in_progress',
   [IssueCodefixStatus.PullRequestCreated]: 'issues.facet.ai_code_assistant.pull_request_created',
 };
@@ -53,6 +55,7 @@ const STATUS_ICON_KINDS: Record<IssueCodefixStatus, AiCodefixIconKind> = {
   [IssueCodefixStatus.AiFixAvailable]: 'available',
   [IssueCodefixStatus.AiFixGenerated]: 'generated',
   [IssueCodefixStatus.AiFixFailed]: 'failed',
+  [IssueCodefixStatus.AiFixNotSupported]: 'not-supported',
   [IssueCodefixStatus.AiFixInProgress]: 'in-progress',
   [IssueCodefixStatus.PullRequestCreated]: 'pull-request',
 };
@@ -71,6 +74,7 @@ export function AiCodeAssistantFacet(props: Readonly<Props>) {
       [IssueCodefixStatus.AiFixAvailable]: 'AI Fix Available',
       [IssueCodefixStatus.AiFixGenerated]: 'AI Fix Generated',
       [IssueCodefixStatus.AiFixFailed]: 'AI Fix Failed',
+      [IssueCodefixStatus.AiFixNotSupported]: 'AI Fix is not supported',
       [IssueCodefixStatus.AiFixInProgress]: 'AI Fix in Progress',
       [IssueCodefixStatus.PullRequestCreated]: 'Pull Request Created',
     };

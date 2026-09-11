@@ -81,6 +81,7 @@ export enum IssueCodefixStatus {
   AiFixAvailable = 'AI_FIX_AVAILABLE',
   AiFixGenerated = 'AI_FIX_GENERATED',
   AiFixFailed = 'AI_FIX_FAILED',
+  AiFixNotSupported = 'AI_FIX_NOT_SUPPORTED',
   AiFixInProgress = 'AI_FIX_IN_PROGRESS',
   PullRequestCreated = 'PULL_REQUEST_CREATED',
 }
@@ -95,6 +96,7 @@ const CODEFIX_STATUS_FRONTEND_TO_BACKEND: Record<string, string[]> = {
   [IssueCodefixStatus.AiFixGenerated]: ['FIX_GENERATED'],
   [IssueCodefixStatus.PullRequestCreated]: ['PULL_REQUEST_CREATED'],
   [IssueCodefixStatus.AiFixFailed]: ['FAILED'],
+  [IssueCodefixStatus.AiFixNotSupported]: ['NOT_SUPPORTED'],
 };
 
 export function mapFrontendToBackendCodefixStatuses(
