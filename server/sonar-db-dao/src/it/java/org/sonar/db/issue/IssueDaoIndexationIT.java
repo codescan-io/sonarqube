@@ -72,6 +72,33 @@ public class IssueDaoIndexationIT {
   }
 
   @Test
+  public void selectBranchUuidsForRuleUuids_returns_the_busiest_branches_first() {
+    ComponentDto small = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto smallFile = db.components().insertComponent(newFileDto(small));
+    ComponentDto medium = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto mediumFile = db.components().insertComponent(newFileDto(medium));
+    ComponentDto big = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto bigFile = db.components().insertComponent(newFileDto(big));
+
+    RuleDto inScope = insertAiFixEnabledRule();
+    // inserted smallest-first on purpose: insertion order must not be what comes back
+    db.issues().insertIssue(inScope, small, smallFile);
+    for (int i = 0; i < 2; i++) {
+      db.issues().insertIssue(inScope, medium, mediumFile);
+    }
+    for (int i = 0; i < 3; i++) {
+      db.issues().insertIssue(inScope, big, bigFile);
+    }
+
+    List<String> branchUuids = underTest.selectBranchUuidsForRuleUuids(db.getSession(), singletonList(inScope.getUuid()));
+
+    // The migration fans these out over a fixed thread pool, so the finish time is the finish time of the LAST thread.
+    // Handing out the biggest branches first keeps a large one from being picked up near the end and running alone
+    // while every other thread idles (longest-processing-time-first scheduling).
+    assertThat(branchUuids).containsExactly(big.branchUuid(), medium.branchUuid(), small.branchUuid());
+  }
+
+  @Test
   public void scrollIssuesForIndexationByBranchAndRuleUuids_is_scoped_to_one_branch_and_the_given_rules() throws Exception {
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
     ComponentDto file = db.components().insertComponent(newFileDto(project));

@@ -493,14 +493,25 @@
 
   <!-- Branches (i.project_uuid holds the branch uuid) that actually have issues on the given rules. Drives the
        migration's per-branch fan-out; returns a handful-to-thousands of rows off a single pass over the in-scope
-       issues, with no joins. -->
+       issues, with no joins.
+
+       Ordered by issue count DESCENDING, which is load-bearing rather than cosmetic: the migration drains these over a
+       fixed thread pool, so the run ends when the LAST thread ends. Handing out the biggest branches first stops a large
+       one being dequeued near the end and draining alone while every other thread idles — longest-processing-time-first
+       scheduling, which bounds the makespan at ~1.29x optimal instead of ~1.88x for an arbitrary order.
+
+       Costs effectively nothing over the previous `select distinct`: the same scan and the same hash table, with a
+       count() accumulator on entries already being probed, then a sort of branch-count rows (not issue-count rows). -->
+
   <select id="selectBranchUuidsForRuleUuids" parameterType="map" resultType="string">
-    select distinct i.project_uuid
+    select i.project_uuid
     from issues i
     where i.rule_uuid in
     <foreach collection="ruleUuids" open="(" close=")" item="ruleUuid" separator=",">
       #{ruleUuid,jdbcType=VARCHAR}
     </foreach>
+    group by i.project_uuid
+    order by count(*) desc
   </select>
 
   <select id="selectComponentUuidsOfOpenIssuesForProjectUuid" parameterType="string" resultType="string">
