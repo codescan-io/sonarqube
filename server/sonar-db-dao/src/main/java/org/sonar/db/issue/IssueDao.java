@@ -124,6 +124,10 @@ public class IssueDao implements Dao {
    * The branches ({@code issues.project_uuid}, which holds the branch uuid) that have at least one issue on one of
    * {@code ruleUuids}. Drives the per-branch fan-out of BackfillCodefixStatusMigration; single pass over the in-scope
    * issues, no joins, and returns only the branches with work to do.
+   *
+   * <p><b>Ordered busiest-first, and callers must preserve that order.</b> The fan-out drains these over a fixed thread
+   * pool, so the run finishes when the last thread does; starting the biggest branches first keeps one from being picked
+   * up near the end and draining alone while the rest of the pool idles.
    */
   public List<String> selectBranchUuidsForRuleUuids(DbSession dbSession, Collection<String> ruleUuids) {
     return mapper(dbSession).selectBranchUuidsForRuleUuids(ruleUuids);
