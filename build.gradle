@@ -43,7 +43,7 @@ allprojects {
   // codescanng/bitbucket-pipelines.yml). Do not hardcode the account-specific URL here.
   def codeartifactoryUrl = System.getenv('CODEARTIFACTORY_URL')?.replaceAll(/\/+$/, '')
   ext.codeartifactUrl = System.getenv('CODEARTIFACT_MAVEN_URL') ?:
-    (codeartifactoryUrl ? "${codeartifactoryUrl}/maven/autorabit-libs-release/" : '')
+    (codeartifactoryUrl ? "${codeartifactoryUrl}/maven/codescan-libs-release/" : '')
   ext.codeartifactToken = System.getenv('CODEARTIFACT_AUTH_TOKEN') ?:
     (project.hasProperty('codeartifactToken') ? project.getProperty('codeartifactToken') : '')
   if (codeartifactToken && !codeartifactUrl) {
@@ -811,7 +811,7 @@ subprojects {
     def domain = System.getenv('CODEARTIFACT_DOMAIN') ?: 'autorabit-artifacts-domain'
     def owner = System.getenv('CODEARTIFACT_DOMAIN_OWNER') ?: '261140574810'
     def region = System.getenv('CODEARTIFACT_REGION') ?: 'us-east-1'
-    def repo = System.getenv('CODEARTIFACT_REPOSITORY') ?: 'autorabit-libs-release'
+    def repo = System.getenv('CODEARTIFACT_REPOSITORY') ?: 'codescan-libs-release'
     def namespace = project.group.toString()
     def common = [
       '--domain', domain,

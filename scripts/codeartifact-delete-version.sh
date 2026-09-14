@@ -16,7 +16,7 @@ PACKAGE_VERSION="${1:-24.12.0.100206}"
 DOMAIN="${CODEARTIFACT_DOMAIN:-autorabit-artifacts-domain}"
 OWNER="${CODEARTIFACT_DOMAIN_OWNER:-261140574810}"
 REGION="${CODEARTIFACT_REGION:-us-east-1}"
-REPO="${CODEARTIFACT_REPOSITORY:-autorabit-libs-release}"
+REPO="${CODEARTIFACT_REPOSITORY:-codescan-libs-release}"
 NAMESPACE="org.sonarsource.sonarqube"
 
 # JARs opted in via publishToCodeArtifact (not codescan-application / sonar-application zips).
