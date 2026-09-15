@@ -75,10 +75,10 @@ export function SonarLintPromotion({ currentUser, qgConditions }: SonarLintPromo
                 alt=""
                 src="/images/autorabit-icon-logo.svg"
                 style={{
-                  width: '18px',
-                  height: '18px',
-                  paddingLeft: '4px',
-                  paddingRight: '4px',
+                  width: '1.125rem',
+                  height: '1.125rem',
+                  paddingLeft: '0.25rem',
+                  paddingRight: '0.25rem',
                 }}
               />
             </>
