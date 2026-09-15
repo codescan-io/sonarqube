@@ -21,11 +21,11 @@ import { CODESCAN_AI, CUSTOMER_CATEGORY, LANGUAGES_CATEGORY, NEW_CODE_PERIOD_CAT
 import { Dict } from "../../../types/types";
 
 export const ALL_CUSTOMER_CATEGORIES: Dict<String> = {
-  'codescan': CUSTOMER_CATEGORY,
+  'autorabit codescan': CUSTOMER_CATEGORY,
   'housekeeping': CUSTOMER_CATEGORY,
   'exclusions': CUSTOMER_CATEGORY,
   'mule': CUSTOMER_CATEGORY,
   'languages': LANGUAGES_CATEGORY,
   'new_code_period': NEW_CODE_PERIOD_CATEGORY,
-  'codescan ai': CODESCAN_AI
+  'autorabit codescan ai': CODESCAN_AI
 };
