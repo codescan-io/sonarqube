@@ -44,8 +44,8 @@ public class IssueIteratorFactory {
   }
 
   /**
-   * Streams the issues of one branch that belong to the given rule uuids, in a single server-side scroll cursor. Used by
-   * the codefixStatus backfill migration, which fans out one of these per branch and runs several in parallel.
+   * Streams the issues of one branch that belong to the given rules, in a single database cursor. Used by the
+   * codefixStatus backfill migration, which runs one of these per branch, several at a time.
    */
   public IssueIterator createForBranchAndRuleUuids(String branchUuid, Collection<String> ruleUuids) {
     return IssueIteratorForSingleChunk.forBranchAndRuleUuids(dbClient, branchUuid, ruleUuids);

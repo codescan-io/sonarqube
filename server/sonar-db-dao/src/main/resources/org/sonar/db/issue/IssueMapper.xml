@@ -372,9 +372,9 @@
     </collection>
   </resultMap>
 
-  <!-- Column list shared by both indexation scrolls, EXCLUDING the codefixStatus expression, which is the one thing
-       that differs between them (see scrollIssuesForIndexation vs scrollIssuesForIndexationForMigration). Kept as a
-       fragment so the two statements cannot drift apart in the other 30 columns. -->
+  <!-- The columns both indexation queries select, minus the codefixStatus expression, which is the only thing they
+       disagree on (compare scrollIssuesForIndexation with scrollIssuesForIndexationForMigration). Shared as a fragment
+       so the other 30-odd columns cannot drift apart. -->
   <sql id="indexedIssueColumnsBeforeCodefix">
       i.kee as issueKey,
       i.assignee,
@@ -454,28 +454,28 @@
     order by i.kee
   </select>
 
-  <!-- BRANCH-SCOPED slice of the codefixStatus ES backfill (BackfillCodefixStatusMigration). The migration resolves the
-       branches holding in-scope issues (selectBranchUuidsForRuleUuids) and runs one of these per branch, several in
-       parallel — the same per-branch partitioning SonarQube's own startup reindex uses. That keeps each ORDER BY sort
-       small (a whole-table `rule_uuid IN (...)` scroll had to sort the entire joined result set before returning row one,
-       since Postgres cannot stream a sorted result) and makes every resulting ES bulk routing-homogeneous, because
-       routing is derived from the project.
+  <!-- One branch's share of the codefixStatus backfill (BackfillCodefixStatusMigration). The migration first works out
+       which branches have matching issues (selectBranchUuidsForRuleUuids), then runs one of these per branch, several at
+       a time — the same per-branch split SonarQube's own startup reindex uses. Two things make that faster: the sort
+       stays small (one query over the whole table had to sort every matching row before it could return the first one,
+       because Postgres cannot sort and stream at the same time), and each resulting batch of documents lands on a single
+       Elasticsearch shard, because documents are placed by project.
 
-       Partitions on i.project_uuid ALONE — which in this schema holds the BRANCH uuid, see IssueIndexer's
-       ID_TYPE_BRANCH_UUID comment. Deliberately not also `c.branch_uuid = #{branchUuid}` like the analysis statement
-       above: partitioning on exactly the column the branch list was grouped by makes the union over all branches
-       provably identical to the old single whole-table scroll, with no dependency on c.branch_uuid == i.project_uuid
-       holding for every row.
+       It filters on i.project_uuid alone — which in this schema holds the BRANCH uuid, see the ID_TYPE_BRANCH_UUID
+       comment in IssueIndexer. Unlike the analysis query above it deliberately does NOT also check c.branch_uuid:
+       filtering on exactly the column the branch list was grouped by guarantees that running this once per branch covers
+       precisely the same rows as one whole-table query would, without relying on c.branch_uuid always equalling
+       i.project_uuid.
 
-       codefixStatus is the blanket backfill: marks EVERY in-scope issue AVAILABLE. Old issues predate
-       issue_ai_metadata, so the variableType narrowing the analysis statement applies would leave the variable-naming
-       rules (ShortVariable/LongVariable/VariableNamingConventions) NULL — but the backfill intent is to mark them all.
-       COALESCE keeps any codefix_status already persisted and only defaults the NULLs (no clobber of a real value).
+       The codefixStatus here is the blunt backfill: everything in scope becomes AVAILABLE. Old issues have no
+       issue_ai_metadata, so the extra check the analysis query applies would leave the variable-naming rules
+       (ShortVariable/LongVariable/VariableNamingConventions) NULL — but the point is to mark them all. COALESCE keeps
+       any codefix_status already stored, so a real value is never overwritten.
 
-       Larger fetchSize than the analysis scroll: this statement streams the bulk of a 500k+ issue rewrite, and the
-       joined row count is a multiple of the issue count (the impacts/dependency collections), so the default 200-row
-       fetch costs thousands of round trips. Sized for a handful of these running concurrently — the buffer is per open
-       cursor, so it multiplies by the migration's thread count. -->
+       Bigger fetchSize than the analysis query: this one streams the bulk of a 500k+ issue rewrite, and each issue
+       produces several rows (the impacts and dependency collections), so the default of 200 rows per round trip costs
+       thousands of round trips. Sized for a handful of these running at once — the buffer is per open cursor, so it
+       multiplies by the number of threads. -->
   <select id="scrollIssuesForIndexationForMigration" parameterType="map" resultMap="indexedIssueResultMap"
            fetchSize="${_migrationScrollFetchSize}" resultSetType="FORWARD_ONLY" resultOrdered="true">
     select
@@ -491,17 +491,18 @@
     order by i.kee
   </select>
 
-  <!-- Branches (i.project_uuid holds the branch uuid) that actually have issues on the given rules. Drives the
-       migration's per-branch fan-out; returns a handful-to-thousands of rows off a single pass over the in-scope
-       issues, with no joins.
+  <!-- The branches that actually have issues on the given rules (i.project_uuid holds the branch uuid). This is the work
+       list for the migration's per-branch fan-out: one pass over the matching issues, no joins, anywhere from a handful
+       to a few thousand rows.
 
-       Ordered by issue count DESCENDING, which is load-bearing rather than cosmetic: the migration drains these over a
-       fixed thread pool, so the run ends when the LAST thread ends. Handing out the biggest branches first stops a large
-       one being dequeued near the end and draining alone while every other thread idles — longest-processing-time-first
-       scheduling, which bounds the makespan at ~1.29x optimal instead of ~1.88x for an arbitrary order.
+       Ordered by issue count, biggest first. That is not cosmetic. The migration hands these to a fixed pool of threads,
+       so the run ends when the LAST thread ends; giving out the biggest branches first stops a large one from being
+       picked up near the end and running alone while every other thread sits idle. This is the classic "longest job
+       first" rule, which puts the finish time within about 1.29x of the best possible order instead of about 1.88x for
+       an arbitrary one.
 
-       Costs effectively nothing over the previous `select distinct`: the same scan and the same hash table, with a
-       count() accumulator on entries already being probed, then a sort of branch-count rows (not issue-count rows). -->
+       The ordering costs essentially nothing over the `select distinct` it replaced: same scan, same hash table, one
+       extra counter per entry, then a sort of one row per branch — not one row per issue. -->
 
   <select id="selectBranchUuidsForRuleUuids" parameterType="map" resultType="string">
     select i.project_uuid
