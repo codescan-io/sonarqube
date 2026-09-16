@@ -29,14 +29,15 @@ import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { Issue } from '../../../types/types';
 import { RestUser, isLoggedIn, isUserActive } from '../../../types/users';
 import Avatar from '../../ui/Avatar';
-import { isAiAssistantEnabled } from 'src/main/js/api/settings';
+import { isAiAssistantEnabled } from '../../../api/settings';
 import { getCodefixQuota, queueCodeFix } from '../../../api/ai-codefix';
+import { useIsAiCodefixSupportedIntegration } from '../../../queries/ai-codefix';
 
 interface Props {
   organization: string;
   canAssign: boolean;
   isOpen: boolean;
-  issue: Pick<Issue, 'assignee' | 'assigneeActive' | 'assigneeAvatar' | 'assigneeName' | 'assigneeLogin' | 'aiCodeFixEnabled' | 'key' | 'projectKey' | 'projectOrganization' | 'organization' | 'codefixStatus'>;
+  issue: Pick<Issue, 'assignee' | 'assigneeActive' | 'assigneeAvatar' | 'assigneeName' | 'assigneeLogin' | 'aiCodeFixEnabled' | 'key' | 'project' | 'projectKey' | 'projectOrganization' | 'organization' | 'codefixStatus'>;
   onAssign: (login: string) => void | Promise<void>;
   togglePopup: (popup: string, show?: boolean) => void;
 }
@@ -83,10 +84,19 @@ export default function IssueAssignee(props: Props) {
       }
   
       checkAiEnabled();
-    }, [props.issue.projectKey]);
+    }, [props.issue.project]);
+
+  const isSupportedIntegration = useIsAiCodefixSupportedIntegration(
+      aiEnabled ? props.issue.project : undefined,
+  );
+
+  const canAssignAiAssistant = Boolean(
+      aiEnabled && props.issue.aiCodeFixEnabled && isSupportedIntegration,
+  );
+
     const defaultOptionsWithAi = React.useMemo(() => [
       ...defaultOptions,
-      ...(aiEnabled && props.issue.aiCodeFixEnabled
+      ...(canAssignAiAssistant
         ? [
             {
               value: AI_ASSISTANT_VALUE,
@@ -101,7 +111,7 @@ export default function IssueAssignee(props: Props) {
             }
           ]
         : [])
-    ], [defaultOptions, aiEnabled]);
+    ], [defaultOptions, canAssignAiAssistant]);
 
     const isAiAssistant =
       assignee === AI_ASSISTANT_VALUE ||
@@ -138,6 +148,7 @@ export default function IssueAssignee(props: Props) {
       .then((result) => {
         const options: Array<LabelValueSelectOption<string>> = result.users
           .filter(isUserActive)
+            .filter((u) => canAssignAiAssistant || u.login !== AI_ASSISTANT_VALUE)
           .map((u) => ({
             label: u.name ?? u.login,
             value: u.login,
@@ -171,11 +182,17 @@ export default function IssueAssignee(props: Props) {
   };
 
   const handleAssign = async (userOption: SingleValue<LabelValueSelectOption<string>>) => {
-    if (userOption?.value === 'ai-code-assistant') {
+    if (userOption?.value === AI_ASSISTANT_VALUE) {
+
+      if (!canAssignAiAssistant) {
+        handleClose();
+        return;
+      }
+
       const {
         key: issueKey,
         organization: organizationKey,
-        projectKey,
+        project: projectKey,
         codefixStatus,
       } = props.issue;
 

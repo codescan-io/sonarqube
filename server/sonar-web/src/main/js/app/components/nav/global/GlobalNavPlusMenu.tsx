@@ -23,6 +23,7 @@ import { AppState } from "../../../../types/appstate";
 import withAppStateContext from "../../app-state/withAppStateContext";
 import { GlobalSettingKeys } from "../../../../types/settings";
 import { DropdownMenu } from "@sonarsource/echoes-react";
+import { useCurrentUser } from "../../current-user/CurrentUserContext";
 
 interface Props {
   appState: AppState;
@@ -31,14 +32,18 @@ interface Props {
 function GlobalNavPlusMenu(props: Props) {
 
   const { appState: { settings, canAdmin, canCustomerAdmin } } = props;
+  const { userOrganizations } = useCurrentUser();
   const anyoneCanCreate = settings[GlobalSettingKeys.OrganizationsAnyoneCanCreate] === 'true';
   const canCreateOrganizations = (anyoneCanCreate || canAdmin || canCustomerAdmin);
+  const canCreateProjects = (canAdmin || canCustomerAdmin || (userOrganizations?.length ?? 0) > 0);
 
   return (
     <>
-      <DropdownMenu.ItemLink to="/projects/create">
-        {translate('my_account.analyze_new_project')}
-      </DropdownMenu.ItemLink>
+      {canCreateProjects && (
+        <DropdownMenu.ItemLink to="/projects/create">
+          {translate('my_account.analyze_new_project')}
+        </DropdownMenu.ItemLink>
+      )}
       {canCreateOrganizations && (
         <DropdownMenu.ItemLink to="/organizations/create">
           {translate('my_account.create_new_organization')}
