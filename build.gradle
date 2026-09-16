@@ -53,7 +53,7 @@ allprojects {
 
   // Opt-in publishing flag (replaces the former `artifactoryPublish.skip`). Individual modules
   // set `ext.publishToCodeArtifact = true` (or `= deployCommunity`) to be published by `artifactPublish`.
-  ext.publishToCodeArtifact = false
+  ext.publishToCodeArtifact = true
 
   ext.versionInSources = version
   ext.buildNumber = System.getProperty("buildNumber")
