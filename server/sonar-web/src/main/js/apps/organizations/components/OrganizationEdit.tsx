@@ -18,11 +18,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import { Button, ButtonVariety } from '@sonarsource/echoes-react';
-import { Card, Modal } from '~design-system';
-import { addGlobalSuccessMessage } from '~design-system';
 import { debounce } from 'lodash';
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
+import InstanceMessage from 'src/main/js/components/common/InstanceMessage';
+import { addGlobalSuccessMessage, Card, Switch } from '~design-system';
 import { toggleInviteUsersVisibility, updateOrganization } from '../../../api/organizations';
 import { whenLoggedIn } from '../../../components/hoc/whenLoggedIn';
 import { translate } from '../../../helpers/l10n';
@@ -35,10 +35,8 @@ import OrganizationDescriptionInput from '../../create/components/OrganizationDe
 import OrganizationNameInput from '../../create/components/OrganizationNameInput';
 import OrganizationUrlInput from '../../create/components/OrganizationUrlInput';
 import { withOrganizationContext } from '../OrganizationContext';
-import OrganizationAvatar from './OrganizationAvatar';
 import OrganizationArchive from './OrganizationArchive';
-import { Switch } from '~design-system';
-import InstanceMessage from 'src/main/js/components/common/InstanceMessage';
+import OrganizationAvatar from './OrganizationAvatar';
 
 interface Props {
   organization: Organization;
@@ -54,6 +52,7 @@ interface State {
   url: string;
   kee: String;
   inviteUsersEnabled: boolean;
+  aiCustomRulesEnabled: boolean;
 }
 
 export class OrganizationEdit extends React.PureComponent<Props, State> {
@@ -70,6 +69,7 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
       url: props.organization.url || '',
       kee: props.organization.kee,
       inviteUsersEnabled: props.organization.inviteUsersEnabled,
+      aiCustomRulesEnabled: props.organization.aiCustomRulesEnabled || false,
     };
     this.changeAvatarImage = debounce(this.changeAvatarImage, 500);
   }
@@ -150,6 +150,24 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
   apiCallToToggleInviteUsersVisibility = async (kee: string, inviteUsersEnabled: boolean) => {
     try {
       await toggleInviteUsersVisibility(kee, inviteUsersEnabled);
+      window.location.reload();
+    } catch (error) {
+    }
+  };
+
+  handleAiCustomRulesSwitchChange = () => {
+    this.setState(
+      (prevState) => ({ aiCustomRulesEnabled: !prevState.aiCustomRulesEnabled }),
+      () => {
+        this.apiCallToToggleAiCustomRules(this.props.organization.kee, this.state.aiCustomRulesEnabled);
+      }
+    );
+  };
+
+  apiCallToToggleAiCustomRules = async (kee: string, aiCustomRulesEnabled: boolean) => {
+    try {
+      const { toggleAiCustomRulesEnabled } = await import('../../../api/organizations');
+      await toggleAiCustomRulesEnabled(kee, aiCustomRulesEnabled);
       window.location.reload();
     } catch (error) {
     }
@@ -239,7 +257,31 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
             </div>
           </Card>
         )}
-        
+        <Card className='sw-mt-4 sw-mb-4'>
+          <div className="boxed-group boxed-group-inner">
+            <h2 className="boxed-title">{translate('organization.disable_invite_users')}</h2>
+            <p className="big-spacer-bottom width-50 sw-my-8">
+              <InstanceMessage message={translate('organization.disable_invite_users.description')} />
+            </p>
+            <Switch
+              value={!this.state.inviteUsersEnabled}
+              onChange={() => this.handleSwitchChange()}
+            />
+          </div>
+        </Card>
+        <Card className='sw-mt-4 sw-mb-4'>
+          <div className="boxed-group boxed-group-inner">
+            <h2 className="boxed-title">Enable AI Custom Rules</h2>
+            <p className="big-spacer-bottom width-50 sw-my-8">
+              When enabled, users can generate XPath expressions using AI when creating custom rules for Salesforce metadata.
+            </p>
+            <Switch
+              value={this.state.aiCustomRulesEnabled}
+              onChange={() => this.handleAiCustomRulesSwitchChange()}
+            />
+          </div>
+        </Card>
+
 
         {showDelete && <OrganizationArchive />}
       </div>

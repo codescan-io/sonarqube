@@ -1,0 +1,252 @@
+/*
+ * SonarQube
+ * Copyright (C) 2009-2024 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+.generate-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 88px 20px 88px;
+  gap: 14px;
+  flex: 1 0 0;
+  overflow: hidden;
+}
+
+/* Top sparkles icon wrapper */
+.generate-step-icon {
+  display: flex;
+  width: 86px;
+  height: 86px;
+  justify-content: center;
+  align-items: center;
+  aspect-ratio: 1/1;
+  border-radius: 50%;
+  background: #E8EBFF;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Spinning border during processing */
+.generate-step-icon--processing::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: #5C6BD1;
+  border-right-color: #5C6BD1;
+  border-bottom-color: #5C6BD1;
+  animation: generate-icon-spin 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes generate-icon-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Success state: check icon in circle */
+.generate-step-icon--success {
+  background: #E8EBFF;
+}
+
+.generate-step-icon--success::before {
+  display: none;
+}
+
+/* Title */
+.generate-step-title {
+  font-family: Inter, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2A2F40;
+  margin: 0;
+  text-align: center;
+  line-height: 24px;
+}
+
+/* Subtitle */
+.generate-step-subtitle {
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #637192;
+  margin: 0;
+  text-align: center;
+  line-height: 21px;
+}
+
+/* Steps container */
+.generate-step-steps {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Each step row with timeline connector */
+.generate-step-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* Individual step item box */
+.generate-step-item {
+  display: flex;
+  width: 384px;
+  height: 40px;
+  padding-left: 12px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 4px;
+  background: #F0F2FA;
+}
+
+/* Active step box */
+.generate-step-item--active {
+  border-radius: 4px;
+  background: #F0F2FA;
+}
+
+/* Completed step box */
+.generate-step-item--completed {
+  border-radius: 4px;
+  background: #F0F2FA;
+}
+
+/* Pending step box */
+.generate-step-item--pending {
+  border-radius: 4px;
+  background: #F0F2FA;
+  opacity: 0.5;
+}
+
+/* Step icon circles */
+.generate-step-item-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Completed: purple circle with white check */
+.generate-step-item-icon--completed {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: 16777200px;
+  background: #5C6BD1;
+}
+
+.generate-step-item-icon--completed img {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+/* Active: spinning loader ring */
+.generate-step-item-icon--active {
+  background: transparent;
+  position: relative;
+}
+
+/* Pending: gray dot */
+.generate-step-item-icon--pending {
+  background: transparent;
+}
+
+.generate-step-pending-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #D4D9E8;
+}
+
+/* Loader spinner for active step */
+.generate-step-loader {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #E8EBFF;
+  border-top-color: #5C6BD1;
+  animation: generate-step-spin 1s linear infinite;
+  box-sizing: border-box;
+}
+
+/* Vertical connector line between step boxes */
+.generate-step-connector {
+  width: 2px;
+  height: 8px;
+  flex-shrink: 0;
+}
+
+.generate-step-connector--completed {
+  background: #5C6BD1;
+}
+
+.generate-step-connector--pending {
+  background: #D4D9E8;
+}
+
+/* Step text */
+.generate-step-item-text {
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  line-height: 21px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.generate-step-item-text--completed {
+  color: #2A2F40;
+  font-weight: 400;
+}
+
+.generate-step-item-text--active {
+  color: #2A2F40;
+  font-weight: 600;
+}
+
+.generate-step-item-text--pending {
+  color: #A0A8C2;
+  font-weight: 400;
+}
+
+/* Spin animation */
+@keyframes generate-step-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
