@@ -99,6 +99,8 @@ describe('issue app', () => {
     componentsHandler.registerComponent({
       ...mockComponent({ key: 'myproject' }),
       isAiCodeFixEnabled: true,
+      // AI CodeFix is only offered on GitHub/GitLab repositories, identified by the project's ALM tag.
+      tags: ['github'],
     } as Component);
     sourcesHandler.setSource(
       range(0, 1)
@@ -173,6 +175,8 @@ describe('issue app', () => {
     componentsHandler.registerComponent({
       ...mockComponent({ key: 'myproject' }),
       isAiCodeFixEnabled: true,
+      // AI CodeFix is only offered on GitHub/GitLab repositories, identified by the project's ALM tag.
+      tags: ['github'],
     } as Component);
     const user = userEvent.setup();
     renderProjectIssuesApp(
