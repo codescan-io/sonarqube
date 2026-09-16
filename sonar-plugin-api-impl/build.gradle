@@ -39,7 +39,7 @@ processResources {
   ]
 }
 
-ext.publishToCodeArtifact = deployCommunity
+ext.publishToCodeArtifact = true
 
 publishing {
   publications {

@@ -15,7 +15,7 @@ dependencies {
   testImplementation 'org.assertj:assertj-core'
 }
 
-ext.publishToCodeArtifact = deployCommunity
+ext.publishToCodeArtifact = true
 
 publishing {
   publications {

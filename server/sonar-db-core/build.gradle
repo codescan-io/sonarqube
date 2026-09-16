@@ -59,7 +59,7 @@ test {
     systemProperty 'orchestrator.configUrl', System.getProperty('orchestrator.configUrl')
 }
 
-ext.publishToCodeArtifact = deployCommunity
+ext.publishToCodeArtifact = true
 
 // Used by core plugins
 publishing {
