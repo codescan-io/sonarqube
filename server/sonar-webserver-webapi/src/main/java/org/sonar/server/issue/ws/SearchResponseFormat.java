@@ -202,10 +202,11 @@ public class SearchResponseFormat {
     issueBuilder.setType(Common.RuleType.forNumber(dto.getType()));
     String variableType = dto.getVariableType();
     String ruleKey = dto.getRuleKey().rule();
-    boolean suppressAiFix = VARIABLE_NAMING_RULE_KEYS.contains(ruleKey)
-              && (variableType == null || VARIABLE_TYPE_INSTANCE.equals(variableType))
-              || GLOBAL_FIELD_RULE_KEYS.contains(ruleKey)
-              && (variableType == null || VARIABLE_TYPE_GLOBAL.equals(variableType));
+    boolean suppressAiFix =
+              (VARIABLE_NAMING_RULE_KEYS.contains(ruleKey)
+                && (variableType == null || VARIABLE_TYPE_INSTANCE.equals(variableType)))
+              || (GLOBAL_FIELD_RULE_KEYS.contains(ruleKey)
+                && (variableType == null || VARIABLE_TYPE_GLOBAL.equals(variableType)));
     boolean aiCodeFixEnabled = data.getRulesByUuid().get(dto.getRuleUuid()).getAiCodeFixEnabled()
               && !suppressAiFix;
 
