@@ -110,10 +110,10 @@ public class SearchResponseFormat {
   // when one of these is raised on an instance/class field (variableType == INSTANCE).
   private static final Set<String> VARIABLE_NAMING_RULE_KEYS = Set.of("ShortVariable", "LongVariable", "VariableNamingConventions");
   private static final String VARIABLE_TYPE_INSTANCE = "INSTANCE";
-  // sf:AvoidPublicFields tags the flagged field's access modifier in the same metadata slot. A global field is
-  // not auto-fixed: Salesforce packaging rules forbid changing a global member's access modifier and a single
-  // file cannot prove the conversion is safe for subscriber code, so AI code-fix is not offered for it.
-  private static final String AVOID_PUBLIC_FIELDS_RULE_KEY = "AvoidPublicFields";
+  // Rules that tag a violation with the flagged field's access modifier. AI code-fix is not offered when one
+  // of these is raised on a global field: Salesforce packaging rules forbid changing a global member's access
+  // modifier, and a single file cannot prove the conversion is safe for subscriber code.
+  private static final Set<String> GLOBAL_FIELD_RULE_KEYS = Set.of("AvoidPublicFields");
   private static final String VARIABLE_TYPE_GLOBAL = "GLOBAL";
 
   public SearchResponseFormat(Durations durations, Languages languages, TextRangeResponseFormatter textRangeFormatter,
@@ -204,7 +204,7 @@ public class SearchResponseFormat {
     String ruleKey = dto.getRuleKey().rule();
     boolean suppressAiFix = VARIABLE_NAMING_RULE_KEYS.contains(ruleKey)
               && (variableType == null || VARIABLE_TYPE_INSTANCE.equals(variableType))
-              || AVOID_PUBLIC_FIELDS_RULE_KEY.equals(ruleKey)
+              || GLOBAL_FIELD_RULE_KEYS.contains(ruleKey)
               && (variableType == null || VARIABLE_TYPE_GLOBAL.equals(variableType));
     boolean aiCodeFixEnabled = data.getRulesByUuid().get(dto.getRuleUuid()).getAiCodeFixEnabled()
               && !suppressAiFix;
