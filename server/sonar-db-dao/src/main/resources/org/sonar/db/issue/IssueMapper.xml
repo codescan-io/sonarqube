@@ -437,6 +437,12 @@
                 OR (i.issue_ai_metadata is not null
                     AND i.issue_ai_metadata not like '%"variableType":"INSTANCE"%')
               )
+              <!-- sf:AvoidPublicFields is the same channel with the opposite exclusion: a global field is
+                   never auto-fixed. An untagged issue predates the rule's port to a Java rule, so a global
+                   field cannot be told from an instance one and is withheld until an analysis tags it. -->
+              AND NOT (r.plugin_rule_key = 'AvoidPublicFields'
+                    AND (i.issue_ai_metadata is null
+                      OR i.issue_ai_metadata like '%"variableType":"GLOBAL"%'))
              THEN 'AVAILABLE' END) as codefixStatus,
       <include refid="indexedIssueColumnsAfterCodefix"/>
     <include refid="indexedIssueFrom"/>
