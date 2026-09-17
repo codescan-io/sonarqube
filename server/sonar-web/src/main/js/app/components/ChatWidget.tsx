@@ -155,7 +155,7 @@ useEffect(() => {
           <div className="chat-header">
             <div className="chat-title-wrapper">
               <img alt="" className="chat-logo" src="/images/autorabit-icon-logo-white.svg" />
-              <span className="chat-title"> CodeScan Assist</span>
+              <span className="chat-title">AutoRABIT CodeScan Assist</span>
             </div>
             <div className="chat-header-buttons">
               {/* Maximize/Minimize Button */}
