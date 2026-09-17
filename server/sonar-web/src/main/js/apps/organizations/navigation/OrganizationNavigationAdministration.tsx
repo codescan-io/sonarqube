@@ -24,10 +24,16 @@ import { AppStateContext } from '../../../app/components/app-state/AppStateConte
 import { useCurrentUser } from '../../../app/components/current-user/CurrentUserContext';
 import { translate } from '../../../helpers/l10n';
 import { isDeploymentForAmazon } from '../../../helpers/urls';
+import { GlobalSettingKeys } from '../../../types/settings';
+import { useGetValuesQuery } from '../../../queries/settings';
 import { Organization, OrganizationBillingDetails } from '../../../types/types';
 import { useAiCreditsContext } from '../../../app/components/ai-credits/AiCreditsContext';
 
 const SALESFORCE_CONNECTION_PAGE_KEY = 'developer/salesforce_connection';
+const RESOLUTION_TRANSFER_PAGE_KEY = 'developer/resolution_transfer';
+
+// Module-level so the react-query key is a stable reference across renders.
+const RESOLUTION_TRANSFER_SETTING_KEYS = [GlobalSettingKeys.CodescanResolutionTransferEnabled];
 
 interface Props {
   billing?: OrganizationBillingDetails;
@@ -52,6 +58,18 @@ export default function OrganizationNavigationAdministration({ billing, location
   const { adminPages = [] } = organization;
   const appState = React.useContext(AppStateContext);
   const { currentUser } = useCurrentUser();
+
+
+  // Resolution Transfer feature flag, read from the settings API rather than from appState: appState is a
+  // bootstrap snapshot that never changes for the life of the tab, so a flag toggled elsewhere stayed visible
+  // here until the page was reloaded. Every save on the global settings page invalidates ['settings', 'values']
+  // (useSaveValueMutation) and react-query refetches on window focus, so the entry hides/shows with no reload.
+  // Fail closed (hidden) until the value is in.
+  const { data: resolutionTransferSettings } = useGetValuesQuery(RESOLUTION_TRANSFER_SETTING_KEYS);
+  const resolutionTransferEnabled =
+    resolutionTransferSettings?.find(
+      (setting) => setting?.key === GlobalSettingKeys.CodescanResolutionTransferEnabled,
+    )?.value === 'true';
 
 
   const canSeeAdministration =
@@ -92,6 +110,7 @@ export default function OrganizationNavigationAdministration({ billing, location
                 isDeploymentForAmazon(whiteLabel) || hasPaidSubscription || canSeeAdministration || e.key !== BILLING_PAGE_KEY
             )
             .filter((e) => !isTrialOrganization || e.key !== SALESFORCE_CONNECTION_PAGE_KEY)
+            .filter((e) => resolutionTransferEnabled || e.key !== RESOLUTION_TRANSFER_PAGE_KEY)
             .map((extension) => (
             <DropdownMenu.ItemLink
               isMatchingFullPath
