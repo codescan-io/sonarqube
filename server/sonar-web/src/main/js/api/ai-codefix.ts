@@ -58,6 +58,11 @@ export interface CodefixStatusResponse {
   status: string;
 }
 
+export interface CodefixIntegrationResponse {
+  integrationType?: string;
+  supported: boolean;
+}
+
 export interface AiCreditsSummary {
   allocatedCredits: number;
   consumedCredits: number;
@@ -131,6 +136,10 @@ export function createCodefixPr(
       .then((response) => checkStatus(response, false))
       .then(() => resolve(), reject);
   });
+}
+
+export function getCodefixIntegration(projectKey: string): Promise<CodefixIntegrationResponse> {
+  return get(`${CODEFIX_BASE}/integration`, {projectKey}).then(parseJSON);
 }
 
 export function getCodefixStatus(issueKey: string): Promise<CodefixStatusResponse> {
