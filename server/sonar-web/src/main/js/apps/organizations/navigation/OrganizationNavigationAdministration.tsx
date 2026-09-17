@@ -60,13 +60,16 @@ export default function OrganizationNavigationAdministration({ billing, location
   const { currentUser } = useCurrentUser();
 
 
+  // Resolution Transfer feature flag, read from the settings API rather than from appState: appState is a
+  // bootstrap snapshot that never changes for the life of the tab, so a flag toggled elsewhere stayed visible
+  // here until the page was reloaded. Every save on the global settings page invalidates ['settings', 'values']
+  // (useSaveValueMutation) and react-query refetches on window focus, so the entry hides/shows with no reload.
+  // Fail closed (hidden) until the value is in.
   const { data: resolutionTransferSettings } = useGetValuesQuery(RESOLUTION_TRANSFER_SETTING_KEYS);
   const resolutionTransferEnabled =
-    resolutionTransferSettings === undefined
-      ? appState.settings?.[GlobalSettingKeys.CodescanResolutionTransferEnabled] === 'true'
-      : resolutionTransferSettings.find(
-          (setting) => setting?.key === GlobalSettingKeys.CodescanResolutionTransferEnabled,
-        )?.value === 'true';
+    resolutionTransferSettings?.find(
+      (setting) => setting?.key === GlobalSettingKeys.CodescanResolutionTransferEnabled,
+    )?.value === 'true';
 
 
   const canSeeAdministration =
