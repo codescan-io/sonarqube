@@ -113,6 +113,9 @@ public class SearchResponseFormat {
   // sf:AvoidPublicFields tags the flagged field's access modifier in the same metadata slot. A global field is
   // not auto-fixed: Salesforce packaging rules forbid changing a global member and a single file cannot prove the
   // conversion is safe for subscriber code, so AI code-fix is not offered for it (CD-9473, CD-9710).
+  // A null variableType is treated the same way: the issue was raised before the rule was ported to Java and so
+  // carries no tag, which means a global field is indistinguishable from an instance one. Withholding until the
+  // next analysis re-tags it is the safe direction, and matches how the variable-naming rules read a null.
   private static final String AVOID_PUBLIC_FIELDS_RULE_KEY = "AvoidPublicFields";
   private static final String VARIABLE_TYPE_GLOBAL = "GLOBAL";
 
@@ -204,7 +207,8 @@ public class SearchResponseFormat {
     String ruleKey = dto.getRuleKey().rule();
     boolean suppressAiFix = (VARIABLE_NAMING_RULE_KEYS.contains(ruleKey)
               && (variableType == null || VARIABLE_TYPE_INSTANCE.equals(variableType)))
-              || (AVOID_PUBLIC_FIELDS_RULE_KEY.equals(ruleKey) && VARIABLE_TYPE_GLOBAL.equals(variableType));
+              || (AVOID_PUBLIC_FIELDS_RULE_KEY.equals(ruleKey)
+                  && (variableType == null || VARIABLE_TYPE_GLOBAL.equals(variableType)));
     boolean aiCodeFixEnabled = data.getRulesByUuid().get(dto.getRuleUuid()).getAiCodeFixEnabled()
               && !suppressAiFix;
 
