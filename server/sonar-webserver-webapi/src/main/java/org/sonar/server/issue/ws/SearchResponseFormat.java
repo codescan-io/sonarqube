@@ -264,12 +264,15 @@ public class SearchResponseFormat {
     ofNullable(dto.getIssueCreationDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setCreationDate);
     ofNullable(dto.getIssueUpdateDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setUpdateDate);
     ofNullable(dto.getIssueCloseDate()).map(DateUtils::formatDateTime).ifPresent(issueBuilder::setCloseDate);
-    ofNullable(data.getStatusChangedByIssueKey(dto.getKey()))
-      .map(data::getUserByUuid)
-      .filter(userDto -> userDto.getName() != null && !userDto.getName().isBlank())
-      .filter(userDto -> !(userDto.getName().startsWith(REMOVED_USER_PREFIX) && !userDto.isActive()))
-      .map(UserDto::getName)
-      .ifPresent(issueBuilder::setIssueMarkedBy);
+    String statusChangedByUuid = data.getStatusChangedByIssueKey(dto.getKey());
+    if (statusChangedByUuid != null && !statusChangedByUuid.isBlank()) {
+      issueBuilder.setIssueMarkedByUuid(statusChangedByUuid);
+      ofNullable(data.getUserByUuid(statusChangedByUuid))
+        .filter(userDto -> userDto.getName() != null && !userDto.getName().isBlank())
+        .filter(userDto -> !(userDto.getName().startsWith(REMOVED_USER_PREFIX) && !userDto.isActive()))
+        .map(UserDto::getName)
+        .ifPresent(issueBuilder::setIssueMarkedBy);
+    }
 
     Optional.of(dto.isQuickFixAvailable())
       .ifPresentOrElse(issueBuilder::setQuickFixAvailable, () -> issueBuilder.setQuickFixAvailable(false));
