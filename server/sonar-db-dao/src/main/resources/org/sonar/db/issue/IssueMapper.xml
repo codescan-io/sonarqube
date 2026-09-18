@@ -146,12 +146,6 @@
     'AvoidPublicFields'
   </sql>
 
-  <!-- Rules that tag a violation with the flagged field's access modifier; AI code-fix is not offered
-       when one of these is raised on a global field (variableType == GLOBAL). -->
-  <sql id="aiFixGlobalFieldRuleKeys">
-    'AvoidPublicFields'
-  </sql>
-
   <resultMap id="issueResultMap" type="Issue" autoMapping="true">
     <id property="kee" column="kee"/>
 
