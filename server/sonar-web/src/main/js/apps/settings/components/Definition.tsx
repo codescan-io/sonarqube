@@ -28,7 +28,7 @@ import {
   useResetSettingsMutation,
   useSaveValueMutation,
 } from '../../../queries/settings';
-import { ExtendedSettingDefinition, SettingType, SettingValue } from '../../../types/settings';
+import { ExtendedSettingDefinition, SettingsKey, SettingType, SettingValue } from '../../../types/settings';
 import { Component } from '../../../types/types';
 import {
   combineDefinitionAndSettingValue,
@@ -65,6 +65,17 @@ export default function Definition(props: Readonly<Props>) {
   const name = getUniqueName(definition);
 
   const isValidSeverityInput = (value) => /^[a-zA-Z0-9]+$/.test(value);
+
+  const isStaticResourceProjectSetting =
+    definition.key === SettingsKey.CodescanStaticResourceExtraction && Boolean(component);
+
+  const { data: instanceGateValue } = useGetValueQuery(
+    { key: SettingsKey.CodescanStaticResourceExtractionEnabled },
+    { enabled: isStaticResourceProjectSetting },
+  );
+
+  const isSettingDisabled =
+    isStaticResourceProjectSetting && instanceGateValue?.value !== 'true';
 
   const { data: loadedSettingValue, isLoading } = useGetValueQuery({
     key: definition.key,
@@ -220,6 +231,7 @@ export default function Definition(props: Readonly<Props>) {
         <form onSubmit={formNoop}>
           <Input
             ariaDescribedBy={`definition-stats-${name}`}
+            disabled={isSettingDisabled}
             hasValueChanged={hasValueChanged}
             onCancel={handleCancel}
             onChange={handleChange}
@@ -261,18 +273,20 @@ export default function Definition(props: Readonly<Props>) {
             )}
           </div>
 
-          <DefinitionActions
-            changedValue={changedValue}
-            definition={definition}
-            hasError={hasError}
-            hasValueChanged={hasValueChanged}
-            isDefault={isDefault}
-            isEditing={isEditing}
-            onCancel={handleCancel}
-            onReset={handleReset}
-            onSave={handleSave}
-            setting={settingDefinitionAndValue}
-          />
+          {!isSettingDisabled && (
+            <DefinitionActions
+              changedValue={changedValue}
+              definition={definition}
+              hasError={hasError}
+              hasValueChanged={hasValueChanged}
+              isDefault={isDefault}
+              isEditing={isEditing}
+              onCancel={handleCancel}
+              onReset={handleReset}
+              onSave={handleSave}
+              setting={settingDefinitionAndValue}
+            />
+          )}
         </form>
       </div>
     </div>
