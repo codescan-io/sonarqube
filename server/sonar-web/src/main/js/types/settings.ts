@@ -31,6 +31,8 @@ export const enum SettingsKey {
   QPAdminCanDisableInheritedRules = 'sonar.qualityProfiles.allowDisableInheritedRules',
   MQRMode = 'sonar.multi-quality-mode.enabled',
   CodeSuggestion = 'sonar.ai.suggestions.enabled',
+  CodescanStaticResourceExtractionEnabled = 'codescan.cloud.staticResourceExtraction.enabled',
+  CodescanStaticResourceExtraction = 'codescan.cloud.staticResourceExtraction',
 }
 
 export enum GlobalSettingKeys {
