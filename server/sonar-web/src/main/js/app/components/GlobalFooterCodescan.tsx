@@ -39,10 +39,10 @@ export default function GlobalFooterCodescan() {
               href="https://www.codescan.io"
               rel="noopener noreferrer"
               target="_blank"
-              title="CodeScan Enterprises LLC"
+              title="AutoRABIT CodeScan"
               className="hyperlink-text"
             >
-              CodeScan Enterprises LLC
+              AutoRABIT CodeScan
             </a>
             . All rights reserved.
           </div>

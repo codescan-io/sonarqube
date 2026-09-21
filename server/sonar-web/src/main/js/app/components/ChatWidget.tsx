@@ -154,10 +154,7 @@ useEffect(() => {
         <div className={`chat-box ${isMaximized ? 'maximized' : ''}`}>
           <div className="chat-header">
             <div className="chat-title-wrapper">
-              <span className="chat-logo-text">
-                {'{'}
-                <span className="chat-slash">/</span>cs{'}'}
-              </span>
+              <img alt="" className="chat-logo" src="/images/autorabit-icon-logo-white.svg" />
               <span className="chat-title"> CodeScan Assist</span>
             </div>
             <div className="chat-header-buttons">
@@ -185,7 +182,7 @@ useEffect(() => {
               <div key={i} className={`chat-bubble ${m.role === 'user' ? 'user' : 'bot'}`}>
                 <img
                   className="avatar"
-                  src={m.role === 'user' ? '/images/user-circle.svg' : '/images/codescan-icon.svg'}
+                  src={m.role === 'user' ? '/images/user-circle.svg' : '/images/autorabit-icon-logo.svg'}
                   alt={m.role}
                 />
                 {m.role === 'assistant' ? (
@@ -227,7 +224,7 @@ useEffect(() => {
             ))}
             {sending && (
               <div className="chat-bubble bot loading">
-                <img className="avatar" src="/images/codescan-icon.svg" alt="assistant" />
+                <img className="avatar" src="/images/autorabit-icon-logo.svg" alt="assistant" />
                 <div className="bubble-text">
                   <span></span>
                   <span></span>
