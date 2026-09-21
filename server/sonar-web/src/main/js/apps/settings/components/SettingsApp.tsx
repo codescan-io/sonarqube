@@ -19,9 +19,9 @@
  */
 
 import * as React from 'react';
-import { getDefinitions } from '../../../api/settings';
+import { getDefinitions, getValues } from '../../../api/settings';
 import withComponentContext from '../../../app/components/componentContext/withComponentContext';
-import { ExtendedSettingDefinition } from '../../../types/settings';
+import { ExtendedSettingDefinition, SettingsKey, SettingValue } from '../../../types/settings';
 import { Component } from '../../../types/types';
 import '../styles.css';
 import SettingsAppRenderer from './SettingsAppRenderer';
@@ -61,8 +61,50 @@ class SettingsApp extends React.PureComponent<Props, State> {
       () => [],
     );
 
+    const filteredDefinitions = component
+      ? await this.filterProjectDefinitions(definitions)
+      : definitions;
+
     if (this.mounted) {
-      this.setState({ definitions, loading: false });
+      this.setState({ definitions: filteredDefinitions, loading: false });
+    }
+  };
+
+  /**
+   * Hide the project-level static resource toggle when the instance gate is off.
+   * Definition still disables the control as a fallback if the setting is shown.
+   */
+  filterProjectDefinitions = async (
+    definitions: ExtendedSettingDefinition[],
+  ): Promise<ExtendedSettingDefinition[]> => {
+    const hasProjectToggle = definitions.some(
+      (definition) => definition.key === SettingsKey.CodescanStaticResourceExtraction,
+    );
+    if (!hasProjectToggle) {
+      return definitions;
+    }
+
+    const instanceEnabled = await this.isStaticResourceExtractionInstanceEnabled();
+    if (instanceEnabled) {
+      return definitions;
+    }
+
+    return definitions.filter(
+      (definition) => definition.key !== SettingsKey.CodescanStaticResourceExtraction,
+    );
+  };
+
+  isStaticResourceExtractionInstanceEnabled = async (): Promise<boolean> => {
+    try {
+      const values: (SettingValue | undefined)[] = await getValues({
+        keys: [SettingsKey.CodescanStaticResourceExtractionEnabled],
+      });
+      const setting = values.find(
+        (value) => value?.key === SettingsKey.CodescanStaticResourceExtractionEnabled,
+      );
+      return setting?.value === 'true';
+    } catch {
+      return false;
     }
   };
 
