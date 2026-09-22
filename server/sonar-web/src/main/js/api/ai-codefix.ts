@@ -103,6 +103,12 @@ export function queueCodeFix(data: {
   });
 }
 
+export function isAiCodefixLicensed(organizationKey: string): Promise<boolean> {
+  return get(`${CODEFIX_BASE}/quota`, { organizationKey })
+    .then(parseJSON)
+    .then((quota) => quota?.moduleLicensed === true);
+}
+
 export function getCodefixQuota(organizationKey: string): Promise<{
   dailyLimit: number;
   currentUsage: number;
