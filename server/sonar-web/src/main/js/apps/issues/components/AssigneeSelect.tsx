@@ -28,7 +28,10 @@ import { Issue } from '../../../types/types';
 import { RestUser, UserActive, isLoggedIn, isUserActive } from '../../../types/users';
 import { searchAssignees } from '../utils';
 import { isAiAssistantEnabled } from '../../../api/settings';
-import { useAreAllAiCodefixSupportedIntegrations } from '../../../queries/ai-codefix';
+import {
+  useAreAllAiCodefixSupportedIntegrations,
+  useIsAiCodefixLicensed,
+} from '../../../queries/ai-codefix';
 
 // exported for test
 export const MIN_QUERY_LENGTH = 2;
@@ -82,7 +85,8 @@ export default function AssigneeSelect(props: Readonly<AssigneeSelectProps>) {
   const allIntegrationsSupported = useAreAllAiCodefixSupportedIntegrations(
       mayOfferAiAssistant ? issues.map((issue) => issue.project) : [],
   );
-  const canAssignAiAssistant = mayOfferAiAssistant && allIntegrationsSupported;
+  const isLicensed = useIsAiCodefixLicensed(mayOfferAiAssistant ? props.organization : undefined);
+  const canAssignAiAssistant = mayOfferAiAssistant && allIntegrationsSupported && isLicensed;
   const defaultOptions = React.useMemo((): Option[] => {
     const allowCurrentUserSelection =
       isLoggedIn(currentUser) && issues.some((issue) => currentUser.login !== issue.assignee);
