@@ -71,7 +71,16 @@ export function SonarLintPromotion({ currentUser, qgConditions }: SonarLintPromo
               >
                 AutoRABIT CodeScan
               </DiscreetLink>
-              <img src="/images/embed-doc/codescan.svg" width={28} />
+              <img
+                alt=""
+                src="/images/autorabit-icon-logo.svg"
+                style={{
+                  width: '1.125rem',
+                  height: '1.125rem',
+                  paddingLeft: '0.25rem',
+                  paddingRight: '0.25rem',
+                }}
+              />
             </>
           ),
         }}
