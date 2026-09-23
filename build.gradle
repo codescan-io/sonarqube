@@ -634,7 +634,7 @@ subprojects {
 
   ext.failedTests = []
   test {
-    jvmArgs '-Dfile.encoding=UTF8'
+    jvmArgs '-Dfile.encoding=UTF8', '-Dorg.bouncycastle.native.cpu_variant=java'
     maxHeapSize = '1500m'
     systemProperty 'java.awt.headless', true
     // Some tests are asserting on localized messages or dates
