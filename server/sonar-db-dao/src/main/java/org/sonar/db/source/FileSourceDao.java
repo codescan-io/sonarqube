@@ -123,9 +123,16 @@ public class FileSourceDao implements Dao {
         }
       }
 
-      if (!leftover.isEmpty()) {
-        hashes.add(leftover);
-      }
+      // Added unconditionally.  Splitter.on('\n') has no omitEmptyStrings(), so N separators
+      // always yield N+1 elements and a trailing "" is a real hash, not padding:
+      // SourceLineHashesComputer.computeHash returns "" for a blank or whitespace-only line, and
+      // FileSourceDto.setLineHashes joins with Joiner.on('\n').  A file whose last line is blank
+      // is therefore stored as "h1\nh2\n" and must read back as [h1, h2, ""].  Guarding this on
+      // !leftover.isEmpty() dropped that last hash, leaving the list one shorter than line_count
+      // and one shorter than FileSourceDto.getLineHashes() returns for the same column - which
+      // mis-aligns LineHashSequence and makes the final line look changed to issue tracking.
+      // It also turned a stored empty string (not NULL) from [""] into [].
+      hashes.add(leftover);
       return hashes;
     } catch (SQLException e) {
       throw new IllegalStateException("Fail to read FILE_SOURCES.LINE_HASHES of file " + fileUuid, e);

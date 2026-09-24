@@ -19,6 +19,8 @@
  */
 package org.sonar.db.source;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
@@ -112,5 +114,67 @@ class FileSourceDaoIT {
     dbSession.commit();
 
     assertThat(underTest.selectLineHashes(dbSession, "BOUNDARY_FILE_UUID")).isEqualTo(expected);
+  }
+
+  @Test
+  void selectLineHashes_keeps_the_trailing_empty_hash_of_a_blank_last_line() {
+    // computeHash returns "" for a blank or whitespace-only line, so a file whose last line is
+    // blank ends with an empty hash.  setLineHashes joins with '\n', storing "h1\nh2\n", and
+    // Splitter.on('\n') reads that back as three elements.  Dropping the last one would leave the
+    // list one shorter than line_count and one shorter than FileSourceDto.getLineHashes().
+    List<String> expected = Arrays.asList("abc123hash0000000", "def456hash1111111", "");
+    underTest.insert(dbSession, new FileSourceDto()
+      .setUuid(Uuids.createFast())
+      .setProjectUuid("PRJ_UUID")
+      .setFileUuid("TRAILING_BLANK_UUID")
+      .setLineHashes(expected)
+      .setCreatedAt(1500000000000L)
+      .setUpdatedAt(1500000000001L));
+    dbSession.commit();
+
+    assertThat(underTest.selectLineHashes(dbSession, "TRAILING_BLANK_UUID"))
+      .isEqualTo(expected)
+      .hasSize(3);
+  }
+
+  @Test
+  void selectLineHashes_returns_one_empty_hash_when_line_hashes_is_an_empty_string() {
+    // A single blank line stores line_hashes = "" (empty string, not NULL) with line_count = 1.
+    // Splitter.on('\n').splitToList("") is [""], so the read must agree with line_count.
+    underTest.insert(dbSession, new FileSourceDto()
+      .setUuid(Uuids.createFast())
+      .setProjectUuid("PRJ_UUID")
+      .setFileUuid("EMPTY_STRING_UUID")
+      .setLineHashes(List.of(""))
+      .setCreatedAt(1500000000000L)
+      .setUpdatedAt(1500000000001L));
+    dbSession.commit();
+
+    assertThat(underTest.selectLineHashes(dbSession, "EMPTY_STRING_UUID"))
+      .isEqualTo(List.of(""))
+      .hasSize(1);
+  }
+
+  @Test
+  void selectLineHashes_keeps_the_trailing_empty_hash_across_a_chunk_boundary() {
+    // The same blank last line, but on a value large enough to span chunks, so the trailing ""
+    // has to survive the leftover-stitching path rather than a single-chunk read.
+    int lineCount = 40_000;
+    List<String> expected = new ArrayList<>(IntStream.range(0, lineCount)
+      .mapToObj(i -> String.format("%032d", i))
+      .toList());
+    expected.add("");
+    underTest.insert(dbSession, new FileSourceDto()
+      .setUuid(Uuids.createFast())
+      .setProjectUuid("PRJ_UUID")
+      .setFileUuid("LARGE_TRAILING_BLANK_UUID")
+      .setLineHashes(expected)
+      .setCreatedAt(1500000000000L)
+      .setUpdatedAt(1500000000001L));
+    dbSession.commit();
+
+    assertThat(underTest.selectLineHashes(dbSession, "LARGE_TRAILING_BLANK_UUID"))
+      .isEqualTo(expected)
+      .hasSize(lineCount + 1);
   }
 }
