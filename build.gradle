@@ -398,7 +398,7 @@ subprojects {
       dependency 'junit:junit:4.13.2'
       dependency 'org.xmlunit:xmlunit-core:2.10.0'
       dependency 'org.xmlunit:xmlunit-matchers:2.10.0'
-      dependency 'at.yawk.lz4:lz4-java:1.10.1'
+      dependency 'at.yawk.lz4:lz4-java:1.11.3'
       dependency 'org.littleshoot:littleproxy:1.1.2'
       dependency 'net.sf.trove4j:core:3.1.0'
       dependency 'org.awaitility:awaitility:4.2.2'
@@ -417,7 +417,7 @@ subprojects {
         exclude 'org.bouncycastle:bcpkix-jdk15on'
       }
       // Be aware that Log4j is used by Elasticsearch client
-      dependencySet(group: 'org.apache.logging.log4j', version: '2.25.4') {
+      dependencySet(group: 'org.apache.logging.log4j', version: '2.26.1') {
         entry 'log4j-core'
         entry 'log4j-api'
         entry 'log4j-to-slf4j'
@@ -487,7 +487,7 @@ subprojects {
         entry 'log4j-over-slf4j'
         entry 'slf4j-api'
       }
-      dependency 'org.postgresql:postgresql:42.7.11'
+      dependency 'org.postgresql:postgresql:42.7.12'
       dependency 'org.reflections:reflections:0.10.2'
       dependency 'org.simpleframework:simple:5.1.6'
       dependency 'org.sonarsource.git.blame:git-files-blame:1.1.0.1835'
@@ -538,12 +538,12 @@ subprojects {
     resolutionStrategy {
       force 'com.fasterxml.jackson.core:jackson-core:2.22.2'
       force 'org.eclipse.jgit:org.eclipse.jgit:7.3.0.202506031305-r'
-      force 'at.yawk.lz4:lz4-java:1.10.1'
+      force 'at.yawk.lz4:lz4-java:1.11.3'
     }
 
     resolutionStrategy.capabilitiesResolution {
         withCapability('org.lz4:lz4-java') {
-            select('at.yawk.lz4:lz4-java:1.10.1')
+            select('at.yawk.lz4:lz4-java:1.11.3')
         }
     }
   }
