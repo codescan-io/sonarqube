@@ -67,13 +67,14 @@ export default function Definition(props: Readonly<Props>) {
   const isValidSeverityInput = (value) => /^[a-zA-Z0-9]+$/.test(value);
 
   const isStaticResourceProjectSetting =
-    definition.key === SettingsKey.CodescanStaticResourceExtraction && Boolean(component);
+    definition.key === SettingsKey.CodescanStaticResourceExtraction;
 
   const { data: instanceGateValue } = useGetValueQuery(
     { key: SettingsKey.CodescanStaticResourceExtractionEnabled },
     { enabled: isStaticResourceProjectSetting },
   );
 
+  // Gray out / block the project toggle whenever the instance gate is off (admin or project UI).
   const isSettingDisabled =
     isStaticResourceProjectSetting && instanceGateValue?.value !== 'true';
 
