@@ -347,12 +347,12 @@ public class BulkIndexer {
     },
 
     /**
-     * Rewrites a large SUBSET of an existing index, from several producer threads sharing one indexer — a one-shot data
+     * Rewrites a large PART of an existing index, with several threads sharing one indexer — that is, a one-off data
      * migration. Like {@link #REGULAR} it leaves index settings alone and does not force-merge: those {@link #LARGE}
-     * costs scale with the whole index rather than with the subset being rewritten, so they can dominate a partial
-     * rewrite. Unlike REGULAR it flushes bigger bulks and keeps several in flight, because with
-     * {@code concurrentRequests == 0} the thread that trips the flush threshold performs the flush inline and the other
-     * producers block behind it, serialising the write path.
+     * costs are proportional to the whole index, not to the part being rewritten, so they can easily dwarf the rewrite
+     * itself. Unlike REGULAR it sends bigger batches and allows a few to be in flight at once — with
+     * {@code concurrentRequests == 0}, whichever thread happens to fill a batch has to send it itself while all the
+     * other threads wait behind it.
      */
     MIGRATION {
       @Override
@@ -401,8 +401,8 @@ public class BulkIndexer {
   }
 
   /**
-   * Leaves index settings untouched like {@link SizeHandler}, but sized for several producer threads feeding one shared
-   * indexer during a one-shot migration: bigger bulks, and enough in flight that a flush never stalls a producer.
+   * Leaves index settings alone like {@link SizeHandler}, but tuned for several threads feeding one shared indexer
+   * during a one-off migration: bigger batches, and enough of them in flight that sending one never stalls a thread.
    */
   static class MigrationSizeHandler extends SizeHandler {
     private static final ByteSizeValue MIGRATION_FLUSH_BYTE_SIZE = new ByteSizeValue(5, ByteSizeUnit.MB);
@@ -416,8 +416,8 @@ public class BulkIndexer {
 
     @Override
     int getConcurrentRequests() {
-      // At least 1 so flushing is always off the producer threads, capped so a migration cannot monopolise
-      // Elasticsearch's write threadpool.
+      // At least 1, so sending is never done on a thread that is busy reading. Capped so that a migration cannot hog
+      // Elasticsearch's write threads.
       return Math.max(1, Math.min(MAX_CONCURRENT_REQUESTS, runtime2.getCores() / 2));
     }
 

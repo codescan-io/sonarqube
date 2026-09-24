@@ -88,12 +88,12 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
   private static final Logger LOGGER = LoggerFactory.getLogger(IssueIndexer.class);
   private static final AuthorizationScope AUTHORIZATION_SCOPE = new AuthorizationScope(TYPE_ISSUE, entity -> ComponentQualifiers.PROJECT.equals(entity.getQualifier()));
   private static final Set<IndexType> INDEX_TYPES = Set.of(TYPE_ISSUE);
-  /** Emit a progress log every this-many docs queued during a rule-scoped reindex (see {@link #reindexByRuleUuids}). */
+  /** Log a progress line every this many documents during {@link #reindexByRuleUuids}. */
   private static final long REINDEX_LOG_INTERVAL = 100_000L;
   /**
-   * Upper bound on branches drained concurrently by {@link #reindexByRuleUuids}. Each thread holds one DB connection and
-   * one open scroll cursor for as long as its branch takes, so this is bounded well under the JDBC pool
-   * ({@code sonar.jdbc.maxActive}, 60 by default) rather than scaled to the branch count.
+   * How many branches {@link #reindexByRuleUuids} works on at the same time. Each one holds a database connection and an
+   * open query for as long as its branch takes, so this is kept comfortably below the connection pool size
+   * ({@code sonar.jdbc.maxActive}, 60 by default) instead of growing with the number of branches.
    */
   private static final int REINDEX_MAX_THREADS = 8;
 
@@ -136,53 +136,59 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
   }
 
   /**
-   * Reindexes from the DB every issue whose rule is one of {@code ruleUuids}: a full-document index that recomputes every
-   * field (including {@code codefixStatus}) from {@code IssueMapper#scrollIssuesForIndexationForMigration}. This is the
-   * {@code _source}-free way to backfill a field, since the {@code issues} index stores no {@code _source} (production
-   * builds {@code IssueIndexDefinition} with source disabled) and so cannot be updated with {@code update_by_query}.
+   * Rewrites, straight from the database, every issue whose rule is one of {@code ruleUuids}. Each document is rebuilt in
+   * full, so {@code codefixStatus} gets its correct value along with every other field.
    *
-   * <p><b>Partitioned by branch, drained in parallel.</b> The in-scope branches are resolved first
-   * ({@code IssueDao#selectBranchUuidsForRuleUuids}) and each is streamed by its own scroll cursor on its own DB session,
-   * {@link #REINDEX_MAX_THREADS} at a time. This mirrors how SonarQube's own startup reindex gets its throughput — it
-   * submits one CE task per branch — and it is what makes this fast rather than merely correct:
+   * <p><b>Why a rewrite and not an update.</b> Elasticsearch's {@code update_by_query} rebuilds each matched document
+   * from its stored {@code _source}, and the {@code issues} index does not store one (see {@code IssueIndexDefinition}).
+   * The database is the source of truth for this index, so we read from there and write the documents again.
+   *
+   * <p><b>One branch at a time, several branches at once.</b> We first ask the database which branches actually have
+   * matching issues ({@code IssueDao#selectBranchUuidsForRuleUuids}), then give each branch its own database connection
+   * and its own query, running {@link #REINDEX_MAX_THREADS} of them together. SonarQube's own startup reindex works the
+   * same way (one task per branch), and it is what makes this fast rather than merely correct:
    * <ul>
-   *   <li>the whole-table {@code rule_uuid IN (...)} scroll had to sort its entire joined result set before returning
-   *       row one (Postgres cannot stream a sorted result, and {@code ORDER BY kee} is required: MyBatis
-   *       {@code resultOrdered="true"} plus the impacts/dependency {@code <collection>}s need one issue's rows adjacent).
-   *       Per branch, that sort is small enough to stay in memory;</li>
-   *   <li>issue docs route on the project, so a branch-scoped batch lands on a single shard instead of fanning every
-   *       bulk across all of them.</li>
+   *   <li>One query over the whole table had to sort every matching row before it could return the first one, because
+   *       Postgres cannot sort and stream at the same time. (The sort is not optional: MyBatis needs all the rows of one
+   *       issue next to each other to assemble its impacts and dependencies.) One branch's worth sorts quickly.</li>
+   *   <li>Elasticsearch places issue documents by project, so a batch from one branch lands on a single shard instead of
+   *       being split across all of them.</li>
    * </ul>
    *
-   * <p>All producers share ONE {@link BulkIndexer} under {@link Size#MIGRATION}, so the run does a single flush+refresh
-   * at the end rather than one per branch — thousands of refreshes would leave the index a mess of tiny segments.
-   * MIGRATION rather than {@link Size#LARGE}: LARGE is the from-scratch bulk-load path, and on {@link BulkIndexer#stop()}
-   * it force-merges and re-replicates the WHOLE index, a cost proportional to the entire index rather than to the subset
-   * rewritten. (Its other two effects are no-ops here anyway: this index is permanently {@code refresh_interval=-1}, and
-   * replicas are already 0 outside cluster mode.) MIGRATION keeps settings untouched like REGULAR but flushes bigger
-   * bulks and keeps several in flight, which REGULAR's {@code concurrentRequests == 0} could not do without stalling
-   * every producer behind whichever one trips the flush threshold.
+   * <p><b>Why {@link Size#MIGRATION}.</b> Every thread writes through one shared {@link BulkIndexer}, so the index is
+   * flushed and refreshed once at the end instead of once per branch — thousands of refreshes would leave it full of
+   * tiny segments. We avoid {@link Size#LARGE} because that mode is built for filling an index from scratch: when it
+   * finishes it force-merges and re-replicates the WHOLE index, which costs the same whether we rewrote 1% of it or all
+   * of it. (LARGE's other two tricks do nothing here anyway — this index never auto-refreshes, and replicas are already
+   * 0 unless you run a cluster.) MIGRATION leaves index settings alone like {@link Size#REGULAR}, but sends bigger
+   * batches and allows a few to be in flight at once. REGULAR allows none, so whichever thread happens to fill a batch
+   * has to send it itself while all the other threads wait behind it.
    *
-   * <p>Still meant for a quiet period: these are plain last-write-wins index requests. Unlike {@link #indexProject} this
-   * does NOT set {@code need_issue_sync}; and unlike the resilient paths it fails fast (no {@code es_queue} recovery), so
-   * an analysis writing the same issues concurrently can race it. With analyses of the affected projects quiesced there
-   * are no competing writers and the race cannot happen — the behaviour a one-shot admin data migration wants.
+   * <p><b>Run it when the system is quiet</b>, with analyses of the affected projects stopped. Searches keep working
+   * normally, but each worker holds a database connection and an open query for as long as its branch takes. More
+   * importantly these are plain last-write-wins writes, outside the usual retry-on-failure path, so an analysis writing
+   * the same issues at the same time could clash with us. With those analyses stopped there is nobody else writing and
+   * that cannot happen. Note this also does not set {@code need_issue_sync}, unlike {@link #indexProject}.
    *
-   * <p>Any indexing error is recoverable by a plain force re-run (the reindex is idempotent). A <em>bulk-item</em> failure
-   * (e.g. a transient ES hiccup on some docs) is the common shape: {@code stop()} still runs to completion — it flushes
-   * and refreshes — and only THEN {@link IndexingListener#FAIL_ON_ERROR} throws
-   * {@code "Unrecoverable indexing failures: N errors ..."}. Just re-run to convergence (COMPLETED is reached only when
-   * every doc indexed, so there is no silent partial backfill). The per-doc causes are in the server/Elasticsearch log,
-   * not in the FAILED detail. A branch whose scroll fails takes the whole run down for the same reason — a partial
-   * backfill must not be reported as COMPLETED. A run that DIES before {@code stop()} finishes leaves nothing to clean
-   * up: no index settings were changed, so a re-run is the whole recovery procedure.
+   * <p><b>If it fails, run it again.</b> Rewriting a document with the value it should already have is harmless, so
+   * re-runs are safe, and a run that dies partway leaves nothing to clean up because no index settings were changed.
+   * Two things can go wrong:
+   * <ul>
+   *   <li>Elasticsearch rejects some documents (a transient hiccup, say). {@code stop()} still finishes flushing and
+   *       refreshing, and only THEN does {@link IndexingListener#FAIL_ON_ERROR} throw
+   *       {@code "Unrecoverable indexing failures: N errors ..."}. The reason for each rejected document is in the
+   *       server/Elasticsearch log, not in the migration's failure message.</li>
+   *   <li>One branch's query fails. That fails the whole run on purpose — a half-done backfill must never be reported as
+   *       COMPLETED.</li>
+   * </ul>
+   * Either way, re-run until it reports COMPLETED, which only happens once every document is indexed.
    *
-   * @return the number of issue documents reindexed
+   * @return how many issue documents were rewritten
    */
   public long reindexByRuleUuids(Collection<String> ruleUuids) {
     if (ruleUuids.isEmpty()) {
-      // An empty rule set would render as `rule_uuid in ()` and fail as a syntax error. Callers are expected to skip the
-      // reindex entirely in that case; return the same answer rather than blowing up.
+      // With no rules the SQL would read `rule_uuid in ()`, which is a syntax error. Callers are meant to skip the
+      // reindex in that case; give them the same answer instead of blowing up.
       return 0;
     }
     List<String> branchUuids;
@@ -190,8 +196,8 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
       branchUuids = dbClient.issueDao().selectBranchUuidsForRuleUuids(dbSession, ruleUuids);
     }
     if (branchUuids.isEmpty()) {
-      // Nothing to drain. Returning here avoids spinning up a pool and, more usefully, avoids the index refresh that
-      // BulkIndexer.stop() would otherwise issue for no reason.
+      // Nothing to do. Returning here skips starting a thread pool and, more usefully, skips the index refresh that
+      // BulkIndexer.stop() would otherwise do for no reason.
       return 0;
     }
     int threads = Math.max(1, Math.min(REINDEX_MAX_THREADS, branchUuids.size()));
@@ -212,8 +218,9 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
       for (String branchUuid : branchUuids) {
         futures.add(executor.submit(() -> drainBranch(branchUuid, ruleUuids, bulkIndexer, reindexed, startedAt)));
       }
-      // Wait for every branch before flushing, and surface the first failure. Other branches are left to finish rather
-      // than cancelled: their docs are already queued in the shared indexer and stop() below has to flush them anyway.
+      // Wait for every branch before flushing, and report the first failure. We let the other branches finish rather
+      // than cancelling them: their documents are already queued in the shared indexer, and stop() below has to send
+      // them anyway.
       for (Future<?> future : futures) {
         try {
           future.get();
@@ -230,15 +237,15 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
         throw drainFailure;
       }
     } catch (RuntimeException e) {
-      // Remember the real cause so a failure while flushing below cannot mask it — that root cause is what ends up in
-      // the migration's FAILED status and drives diagnosis.
+      // Hold on to the real cause, so that a later failure while flushing cannot hide it. This is what shows up as the
+      // migration's FAILED reason, and it is what anyone diagnosing the run will read first.
       drainFailure = e;
       throw e;
     } finally {
       executor.shutdownNow();
-      // stop() flushes queued bulk requests and refreshes the index. It must run even if a drain failed, to flush what
-      // was already queued. Isolate its own failure: if the drain already failed keep that as the primary error and only
-      // attach the stop() failure; else a flush failure on an otherwise-successful drain is itself the failure.
+      // stop() sends whatever is still queued and refreshes the index. It has to run even when a branch failed, so the
+      // already-queued documents are not thrown away. Keep its own failure separate: if a branch already failed, that
+      // stays the main error and this one is attached to it. Otherwise a failure here is the failure.
       try {
         long flushStart = System.currentTimeMillis();
         bulkIndexer.stop();
@@ -256,17 +263,17 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
   }
 
   /**
-   * Streams one branch's in-scope issues into the shared indexer. {@link BulkIndexer#add} and {@link IndexingResult} are
-   * both safe to call from several threads (the underlying {@code BulkProcessor} serialises, and the counters are
-   * atomic), so producers need no coordination beyond the progress log below.
+   * Reads one branch's matching issues and feeds them to the shared indexer. {@link BulkIndexer#add} and
+   * {@link IndexingResult} are both safe to call from several threads at once (the underlying {@code BulkProcessor}
+   * queues the calls, and the counters are atomic), so the workers need no coordination beyond the progress log below.
    */
   private void drainBranch(String branchUuid, Collection<String> ruleUuids, BulkIndexer bulkIndexer,
     AtomicLong reindexed, long startedAt) {
     try (IssueIterator issues = issueIteratorFactory.createForBranchAndRuleUuids(branchUuid, ruleUuids)) {
       while (issues.hasNext()) {
         bulkIndexer.add(newIndexRequest(issues.next()));
-        // incrementAndGet hands out distinct values, so exactly one thread observes each interval boundary — no
-        // coordination needed to keep this to one line per interval.
+        // incrementAndGet gives every caller a different number, so exactly one thread sees each multiple of the
+        // interval. That is enough to keep this to one log line per interval, with no locking.
         long total = reindexed.incrementAndGet();
         if (total % REINDEX_LOG_INTERVAL == 0) {
           LOGGER.info("reindexByRuleUuids: {} docs queued after {} ms", total, System.currentTimeMillis() - startedAt);

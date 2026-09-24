@@ -48,10 +48,10 @@ class MyBatisConfBuilder {
     this.conf.getVariables().setProperty("_false", dialect.getFalseSqlValue());
     this.conf.getVariables().setProperty("_from_dual", dialect.getSqlFromDual());
     this.conf.getVariables().setProperty("_scrollFetchSize", String.valueOf(dialect.getScrollDefaultFetchSize()));
-    // Fetch size for one-shot data-migration scrolls (see IssueMapper#scrollIssuesForIndexationForMigration), which
-    // stream far more rows than a per-analysis scroll and would otherwise pay thousands of round trips at the default
-    // 200. Deliberately separate from _scrollFetchSize so raising it cannot enlarge the JDBC row buffer of the
-    // analysis-path scrolls, which run constantly and concurrently.
+    // Rows per round trip for one-off data-migration queries (see IssueMapper#scrollIssuesForIndexationForMigration).
+    // They stream far more rows than a per-analysis query, and at the default of 200 would pay thousands of round trips.
+    // Kept separate from _scrollFetchSize on purpose, so that raising it cannot also enlarge the buffer of the analysis
+    // queries, which run constantly and in parallel.
     this.conf.getVariables().setProperty("_migrationScrollFetchSize", String.valueOf(dialect.getMigrationScrollFetchSize()));
     this.conf.setLocalCacheScope(LocalCacheScope.STATEMENT);
   }

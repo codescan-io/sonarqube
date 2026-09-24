@@ -105,15 +105,15 @@ public class IssueDao implements Dao {
   }
 
   /**
-   * Streams, in a server-side scroll cursor ordered by key, the issues of ONE branch whose rule is one of
-   * {@code ruleUuids} (the ai_code_fix_enabled, non-REMOVED rules, resolved once by the caller); see
-   * BackfillCodefixStatusMigration. The migration runs one of these per branch, several in parallel, so each cursor
-   * covers a small slice and its ORDER BY sorts a small set — a single whole-table scroll had to sort the entire joined
-   * result before yielding row one, because Postgres cannot stream a sorted result.
-   * <p>Emits {@code codefixStatus = COALESCE(codefix_status, 'AVAILABLE')}: a blanket backfill that marks every
-   * in-scope issue AVAILABLE (defaulting only the NULLs), WITHOUT the variableType narrowing that normal analysis
-   * indexing applies. Old issues predate {@code issue_ai_metadata}, so that narrowing would leave the variable-naming
-   * rules NULL; the backfill intent is to mark them all.
+   * Streams the issues of ONE branch whose rule is one of {@code ruleUuids} (the ai_code_fix_enabled, non-REMOVED rules,
+   * looked up once by the caller). Used by BackfillCodefixStatusMigration, which runs one of these per branch, several
+   * at a time. One branch at a time on purpose: the query has to sort by issue key, and Postgres cannot sort and stream
+   * at the same time, so one query over the whole table had to sort everything before returning its first row.
+   *
+   * <p>It writes {@code codefixStatus = COALESCE(codefix_status, 'AVAILABLE')} — everything in scope becomes AVAILABLE,
+   * keeping any value already stored. That is blunter than what normal analysis indexing writes, on purpose: old issues
+   * have no {@code issue_ai_metadata}, so the extra check analysis applies would leave the variable-naming rules NULL,
+   * and the point of the backfill is to mark them all.
    */
   public Cursor<IndexedIssueDto> scrollIssuesForIndexationByBranchAndRuleUuids(DbSession dbSession, String branchUuid,
     Collection<String> ruleUuids) {
@@ -121,13 +121,13 @@ public class IssueDao implements Dao {
   }
 
   /**
-   * The branches ({@code issues.project_uuid}, which holds the branch uuid) that have at least one issue on one of
-   * {@code ruleUuids}. Drives the per-branch fan-out of BackfillCodefixStatusMigration; single pass over the in-scope
-   * issues, no joins, and returns only the branches with work to do.
+   * The branches that have at least one issue on one of {@code ruleUuids}. ({@code issues.project_uuid} holds the branch
+   * uuid, despite the name.) This is the work list for BackfillCodefixStatusMigration: one pass over the matching
+   * issues, no joins, and only the branches that actually have something to do.
    *
-   * <p><b>Ordered busiest-first, and callers must preserve that order.</b> The fan-out drains these over a fixed thread
-   * pool, so the run finishes when the last thread does; starting the biggest branches first keeps one from being picked
-   * up near the end and draining alone while the rest of the pool idles.
+   * <p><b>Biggest branches first, and callers must keep that order.</b> The migration hands these to a fixed pool of
+   * threads, so the run is only finished when the slowest thread is. Starting with the biggest branches stops a huge one
+   * from being picked up near the end and grinding away on its own while every other thread sits idle.
    */
   public List<String> selectBranchUuidsForRuleUuids(DbSession dbSession, Collection<String> ruleUuids) {
     return mapper(dbSession).selectBranchUuidsForRuleUuids(ruleUuids);

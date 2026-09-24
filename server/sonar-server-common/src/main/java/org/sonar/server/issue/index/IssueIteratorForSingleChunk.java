@@ -65,10 +65,10 @@ class IssueIteratorForSingleChunk implements IssueIterator {
   private final Iterator<IndexedIssueDto> iterator;
 
   /**
-   * Opens the scroll cursor produced by {@code cursorFactory} on its own session, closing that session if opening the
-   * cursor fails. Two factories feed this: {@link #forBranchOrKeys} (the analysis indexing paths) and
-   * {@link #forBranchAndRuleUuids} (the codefixStatus backfill migration). They cannot be constructors — both erase to
-   * {@code (DbClient, String, Collection)}.
+   * Opens the cursor built by {@code cursorFactory} on its own session, and closes that session if opening fails. Two
+   * factory methods use this: {@link #forBranchOrKeys} for the analysis indexing paths, and
+   * {@link #forBranchAndRuleUuids} for the codefixStatus backfill migration. They cannot be constructors — once generics
+   * are erased both would have the same signature, {@code (DbClient, String, Collection)}.
    */
   private IssueIteratorForSingleChunk(DbClient dbClient, Function<DbSession, Cursor<IndexedIssueDto>> cursorFactory, String failureMessage) {
     this.session = dbClient.openSession(false);
@@ -90,9 +90,9 @@ class IssueIteratorForSingleChunk implements IssueIterator {
   }
 
   /**
-   * Streams the issues of ONE branch that belong to the given rule uuids, in one server-side scroll cursor (used by the
-   * codefixStatus backfill migration, which runs one of these per branch in parallel). The rule set is a small handful,
-   * so it is not chunked; the check guards the Oracle IN-list limit anyway.
+   * Streams the issues of ONE branch that belong to the given rules, in a single database cursor. Used by the
+   * codefixStatus backfill migration, which runs one of these per branch, several at a time. The rule list is always a
+   * handful, so it is not split up; the check below just guards Oracle's limit on IN lists.
    */
   static IssueIteratorForSingleChunk forBranchAndRuleUuids(DbClient dbClient, String branchUuid, Collection<String> ruleUuids) {
     checkArgument(ruleUuids != null && ruleUuids.size() <= DatabaseUtils.PARTITION_SIZE_FOR_ORACLE,
