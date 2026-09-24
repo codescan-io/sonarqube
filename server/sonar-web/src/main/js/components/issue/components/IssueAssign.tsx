@@ -31,7 +31,10 @@ import { RestUser, isLoggedIn, isUserActive } from '../../../types/users';
 import Avatar from '../../ui/Avatar';
 import { isAiAssistantEnabled } from '../../../api/settings';
 import { getCodefixQuota, queueCodeFix } from '../../../api/ai-codefix';
-import { useIsAiCodefixSupportedIntegration } from '../../../queries/ai-codefix';
+import {
+  useIsAiCodefixLicensed,
+  useIsAiCodefixSupportedIntegration,
+} from '../../../queries/ai-codefix';
 
 interface Props {
   organization: string;
@@ -90,8 +93,10 @@ export default function IssueAssignee(props: Props) {
       aiEnabled ? props.issue.project : undefined,
   );
 
+  const isLicensed = useIsAiCodefixLicensed(aiEnabled ? organization : undefined);
+
   const canAssignAiAssistant = Boolean(
-      aiEnabled && props.issue.aiCodeFixEnabled && isSupportedIntegration,
+      aiEnabled && props.issue.aiCodeFixEnabled && isSupportedIntegration && isLicensed,
   );
 
     const defaultOptionsWithAi = React.useMemo(() => [
