@@ -23,11 +23,25 @@ import * as React from 'react';
 import { BasicSeparator, Note, SafeHTMLInjection, SanitizeLevel, SubTitle } from '~design-system';
 import { withRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { Location } from '~sonar-aligned/types/router';
-import { SettingDefinitionAndValue } from '../../../types/settings';
+import { SettingDefinitionAndValue, SettingsKey } from '../../../types/settings';
 import { Component } from '../../../types/types';
 import { SUB_CATEGORY_EXCLUSIONS } from '../constants';
 import { getSubCategoryDescription, getSubCategoryName } from '../utils';
 import DefinitionsList from './DefinitionsList';
+
+/** Keep instance gate and project toggle adjacent; instance first, then project. */
+function sortSettingsInSubCategory(settings: SettingDefinitionAndValue[]) {
+  return sortBy(settings, (setting) => {
+    const { key, name } = setting.definition;
+    if (key === SettingsKey.CodescanStaticResourceExtractionEnabled) {
+      return '0-a';
+    }
+    if (key === SettingsKey.CodescanStaticResourceExtraction) {
+      return '0-b';
+    }
+    return `1-${(name ?? key).toLowerCase()}`;
+  });
+}
 
 export interface SubCategoryDefinitionsListProps {
   category: string;
@@ -107,7 +121,7 @@ class SubCategoryDefinitionsList extends React.PureComponent<SubCategoryDefiniti
             <DefinitionsList
               component={component}
               scrollToDefinition={this.scrollToSubCategoryOrDefinition}
-              settings={bySubCategory[subCategory.key]}
+              settings={sortSettingsInSubCategory(bySubCategory[subCategory.key])}
             />
             {
               // Add a separator to all but the last element
