@@ -14,9 +14,13 @@
         return 'WEB_CONTEXT/' + filename;
       };
     </script>
+      %GA_SCRIPT%
+      %PENDO_SCRIPT%
+      %ANALYTICS_INIT_SCRIPT%
   </head>
 
   <body>
+    %GA_NOSCRIPT%
     <div
       id="content"
       data-base-url="WEB_CONTEXT"

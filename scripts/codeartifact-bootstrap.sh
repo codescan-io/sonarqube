@@ -1,24 +1,56 @@
 #!/usr/bin/env bash
-#
-# Fetches an AWS CodeArtifact authorization token and prints the export statement so it can
-# be evaluated into the current shell for local Gradle builds. Prefer the ./ca-gradlew
-# wrapper which sources this automatically. Requires the AWS CLI and an SSO profile with
-# read/publish access to the autorabit-artifacts-domain domain.
 
 set -uo pipefail
 
-CODEARTIFACT_DEFAULT_DOMAIN="autorabit-artifacts-domain"
-CODEARTIFACT_DEFAULT_DOMAIN_OWNER="261140574810"
-CODEARTIFACT_DEFAULT_REGION="us-east-1"
-AWS_PROFILE_DEFAULT="dev-profile"
-AWS_SSO_AUTO_LOGIN_DEFAULT="true"
+codeartifact_resolve() {
+  local url="${CODEARTIFACTORY_URL:-}"
+  url="${url%/}"
+
+  if [[ "${url#*://}" =~ ^(.+)-([0-9]+)\.d\.codeartifact\.([a-z0-9-]+)\.amazonaws\.com$ ]]; then
+    CODEARTIFACT_DOMAIN="${CODEARTIFACT_DOMAIN:-${BASH_REMATCH[1]}}"
+    CODEARTIFACT_DOMAIN_OWNER="${CODEARTIFACT_DOMAIN_OWNER:-${BASH_REMATCH[2]}}"
+    CODEARTIFACT_REGION="${CODEARTIFACT_REGION:-${BASH_REMATCH[3]}}"
+  fi
+
+  if [[ -z "${CODEARTIFACT_DOMAIN:-}" ]] || [[ -z "${CODEARTIFACT_DOMAIN_OWNER:-}" ]]; then
+    echo "ERROR: the CodeArtifact domain and owner are not configured." >&2
+    echo "Export CODEARTIFACTORY_URL (the Bitbucket repository variable the codescanng pipeline" >&2
+    echo "injects), e.g. https://<domain>-<owner>.d.codeartifact.<region>.amazonaws.com, or set" >&2
+    echo "CODEARTIFACT_DOMAIN and CODEARTIFACT_DOMAIN_OWNER explicitly." >&2
+    return 1
+  fi
+
+  CODEARTIFACT_REGION="${CODEARTIFACT_REGION:-${AWS_DEFAULT_REGION:-}}"
+  CODEARTIFACT_REPOSITORY="${CODEARTIFACT_REPOSITORY:-codescan-libs-release}"
+
+  if [[ -z "$url" ]] && [[ -n "$CODEARTIFACT_REGION" ]]; then
+    url="https://${CODEARTIFACT_DOMAIN}-${CODEARTIFACT_DOMAIN_OWNER}.d.codeartifact.${CODEARTIFACT_REGION}.amazonaws.com"
+  fi
+  CODEARTIFACT_MAVEN_URL="${CODEARTIFACT_MAVEN_URL:-${url:+$url/maven/$CODEARTIFACT_REPOSITORY/}}"
+
+  export CODEARTIFACT_DOMAIN CODEARTIFACT_DOMAIN_OWNER CODEARTIFACT_REGION
+  export CODEARTIFACT_REPOSITORY CODEARTIFACT_MAVEN_URL
+  if [[ -n "$url" ]]; then
+    export CODEARTIFACTORY_URL="$url"
+  fi
+
+  if [[ -n "$CODEARTIFACT_REGION" ]]; then
+    export AWS_REGION="$CODEARTIFACT_REGION"
+    export AWS_DEFAULT_REGION="$CODEARTIFACT_REGION"
+  fi
+  return 0
+}
+
+codeartifact_token() {
+  "$1" codeartifact get-authorization-token \
+    --domain "$CODEARTIFACT_DOMAIN" \
+    --domain-owner "$CODEARTIFACT_DOMAIN_OWNER" \
+    --query authorizationToken --output text 2>/dev/null || true
+}
 
 codeartifact_bootstrap() {
-  local domain="${CODEARTIFACT_DOMAIN:-$CODEARTIFACT_DEFAULT_DOMAIN}"
-  local owner="${CODEARTIFACT_DOMAIN_OWNER:-$CODEARTIFACT_DEFAULT_DOMAIN_OWNER}"
-  local region="${CODEARTIFACT_REGION:-$CODEARTIFACT_DEFAULT_REGION}"
-  local profile="${AWS_PROFILE:-$AWS_PROFILE_DEFAULT}"
-  local auto_login="${AWS_SSO_AUTO_LOGIN:-$AWS_SSO_AUTO_LOGIN_DEFAULT}"
+  local profile="${AWS_PROFILE:-}"
+  local auto_login="${AWS_SSO_AUTO_LOGIN:-true}"
   local aws_bin="${AWS_BIN:-$(command -v aws 2>/dev/null || true)}"
   local token
 
@@ -28,28 +60,24 @@ codeartifact_bootstrap() {
     return 1
   fi
 
-  token="$("$aws_bin" --profile "$profile" --region "$region" codeartifact get-authorization-token \
-    --domain "$domain" \
-    --domain-owner "$owner" \
-    --query authorizationToken --output text 2>/dev/null)" || token=""
+  codeartifact_resolve || return 1
+
+  token="$(codeartifact_token "$aws_bin")"
 
   if [[ -z "${token:-}" ]] || [[ "$token" == "None" ]]; then
     if [[ "$auto_login" == "true" ]]; then
-      echo "INFO: Unable to get CodeArtifact token; running 'aws sso login --profile $profile'..." >&2
-      if ! "$aws_bin" sso login --profile "$profile" >&2; then
+      echo "INFO: Unable to get CodeArtifact token; running 'aws sso login${profile:+ --profile $profile}'..." >&2
+      if ! "$aws_bin" sso login >&2; then
         echo "ERROR: 'aws sso login' failed." >&2
         return 1
       fi
-      token="$("$aws_bin" --profile "$profile" --region "$region" codeartifact get-authorization-token \
-        --domain "$domain" \
-        --domain-owner "$owner" \
-        --query authorizationToken --output text 2>/dev/null)" || token=""
+      token="$(codeartifact_token "$aws_bin")"
     fi
   fi
 
   if [[ -z "${token:-}" ]] || [[ "$token" == "None" ]]; then
-    echo "ERROR: Failed to obtain CodeArtifact token." >&2
-    echo "Tip: run: \"$aws_bin\" sso login --profile \"$profile\"" >&2
+    echo "ERROR: Failed to obtain a CodeArtifact token for domain $CODEARTIFACT_DOMAIN." >&2
+    echo "Tip: run: \"$aws_bin\" sso login${profile:+ --profile $profile}" >&2
     return 1
   fi
 
@@ -60,4 +88,10 @@ codeartifact_bootstrap() {
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   codeartifact_bootstrap "$@" || exit $?
   printf 'export CODEARTIFACT_AUTH_TOKEN=%q\n' "$CODEARTIFACT_AUTH_TOKEN"
+  if [[ -n "${CODEARTIFACTORY_URL:-}" ]]; then
+    printf 'export CODEARTIFACTORY_URL=%q\n' "$CODEARTIFACTORY_URL"
+  fi
+  if [[ -n "${CODEARTIFACT_MAVEN_URL:-}" ]]; then
+    printf 'export CODEARTIFACT_MAVEN_URL=%q\n' "$CODEARTIFACT_MAVEN_URL"
+  fi
 fi

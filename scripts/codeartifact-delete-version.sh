@@ -1,25 +1,17 @@
 #!/usr/bin/env bash
-#
-# Deletes a Maven version from CodeArtifact so `artifactPublish` can republish it.
-# CodeArtifact release packages are immutable (409 Conflict on a second PUT).
-# Artifactory used to overwrite; this is the equivalent.
-#
-# Usage:
-#   ./scripts/codeartifact-delete-version.sh              # defaults to 24.12.0.100206
-#   ./scripts/codeartifact-delete-version.sh 24.12.0.100206
-#
-# Does not delete product zips (those go to S3 bucket codescanng-build).
 
 set -uo pipefail
 
 PACKAGE_VERSION="${1:-24.12.0.100206}"
-DOMAIN="${CODEARTIFACT_DOMAIN:-autorabit-artifacts-domain}"
-OWNER="${CODEARTIFACT_DOMAIN_OWNER:-261140574810}"
-REGION="${CODEARTIFACT_REGION:-us-east-1}"
-REPO="${CODEARTIFACT_REPOSITORY:-codescan-libs-release}"
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/codeartifact-bootstrap.sh"
+codeartifact_resolve || exit 1
+
+DOMAIN="$CODEARTIFACT_DOMAIN"
+OWNER="$CODEARTIFACT_DOMAIN_OWNER"
+REPO="$CODEARTIFACT_REPOSITORY"
 NAMESPACE="org.sonarsource.sonarqube"
 
-# JARs opted in via publishToCodeArtifact (not codescan-application / sonar-application zips).
 PACKAGES=(
   sonar-core
   sonar-sarif
@@ -53,7 +45,6 @@ for pkg in "${PACKAGES[@]}"; do
       --namespace "$NAMESPACE" \
       --package "$pkg" \
       --restrictions publish=ALLOW,upstream=BLOCK \
-      --region "$REGION" \
     && echo "Origin ALLOW/BLOCK set on ${pkg}" \
     || echo "Failed to set origin on ${pkg}"
 
@@ -65,8 +56,7 @@ for pkg in "${PACKAGES[@]}"; do
       --namespace "$NAMESPACE" \
       --package "$pkg" \
       --versions "$PACKAGE_VERSION" \
-      --expected-status Published \
-      --region "$REGION"; then
+      --expected-status Published; then
     echo "Deleted ${pkg}:${PACKAGE_VERSION}"
   else
     echo "No local ${pkg}:${PACKAGE_VERSION} in ${REPO} (may only exist upstream)"

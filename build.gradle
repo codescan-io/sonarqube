@@ -37,13 +37,10 @@ boolean enableBom = System.getenv('CI') == "true" && (isMainBranch) ||
 allprojects {
   apply plugin: 'maven-publish'
 
-  // AWS CodeArtifact (migrated off artifactory.autorabit.com). The auth token is provided by
-  // CODEARTIFACT_AUTH_TOKEN (OIDC in CI, `aws sso` locally via scripts/codeartifact-bootstrap.sh).
-   // The domain host comes from CODEARTIFACTORY_URL (Bitbucket repository variable, injected by
-  // codescanng/bitbucket-pipelines.yml). Do not hardcode the account-specific URL here.
   def codeartifactoryUrl = System.getenv('CODEARTIFACTORY_URL')?.replaceAll(/\/+$/, '')
+  ext.codeartifactRepository = System.getenv('CODEARTIFACT_REPOSITORY') ?: 'codescan-libs-release'
   ext.codeartifactUrl = System.getenv('CODEARTIFACT_MAVEN_URL') ?:
-    (codeartifactoryUrl ? "${codeartifactoryUrl}/maven/codescan-libs-release/" : '')
+    (codeartifactoryUrl ? "${codeartifactoryUrl}/maven/${codeartifactRepository}/" : '')
   ext.codeartifactToken = System.getenv('CODEARTIFACT_AUTH_TOKEN') ?:
     (project.hasProperty('codeartifactToken') ? project.getProperty('codeartifactToken') : '')
   if (codeartifactToken && !codeartifactUrl) {
@@ -51,13 +48,20 @@ allprojects {
       'CODEARTIFACTORY_URL is not set. Configure it in Bitbucket repository variables, or export it locally to the CodeArtifact domain host (no /maven/... path).')
   }
 
-  // Opt-in publishing flag (replaces the former `artifactoryPublish.skip`). Individual modules
-  // set `ext.publishToCodeArtifact = true` (or `= deployCommunity`) to be published by `artifactPublish`.
+  def codeartifactHost = (codeartifactoryUrl ?: '').replaceFirst(/^\w+:\/\//, '')
+  def codeartifactHostMatcher = codeartifactHost =~ /^(.+)-(\d+)\.d\.codeartifact\.([a-z0-9-]+)\.amazonaws\.com$/
+  def codeartifactHostParts = codeartifactHostMatcher.matches() ?
+    [codeartifactHostMatcher.group(1), codeartifactHostMatcher.group(2), codeartifactHostMatcher.group(3)] :
+    ['', '', '']
+  ext.codeartifactDomain = System.getenv('CODEARTIFACT_DOMAIN') ?: codeartifactHostParts[0]
+  ext.codeartifactDomainOwner = System.getenv('CODEARTIFACT_DOMAIN_OWNER') ?: codeartifactHostParts[1]
+  ext.codeartifactRegion = System.getenv('CODEARTIFACT_REGION') ?: codeartifactHostParts[2] ?:
+    (System.getenv('AWS_DEFAULT_REGION') ?: 'us-east-1')
+
   ext.publishToCodeArtifact = true
 
   ext.versionInSources = version
   ext.buildNumber = System.getProperty("buildNumber")
-  // when no buildNumber is provided, then project version must end with '-SNAPSHOT'
   if (ext.buildNumber == null) {
     version = "${version}-SNAPSHOT".toString()
     ext.versionWithoutBuildNumber = version
@@ -740,18 +744,12 @@ subprojects {
     enabled = false
   }
 
-  // Remote CodeArtifact publish is opt-in at *invocation* time: the module must
-  // set publishToCodeArtifact=true AND the invoked tasks must include artifactPublish
-  // (checked via startParameter so `build` / `publish` / `publishLocal` never push).
   def artifactPublishRequested = gradle.startParameter.taskNames.any { name ->
     def simple = name.contains(':') ? name.substring(name.lastIndexOf(':') + 1) : name
     simple == 'artifactPublish'
   }
 
-  // Best-effort AWS CLI helper. The Bitbucket OIDC role
-  // (armor-bitbucket-runner-role) can get a Maven token and PUT, but is not
-  // granted PutPackageOriginConfiguration — those calls must not fail the build.
-  def runCodeArtifactAws = { List<String> args ->
+   def runCodeArtifactAws = { List<String> args ->
     def awsBin = System.getenv('AWS_BIN') ?: 'aws'
     def pb = new ProcessBuilder([awsBin] + args)
     pb.redirectErrorStream(true)
@@ -817,10 +815,14 @@ subprojects {
   }
 
   def prepareCodeArtifactPackageForPublish = { String packageName, String packageVersion ->
-    def domain = System.getenv('CODEARTIFACT_DOMAIN') ?: 'autorabit-artifacts-domain'
-    def owner = System.getenv('CODEARTIFACT_DOMAIN_OWNER') ?: '261140574810'
-    def region = System.getenv('CODEARTIFACT_REGION') ?: 'us-east-1'
-    def repo = System.getenv('CODEARTIFACT_REPOSITORY') ?: 'codescan-libs-release'
+    def domain = project.codeartifactDomain
+    def owner = project.codeartifactDomainOwner
+    def region = project.codeartifactRegion
+    def repo = project.codeartifactRepository
+    if (!domain || !owner) {
+      throw new GradleException(
+        "Cannot resolve the CodeArtifact domain/owner. Set CODEARTIFACTORY_URL (or CODEARTIFACT_DOMAIN and CODEARTIFACT_DOMAIN_OWNER) before publishing ${packageName}.")
+    }
     def namespace = project.group.toString()
     def common = [
       '--domain', domain,
