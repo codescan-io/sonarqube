@@ -248,6 +248,7 @@ public class IssuesService extends BaseService {
         .setParam("resolved", request.getResolved())
         .setParam("rules", request.getRules() == null ? null : request.getRules().stream().collect(Collectors.joining(",")))
         .setParam("s", request.getS())
+        .setParam("searchAfter", request.getSearchAfter() == null ? null : String.join(",", request.getSearchAfter()))
         .setParam("sansTop25", request.getSansTop25() == null ? null : request.getSansTop25().stream().collect(Collectors.joining(",")))
         .setParam("sonarsourceSecurity", request.getSonarsourceSecurity() == null ? null : request.getSonarsourceSecurity().stream().collect(Collectors.joining(",")))
         .setParam("severities", request.getSeverities() == null ? null : request.getSeverities().stream().collect(Collectors.joining(",")))
