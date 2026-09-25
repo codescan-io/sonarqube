@@ -178,6 +178,7 @@ message Issue {
   optional string assignedTo = 56;
   optional bool aiCodeFixEnabled = 57;
   optional string codefixStatus = 58;
+  optional string issueMarkedByUuid = 59;
 }
 
 message Sort {
