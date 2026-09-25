@@ -47,6 +47,7 @@ public class NewCustomRule {
   private CleanCodeAttribute cleanCodeAttribute;
   private List<Impact> impacts;
   private boolean preventReactivation = false;
+  private boolean aiGenerated = false;
 
   private NewCustomRule() {
     // No direct call to constructor
@@ -147,6 +148,19 @@ public class NewCustomRule {
    */
   public NewCustomRule setPreventReactivation(boolean preventReactivation) {
     this.preventReactivation = preventReactivation;
+    return this;
+  }
+
+  /**
+   * When true, the custom rule's XPath was generated using AI. Persisted as the reserved
+   * {@code ai-generated} system tag so the marker survives without a dedicated DB column.
+   */
+  public boolean isAiGenerated() {
+    return aiGenerated;
+  }
+
+  public NewCustomRule setAiGenerated(boolean aiGenerated) {
+    this.aiGenerated = aiGenerated;
     return this;
   }
 

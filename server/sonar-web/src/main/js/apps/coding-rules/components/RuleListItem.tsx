@@ -47,6 +47,7 @@ import { IssueSeverity } from '../../../types/issues';
 import { Rule, RuleActivation } from '../../../types/types';
 import ActivatedRuleActions from './ActivatedRuleActions';
 import ActivationButton from './ActivationButton';
+import AiRuleBadge, { AI_GENERATED_TAG, isAiGeneratedRule } from './ai-custom-rules/AiRuleBadge';
 
 interface Props {
   activation?: RuleActivation;
@@ -234,7 +235,11 @@ export default function RuleListItem(props: Readonly<Props>) {
     );
   };
 
-  const allTags = [...(rule.tags ?? []), ...(rule.sysTags ?? [])];
+  const aiGenerated = isAiGeneratedRule(rule);
+  // The AI marker is surfaced as a dedicated badge, so keep it out of the plain tag list.
+  const allTags = [...(rule.tags ?? []), ...(rule.sysTags ?? [])].filter(
+    (tag) => tag !== AI_GENERATED_TAG,
+  );
   return (
     <ListItemStyled
       selected={selected}
@@ -275,6 +280,15 @@ export default function RuleListItem(props: Readonly<Props>) {
 
           <TextSubdued as="ul" className="sw-flex sw-gap-1 sw-items-center sw-typo-sm">
             <li>{rule.langName}</li>
+
+            {aiGenerated && (
+              <>
+                <SeparatorCircleIcon aria-hidden as="li" />
+                <li>
+                  <AiRuleBadge />
+                </li>
+              </>
+            )}
 
             {rule.isTemplate && (
               <>
