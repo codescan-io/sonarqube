@@ -129,6 +129,11 @@ public class CommandFactoryImpl implements CommandFactory {
       .addFromMandatoryProperty(props, WEB_JAVA_OPTS.getKey())
       .addFromMandatoryProperty(props, WEB_JAVA_ADDITIONAL_OPTS.getKey());
     addProxyJvmOptions(jvmOptions);
+    // bc-fips 2.1.x defaults to a native RDRAND/RDSEED entropy source that can block indefinitely on
+    // shared/virtualized hosts with a constrained hardware entropy pool. Forcing the pure-Java path here
+    // avoids that hang; it's still within the FIPS-validated module boundary (see BC-FJA Security Policy
+    // 2.1.0, section 1.1.1).
+    jvmOptions.add("-Dorg.bouncycastle.native.cpu_variant=java");
 
     JavaCommand<WebJvmOptions> command = new JavaCommand<WebJvmOptions>(ProcessId.WEB_SERVER, homeDir)
       .setReadsArgumentsFromFile(true)
@@ -157,6 +162,11 @@ public class CommandFactoryImpl implements CommandFactory {
       .addFromMandatoryProperty(props, CE_JAVA_OPTS.getKey())
       .addFromMandatoryProperty(props, CE_JAVA_ADDITIONAL_OPTS.getKey());
     addProxyJvmOptions(jvmOptions);
+    // bc-fips 2.1.x defaults to a native RDRAND/RDSEED entropy source that can block indefinitely on
+    // shared/virtualized hosts with a constrained hardware entropy pool. Forcing the pure-Java path here
+    // avoids that hang; it's still within the FIPS-validated module boundary (see BC-FJA Security Policy
+    // 2.1.0, section 1.1.1).
+    jvmOptions.add("-Dorg.bouncycastle.native.cpu_variant=java");
 
     JavaCommand<CeJvmOptions> command = new JavaCommand<CeJvmOptions>(ProcessId.COMPUTE_ENGINE, homeDir)
       .setReadsArgumentsFromFile(true)
