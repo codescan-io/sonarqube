@@ -45,6 +45,7 @@ export type { RuleData };
 
 interface Props {
   ruleData: RuleData;
+  organization: string;
   onBack: () => void;
   onRegenerate: () => void;
   onActivate: (xpath: string) => void;
@@ -54,7 +55,8 @@ interface Props {
 }
 
 export default function ReviewStep(props: Readonly<Props>) {
-  const { ruleData, onBack, onRegenerate, onActivate, onValidate, loading, hasError } = props;
+  const { ruleData, organization, onBack, onRegenerate, onActivate, onValidate, loading, hasError } =
+    props;
   const [xpathValue, setXpathValue] = useState(ruleData.generatedXPath);
   const [isEditing, setIsEditing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -296,6 +298,7 @@ export default function ReviewStep(props: Readonly<Props>) {
         <ValidateXPathModal
           xpath={xpathValue}
           language={ruleLanguage}
+          organization={organization}
           onClose={() => setShowValidateModal(false)}
         />
       )}

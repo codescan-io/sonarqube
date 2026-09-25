@@ -340,6 +340,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
         return ruleData ? (
           <ReviewStep
             ruleData={ruleData}
+            organization={organization}
             onBack={handleReviewBack}
             onRegenerate={handleRegenerate}
             onActivate={handleActivateRule}

@@ -31,6 +31,7 @@ import XSvg from './icons/x.svg';
 interface Props {
   xpath: string;
   language: string;
+  organization: string;
   onClose: () => void;
 }
 
@@ -45,7 +46,7 @@ const LANGUAGE_LABELS: { [key: string]: string } = {
 };
 
 export default function ValidateXPathModal(props: Readonly<Props>) {
-  const { xpath, language, onClose } = props;
+  const { xpath, language, organization, onClose } = props;
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ValidationResult | null>(null);
@@ -63,7 +64,7 @@ export default function ValidateXPathModal(props: Readonly<Props>) {
     setResult(null);
     setShowAst(false);
     try {
-      const res = await validateAIXPath({ xpath, code, language });
+      const res = await validateAIXPath({ xpath, code, language, organization });
       setResult(res);
     } catch (e) {
       setRequestError('Validation request failed. Please try again.');

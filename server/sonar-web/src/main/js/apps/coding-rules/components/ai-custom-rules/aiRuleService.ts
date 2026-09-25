@@ -69,6 +69,8 @@ export interface ValidateXPathRequest {
   xpath: string;
   code: string;
   language: string;
+  /** Scopes the call: validation requires quality-profile admin on this organization. */
+  organization: string;
 }
 
 export interface RuleData {
