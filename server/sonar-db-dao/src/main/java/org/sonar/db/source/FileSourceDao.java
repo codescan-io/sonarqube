@@ -58,18 +58,14 @@ public class FileSourceDao implements Dao {
     mapper(dbSession).scrollHashesForProject(projectUuid, rowHandler);
   }
 
-  // The line_hashes column stores one MD5 hash per line, newline-separated.  For very large
-  // files (e.g. 250k-line Salesforce Profiles) the value can exceed 8 MB.  Loading it in a
-  // single JDBC fetch causes OutOfMemoryError inside the PostgreSQL driver's receive buffer
-  // before Java code ever sees the data (ZD-264349).
+  // The line_hashes column stores one MD5 hash per line, newline-separated.  A 250k-line
+  // Salesforce Profile exceeds 8 MB (ZD-264349).  Reading the column in chunks bounds the
+  // JDBC driver's receive buffer by the chunk size instead of the column size.  Peak heap for
+  // the call as a whole is unchanged: the returned List<String>, and the LineHashSequence
+  // each caller builds from it, retain one entry per line either way.
   //
-  // Fix: fetch the column in 1 MB chunks using SQL SUBSTRING so the JDBC driver never needs
-  // to buffer more than ~1 MB at a time.  Each chunk is parsed immediately, keeping peak heap
-  // usage proportional to the chunk size rather than the total column size.  All hashes are
-  // still returned, so issue history is fully preserved.
-  //
-  // Performance: for normal files whose line_hashes fit in one chunk the loop runs exactly
-  // once — identical query count to the original implementation.
+  // All hashes are still returned, so issue history is preserved.  For a file whose
+  // line_hashes fits in one chunk the loop runs once, matching a plain single-row SELECT.
   private static final int LINE_HASHES_CHUNK_SIZE = 1_000_000; // characters per SQL SUBSTRING fetch
 
   @CheckForNull
@@ -78,6 +74,11 @@ public class FileSourceDao implements Dao {
     PreparedStatement pstmt = null;
     ResultSet rs = null;
     try {
+      // SUBSTRING(x FROM y FOR z) is the SQL-standard form, accepted by PostgreSQL and H2.
+      // Oracle has no SUBSTRING identifier and SQL Server accepts only SUBSTRING(x, y, z), so
+      // this statement is dialect-specific.  Raw JDBC has no databaseId dispatch; if a dialect
+      // other than PostgreSQL or H2 has to run this, move it into FileSourceMapper.xml with
+      // databaseId variants (substr for oracle, substring for mssql) as ~15 mappers already do.
       pstmt = connection.prepareStatement(
         "SELECT substring(line_hashes FROM ? FOR ?) FROM file_sources WHERE file_uuid=?");
 
