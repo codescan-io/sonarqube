@@ -75,7 +75,7 @@ useEffect(() => {
     const welcomeMsg: Message = {
       role: 'assistant',
       content:
-        '**Welcome to CodeScan AI Assist!** Get instant solutions, explore CodeScan features, and access knowledge base articles & best practices.\n\n👉 **Type your question below to get started!**',
+        '**Welcome to AutoRABIT CodeScan AI Assist!** Get instant solutions, explore AutoRABIT CodeScan features, and access knowledge base articles & best practices.\n\n👉 **Type your question below to get started!**',
     };
     setMessages([welcomeMsg]);
     sessionStorage.setItem('chatMessages', JSON.stringify([welcomeMsg]));
@@ -155,7 +155,7 @@ useEffect(() => {
           <div className="chat-header">
             <div className="chat-title-wrapper">
               <img alt="" className="chat-logo" src="/images/autorabit-icon-logo-white.svg" />
-              <span className="chat-title"> CodeScan Assist</span>
+              <span className="chat-title">AutoRABIT CodeScan Assist</span>
             </div>
             <div className="chat-header-buttons">
               {/* Maximize/Minimize Button */}
@@ -240,7 +240,7 @@ useEffect(() => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={sending ? 'Sending…' : 'Ask me about CodeScan...'}
+              placeholder={sending ? 'Sending…' : 'Ask me about AutoRABIT CodeScan...'}
               disabled={sending}
             />
             <button className="send-btn" onClick={sendMessage} disabled={sending} aria-label="Send">

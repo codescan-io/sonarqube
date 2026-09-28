@@ -69,7 +69,7 @@ export function SonarLintPromotion({ currentUser, qgConditions }: SonarLintPromo
                 showExternalIcon={false}
                 className="sw-mr-1"
               >
-                CodeScan
+                AutoRABIT CodeScan
               </DiscreetLink>
               <img
                 alt=""
