@@ -19,9 +19,15 @@
  */
 package org.sonar.server.qualityprofile.ws;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
 import org.jetbrains.annotations.NotNull;
 import org.sonar.api.issue.impact.SoftwareQuality;
 
@@ -52,12 +58,15 @@ import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_IMPACTS;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_KEY;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_PARAMS;
+import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_PARAMS_ENCODING;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_PRIORITIZED_RULE;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_RESET;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_RULE;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_SEVERITY;
 
 public class ActivateRuleAction implements QProfileWsAction {
+
+  static final String PARAMS_ENCODING_BASE64URL = "base64url";
 
   private final Logger logger = LoggerFactory.getLogger(ActivateRuleAction.class);
 
@@ -83,6 +92,7 @@ public class ActivateRuleAction implements QProfileWsAction {
         "  <li>Edit right on the specified quality profile</li>" +
         "</ul>")
       .setChangelog(
+        new Change("24.12", format("Add parameter '%s'.", PARAM_PARAMS_ENCODING)),
         new Change("10.8", format("The parameter '%s' is not deprecated anymore.", PARAM_SEVERITY)),
         new Change("10.8", format("Add new parameter '%s'", PARAM_IMPACTS)),
         new Change("10.6", format("Add parameter '%s'.", PARAM_PRIORITIZED_RULE)),
@@ -112,6 +122,14 @@ public class ActivateRuleAction implements QProfileWsAction {
     activate.createParam(PARAM_PARAMS)
       .setDescription(format("Parameters as semi-colon list of <code>key=value</code>. Ignored if parameter %s is true.", PARAM_RESET))
       .setExampleValue("params=key1=v1;key2=v2");
+
+    // Regex rule parameters can match the SQL injection signatures of a WAF body inspection; the web UI sends them
+    // base64url-encoded so that the request body carries only [A-Za-z0-9_-].
+    activate.createParam(PARAM_PARAMS_ENCODING)
+      .setDescription(format("Encoding of the '%s' value. When set to '%s', '%s' is the base64url encoding (RFC 4648 §5, padding optional) " +
+        "of the UTF-8 semi-colon list of <code>key=value</code>.", PARAM_PARAMS, PARAMS_ENCODING_BASE64URL, PARAM_PARAMS))
+      .setPossibleValues(PARAMS_ENCODING_BASE64URL)
+      .setSince("24.12");
 
     activate.createParam(PARAM_RESET)
       .setDescription("Reset severity and parameters of activated rule. Set the values defined on parent profile or from rule default " +
@@ -163,11 +181,29 @@ public class ActivateRuleAction implements QProfileWsAction {
 
     Boolean prioritizedRule = request.paramAsBoolean(PARAM_PRIORITIZED_RULE);
     Map<String, String> params = null;
-    String paramsAsString = request.param(PARAM_PARAMS);
+    String paramsAsString = readParams(request);
     if (paramsAsString != null) {
       params = KeyValueFormat.parse(paramsAsString);
     }
     return RuleActivation.create(ruleDto.getUuid(), severity, impacts, prioritizedRule, params);
+  }
+
+  @CheckForNull
+  private static String readParams(Request request) {
+    String paramsAsString = request.param(PARAM_PARAMS);
+    if (paramsAsString == null || !PARAMS_ENCODING_BASE64URL.equals(request.param(PARAM_PARAMS_ENCODING))) {
+      return paramsAsString;
+    }
+    try {
+      byte[] decoded = Base64.getUrlDecoder().decode(paramsAsString);
+      return StandardCharsets.UTF_8.newDecoder()
+        .onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT)
+        .decode(ByteBuffer.wrap(decoded))
+        .toString();
+    } catch (IllegalArgumentException | CharacterCodingException e) {
+      throw BadRequestException.create(format("Parameter '%s' is not valid %s", PARAM_PARAMS, PARAMS_ENCODING_BASE64URL));
+    }
   }
 
   @NotNull
