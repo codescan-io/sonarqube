@@ -20,7 +20,7 @@
 
 import { queryOptions, useQueries, useQuery } from '@tanstack/react-query';
 import { uniq } from 'lodash';
-import { getCodefixIntegration } from '../api/ai-codefix';
+import { getCodefixIntegration, isAiCodefixLicensed } from '../api/ai-codefix';
 import { StaleTime } from './common';
 
 export function aiCodefixIntegrationQueryOptions(projectKey: string) {
@@ -50,4 +50,17 @@ export function useAreAllAiCodefixSupportedIntegrations(projectKeys: string[]): 
   const everyProjectIdentified = keys.length > 0 && keys.every(Boolean);
 
   return everyProjectIdentified && results.every(({ data }) => data?.supported === true);
+}
+
+
+export function useIsAiCodefixLicensed(organizationKey?: string): boolean {
+  const { data } = useQuery({
+    queryKey: ['codefix', 'licence', organizationKey ?? ''],
+    queryFn: () => isAiCodefixLicensed(organizationKey ?? ''),
+    enabled: Boolean(organizationKey),
+    staleTime: StaleTime.LONG,
+    refetchOnWindowFocus: false,
+  });
+
+  return data === true;
 }

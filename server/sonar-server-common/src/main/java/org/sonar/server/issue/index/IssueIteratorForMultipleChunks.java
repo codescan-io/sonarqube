@@ -67,7 +67,7 @@ public class IssueIteratorForMultipleChunks implements IssueIterator {
 
   private IssueIteratorForSingleChunk nextChunk() {
     List<String> nextInput = iteratorOverChunks.next();
-    return new IssueIteratorForSingleChunk(dbClient, null, nextInput);
+    return IssueIteratorForSingleChunk.forBranchOrKeys(dbClient, null, nextInput);
   }
 
   @Override
