@@ -55,18 +55,16 @@ import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static org.sonar.core.util.Uuids.UUID_EXAMPLE_01;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.ACTION_ACTIVATE_RULE;
+import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_ENCODED_PARAMS;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_IMPACTS;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_KEY;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_PARAMS;
-import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_PARAMS_ENCODING;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_PRIORITIZED_RULE;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_RESET;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_RULE;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_SEVERITY;
 
 public class ActivateRuleAction implements QProfileWsAction {
-
-  static final String PARAMS_ENCODING_BASE64URL = "base64url";
 
   private final Logger logger = LoggerFactory.getLogger(ActivateRuleAction.class);
 
@@ -92,7 +90,7 @@ public class ActivateRuleAction implements QProfileWsAction {
         "  <li>Edit right on the specified quality profile</li>" +
         "</ul>")
       .setChangelog(
-        new Change("24.12", format("Add parameter '%s'.", PARAM_PARAMS_ENCODING)),
+        new Change("24.12", format("Add parameter '%s'.", PARAM_ENCODED_PARAMS)),
         new Change("10.8", format("The parameter '%s' is not deprecated anymore.", PARAM_SEVERITY)),
         new Change("10.8", format("Add new parameter '%s'", PARAM_IMPACTS)),
         new Change("10.6", format("Add parameter '%s'.", PARAM_PRIORITIZED_RULE)),
@@ -124,11 +122,11 @@ public class ActivateRuleAction implements QProfileWsAction {
       .setExampleValue("params=key1=v1;key2=v2");
 
     // Regex rule parameters can match the SQL injection signatures of a WAF body inspection; the web UI sends them
-    // base64url-encoded so that the request body carries only [A-Za-z0-9_-].
-    activate.createParam(PARAM_PARAMS_ENCODING)
-      .setDescription(format("Encoding of the '%s' value. When set to '%s', '%s' is the base64url encoding (RFC 4648 §5, padding optional) " +
-        "of the UTF-8 semi-colon list of <code>key=value</code>.", PARAM_PARAMS, PARAMS_ENCODING_BASE64URL, PARAM_PARAMS))
-      .setPossibleValues(PARAMS_ENCODING_BASE64URL)
+    // base64url-encoded in this parameter so that the request body carries only [A-Za-z0-9_-].
+    activate.createParam(PARAM_ENCODED_PARAMS)
+      .setDescription(format("Same content as '%s', base64url-encoded (RFC 4648 §5, padding optional) from UTF-8. " +
+        "When set, it is used instead of '%s'. Ignored if parameter %s is true.", PARAM_PARAMS, PARAM_PARAMS, PARAM_RESET))
+      .setExampleValue("a2V5MT12MTtrZXkyPXYy")
       .setSince("24.12");
 
     activate.createParam(PARAM_RESET)
@@ -190,19 +188,19 @@ public class ActivateRuleAction implements QProfileWsAction {
 
   @CheckForNull
   private static String readParams(Request request) {
-    String paramsAsString = request.param(PARAM_PARAMS);
-    if (paramsAsString == null || !PARAMS_ENCODING_BASE64URL.equals(request.param(PARAM_PARAMS_ENCODING))) {
-      return paramsAsString;
+    String encodedParams = request.param(PARAM_ENCODED_PARAMS);
+    if (encodedParams == null || encodedParams.isEmpty()) {
+      return request.param(PARAM_PARAMS);
     }
     try {
-      byte[] decoded = Base64.getUrlDecoder().decode(paramsAsString);
+      byte[] decoded = Base64.getUrlDecoder().decode(encodedParams);
       return StandardCharsets.UTF_8.newDecoder()
         .onMalformedInput(CodingErrorAction.REPORT)
         .onUnmappableCharacter(CodingErrorAction.REPORT)
         .decode(ByteBuffer.wrap(decoded))
         .toString();
     } catch (IllegalArgumentException | CharacterCodingException e) {
-      throw BadRequestException.create(format("Parameter '%s' is not valid %s", PARAM_PARAMS, PARAMS_ENCODING_BASE64URL));
+      throw BadRequestException.create(format("Parameter '%s' is not valid base64url", PARAM_ENCODED_PARAMS));
     }
   }
 

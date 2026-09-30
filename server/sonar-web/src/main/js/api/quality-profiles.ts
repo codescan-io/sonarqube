@@ -366,10 +366,11 @@ export function activateRule(data: ActivateRuleParameters) {
   const params =
     data.params && map(data.params, (value, key) => `${key}=${csvEscape(value)}`).join(';');
   const impacts = data.impacts && map(data.impacts, (value, key) => `${key}=${value}`).join(';');
-  // Regex parameter values can match WAF SQL injection signatures, so they travel base64url-encoded.
+  // Regex parameter values can match WAF SQL injection signatures, so they travel
+  // base64url-encoded in encodedParams.
   return post('/api/qualityprofiles/activate_rule', {
     ...data,
-    ...(params ? { params: encodeBase64Url(params), paramsEncoding: 'base64url' } : { params }),
+    ...(params ? { params: undefined, encodedParams: encodeBase64Url(params) } : { params }),
     impacts,
   }).catch(throwGlobalError);
 }

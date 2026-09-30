@@ -55,7 +55,7 @@ public class QualityProfileWsParameters {
   public static final String PARAM_LOGIN = "login";
   public static final String PARAM_NAME = "name";
   public static final String PARAM_PARAMS = "params";
-  public static final String PARAM_PARAMS_ENCODING = "paramsEncoding";
+  public static final String PARAM_ENCODED_PARAMS = "encodedParams";
   public static final String PARAM_PARENT_QUALITY_PROFILE = "parentQualityProfile";
   public static final String PARAM_KEY = "key";
   public static final String PARAM_QUALITY_PROFILE = "qualityProfile";
