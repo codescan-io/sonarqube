@@ -122,8 +122,8 @@ public class RuleDao implements Dao {
   }
 
   /**
-   * Uuids of every non-REMOVED ai_code_fix_enabled rule. Used to terms-filter the fast ES doc-count that backs
-   * BackfillCodefixStatusMigration's dry-run estimate.
+   * The uuids of every {@code ai_code_fix_enabled} rule that has not been removed. This is what scopes
+   * BackfillCodefixStatusMigration — both its dry-run estimate and the rewrite itself.
    */
   public List<String> selectAiCodeFixBackfillRuleUuids(DbSession session) {
     return mapper(session).selectAiCodeFixBackfillRuleUuids();

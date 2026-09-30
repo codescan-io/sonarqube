@@ -161,6 +161,7 @@ public class RuleMapper {
     }
     setEducationPrinciples(ruleResponse, ruleDto, fieldsToReturn);
     setCleanCodeAttributes(ruleResponse, ruleDto, fieldsToReturn);
+    setCvssBreakdown(ruleResponse, ruleDto.getRuleKey(), cvssMetadataService);
 
     return ruleResponse;
   }

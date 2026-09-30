@@ -27,7 +27,7 @@ import { translate } from '../../../../helpers/l10n';
 
 function LogoWithAriaText() {
 
-  const customLogoUrl = `/images/sonarcloud-logo-wb.svg`;
+  const customLogoUrl = `/images/autorabit-logo.svg`;
   const title = customLogoUrl
     ? translate('layout.nav.home_logo_alt')
     : translate('layout.nav.home_sonarqube_logo_alt');
@@ -35,7 +35,7 @@ function LogoWithAriaText() {
   return (
     <div aria-label={title} role="img">
       {customLogoUrl ? (
-        <Image alt={title} src={customLogoUrl} width={120} />
+        <Image alt={title} src={customLogoUrl} width={130} />
       ) : (
         <SonarQubeProductLogo hasText size={LogoSize.Large} />
       )}
