@@ -54,7 +54,9 @@ public class SetCodefixStatusAction implements IssuesWsAction {
   private final IssueUpdater issueUpdater;
   private final UserSession userSession;
   private final System2 system2;
-    private static final Set<String> VALID_STATUS = new HashSet<>(Set.of("PENDING", "IN_PROGRESS", "FIX_GENERATED", "PULL_REQUEST_CREATED", "FAILED", "NOT_SUPPORTED"));
+  // AVAILABLE is the "no fix yet, AI Fix offered" value an eligible issue starts with. Codescanng sends it back when
+  // an issue's codefix rows are deleted, so the UI offers the fix again instead of pointing at one that is gone.
+  private static final Set<String> VALID_STATUS = new HashSet<>(Set.of("PENDING", "IN_PROGRESS", "FIX_GENERATED", "PULL_REQUEST_CREATED", "FAILED", "NOT_SUPPORTED", "AVAILABLE"));
   public SetCodefixStatusAction(DbClient dbClient, IssueFinder issueFinder, IssueUpdater issueUpdater,
     UserSession userSession, System2 system2) {
     this.dbClient = dbClient;
@@ -88,7 +90,7 @@ public class SetCodefixStatusAction implements IssuesWsAction {
     String codefixStatus = request.mandatoryParam(PARAM_ISSUE_CODEFIX_STATUSES);
     if (!VALID_STATUS.contains(codefixStatus)) {
       log.error("Failed to update issue status for {}: invalid status value '{}'", issueKey, codefixStatus);
-      return;
+      throw new IllegalArgumentException("Invalid codefix status '" + codefixStatus + "'; expected one of " + VALID_STATUS);
     }
 
     try (DbSession dbSession = dbClient.openSession(false)) {
