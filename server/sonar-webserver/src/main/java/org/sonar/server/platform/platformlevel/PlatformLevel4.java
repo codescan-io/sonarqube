@@ -261,6 +261,8 @@ import org.sonar.server.rule.RuleUpdater;
 import org.sonar.server.rule.WebServerRuleFinderImpl;
 import org.sonar.server.rule.index.RuleIndexDefinition;
 import org.sonar.server.rule.index.RuleIndexer;
+import org.sonar.server.rule.ws.AIRuleGenerator;
+import org.sonar.server.rule.ws.GenerateAIXPathAction;
 import org.sonar.server.rule.ws.RepositoriesAction;
 import org.sonar.server.rule.ws.RuleMapper;
 import org.sonar.server.rule.ws.RuleQueryFactory;
@@ -394,6 +396,8 @@ public class PlatformLevel4 extends PlatformLevel {
       org.sonar.server.rule.ws.SearchAction.class,
       org.sonar.server.rule.ws.ShowAction.class,
       org.sonar.server.rule.ws.CreateAction.class,
+      GenerateAIXPathAction.class,
+      AIRuleGenerator.class,
       org.sonar.server.rule.ws.DeleteAction.class,
       org.sonar.server.rule.ws.ListAction.class,
       org.sonar.server.rule.ws.UpdateAiCodeFixAction.class,
