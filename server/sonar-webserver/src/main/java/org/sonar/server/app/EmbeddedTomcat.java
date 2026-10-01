@@ -48,9 +48,6 @@ class EmbeddedTomcat {
   }
 
   void start() {
-    // '%2F' (slash /) and '%5C' (backslash \) are permitted as path delimiters in URLs
-    System.setProperty("org.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH", "true");
-
     System.setProperty("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE", "true");
     // prevent Tomcat from shutting down our logging when stopping
     System.setProperty("logbackDisableServletContainerInitializer", "true");

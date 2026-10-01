@@ -64,6 +64,8 @@ public class TomcatHttpConnectorFactory {
     connector.setProperty("address", props.value(WEB_HOST.getKey(), "0.0.0.0"));
     connector.setProperty("socket.soReuseAddress", "true");
     connector.setProperty("relaxedQueryChars", "\"<>[\\]^`{|}");
+    // '%2F' (slash /) is permitted as a path delimiter in URLs ('%5C' is decoded by default)
+    connector.setEncodedSolidusHandling("decode");
     connector.setProperty("maxHttpHeaderSize", String.valueOf(MAX_HTTP_HEADER_SIZE_BYTES));
     connector.setMaxPostSize(MAX_POST_SIZE);
 
