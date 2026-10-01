@@ -141,7 +141,9 @@ public class PluginClassloaderFactory {
         "org/apache/log4j/",
         "ch/qos/logback/",
 
-        // Exposed by org.sonar.api.server.authentication.IdentityProvider
+        // Exposed by org.sonar.api.server.authentication.IdentityProvider and org.sonar.api.web.ServletFilter
+        "jakarta/servlet/",
+        // Kept for plugins compiled against the javax-based plugin API (10.14 and older)
         "javax/servlet/",
 
         // required for some internal SonarSource plugins (billing, orchestrator, ...)
