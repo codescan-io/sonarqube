@@ -221,6 +221,11 @@ subprojects {
 
   compileJava.options.encoding = "UTF-8"
   compileTestJava.options.encoding = "UTF-8"
+  // Spring 6.1+ only falls back to parameter names (bean qualifiers, @RequestParam/@PathVariable without a name)
+  // when classes are compiled with -parameters
+  tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << '-parameters'
+  }
 
   def testFixtureSrc = 'src/testFixtures'
   if (file(testFixtureSrc).exists()) {
