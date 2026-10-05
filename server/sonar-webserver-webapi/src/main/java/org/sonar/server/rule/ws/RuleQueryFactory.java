@@ -149,12 +149,12 @@ public class RuleQueryFactory {
   }
 
   private void setOrganization(DbSession dbSession, RuleQuery query, Request request) {
-    String organizationKey = request.param(PARAM_ORGANIZATION);
     QProfileDto profile = query.getQProfile();
     if (profile == null) {
-      query.setOrganization(wsSupport.getOrganizationByKey(dbSession, organizationKey));
+      query.setOrganization(wsSupport.getOrganizationByKey(dbSession, request.mandatoryParam(PARAM_ORGANIZATION)));
       return;
     }
+    String organizationKey = request.param(PARAM_ORGANIZATION);
     OrganizationDto organization = checkFoundWithOptional(dbClient.organizationDao().selectByUuid(dbSession, profile.getOrganizationUuid()), "No organization with UUID %s",
             profile.getOrganizationUuid());
     if (organizationKey != null) {
