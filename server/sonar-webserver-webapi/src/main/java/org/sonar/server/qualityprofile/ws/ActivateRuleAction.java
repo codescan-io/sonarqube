@@ -19,9 +19,15 @@
  */
 package org.sonar.server.qualityprofile.ws;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
 import org.jetbrains.annotations.NotNull;
 import org.sonar.api.issue.impact.SoftwareQuality;
 
@@ -49,6 +55,7 @@ import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static org.sonar.core.util.Uuids.UUID_EXAMPLE_01;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.ACTION_ACTIVATE_RULE;
+import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_ENCODED_PARAMS;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_IMPACTS;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_KEY;
 import static org.sonarqube.ws.client.qualityprofile.QualityProfileWsParameters.PARAM_PARAMS;
@@ -83,6 +90,7 @@ public class ActivateRuleAction implements QProfileWsAction {
         "  <li>Edit right on the specified quality profile</li>" +
         "</ul>")
       .setChangelog(
+        new Change("24.12", format("Add parameter '%s'.", PARAM_ENCODED_PARAMS)),
         new Change("10.8", format("The parameter '%s' is not deprecated anymore.", PARAM_SEVERITY)),
         new Change("10.8", format("Add new parameter '%s'", PARAM_IMPACTS)),
         new Change("10.6", format("Add parameter '%s'.", PARAM_PRIORITIZED_RULE)),
@@ -112,6 +120,14 @@ public class ActivateRuleAction implements QProfileWsAction {
     activate.createParam(PARAM_PARAMS)
       .setDescription(format("Parameters as semi-colon list of <code>key=value</code>. Ignored if parameter %s is true.", PARAM_RESET))
       .setExampleValue("params=key1=v1;key2=v2");
+
+    // Regex rule parameters can match the SQL injection signatures of a WAF body inspection; the web UI sends them
+    // base64url-encoded in this parameter so that the request body carries only [A-Za-z0-9_-].
+    activate.createParam(PARAM_ENCODED_PARAMS)
+      .setDescription(format("Same content as '%s', base64url-encoded (RFC 4648 §5, padding optional) from UTF-8. " +
+        "When set, it is used instead of '%s'. Ignored if parameter %s is true.", PARAM_PARAMS, PARAM_PARAMS, PARAM_RESET))
+      .setExampleValue("a2V5MT12MTtrZXkyPXYy")
+      .setSince("24.12");
 
     activate.createParam(PARAM_RESET)
       .setDescription("Reset severity and parameters of activated rule. Set the values defined on parent profile or from rule default " +
@@ -163,11 +179,29 @@ public class ActivateRuleAction implements QProfileWsAction {
 
     Boolean prioritizedRule = request.paramAsBoolean(PARAM_PRIORITIZED_RULE);
     Map<String, String> params = null;
-    String paramsAsString = request.param(PARAM_PARAMS);
+    String paramsAsString = readParams(request);
     if (paramsAsString != null) {
       params = KeyValueFormat.parse(paramsAsString);
     }
     return RuleActivation.create(ruleDto.getUuid(), severity, impacts, prioritizedRule, params);
+  }
+
+  @CheckForNull
+  private static String readParams(Request request) {
+    String encodedParams = request.param(PARAM_ENCODED_PARAMS);
+    if (encodedParams == null || encodedParams.isEmpty()) {
+      return request.param(PARAM_PARAMS);
+    }
+    try {
+      byte[] decoded = Base64.getUrlDecoder().decode(encodedParams);
+      return StandardCharsets.UTF_8.newDecoder()
+        .onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT)
+        .decode(ByteBuffer.wrap(decoded))
+        .toString();
+    } catch (IllegalArgumentException | CharacterCodingException e) {
+      throw BadRequestException.create(format("Parameter '%s' is not valid base64url", PARAM_ENCODED_PARAMS));
+    }
   }
 
   @NotNull
