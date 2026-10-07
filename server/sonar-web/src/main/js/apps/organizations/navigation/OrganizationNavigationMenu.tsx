@@ -27,6 +27,7 @@ import { Organization } from "../../../types/types";
 import { NavBarTabLink, NavBarTabs } from "~design-system";
 import { getProfilesPath } from "../../quality-profiles/utils";
 import { useCurrentOrganizationKey } from '../../../app/components/current-organization/CurrentOrganizationKeyContext';
+import { canViewAnalytics } from '../../analytics/utils';
 
 interface OwnProps {
   location: { pathname: string };
@@ -57,6 +58,9 @@ export default function OrganizationNavigationMenu({ location, organization }: O
           location={location}
           organization={organization}
         />
+      )}
+      {canViewAnalytics(organization) && (
+        <NavBarTabLink to={`/organizations/${organization.kee}/analytics`} text={translate('analytics.page')} />
       )}
     </NavBarTabs>
   );

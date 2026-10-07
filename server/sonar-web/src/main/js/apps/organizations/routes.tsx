@@ -41,6 +41,7 @@ import PolicyResults from "../policy-results/components/PolicyResults";
 import PermissionsGlobalApp from "../permissions/global/components/PermissionsGlobalApp";
 import GroupsApp from "../groups/GroupsApp";
 import codingRulesRoutes from "../coding-rules/routes";
+import AnalyticsApp from "../analytics/components/AnalyticsApp";
 
 const routes = () => (
     <Route path="organizations">
@@ -67,6 +68,7 @@ const routes = () => (
         </Route>
         {codingRulesRoutes()}
         <Route path="members" element={<OrganizationMembers />}/>
+        <Route path="analytics" element={<AnalyticsApp />}/>
         <Route path="extension/:pluginKey/:extensionKey" element={<OrganizationPageExtension />} />
       </Route>
       <Route path="create" element={<CreateOrganizationPage/>}/>
