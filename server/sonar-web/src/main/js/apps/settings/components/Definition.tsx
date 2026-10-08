@@ -28,7 +28,12 @@ import {
   useResetSettingsMutation,
   useSaveValueMutation,
 } from '../../../queries/settings';
-import { ExtendedSettingDefinition, SettingType, SettingValue } from '../../../types/settings';
+import {
+  ExtendedSettingDefinition,
+  SettingsKey,
+  SettingType,
+  SettingValue,
+} from '../../../types/settings';
 import { Component } from '../../../types/types';
 import {
   combineDefinitionAndSettingValue,
@@ -65,6 +70,32 @@ export default function Definition(props: Readonly<Props>) {
   const name = getUniqueName(definition);
 
   const isValidSeverityInput = (value) => /^[a-zA-Z0-9]+$/.test(value);
+
+  const isStaticResourceProjectExtraction =
+    definition.key === SettingsKey.CodescanStaticResourceExtraction;
+  const isStaticResourceCustomSeverityToggle =
+    definition.key === SettingsKey.CodescanStaticResourceCustomSeverityEnabled;
+  const isStaticResourceCustomSeverityDropdown =
+    definition.key === SettingsKey.CodescanStaticResourceCustomSeverity;
+  // Project extraction toggle + custom-severity controls require the instance extraction gate.
+  const needsStaticResourceExtractionGate =
+    isStaticResourceProjectExtraction ||
+    isStaticResourceCustomSeverityToggle ||
+    isStaticResourceCustomSeverityDropdown;
+
+  const { data: staticResourceExtractionGate } = useGetValueQuery(
+    { key: SettingsKey.CodescanStaticResourceExtractionEnabled },
+    { enabled: needsStaticResourceExtractionGate },
+  );
+  const { data: customSeverityGate } = useGetValueQuery(
+    { key: SettingsKey.CodescanStaticResourceCustomSeverityEnabled },
+    { enabled: isStaticResourceCustomSeverityDropdown },
+  );
+
+  const isSettingDisabled =
+    (needsStaticResourceExtractionGate &&
+      staticResourceExtractionGate?.value !== 'true') ||
+    (isStaticResourceCustomSeverityDropdown && customSeverityGate?.value !== 'true');
 
   const { data: loadedSettingValue, isLoading } = useGetValueQuery({
     key: definition.key,
@@ -214,12 +245,17 @@ export default function Definition(props: Readonly<Props>) {
   const settingDefinitionAndValue = combineDefinitionAndSettingValue(definition, settingValue);
 
   return (
-    <div data-key={definition.key} data-testid={definition.key} className="sw-flex sw-gap-12">
+    <div
+      data-key={definition.key}
+      data-testid={definition.key}
+      className={`sw-flex sw-gap-12${isSettingDisabled ? ' sw-opacity-50' : ''}`}
+    >
       <DefinitionDescription definition={definition} />
       <div className="sw-flex-1">
         <form onSubmit={formNoop}>
           <Input
             ariaDescribedBy={`definition-stats-${name}`}
+            disabled={isSettingDisabled}
             hasValueChanged={hasValueChanged}
             onCancel={handleCancel}
             onChange={handleChange}
@@ -261,18 +297,20 @@ export default function Definition(props: Readonly<Props>) {
             )}
           </div>
 
-          <DefinitionActions
-            changedValue={changedValue}
-            definition={definition}
-            hasError={hasError}
-            hasValueChanged={hasValueChanged}
-            isDefault={isDefault}
-            isEditing={isEditing}
-            onCancel={handleCancel}
-            onReset={handleReset}
-            onSave={handleSave}
-            setting={settingDefinitionAndValue}
-          />
+          {!isSettingDisabled && (
+            <DefinitionActions
+              changedValue={changedValue}
+              definition={definition}
+              hasError={hasError}
+              hasValueChanged={hasValueChanged}
+              isDefault={isDefault}
+              isEditing={isEditing}
+              onCancel={handleCancel}
+              onReset={handleReset}
+              onSave={handleSave}
+              setting={settingDefinitionAndValue}
+            />
+          )}
         </form>
       </div>
     </div>
