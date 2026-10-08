@@ -62,8 +62,16 @@ import { StandardFacet } from './StandardFacet';
 import { TagFacet } from './TagFacet';
 import { TypeFacet } from './TypeFacet';
 import { VariantFacet } from './VariantFacet';
-import {isAiAssistantEnabled} from '../../../api/settings';
-import {useIsAiCodefixSupportedIntegration} from '../../../queries/ai-codefix';
+import {
+  getStaticResourceCustomSeverity,
+  isAiAssistantEnabled,
+  isStaticResourceCustomSeverityEnabled,
+} from '../../../api/settings';
+import { useIsAiCodeFixSupportedIntegration } from '../../../queries/ai-codefix';
+import {
+  STATIC_RESOURCES_FACET_PROPERTY,
+  StaticResourcesFacet,
+} from './StaticResourcesFacet';
 
 export interface Props {
   organization?: Organization;
@@ -101,8 +109,10 @@ export function Sidebar(props: Readonly<Props>) {
   const { settings } = useAppState();
   const { hasFeature } = useAvailableFeatures();
   const { data: isStandardMode } = useStandardExperienceModeQuery();
-  const projectKey = props.component?.key ?? "";
+  const projectKey = props.component?.key ?? '';
   const [aiEnabled, setAiEnabled] = React.useState(false);
+  const [staticResourceFilterEnabled, setStaticResourceFilterEnabled] = React.useState(false);
+  const [staticResourceSeverity, setStaticResourceSeverity] = React.useState<string | undefined>();
   React.useEffect(() => {
     async function checkAiEnabled() {
       const enabled = await isAiAssistantEnabled(projectKey);
@@ -111,7 +121,20 @@ export function Sidebar(props: Readonly<Props>) {
     checkAiEnabled();
   }, [projectKey]);
 
-  const isSupportedIntegration = useIsAiCodefixSupportedIntegration(
+  React.useEffect(() => {
+    async function loadStaticResourceFilter() {
+      const enabled = await isStaticResourceCustomSeverityEnabled();
+      setStaticResourceFilterEnabled(enabled);
+      if (enabled) {
+        setStaticResourceSeverity(await getStaticResourceCustomSeverity());
+      } else {
+        setStaticResourceSeverity(undefined);
+      }
+    }
+    loadStaticResourceFilter();
+  }, []);
+
+  const isSupportedIntegration = useIsAiCodeFixSupportedIntegration(
     aiEnabled ? projectKey : undefined,
   );
 
@@ -226,6 +249,21 @@ export function Sidebar(props: Readonly<Props>) {
 
           <BasicSeparator className="sw-my-4" />
 
+          {staticResourceFilterEnabled && (
+            <>
+              <StaticResourcesFacet
+                configuredSeverity={staticResourceSeverity}
+                fetching={props.loadingFacets.tags === true}
+                onChange={props.onFilterChange}
+                onToggle={props.onFacetToggle}
+                open={!!openFacets[STATIC_RESOURCES_FACET_PROPERTY]}
+                stats={facets.tags}
+                tags={query.tags}
+              />
+              <BasicSeparator className="sw-my-4" />
+            </>
+          )}
+
           {query.types.length > 0 && (
             <>
               <TypeFacet
@@ -299,6 +337,21 @@ export function Sidebar(props: Readonly<Props>) {
               />
 
               <BasicSeparator className="sw-my-4" />
+
+              {staticResourceFilterEnabled && (
+                <>
+                  <StaticResourcesFacet
+                    configuredSeverity={staticResourceSeverity}
+                    fetching={props.loadingFacets.tags === true}
+                    onChange={props.onFilterChange}
+                    onToggle={props.onFacetToggle}
+                    open={!!openFacets[STATIC_RESOURCES_FACET_PROPERTY]}
+                    stats={facets.tags}
+                    tags={query.tags}
+                  />
+                  <BasicSeparator className="sw-my-4" />
+                </>
+              )}
 
               {query.impactSoftwareQualities.length > 0 && (
                 <>

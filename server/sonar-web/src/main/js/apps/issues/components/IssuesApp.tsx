@@ -821,11 +821,14 @@ const response = await searchIssues(scopedQuery);
         property = newState.openFacets.sonarsourceSecurity ? 'sonarsourceSecurity' : property;
       }
 
-      // No need to load facets data for standard facet
-      if (property !== STANDARDS && !state.facets[property]) {
-        newState.loadingFacets[property] = true;
+      // Static Resources filter reuses the tags facet for counts
+      const facetToFetch = property === 'staticResources' ? 'tags' : property;
 
-        this.fetchFacet(property).catch(() => undefined);
+      // No need to load facets data for standard facet
+      if (facetToFetch !== STANDARDS && !state.facets[facetToFetch]) {
+        newState.loadingFacets[facetToFetch] = true;
+
+        this.fetchFacet(facetToFetch).catch(() => undefined);
       }
 
       return newState;
