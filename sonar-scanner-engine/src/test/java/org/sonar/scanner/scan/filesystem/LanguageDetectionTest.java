@@ -96,6 +96,20 @@ public class LanguageDetectionTest {
   }
 
   @Test
+  public void detectLanguageKey_shouldMatchMixedCaseSuffixCaseInsensitively() {
+    DefaultLanguagesRepository languages = new DefaultLanguagesRepository(new FakeLanguagesLoader(new Languages(
+      new MockLanguage("sfmeta", "validationRule-meta.xml", "object-meta.xml"))));
+    languages.start();
+    LanguageDetection detection = new LanguageDetection(settings.asConfig(), languages);
+
+    assertThat(detectLanguageKey(detection, "objects/Account/validationRules/MyRule.validationRule-meta.xml")).isEqualTo("sfmeta");
+    assertThat(detectLanguageKey(detection, "MyRule.validationrule-meta.xml")).isEqualTo("sfmeta");
+    assertThat(detectLanguageKey(detection, "MyRule.VALIDATIONRULE-META.XML")).isEqualTo("sfmeta");
+    assertThat(detectLanguageKey(detection, "Account.object-meta.xml")).isEqualTo("sfmeta");
+    assertThat(detectLanguageKey(detection, "MyFlow.flow-meta.xml")).isNull();
+  }
+
+  @Test
   @UseDataProvider("filenamePatterns")
   public void detectLanguageKey_shouldDetectByFileNamePattern(String fileName, String expectedLanguageKey) {
     DefaultLanguagesRepository languages = new DefaultLanguagesRepository(new FakeLanguagesLoader(new Languages(
