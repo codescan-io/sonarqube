@@ -60,6 +60,7 @@ public class SearchRequest {
   private String resolved;
   private List<String> rules;
   private String s;
+  private List<String> searchAfter;
   private List<String> sansTop25;
   private List<String> severities;
   private String inNewCodePeriod;
@@ -500,6 +501,20 @@ public class SearchRequest {
 
   public String getS() {
     return s;
+  }
+
+  /**
+   * Cursor for deep pagination: the sort values of the last issue of the previous page, taken from
+   * {@code Issues.Issue.getSort()}. Lets a caller page beyond the 10,000-result ceiling that {@code p}
+   * is bound by. Requires the same query and the same {@code s}/{@code asc} on every request of the walk.
+   */
+  public SearchRequest setSearchAfter(List<String> searchAfter) {
+    this.searchAfter = searchAfter;
+    return this;
+  }
+
+  public List<String> getSearchAfter() {
+    return searchAfter;
   }
 
   /**
