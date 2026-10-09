@@ -67,7 +67,7 @@ import {
   isAiAssistantEnabled,
   isStaticResourceCustomSeverityEnabled,
 } from '../../../api/settings';
-import { useIsAiCodeFixSupportedIntegration } from '../../../queries/ai-codefix';
+import { useIsAiCodefixSupportedIntegration } from '../../../queries/ai-codefix';
 import {
   STATIC_RESOURCES_FACET_PROPERTY,
   StaticResourcesFacet,
@@ -134,7 +134,7 @@ export function Sidebar(props: Readonly<Props>) {
     loadStaticResourceFilter();
   }, []);
 
-  const isSupportedIntegration = useIsAiCodeFixSupportedIntegration(
+  const isSupportedIntegration = useIsAiCodefixSupportedIntegration(
     aiEnabled ? projectKey : undefined,
   );
 
