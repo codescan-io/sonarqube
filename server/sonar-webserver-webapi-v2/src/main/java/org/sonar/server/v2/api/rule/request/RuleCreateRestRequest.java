@@ -80,6 +80,10 @@ public record RuleCreateRestRequest(
 
   @Nullable
   @Schema(description = "Rule type")
-  RuleType type
+  RuleType type,
+
+  @Nullable
+  @Schema(description = "Whether the rule's XPath was generated using AI", defaultValue = "false")
+  Boolean aiGenerated
 ) {
 }
