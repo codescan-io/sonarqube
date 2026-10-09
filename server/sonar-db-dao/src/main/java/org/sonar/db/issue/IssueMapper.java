@@ -37,6 +37,10 @@ public interface IssueMapper {
 
   List<IssueDto> selectByKeys(List<String> keys);
 
+  List<String> selectFixedIssueKeysByBranchUuid(@Param("branchUuid") String branchUuid);
+
+  List<String> selectIssueKeysByFileUuid(@Param("fileUuid") String fileUuid);
+
   Set<String> selectIssueKeysByComponentUuid(@Param("componentUuid") String componentUuid);
 
   Set<String> selectIssueKeysByComponentUuidWithFilters(@Param("componentUuid") String componentUuid,
