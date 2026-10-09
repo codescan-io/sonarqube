@@ -22,6 +22,7 @@ package org.sonar.server.common.rule;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -67,6 +68,14 @@ import static org.sonar.server.exceptions.BadRequestException.checkRequest;
 @ServerSide
 public class RuleCreator {
   private static final String TEMPLATE_KEY_NOT_EXIST_FORMAT = "The template key doesn't exist: %s";
+
+  /**
+   * Reserved system tag marking a custom rule whose XPath was generated using AI.
+   * Stored alongside the template's inherited system tags so the frontend can flag the
+   * rule without a dedicated DB column.
+   */
+  public static final String AI_GENERATED_SYSTEM_TAG = "ai-generated";
+
   private final System2 system2;
   private final RuleIndexer ruleIndexer;
   private final DbClient dbClient;
@@ -219,6 +228,13 @@ public class RuleCreator {
     if (!tags.isEmpty()) {
       ruleDto.setTags(tags);
     }
+
+    if (newRule.isAiGenerated()) {
+      Set<String> systemTags = new HashSet<>(ruleDto.getSystemTags());
+      systemTags.add(AI_GENERATED_SYSTEM_TAG);
+      ruleDto.setSystemTags(systemTags);
+    }
+
     dbClient.ruleDao().insert(dbSession, ruleDto);
 
     for (RuleParamDto templateRuleParamDto : dbClient.ruleDao().selectRuleParamsByRuleKey(dbSession, templateRuleDto.getKey())) {
