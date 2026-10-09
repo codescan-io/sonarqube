@@ -33,7 +33,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.issue.DefaultTransitions;
@@ -127,6 +126,9 @@ public class BulkChangeAction implements IssuesWsAction {
   private static final Logger LOG = LoggerFactory.getLogger(BulkChangeAction.class);
   private static final List<String> ACTIONS_TO_DISTRIBUTE = List.of(SET_SEVERITY_KEY, SET_TYPE_KEY, DO_TRANSITION_KEY);
   private static final String PARAM_EXCEPTION_REASON = "exceptionReason";
+  // Codescan: uuid of the user to attribute the change (and its comment) to instead of the caller. Only honored for
+  // system administrators. Used by the resolution-transfer feature to credit the original resolver.
+  private static final String PARAM_CHANGE_AUTHOR = "changeAuthor";
 
   private final System2 system2;
   private final UserSession userSession;
@@ -215,6 +217,11 @@ public class BulkChangeAction implements IssuesWsAction {
     action.createParam(PARAM_EXCEPTION_REASON)
       .setDescription("Reason for the Exception")
       .setRequired(false);
+    action.createParam(PARAM_CHANGE_AUTHOR)
+      .setDescription("Codescan customization: uuid of the user the change and its comment should be attributed to "
+        + "instead of the caller. Only honored when the caller is a system administrator.")
+      .setInternal(true)
+      .setRequired(false);
   }
 
   @Override
@@ -229,7 +236,8 @@ public class BulkChangeAction implements IssuesWsAction {
   private BulkChangeResult executeBulkChange(DbSession dbSession, Request request) {
     BulkChangeData bulkChangeData = new BulkChangeData(dbSession, request);
     BulkChangeResult result = new BulkChangeResult(bulkChangeData.issues.size());
-    IssueChangeContext issueChangeContext = issueChangeContextByUserBuilder(new Date(system2.now()), userSession.getUuid()).build();
+    String changeAuthorUuid = resolveChangeAuthorUuid(dbSession, request);
+    IssueChangeContext issueChangeContext = issueChangeContextByUserBuilder(new Date(system2.now()), changeAuthorUuid).build();
 
     // Checking if the user has ISSUE_ADMIN permission on all projects involved in the bulk change
     // Collect all project UUIDs from issues
@@ -342,6 +350,22 @@ public class BulkChangeAction implements IssuesWsAction {
     distributeEvents(defaultIssues, bulkChangeData);
 
     return result;
+  }
+
+  /**
+   * Codescan customization: resolves the uuid that the change (and its comment) should be attributed to. When the
+   * caller is a system administrator and supplies {@link #PARAM_CHANGE_AUTHOR} referencing an existing user, that
+   * user is used (even if inactive - the changelog reflects the user's active state); otherwise the caller is used.
+   */
+  private String resolveChangeAuthorUuid(DbSession dbSession, Request request) {
+    String override = request.param(PARAM_CHANGE_AUTHOR);
+    if (override != null && !override.isBlank() && userSession.isSystemAdministrator()) {
+      UserDto user = dbClient.userDao().selectByUuid(dbSession, override);
+      if (user != null) {
+        return user.getUuid();
+      }
+    }
+    return userSession.getUuid();
   }
 
   private boolean hasProjectPermission(DbSession dbSession, String assignee, String projectUuid) {
