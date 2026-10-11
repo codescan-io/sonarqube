@@ -21,7 +21,7 @@ import * as React from 'react';
 import { Table } from '~design-system';
 import Avatar from '../../components/ui/Avatar';
 import ListFooter from '../../components/controls/ListFooter';
-import { getPendingInvitations, PendingInvitation } from '../../api/organizations';
+import { getPendingInvitations, PageResponse, PendingInvitation } from '../../api/organizations';
 import { Organization } from '../../types/types';
 import './MembersList.css';
 
@@ -31,6 +31,20 @@ interface Props {
 
 const PAGE_SIZE = 50;
 const AVATAR_SIZE = 36;
+
+// The backend now nests pagination metadata under `page` instead of returning it as flat fields
+// (CD-8185). Guard against a missing/malformed envelope the same way ProjectPage.js does for
+// the analysis queue response.
+function getPageData(response?: PageResponse<PendingInvitation>) {
+  if (!response || !response.page || !response.content) {
+    return undefined;
+  }
+  return {
+    items: response.content,
+    number: response.page.number ?? 0,
+    totalElements: response.page.totalElements ?? 0,
+  };
+}
 
 export default function PendingInvitations({ organization }: Props) {
   const [invitations, setInvitations] = React.useState<PendingInvitation[]>([]);
@@ -49,15 +63,15 @@ export default function PendingInvitations({ organization }: Props) {
       (response) => {
         setLoading(false);
         setLoaded(true);
-        if (!response) return;
-        const items = Array.isArray(response.content) ? response.content : [];
+        const pageData = getPageData(response);
+        if (!pageData) return;
         if (page && page > 1) {
-          setInvitations((prev) => [...prev, ...items]);
+          setInvitations((prev) => [...prev, ...pageData.items]);
         } else {
-          setInvitations(items);
+          setInvitations(pageData.items);
         }
-        setTotalElements(response.totalElements ?? 0);
-        setCurrentPage(response.number ?? 0);
+        setTotalElements(pageData.totalElements);
+        setCurrentPage(pageData.number);
       },
       () => {
         setLoading(false);
