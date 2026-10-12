@@ -41,6 +41,7 @@ import org.sonar.scanner.repository.language.Language;
 import org.sonar.scanner.repository.language.LanguagesRepository;
 
 import static java.util.Collections.unmodifiableMap;
+import static org.apache.commons.lang3.Strings.CS;
 
 /**
  * Detect language of a source file based on its suffix and configured patterns.
@@ -77,11 +78,11 @@ public class LanguageDetection {
 
   private static PathPattern[] getLanguagePatterns(Language language) {
     Stream<PathPattern> fileSuffixes = language.fileSuffixes().stream()
-      .map(suffix -> "**/*" + sanitizeExtension(suffix))
+      .map(suffix -> "**/*." + sanitizeExtension(suffix))
       .map(PathPattern::create);
     Stream<PathPattern> filenamePatterns = language.filenamePatterns()
       .stream()
-      .map(filenamePattern -> "**/*" + filenamePattern)
+      .map(filenamePattern -> "**/" + filenamePattern)
       .map(PathPattern::create);
 
     PathPattern[] defaultLanguagePatterns = Stream.concat(fileSuffixes, filenamePatterns)
@@ -137,9 +138,6 @@ public class LanguageDetection {
   }
 
   static String sanitizeExtension(String suffix) {
-    if (!suffix.contains(".")) {
-      return "." + StringUtils.lowerCase(suffix);
-    }
-    return StringUtils.lowerCase(suffix);
+    return StringUtils.lowerCase(CS.removeStart(suffix, "."));
   }
 }

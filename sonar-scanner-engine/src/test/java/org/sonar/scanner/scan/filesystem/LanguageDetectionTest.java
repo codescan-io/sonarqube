@@ -95,6 +95,39 @@ public class LanguageDetectionTest {
     assertThat(detectLanguageKey(detection, "abc")).isNull();
   }
 
+  /**
+   * Salesforce metadata declares multi-part suffixes such as {@code object-meta.xml}. Those look like they
+   * need the leading dot preserved, which is why CD-4966 stopped stripping it, but prefixing "**&#47;*."
+   * already handles them. Pinned so the two are not "fixed" apart again.
+   */
+  @Test
+  public void detectLanguageKey_shouldDetectByMultiPartFileExtension() {
+    DefaultLanguagesRepository languages = new DefaultLanguagesRepository(new FakeLanguagesLoader(new Languages(
+      new MockLanguage("sfmeta", "object-meta.xml", ".flow-meta.xml"))));
+    languages.start();
+    LanguageDetection detection = new LanguageDetection(settings.asConfig(), languages);
+
+    assertThat(detectLanguageKey(detection, "objects/Account/Account.object-meta.xml")).isEqualTo("sfmeta");
+    assertThat(detectLanguageKey(detection, "flows/My_Flow.flow-meta.xml")).isEqualTo("sfmeta");
+    assertThat(detectLanguageKey(detection, "objects/Account/Account.object")).isNull();
+  }
+
+  /**
+   * Declared suffixes are lower-cased, while matching only folds the case of the last extension. A camelCase
+   * multi-part suffix such as Salesforce's {@code sharingRules-meta.xml} therefore only matches through a
+   * filename pattern, which is left as declared. Both spellings have to be detected.
+   */
+  @Test
+  public void detectLanguageKey_shouldLowerCaseFileSuffixesButNotFilenamePatterns() {
+    DefaultLanguagesRepository languages = new DefaultLanguagesRepository(new FakeLanguagesLoader(new Languages(
+      new MockLanguage("sfmeta", new String[] {"sharingRules-meta.xml"}, new String[] {"*.sharingRules-meta.xml"}))));
+    languages.start();
+    LanguageDetection detection = new LanguageDetection(settings.asConfig(), languages);
+
+    assertThat(detectLanguageKey(detection, "sharingRules/Account.sharingrules-meta.xml")).isEqualTo("sfmeta");
+    assertThat(detectLanguageKey(detection, "sharingRules/Account.sharingRules-meta.xml")).isEqualTo("sfmeta");
+  }
+
   @Test
   @UseDataProvider("filenamePatterns")
   public void detectLanguageKey_shouldDetectByFileNamePattern(String fileName, String expectedLanguageKey) {
