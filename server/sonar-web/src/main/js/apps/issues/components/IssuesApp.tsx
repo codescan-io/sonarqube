@@ -78,6 +78,7 @@ import { withOrganizationContext } from '../../organizations/OrganizationContext
 import * as actions from '../actions';
 import { FiltersHeader } from '../sidebar/FiltersHeader';
 import { Sidebar } from '../sidebar/Sidebar';
+import { STATIC_RESOURCES_FACET_PROPERTY } from '../sidebar/StaticResourcesFacet';
 import '../styles.css';
 import {
   Query,
@@ -501,10 +502,17 @@ const response = await searchIssues(scopedQuery);
     const { component, organization } = this.props;
     const { myIssues, openFacets, query } = this.state;
 
+    // staticResources is a UI-only facet; the API expects "tags" for counts.
     let facets = requestFacets
-      ? Object.keys(openFacets)
-          .filter((facet) => facet !== STANDARDS && openFacets[facet])
-          .join(',')
+      ? [
+          ...new Set(
+            Object.keys(openFacets)
+              .filter((facet) => facet !== STANDARDS && openFacets[facet])
+              .map((facet) =>
+                facet === STATIC_RESOURCES_FACET_PROPERTY ? 'tags' : facet,
+              ),
+          ),
+        ].join(',')
       : undefined;
 
     if (firstRequest && isProject(component?.qualifier)) {
@@ -822,7 +830,8 @@ const response = await searchIssues(scopedQuery);
       }
 
       // Static Resources filter reuses the tags facet for counts
-      const facetToFetch = property === 'staticResources' ? 'tags' : property;
+      const facetToFetch =
+        property === STATIC_RESOURCES_FACET_PROPERTY ? 'tags' : property;
 
       // No need to load facets data for standard facet
       if (facetToFetch !== STANDARDS && !state.facets[facetToFetch]) {
@@ -879,7 +888,9 @@ const response = await searchIssues(scopedQuery);
       .filter(([facet]) => facet !== STANDARDS)
       .forEach(([facet, isOpen]) => {
         if (isOpen) {
-          this.fetchFacet(facet);
+          const facetToFetch =
+            facet === STATIC_RESOURCES_FACET_PROPERTY ? 'tags' : facet;
+          this.fetchFacet(facetToFetch);
         }
       });
     this.setState((state) => ({
