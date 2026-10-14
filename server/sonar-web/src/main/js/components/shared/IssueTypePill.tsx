@@ -23,6 +23,7 @@ import classNames from 'classnames';
 import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import { Pill, PillVariant } from '~design-system';
+import { translate } from '../../helpers/l10n';
 import { IssueSeverity, IssueType } from '../../types/issues';
 import IssueTypeIcon from '../icon-mappers/IssueTypeIcon';
 import SoftwareImpactSeverityIcon from '../icon-mappers/SoftwareImpactSeverityIcon';
@@ -86,7 +87,7 @@ export default function IssueTypePill(props: Readonly<Props>) {
           >
             <div className="sw-flex sw-items-center sw-gap-2">
               <SoftwareImpactSeverityIcon width={14} height={14} severity={severityItem} />
-              {intl.formatMessage({ id: `severity.${severityItem}` })}
+              {translate('severity', severityItem)}
             </div>
           </DropdownMenu.ItemButtonCheckable>
         ))}
@@ -97,7 +98,7 @@ export default function IssueTypePill(props: Readonly<Props>) {
               id: `issue.type.tooltip_with_change`,
             },
             {
-              severity: intl.formatMessage({ id: `severity.${severity}` }),
+              severity: translate('severity', severity),
             },
           )}
         >
@@ -117,7 +118,7 @@ export default function IssueTypePill(props: Readonly<Props>) {
                 id: `issue.type.tooltip`,
               },
               {
-                severity: intl.formatMessage({ id: `severity.${severity}` }),
+                severity: translate('severity', severity),
               },
             )
       }

@@ -107,7 +107,7 @@ export default function SoftwareImpactPill(props: Props) {
               id: `issue.type.tooltip_with_change`,
             },
             {
-              severity: intl.formatMessage({ id: `severity_impact.${severity}` }),
+              severity: translate('severity_impact', severity),
             },
           )}
         >
@@ -150,7 +150,7 @@ export default function SoftwareImpactPill(props: Props) {
             id: `issue.type.tooltip`,
           },
           {
-            severity: intl.formatMessage({ id: `severity_impact.${severity}` }),
+            severity: translate('severity_impact', severity),
           },
         )}
       >

@@ -185,6 +185,8 @@ export class App extends React.PureComponent<Props, State> {
             severities: true,
             types: true,
             impactSeverities: true,
+            // Prefetch tags facet counts for Static Resources filter (mapped → tags in fetchIssues)
+            [STATIC_RESOURCES_FACET_PROPERTY]: true,
             sonarsourceSecurity: shouldOpenSonarSourceSecurityFacet({}, query),
             standards: shouldOpenStandardsFacet({}, query),
           },

@@ -38,12 +38,13 @@ const SETTINGS_SAVE_SUCCESS_MESSAGE = translate(
 
 type SettingFinalValue = string | boolean | string[];
 
-export function useGetValuesQuery(keys: string[]) {
+export function useGetValuesQuery(keys: string[], options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['settings', 'values', keys] as const,
     queryFn: ({ queryKey: [_a, _b, keys] }) => {
       return getValues({ keys });
     },
+    enabled: options?.enabled ?? keys.length > 0,
   });
 }
 

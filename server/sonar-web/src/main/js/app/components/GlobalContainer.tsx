@@ -47,7 +47,7 @@ import { UpdateNotification } from './update-notification/UpdateNotification';
 import MsaGate from '../../apps/sessions/components/MsaGate';
 import { getEulaVerification } from '../../api/eula';
 import { GlobalSettingKeys } from '../../types/settings';
-import { loadSeverityLabelsToCache } from '../../helpers/severityMasking';
+import { loadSeverityLabelsToCache, onSeverityLabelsChanged } from '../../helpers/severityMasking';
 import { AiCreditsContextProvider } from './ai-credits/AiCreditsContextProvider';
 import { isDeploymentForAmazon } from '../../helpers/urls';
 import { useAppState } from './app-state/withAppStateContext';
@@ -129,11 +129,13 @@ export default function GlobalContainer() {
      fetchMsaPopUpFlag();
   }, []);
 
+  const [severityLabelsEpoch, setSeverityLabelsEpoch] = useState(0);
+
   useEffect(() => {
-      async function load() {
-        await loadSeverityLabelsToCache();
-      }
-      load();
+    loadSeverityLabelsToCache();
+    return onSeverityLabelsChanged(() => {
+      setSeverityLabelsEpoch((epoch) => epoch + 1);
+    });
   }, []);
 
   useEffect(() => {
@@ -184,7 +186,8 @@ export default function GlobalContainer() {
                            */}
                           <div id="component-nav-portal" />
                         </div>
-                        <Outlet />
+                        {/* Remount when severity masks load/change so intl + translate pick up labels */}
+                        <Outlet key={severityLabelsEpoch} />
                       </MetricsContextProvider>
                     </LanguagesContextProvider>
                   </IndexationContextProvider>

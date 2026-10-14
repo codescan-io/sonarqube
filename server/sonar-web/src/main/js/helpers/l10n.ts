@@ -21,7 +21,16 @@
 import { getIntl, getMessages } from './l10nBundle';
 import { getCachedSeverityLabel } from './severityMasking';
 
-const severityKeys = new Set<string>(['severity.BLOCKER', 'severity.CRITICAL', 'severity.MAJOR', 'severity.MINOR', 'severity.INFO']);
+const severityKeys = new Set<string>([
+  'severity.BLOCKER',
+  'severity.CRITICAL',
+  'severity.MAJOR',
+  'severity.MINOR',
+  'severity.INFO',
+  // Impact mode only shares BLOCKER/INFO names with standard masking
+  'severity_impact.BLOCKER',
+  'severity_impact.INFO',
+]);
 
 export function hasMessage(...keys: string[]): boolean {
   const messageKey = keys.join('.');
@@ -33,11 +42,13 @@ export function translate(...keys: string[]): string {
   const messageKey = keys.join('.');
   const l10nMessages = getMessages();
 
+  // Prefer severity masking over catalog / intl — also used by callers that go through translate.
   if (severityKeys.has(messageKey)) {
-      let label = getCachedSeverityLabel(messageKey);
-      if (label) {
-        l10nMessages[messageKey] = label;
-      }
+    const masked = getCachedSeverityLabel(messageKey);
+    if (masked) {
+      l10nMessages[messageKey] = masked;
+      return masked;
+    }
   }
 
   if (process.env.NODE_ENV === 'development' && !l10nMessages[messageKey]) {

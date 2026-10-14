@@ -20,7 +20,9 @@
 
 import { InputSize, Select } from '@sonarsource/echoes-react';
 import * as React from 'react';
-import { ExtendedSettingDefinition } from '../../../../types/settings';
+import { SEVERITIES_PROP_KEYS_SET, getCachedSeverityLabel } from '../../../../helpers/severityMasking';
+import { useGetValuesQuery } from '../../../../queries/settings';
+import { ExtendedSettingDefinition, SettingsKey } from '../../../../types/settings';
 import { DefaultSpecializedInputProps, getPropertyName } from '../../utils';
 
 type Props = DefaultSpecializedInputProps & Pick<ExtendedSettingDefinition, 'options'>;
@@ -30,11 +32,33 @@ function InputForSingleSelectList(
   ref: React.ForwardedRef<HTMLInputElement>,
 ) {
   const { name, options: opts, value, setting, disabled } = props;
+  const isStaticResourceSeverity =
+    setting.definition.key === SettingsKey.CodescanStaticResourceCustomSeverity;
 
-  const options = React.useMemo(
-    () => opts.map((option) => ({ label: option, value: option })),
-    [opts],
-  );
+  const { data: maskingSettings } = useGetValuesQuery([...SEVERITIES_PROP_KEYS_SET], {
+    enabled: isStaticResourceSeverity,
+  });
+
+  const options = React.useMemo(() => {
+    const maskingBySeverity = new Map<string, string>();
+    maskingSettings?.forEach((settingValue) => {
+      const severity = settingValue.key.split('.').at(-1);
+      if (severity && settingValue.value) {
+        maskingBySeverity.set(severity, settingValue.value);
+      }
+    });
+
+    return opts.map((option) => {
+      if (!isStaticResourceSeverity) {
+        return { label: option, value: option };
+      }
+      const label =
+        maskingBySeverity.get(option) ||
+        getCachedSeverityLabel(`severity.${option}`) ||
+        option;
+      return { label, value: option };
+    });
+  }, [opts, isStaticResourceSeverity, maskingSettings]);
 
   return (
     <Select
