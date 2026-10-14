@@ -24,6 +24,7 @@ import { FlagMessage, Spinner } from '~design-system';
 import { getCodefixFixedFile } from '../../api/ai-codefix';
 import { getBranchLikeDisplayName } from '../../helpers/branch-like';
 import { translate } from '../../helpers/l10n';
+import { queryClientDefaultRetryFn } from '../../queries/queryClient';
 import { useRawSourceQuery } from '../../queries/sources';
 import { getBranchLikeQuery } from '../../sonar-aligned/helpers/branch-like';
 import { BranchLike } from '../../types/branch-like';
@@ -42,6 +43,7 @@ interface FixDiffTabProps {
 }
 
 const EXPAND_BY_LINES = 50;
+const CODEFIX_FIXED_FILE_MAX_RETRIES = 10;
 
 export function FixDiffTab({ branchLike, issue }: Readonly<FixDiffTabProps>) {
   const branchParams = React.useMemo(() => getBranchLikeQuery(branchLike), [branchLike]);
@@ -56,10 +58,17 @@ export function FixDiffTab({ branchLike, issue }: Readonly<FixDiffTabProps>) {
     queryKey: ['codefix-fixed-file', issue.key],
     queryFn: () => getCodefixFixedFile(issue.key),
     enabled: Boolean(issue.key),
-    retry: (_, error) => {
-      const res = error as unknown as Response;
-      return res?.status !== 401 && res?.status !== 403;
+    retry: (failureCount, error) => {
+      // The fixed file lands a moment after the status does, so an early 404 usually means "not
+      // written yet", and a fix still being generated can be a minute or two away. A fix that
+      // failed never writes one, so stop after ten tries rather than waiting for good.
+      if ((error as unknown as Response)?.status === 404) {
+        return failureCount < CODEFIX_FIXED_FILE_MAX_RETRIES;
+      }
+      return queryClientDefaultRetryFn(failureCount, error);
     },
+    // A query that ends without data is always stale, so each refocus would start the retries again.
+    refetchOnWindowFocus: false,
   });
 
   const fixedFileData = fixedFileQuery.data;
