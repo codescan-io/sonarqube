@@ -63,12 +63,12 @@ import { TagFacet } from './TagFacet';
 import { TypeFacet } from './TypeFacet';
 import { VariantFacet } from './VariantFacet';
 import {
-  getStaticResourceCustomSeverity,
   isAiAssistantEnabled,
   isStaticResourceCustomSeverityEnabled,
 } from '../../../api/settings';
 import { useIsAiCodefixSupportedIntegration } from '../../../queries/ai-codefix';
 import {
+  STATIC_RESOURCE_TAG,
   STATIC_RESOURCES_FACET_PROPERTY,
   StaticResourcesFacet,
 } from './StaticResourcesFacet';
@@ -112,6 +112,7 @@ export function Sidebar(props: Readonly<Props>) {
   const projectKey = props.component?.key ?? '';
   const [aiEnabled, setAiEnabled] = React.useState(false);
   const [staticResourceFilterEnabled, setStaticResourceFilterEnabled] = React.useState(false);
+  // Severity shown in the facet comes from current issue data (last analysis), not settings.
   const [staticResourceSeverity, setStaticResourceSeverity] = React.useState<string | undefined>();
   React.useEffect(() => {
     async function checkAiEnabled() {
@@ -123,16 +124,42 @@ export function Sidebar(props: Readonly<Props>) {
 
   React.useEffect(() => {
     async function loadStaticResourceFilter() {
-      const enabled = await isStaticResourceCustomSeverityEnabled();
-      setStaticResourceFilterEnabled(enabled);
-      if (enabled) {
-        setStaticResourceSeverity(await getStaticResourceCustomSeverity());
-      } else {
-        setStaticResourceSeverity(undefined);
-      }
+      setStaticResourceFilterEnabled(await isStaticResourceCustomSeverityEnabled());
     }
     loadStaticResourceFilter();
   }, []);
+
+  const staticResourceTagCount = facets.tags?.[STATIC_RESOURCE_TAG];
+  React.useEffect(() => {
+    if (!staticResourceFilterEnabled) {
+      setStaticResourceSeverity(undefined);
+      return;
+    }
+
+    let cancelled = false;
+    props
+      .loadSearchResultCount('severities', { tags: [STATIC_RESOURCE_TAG] })
+      .then((severityFacet) => {
+        if (cancelled) {
+          return;
+        }
+        const ranked = Object.entries(severityFacet ?? {})
+          .filter(([, count]) => (count ?? 0) > 0)
+          .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
+        // One dominant severity among tagged issues = what analysis last applied.
+        setStaticResourceSeverity(ranked.length > 0 ? ranked[0][0] : undefined);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStaticResourceSeverity(undefined);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // Re-resolve when tagged issue counts change (e.g. after a new analysis).
+  }, [staticResourceFilterEnabled, staticResourceTagCount, props.loadSearchResultCount]);
 
   const isSupportedIntegration = useIsAiCodefixSupportedIntegration(
     aiEnabled ? projectKey : undefined,
@@ -252,7 +279,7 @@ export function Sidebar(props: Readonly<Props>) {
           {staticResourceFilterEnabled && (
             <>
               <StaticResourcesFacet
-                configuredSeverity={staticResourceSeverity}
+                appliedSeverity={staticResourceSeverity}
                 fetching={props.loadingFacets.tags === true}
                 onChange={props.onFilterChange}
                 onToggle={props.onFacetToggle}
@@ -341,7 +368,7 @@ export function Sidebar(props: Readonly<Props>) {
               {staticResourceFilterEnabled && (
                 <>
                   <StaticResourcesFacet
-                    configuredSeverity={staticResourceSeverity}
+                    appliedSeverity={staticResourceSeverity}
                     fetching={props.loadingFacets.tags === true}
                     onChange={props.onFilterChange}
                     onToggle={props.onFacetToggle}

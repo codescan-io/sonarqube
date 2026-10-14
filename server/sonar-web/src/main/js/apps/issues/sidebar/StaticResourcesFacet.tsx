@@ -30,7 +30,8 @@ export const STATIC_RESOURCE_TAG = 'static-resource';
 export const STATIC_RESOURCES_FACET_PROPERTY = 'staticResources';
 
 export interface StaticResourcesFacetProps {
-  configuredSeverity?: string;
+  /** Severity currently present on static-resource issues (from analysis data), not the setting. */
+  appliedSeverity?: string;
   fetching: boolean;
   onChange: (changes: Partial<Query>) => void;
   onToggle: (property: string) => void;
@@ -40,15 +41,15 @@ export interface StaticResourcesFacetProps {
 }
 
 export function StaticResourcesFacet(props: Readonly<StaticResourcesFacetProps>) {
-  const { configuredSeverity, fetching, onToggle, open, stats = {}, tags } = props;
+  const { appliedSeverity, fetching, onToggle, open, stats = {}, tags } = props;
   const intl = useIntl();
   const active = tags.includes(STATIC_RESOURCE_TAG);
   const headerId = `facet_${STATIC_RESOURCES_FACET_PROPERTY}`;
 
-  const severityLabel = configuredSeverity
-    ? getCachedSeverityLabel(`severity.${configuredSeverity}`) ||
-      translate(`severity.${configuredSeverity}`) ||
-      configuredSeverity
+  const severityLabel = appliedSeverity
+    ? getCachedSeverityLabel(`severity.${appliedSeverity}`) ||
+      translate(`severity.${appliedSeverity}`) ||
+      appliedSeverity
     : undefined;
 
   const itemName = severityLabel
