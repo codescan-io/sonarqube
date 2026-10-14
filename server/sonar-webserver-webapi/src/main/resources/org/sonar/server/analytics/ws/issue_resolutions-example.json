@@ -1,0 +1,14 @@
+{
+  "period": {"from": "2026-10-06", "to": "2026-10-08", "timeZone": "Europe/Paris", "interval": "day"},
+  "retentionDays": 30,
+  "completeFrom": "2026-09-08",
+  "totals": {
+    "introduced": 210, "fixed": 340, "removed": 12, "accepted": 25, "falsePositive": 9, "reopened": 4,
+    "resolved": 386, "fixedByAnalysis": 331, "netChange": -172
+  },
+  "timeline": [
+    {"date": "2026-10-06", "introduced": 80, "fixed": 120, "removed": 0, "accepted": 10, "falsePositive": 3, "reopened": 1},
+    {"date": "2026-10-07", "introduced": 70, "fixed": 105, "removed": 12, "accepted": 8, "falsePositive": 4, "reopened": 2},
+    {"date": "2026-10-08", "introduced": 60, "fixed": 115, "removed": 0, "accepted": 7, "falsePositive": 2, "reopened": 1}
+  ]
+}

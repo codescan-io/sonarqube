@@ -95,4 +95,11 @@ public interface IssueMapper {
 
   void updateIssueResolutionExpiryDate(@Param("issueKey") String issueKey, @Param("expiryDate") Long expiryDate);
 
+  List<ExpiringExceptionDto> selectExpiringExceptionsForOrganization(@Param("organizationUuid") String organizationUuid,
+    @Param("expiresBefore") long expiresBefore, @Param("pagination") Pagination pagination);
+
+  int countExpiringExceptionsForOrganization(@Param("organizationUuid") String organizationUuid, @Param("expiresBefore") long expiresBefore);
+
+  void scrollCreationDatesForOrganization(@Param("organizationUuid") String organizationUuid, @Param("fromDate") long fromDate,
+    @Param("toDate") long toDate, ResultHandler<Long> handler);
 }

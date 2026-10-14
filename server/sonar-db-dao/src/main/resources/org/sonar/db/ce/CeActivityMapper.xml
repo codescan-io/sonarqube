@@ -290,4 +290,153 @@
     ca.task_type = #{taskType,jdbcType=VARCHAR}
   </select>
 
+  <select id="scrollForOrganizationAnalytics" parameterType="map" resultType="org.sonar.db.ce.CeActivityAnalyticsDto" fetchSize="${_scrollFetchSize}" resultSetType="FORWARD_ONLY">
+    select
+      ca.entity_uuid as entityUuid,
+      ca.task_type as taskType,
+      ca.status as status,
+      ca.submitted_at as submittedAt,
+      ca.started_at as startedAt,
+      ca.execution_time_ms as executionTimeMs,
+      pb.branch_type as branchType,
+      pb.is_main as isMain
+    from ce_activity ca
+    inner join projects p on p.uuid = ca.entity_uuid
+    left outer join project_branches pb on pb.uuid = ca.component_uuid
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+      and ca.submitted_at &gt;= #{fromSubmittedAt,jdbcType=BIGINT}
+      and ca.submitted_at &lt; #{toSubmittedAt,jdbcType=BIGINT}
+  </select>
+
+  <sql id="analyticsTaskWhere">
+    where
+      p.organization_uuid = #{query.organizationUuid,jdbcType=VARCHAR}
+      and ca.submitted_at &gt;= #{query.fromSubmittedAt,jdbcType=BIGINT}
+      and ca.submitted_at &lt; #{query.toSubmittedAt,jdbcType=BIGINT}
+      <if test="query.taskType != null">
+        and ca.task_type = #{query.taskType,jdbcType=VARCHAR}
+      </if>
+      <if test="!query.statuses.isEmpty()">
+        and ca.status in
+        <foreach collection="query.statuses" open="(" close=")" item="status" separator=",">
+          #{status,jdbcType=VARCHAR}
+        </foreach>
+      </if>
+  </sql>
+
+  <select id="selectForOrganizationAnalytics" parameterType="map" resultType="org.sonar.db.ce.AnalyticsTaskDto">
+    select
+      ca.uuid as uuid,
+      ca.task_type as taskType,
+      ca.status as status,
+      p.kee as projectKey,
+      p.name as projectName,
+      pb.kee as branchKey,
+      pb.branch_type as branchType,
+      pb.is_main as isMain,
+      ca.submitted_at as submittedAt,
+      ca.started_at as startedAt,
+      ca.executed_at as executedAt,
+      ca.execution_time_ms as executionTimeMs,
+      ca.error_message as errorMessage
+    from ce_activity ca
+    inner join projects p on p.uuid = ca.entity_uuid
+    left outer join project_branches pb on pb.uuid = ca.component_uuid
+    <include refid="analyticsTaskWhere"/>
+    <choose>
+      <when test="query.sort.name() == 'EXECUTION_TIME'">
+        order by case when ca.execution_time_ms is null then 1 else 0 end, ca.execution_time_ms desc, ca.uuid
+      </when>
+      <when test="query.sort.name() == 'QUEUE_TIME'">
+        order by case when ca.started_at is null then 1 else 0 end, ca.started_at - ca.submitted_at desc, ca.uuid
+      </when>
+      <otherwise>
+        order by ca.submitted_at desc, ca.uuid
+      </otherwise>
+    </choose>
+    <include refid="org.sonar.db.common.Common.pagination"/>
+  </select>
+
+  <select id="countForOrganizationAnalytics" parameterType="map" resultType="int">
+    select count(1)
+    from ce_activity ca
+    inner join projects p on p.uuid = ca.entity_uuid
+    <include refid="analyticsTaskWhere"/>
+  </select>
+
+  <select id="selectCurrentStatusesForOrganization" parameterType="map" resultType="org.sonar.db.ce.AnalyticsProjectTaskStatusDto">
+    select
+      p.kee as projectKey,
+      ca.status as status,
+      ca.created_at as createdAt,
+      ca.uuid as uuid
+    from ce_activity ca
+    inner join projects p on p.uuid = ca.entity_uuid
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+      and ca.main_is_last = ${_true}
+  </select>
+
+  <sql id="analysesInPeriod">
+    ca.task_type = 'REPORT'
+    and ca.submitted_at &gt;= #{fromSubmittedAt,jdbcType=BIGINT}
+    and ca.submitted_at &lt; #{toSubmittedAt,jdbcType=BIGINT}
+  </sql>
+
+  <select id="selectAnalyzedProjects" parameterType="map" resultType="org.sonar.db.ce.AnalyticsProjectActivityDto">
+    select
+      p.kee as projectKey,
+      p.name as projectName,
+      count(ca.uuid) as analyses,
+      sum(case when ca.status = 'SUCCESS' then 1 else 0 end) as success,
+      sum(case when ca.status = 'FAILED' then 1 else 0 end) as failed,
+      sum(case when ca.status = 'CANCELED' then 1 else 0 end) as canceled,
+      max(ca.submitted_at) as lastSubmittedAt,
+      avg(case when ca.status = 'SUCCESS' then ca.execution_time_ms else null end) as avgExecutionTimeMs
+    from projects p
+    inner join ce_activity ca on ca.entity_uuid = p.uuid and <include refid="analysesInPeriod"/>
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+      and p.qualifier = 'TRK'
+    group by p.uuid, p.kee, p.name
+    order by count(ca.uuid) desc, p.kee
+    <include refid="org.sonar.db.common.Common.pagination"/>
+  </select>
+
+  <select id="countAnalyzedProjects" parameterType="map" resultType="int">
+    select count(distinct p.uuid)
+    from projects p
+    inner join ce_activity ca on ca.entity_uuid = p.uuid and <include refid="analysesInPeriod"/>
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+      and p.qualifier = 'TRK'
+  </select>
+
+  <sql id="notAnalyzedWhere">
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+      and p.qualifier = 'TRK'
+      and not exists (
+        select 1 from ce_activity ca where ca.entity_uuid = p.uuid and <include refid="analysesInPeriod"/>
+      )
+  </sql>
+
+  <select id="selectNotAnalyzedProjects" parameterType="map" resultType="org.sonar.db.ce.AnalyticsProjectActivityDto">
+    select
+      p.kee as projectKey,
+      p.name as projectName,
+      (select max(ca.submitted_at) from ce_activity ca where ca.entity_uuid = p.uuid and ca.task_type = 'REPORT') as lastSubmittedAt
+    from projects p
+    <include refid="notAnalyzedWhere"/>
+    order by p.kee
+    <include refid="org.sonar.db.common.Common.pagination"/>
+  </select>
+
+  <select id="countNotAnalyzedProjects" parameterType="map" resultType="int">
+    select count(1)
+    from projects p
+    <include refid="notAnalyzedWhere"/>
+  </select>
+
 </mapper>

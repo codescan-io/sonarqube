@@ -141,6 +141,21 @@ public class CeQueueDao implements Dao {
     return mapper(dbSession).countByStatusAndEntityUuid(status, null);
   }
 
+  /** Queued tasks of the organization's projects, one count per status that has any. */
+  public List<CeQueueStatusCount> countByStatusForOrganization(DbSession dbSession, String organizationUuid) {
+    return mapper(dbSession).countByStatusForOrganization(organizationUuid);
+  }
+
+  /** Status of every queued task of the organization's projects. */
+  public List<AnalyticsProjectTaskStatusDto> selectStatusesForOrganization(DbSession dbSession, String organizationUuid) {
+    return mapper(dbSession).selectStatusesForOrganization(organizationUuid);
+  }
+
+  /** Queued tasks of the organization's projects: the running ones, then the pending ones, oldest first. */
+  public List<AnalyticsTaskDto> selectForOrganizationAnalytics(DbSession dbSession, String organizationUuid, Pagination pagination) {
+    return mapper(dbSession).selectForOrganizationAnalytics(organizationUuid, pagination);
+  }
+
   public int countByStatusAndEntityUuid(DbSession dbSession, CeQueueDto.Status status, @Nullable String entityUuid) {
     return mapper(dbSession).countByStatusAndEntityUuid(status, entityUuid);
   }

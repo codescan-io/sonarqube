@@ -26,6 +26,7 @@ import java.util.Set;
 import javax.annotation.Nullable;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.cursor.Cursor;
+import org.apache.ibatis.session.ResultHandler;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
 import org.sonar.db.Pagination;
@@ -197,6 +198,25 @@ public class IssueDao implements Dao {
 
   public void deleteAsNewCodeOnReferenceBranch(DbSession session, String issueKey) {
     mapper(session).deleteAsNewCodeOnReferenceBranch(issueKey);
+  }
+
+  /**
+   * Accepted and false-positive issues of the organization's main branches whose exception expires before the given date,
+   * soonest first. Already expired ones are included until the platform reopens them.
+   */
+  public List<ExpiringExceptionDto> selectExpiringExceptionsForOrganization(DbSession session, String organizationUuid, long expiresBefore,
+    Pagination pagination) {
+    return mapper(session).selectExpiringExceptionsForOrganization(organizationUuid, expiresBefore, pagination);
+  }
+
+  public int countExpiringExceptionsForOrganization(DbSession session, String organizationUuid, long expiresBefore) {
+    return mapper(session).countExpiringExceptionsForOrganization(organizationUuid, expiresBefore);
+  }
+
+  /** Streams the creation date of every issue (not hotspot) of the organization's main branches created in the period. */
+  public void scrollCreationDatesForOrganization(DbSession session, String organizationUuid, long fromDate, long toDate,
+    ResultHandler<Long> handler) {
+    mapper(session).scrollCreationDatesForOrganization(organizationUuid, fromDate, toDate, handler);
   }
 
   private static IssueMapper mapper(DbSession session) {

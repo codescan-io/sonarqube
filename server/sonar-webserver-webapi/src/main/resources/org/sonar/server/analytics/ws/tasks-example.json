@@ -1,0 +1,20 @@
+{
+  "paging": {"pageIndex": 1, "pageSize": 20, "total": 12},
+  "tasks": [
+    {
+      "id": "AZK3ug2bRZFKXwkiXzZ9",
+      "type": "REPORT",
+      "status": "FAILED",
+      "projectKey": "my-org_force-app",
+      "projectName": "Force App",
+      "branch": "feature/login",
+      "target": "BRANCH",
+      "submittedAt": "2026-10-12T09:41:07+0000",
+      "startedAt": "2026-10-12T09:41:09+0000",
+      "executedAt": "2026-10-12T09:42:51+0000",
+      "executionTimeMs": 102000,
+      "queueTimeMs": 2000,
+      "errorMessage": "Analysis report is corrupted"
+    }
+  ]
+}

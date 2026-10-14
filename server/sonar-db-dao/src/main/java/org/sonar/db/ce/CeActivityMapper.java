@@ -23,6 +23,7 @@ import java.util.List;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.session.ResultHandler;
 import org.sonar.db.Pagination;
 
 public interface CeActivityMapper {
@@ -54,4 +55,25 @@ public interface CeActivityMapper {
   short hasAnyFailedOrCancelledIssueSyncTask();
 
   List<CeActivityDto> selectByTaskType(@Param("taskType") String taskType);
+
+  void scrollForOrganizationAnalytics(@Param("organizationUuid") String organizationUuid, @Param("fromSubmittedAt") long fromSubmittedAt,
+    @Param("toSubmittedAt") long toSubmittedAt, ResultHandler<CeActivityAnalyticsDto> handler);
+
+  List<AnalyticsTaskDto> selectForOrganizationAnalytics(@Param("query") AnalyticsTaskQuery query, @Param("pagination") Pagination pagination);
+
+  int countForOrganizationAnalytics(@Param("query") AnalyticsTaskQuery query);
+
+  List<AnalyticsProjectTaskStatusDto> selectCurrentStatusesForOrganization(@Param("organizationUuid") String organizationUuid);
+
+  List<AnalyticsProjectActivityDto> selectAnalyzedProjects(@Param("organizationUuid") String organizationUuid,
+    @Param("fromSubmittedAt") long fromSubmittedAt, @Param("toSubmittedAt") long toSubmittedAt, @Param("pagination") Pagination pagination);
+
+  int countAnalyzedProjects(@Param("organizationUuid") String organizationUuid, @Param("fromSubmittedAt") long fromSubmittedAt,
+    @Param("toSubmittedAt") long toSubmittedAt);
+
+  List<AnalyticsProjectActivityDto> selectNotAnalyzedProjects(@Param("organizationUuid") String organizationUuid,
+    @Param("fromSubmittedAt") long fromSubmittedAt, @Param("toSubmittedAt") long toSubmittedAt, @Param("pagination") Pagination pagination);
+
+  int countNotAnalyzedProjects(@Param("organizationUuid") String organizationUuid, @Param("fromSubmittedAt") long fromSubmittedAt,
+    @Param("toSubmittedAt") long toSubmittedAt);
 }

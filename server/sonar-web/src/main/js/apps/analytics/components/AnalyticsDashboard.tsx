@@ -36,6 +36,8 @@ import AnalyticsCharts, { ProjectDimension } from './AnalyticsCharts';
 import AnalyticsFilters from './AnalyticsFilters';
 import AnalyticsSummary from './AnalyticsSummary';
 import AnalyticsTable from './AnalyticsTable';
+import FocusList from './FocusList';
+import ProjectScorecard from './ProjectScorecard';
 
 interface Props {
   organization: string;
@@ -52,6 +54,7 @@ export default function AnalyticsDashboard({ organization }: Readonly<Props>) {
   const [loadingTasks, setLoadingTasks] = React.useState(false);
   const [error, setError] = React.useState(false);
   const [filters, setFilters] = React.useState<AnalyticsFilterState>(DEFAULT_FILTERS);
+  const [scorecard, setScorecard] = React.useState<AnalyticsProject>();
 
   React.useEffect(() => {
     let active = true;
@@ -101,7 +104,7 @@ export default function AnalyticsDashboard({ organization }: Readonly<Props>) {
         }
       },
     );
-    fetchBackgroundTaskStatuses(keys).then(
+    fetchBackgroundTaskStatuses(organization, keys).then(
       (statuses) => {
         if (active) {
           setTaskStatuses(statuses);
@@ -178,13 +181,32 @@ export default function AnalyticsDashboard({ organization }: Readonly<Props>) {
         taskStatuses={taskStatuses}
       />
 
+      <FocusList
+        loading={loadingIssues || loadingTasks}
+        matrices={matrices}
+        now={now}
+        onOpen={setScorecard}
+        projects={selectedProjects}
+        taskStatuses={taskStatuses}
+      />
+
       <AnalyticsTable
         filters={filters}
         loading={loadingIssues}
         matrices={matrices}
+        onOpenScorecard={setScorecard}
         projects={selectedProjects}
         taskStatuses={taskStatuses}
       />
+
+      {scorecard && (
+        <ProjectScorecard
+          analysisDate={scorecard.analysisDate}
+          name={scorecard.name}
+          onClose={() => setScorecard(undefined)}
+          projectKey={scorecard.key}
+        />
+      )}
     </>
   );
 }

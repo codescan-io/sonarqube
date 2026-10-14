@@ -1,0 +1,16 @@
+{
+  "paging": {"pageIndex": 1, "pageSize": 20, "total": 1},
+  "exceptions": [
+    {
+      "issueKey": "AZK3ug2bRZFKXwkiXzZ9",
+      "issueStatus": "ACCEPTED",
+      "expiresAt": "2026-10-20T00:00:00+0000",
+      "expired": false,
+      "rule": "apex:AvoidSoqlInLoops",
+      "ruleName": "SOQL queries should not be in loops",
+      "projectKey": "my-org_force-app",
+      "projectName": "Force App",
+      "filePath": "force-app/main/default/classes/AccountService.cls"
+    }
+  ]
+}

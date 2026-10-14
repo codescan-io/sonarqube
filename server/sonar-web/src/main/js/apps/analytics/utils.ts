@@ -21,9 +21,8 @@
 import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from 'date-fns';
 import { chunk, range } from 'lodash';
 import { MetricKey } from '~sonar-aligned/types/metrics';
-import { getTasksForComponent } from '../../api/ce';
+import { getProjectIssues, getProjectTaskStatuses } from '../../api/analytics';
 import { searchProjects } from '../../api/components';
-import { searchIssues } from '../../api/issues';
 import { getMeasuresForProjects } from '../../api/measures';
 import { parseDate } from '../../helpers/dates';
 import { TaskStatuses } from '../../types/tasks';
@@ -81,10 +80,8 @@ export interface DateRange {
 
 // api/components/search_projects accepts up to 500 projects per page.
 const PROJECTS_PAGE_SIZE = 500;
-// api/measures/search and the issues 'projects' facet are both capped at 100 projects.
+// api/measures/search is capped at 100 projects.
 const PROJECTS_BATCH_SIZE = 100;
-// One api/ce/component request per project; this many run at the same time.
-const BACKGROUND_TASK_CONCURRENCY = 10;
 
 export async function fetchOrganizationProjects(organization: string) {
   const fetchPage = (page: number) =>
@@ -137,9 +134,8 @@ function emptyMatrix(): IssueMatrix {
 }
 
 /**
- * Open issues of every project, split by type and severity. Each request counts one
- * type/severity pair through the issues 'projects' facet, so the type and severity filters
- * can then be applied in the browser without asking the server again.
+ * Open issues of every project, split by type and severity, from one server call. The type and
+ * severity filters are then applied in the browser without asking the server again.
  */
 export async function fetchIssueMatrices(organization: string, projectKeys: string[]) {
   const matrices: Record<string, IssueMatrix> = {};
@@ -147,40 +143,18 @@ export async function fetchIssueMatrices(organization: string, projectKeys: stri
     matrices[key] = emptyMatrix();
   });
 
-  const countByProject = async (
-    keys: string[],
-    type: AnalyticsIssueType,
-    severity: AnalyticsSeverity,
-  ) => {
-    const response = await searchIssues({
-      organization,
-      projects: keys.join(),
-      types: type,
-      severities: severity,
-      resolved: 'false',
-      facets: 'projects',
-      ps: 1,
-    });
-    // searchIssues resolves to undefined when the request fails.
-    if (!response) {
-      throw new Error('Issue search failed');
+  const { projects } = await getProjectIssues(organization);
+  projects.forEach(({ issues, key }) => {
+    const matrix = matrices[key];
+    if (!matrix) {
+      return;
     }
-    response.facets
-      .find((facet) => facet.property === 'projects')
-      ?.values.forEach(({ val, count }) => {
-        if (matrices[val]) {
-          matrices[val][type][severity] = count;
-        }
+    ISSUE_TYPES.forEach((type) => {
+      SEVERITIES.forEach((severity) => {
+        matrix[type][severity] = issues[type]?.[severity] ?? 0;
       });
-  };
-
-  await Promise.all(
-    chunk(projectKeys, PROJECTS_BATCH_SIZE).flatMap((keys) =>
-      ISSUE_TYPES.flatMap((type) =>
-        SEVERITIES.map((severity) => countByProject(keys, type, severity)),
-      ),
-    ),
-  );
+    });
+  });
   return matrices;
 }
 
@@ -201,27 +175,19 @@ export function countIssues(matrix: IssueMatrix | undefined, filters: IssueFilte
 }
 
 /**
- * The most recent background task state of each project: a queued task (in progress first,
- * then pending) wins over the last executed one. Projects with no task at all are left out.
+ * The most recent background task state of each project, from one server call: a queued task
+ * (in progress first, then pending) wins over the last executed one. Projects with no task at
+ * all are left out.
  */
-export async function fetchBackgroundTaskStatuses(projectKeys: string[]) {
+export async function fetchBackgroundTaskStatuses(organization: string, projectKeys: string[]) {
+  const listed = new Set(projectKeys);
+  const { projects } = await getProjectTaskStatuses(organization);
   const statuses: Record<string, TaskStatuses> = {};
-
-  const fetchStatus = async (projectKey: string) => {
-    const { current, queue } = await getTasksForComponent(projectKey);
-    const queued =
-      queue.find((task) => task.status === TaskStatuses.InProgress) ??
-      queue.find((task) => task.status === TaskStatuses.Pending);
-    const status = queued?.status ?? current?.status;
-    if (status) {
-      statuses[projectKey] = status;
-    }
-  };
-
-  await chunk(projectKeys, BACKGROUND_TASK_CONCURRENCY).reduce<Promise<unknown>>(
-    (previous, keys) => previous.then(() => Promise.all(keys.map(fetchStatus))),
-    Promise.resolve(),
-  );
+  projects
+    .filter(({ key }) => listed.has(key))
+    .forEach(({ key, status }) => {
+      statuses[key] = status;
+    });
   return statuses;
 }
 

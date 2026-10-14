@@ -67,6 +67,7 @@ import org.sonar.core.platform.SpringComponentContainer;
 import org.sonar.server.ai.code.assurance.AiCodeAssuranceEntitlement;
 import org.sonar.server.ai.code.assurance.AiCodeAssuranceVerifier;
 import org.sonar.server.analysis.notification.AnalysisFailureNotificationHandler;
+import org.sonar.server.analytics.ws.AnalyticsWsModule;
 import org.sonar.server.exceptionexpiry.notification.ExceptionExpiryNotificationHandler;
 import org.sonar.server.authentication.AuthenticationModule;
 import org.sonar.server.authentication.DefaultAdminCredentialsVerifierImpl;
@@ -362,6 +363,7 @@ public class PlatformLevel4 extends PlatformLevel {
       // organizations
       OrganizationService.class,
       new OrganizationsWsModule(),
+      new AnalyticsWsModule(),
       BillingValidationsProxyImpl.class,
 
       // quality profile

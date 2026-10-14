@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import javax.annotation.Nullable;
+import org.apache.ibatis.session.ResultHandler;
 import org.sonar.api.utils.System2;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
@@ -67,6 +68,51 @@ public class CeActivityDao implements Dao {
 
   public List<CeActivityDto> selectByTaskType(DbSession dbSession, String taskType) {
     return mapper(dbSession).selectByTaskType(taskType);
+  }
+
+  /**
+   * Streams the tasks of every project of the organization submitted in [{@code fromSubmittedAt}, {@code toSubmittedAt}),
+   * so callers can aggregate them without loading the whole period in memory.
+   */
+  public void scrollForOrganizationAnalytics(DbSession dbSession, String organizationUuid, long fromSubmittedAt, long toSubmittedAt,
+    ResultHandler<CeActivityAnalyticsDto> handler) {
+    mapper(dbSession).scrollForOrganizationAnalytics(organizationUuid, fromSubmittedAt, toSubmittedAt, handler);
+  }
+
+  public List<AnalyticsTaskDto> selectForOrganizationAnalytics(DbSession dbSession, AnalyticsTaskQuery query, Pagination pagination) {
+    return mapper(dbSession).selectForOrganizationAnalytics(query, pagination);
+  }
+
+  public int countForOrganizationAnalytics(DbSession dbSession, AnalyticsTaskQuery query) {
+    return mapper(dbSession).countForOrganizationAnalytics(query);
+  }
+
+  /**
+   * The latest finished task of every task type of the organization's projects, whatever its branch: the tasks
+   * {@code api/ce/component} picks its current one from.
+   */
+  public List<AnalyticsProjectTaskStatusDto> selectCurrentStatusesForOrganization(DbSession dbSession, String organizationUuid) {
+    return mapper(dbSession).selectCurrentStatusesForOrganization(organizationUuid);
+  }
+
+  /** Projects of the organization with at least one analysis submitted in the period, most analyzed first. */
+  public List<AnalyticsProjectActivityDto> selectAnalyzedProjects(DbSession dbSession, String organizationUuid, long fromSubmittedAt,
+    long toSubmittedAt, Pagination pagination) {
+    return mapper(dbSession).selectAnalyzedProjects(organizationUuid, fromSubmittedAt, toSubmittedAt, pagination);
+  }
+
+  public int countAnalyzedProjects(DbSession dbSession, String organizationUuid, long fromSubmittedAt, long toSubmittedAt) {
+    return mapper(dbSession).countAnalyzedProjects(organizationUuid, fromSubmittedAt, toSubmittedAt);
+  }
+
+  /** Projects of the organization with no analysis submitted in the period, by key. */
+  public List<AnalyticsProjectActivityDto> selectNotAnalyzedProjects(DbSession dbSession, String organizationUuid, long fromSubmittedAt,
+    long toSubmittedAt, Pagination pagination) {
+    return mapper(dbSession).selectNotAnalyzedProjects(organizationUuid, fromSubmittedAt, toSubmittedAt, pagination);
+  }
+
+  public int countNotAnalyzedProjects(DbSession dbSession, String organizationUuid, long fromSubmittedAt, long toSubmittedAt) {
+    return mapper(dbSession).countNotAnalyzedProjects(organizationUuid, fromSubmittedAt, toSubmittedAt);
   }
 
   public void deleteByUuids(DbSession dbSession, Set<String> uuids) {

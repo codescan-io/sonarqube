@@ -1,0 +1,28 @@
+{
+  "paging": {"pageIndex": 1, "pageSize": 20, "total": 2},
+  "tasks": [
+    {
+      "id": "AZK3ug2bRZFKXwkiXzZa",
+      "type": "REPORT",
+      "status": "IN_PROGRESS",
+      "projectKey": "my-org_force-app",
+      "projectName": "Force App",
+      "branch": "main",
+      "target": "MAIN",
+      "submittedAt": "2026-10-12T09:41:07+0000",
+      "startedAt": "2026-10-12T09:41:09+0000",
+      "queueTimeMs": 2000
+    },
+    {
+      "id": "AZK3ug2bRZFKXwkiXzZb",
+      "type": "REPORT",
+      "status": "PENDING",
+      "projectKey": "my-org_billing",
+      "projectName": "Billing",
+      "branch": "42",
+      "target": "PULL_REQUEST",
+      "submittedAt": "2026-10-12T09:42:00+0000",
+      "queueTimeMs": 74000
+    }
+  ]
+}

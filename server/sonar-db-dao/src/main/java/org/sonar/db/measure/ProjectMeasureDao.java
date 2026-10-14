@@ -23,6 +23,7 @@ import com.google.common.collect.Lists;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.apache.ibatis.session.ResultHandler;
 import org.sonar.core.util.UuidFactory;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
@@ -76,4 +77,12 @@ public class ProjectMeasureDao implements Dao {
     return session.getMapper(ProjectMeasureMapper.class);
   }
 
+  /**
+   * Streams the given measures of every main branch analysis of the organization's projects in [{@code fromDate}, {@code toDate}),
+   * oldest first.
+   */
+  public void scrollMainBranchHistoryForOrganization(DbSession dbSession, String organizationUuid, long fromDate, long toDate,
+    List<String> metricKeys, ResultHandler<MainBranchMeasureHistoryDto> handler) {
+    mapper(dbSession).scrollMainBranchHistoryForOrganization(organizationUuid, fromDate, toDate, metricKeys, handler);
+  }
 }

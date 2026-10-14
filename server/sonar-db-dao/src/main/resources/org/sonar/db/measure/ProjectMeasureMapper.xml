@@ -84,4 +84,30 @@
     )
   </insert>
 
+  <select id="scrollMainBranchHistoryForOrganization" parameterType="map" resultType="org.sonar.db.measure.MainBranchMeasureHistoryDto"
+          fetchSize="${_scrollFetchSize}" resultSetType="FORWARD_ONLY">
+    select
+      p.uuid as projectUuid,
+      s.created_at as analysisDate,
+      m.name as metricKey,
+      pm.value as value,
+      pm.text_value as textValue
+    from snapshots s
+    inner join project_branches pb on pb.uuid = s.root_component_uuid and pb.is_main = ${_true}
+    inner join projects p on p.uuid = pb.project_uuid
+    inner join project_measures pm on pm.analysis_uuid = s.uuid and pm.component_uuid = s.root_component_uuid
+    inner join metrics m on m.uuid = pm.metric_uuid
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+      and p.qualifier = 'TRK'
+      and s.status = 'P'
+      and s.created_at &gt;= #{fromDate,jdbcType=BIGINT}
+      and s.created_at &lt; #{toDate,jdbcType=BIGINT}
+      and m.name in
+      <foreach collection="metricKeys" open="(" close=")" item="metricKey" separator=",">
+        #{metricKey,jdbcType=VARCHAR}
+      </foreach>
+    order by s.created_at
+  </select>
+
 </mapper>

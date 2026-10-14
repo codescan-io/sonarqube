@@ -1,0 +1,7 @@
+{
+  "projects": [
+    {"key": "billing-service", "status": "IN_PROGRESS"},
+    {"key": "payments-api", "status": "SUCCESS"},
+    {"key": "web-portal", "status": "FAILED"}
+  ]
+}

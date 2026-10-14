@@ -53,4 +53,7 @@ public interface IssueChangeMapper {
   void scrollDiffChangesOfIssues(@Param("issueKeys") List<String> issueKeys, ResultHandler<IssueChangeDto> handler);
 
   List<IssueChangeDto> selectByIssues(@Param("issueKeys") List<String> issueKeys);
+
+  void scrollResolutionChangesForOrganization(@Param("organizationUuid") String organizationUuid, @Param("fromDate") long fromDate,
+    @Param("toDate") long toDate, @Param("minCreatedAt") long minCreatedAt, ResultHandler<IssueResolutionChangeDto> handler);
 }

@@ -52,6 +52,10 @@ import org.elasticsearch.indices.TermsLookup;
 import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.composite.CompositeAggregationBuilder;
+import org.elasticsearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder;
+import org.elasticsearch.search.aggregations.bucket.composite.ParsedComposite;
+import org.elasticsearch.search.aggregations.bucket.composite.TermsValuesSourceBuilder;
 import org.elasticsearch.search.aggregations.BucketOrder;
 import org.elasticsearch.search.aggregations.HasAggregations;
 import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
@@ -122,6 +126,8 @@ import static org.elasticsearch.index.query.QueryBuilders.termQuery;
 import static org.elasticsearch.index.query.QueryBuilders.termsQuery;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.filters;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.reverseNested;
+import static org.sonar.api.rules.RuleType.BUG;
+import static org.sonar.api.rules.RuleType.CODE_SMELL;
 import static org.sonar.api.rules.RuleType.SECURITY_HOTSPOT;
 import static org.sonar.api.rules.RuleType.VULNERABILITY;
 import static org.sonar.core.config.MQRModeConstants.MULTI_QUALITY_MODE_DEFAULT_VALUE;
@@ -265,6 +271,7 @@ public class IssueIndex {
   private static final int DEFAULT_FACET_CVSS_SIZE = 50;
 
   private static final int MAX_FACET_SIZE = 100;
+  private static final int PROJECT_ISSUE_COUNTS_PAGE_SIZE = 10_000;
   private static final int MAX_FACET_CWE_SIZE = 500;
   private static final String AGG_VULNERABILITIES = "vulnerabilities";
   private static final String AGG_SEVERITIES = "severities";
@@ -1358,6 +1365,47 @@ public class IssueIndex {
           return Stream.of(new ProjectStatistics(branchBucket.getKeyAsString(), count, lastIssueDate));
         }))
       .toList();
+  }
+
+  /** Number of unresolved issues of one type and severity on the main branch of a project. */
+  public record ProjectIssueCount(String projectUuid, String type, String severity, long count) {
+  }
+
+  /**
+   * Unresolved issues on the main branches of the organization's projects the user can browse, counted by project, type and
+   * severity. Security hotspots are left out. The counts are paged through a composite aggregation, so the number of projects
+   * is not bound by the search bucket limit.
+   *
+   * @param consumer called once for every project, type and severity that has issues
+   */
+  public void countUnresolvedByProjectTypeAndSeverity(String organizationUuid, Consumer<ProjectIssueCount> consumer) {
+    BoolQueryBuilder query = boolQuery()
+      .filter(termQuery(FIELD_ISSUE_ORGANIZATION_UUID, organizationUuid))
+      .filter(termQuery(FIELD_ISSUE_IS_MAIN_BRANCH, Boolean.toString(true)))
+      .filter(termsQuery(FIELD_ISSUE_TYPE, BUG.name(), CODE_SMELL.name(), VULNERABILITY.name()))
+      .filter(createAuthorizationFilter())
+      .mustNot(existsQuery(FIELD_ISSUE_RESOLUTION));
+
+    Map<String, Object> afterKey = null;
+    do {
+      CompositeAggregationBuilder counts = AggregationBuilders.composite("counts", List.<CompositeValuesSourceBuilder<?>>of(
+          new TermsValuesSourceBuilder("project").field(FIELD_ISSUE_PROJECT_UUID),
+          new TermsValuesSourceBuilder("type").field(FIELD_ISSUE_TYPE),
+          new TermsValuesSourceBuilder("severity").field(FIELD_ISSUE_SEVERITY)))
+        .size(PROJECT_ISSUE_COUNTS_PAGE_SIZE);
+      if (afterKey != null) {
+        counts.aggregateAfter(afterKey);
+      }
+      SearchRequest request = EsClient.prepareSearch(TYPE_ISSUE.getMainType())
+        .source(new SearchSourceBuilder().query(query).size(0).aggregation(counts));
+      ParsedComposite result = client.search(request).getAggregations().get("counts");
+      result.getBuckets().forEach(bucket -> consumer.accept(new ProjectIssueCount(
+        (String) bucket.getKey().get("project"),
+        (String) bucket.getKey().get("type"),
+        (String) bucket.getKey().get("severity"),
+        bucket.getDocCount())));
+      afterKey = result.getBuckets().size() < PROJECT_ISSUE_COUNTS_PAGE_SIZE ? null : result.afterKey();
+    } while (afterKey != null);
   }
 
   public List<PrStatistics> searchBranchStatistics(String projectUuid, List<String> branchUuids) {

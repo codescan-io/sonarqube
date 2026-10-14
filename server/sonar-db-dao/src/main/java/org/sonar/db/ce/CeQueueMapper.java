@@ -92,4 +92,10 @@ public interface CeQueueMapper {
   boolean hasAnyIssueSyncTaskPendingOrInProgress();
 
   List<PrOrBranchTask> selectOldestPendingPrOrBranch();
+
+  List<CeQueueStatusCount> countByStatusForOrganization(@Param("organizationUuid") String organizationUuid);
+
+  List<AnalyticsProjectTaskStatusDto> selectStatusesForOrganization(@Param("organizationUuid") String organizationUuid);
+
+  List<AnalyticsTaskDto> selectForOrganizationAnalytics(@Param("organizationUuid") String organizationUuid, @Param("pagination") Pagination pagination);
 }

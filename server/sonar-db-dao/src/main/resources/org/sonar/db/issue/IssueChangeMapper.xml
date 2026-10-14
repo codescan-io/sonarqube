@@ -97,5 +97,23 @@
     order by created_at asc
   </select>
 
-</mapper>
+  <select id="scrollResolutionChangesForOrganization" parameterType="map" resultType="org.sonar.db.issue.IssueResolutionChangeDto"
+          fetchSize="${_scrollFetchSize}" resultSetType="FORWARD_ONLY">
+    select
+      c.change_data as changeData,
+      coalesce(c.issue_change_creation_date, c.created_at) as changedAt,
+      c.user_login as userLogin
+    from issue_changes c
+    inner join issues i on i.kee = c.issue_key and i.issue_type &lt;&gt; 4
+    inner join project_branches pb on pb.uuid = c.project_uuid and pb.is_main = ${_true}
+    inner join projects p on p.uuid = pb.project_uuid
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+      and c.change_type = 'diff'
+      and c.created_at &gt;= #{minCreatedAt,jdbcType=BIGINT}
+      and coalesce(c.issue_change_creation_date, c.created_at) &gt;= #{fromDate,jdbcType=BIGINT}
+      and coalesce(c.issue_change_creation_date, c.created_at) &lt; #{toDate,jdbcType=BIGINT}
+      and c.change_data like '%resolution=%'
+  </select>
 
+</mapper>

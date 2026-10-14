@@ -21,6 +21,8 @@
 import styled from '@emotion/styled';
 import {
   Button,
+  ButtonSize,
+  ButtonVariety,
   IconTriangleDown,
   IconTriangleUp,
   LinkHighlight,
@@ -59,6 +61,7 @@ interface Props {
   filters: AnalyticsFilterState;
   loading: boolean;
   matrices: Record<string, IssueMatrix>;
+  onOpenScorecard: (project: AnalyticsProject) => void;
   projects: AnalyticsProject[];
   taskStatuses: Record<string, TaskStatuses>;
 }
@@ -83,7 +86,7 @@ const PAGE_SIZE = 10;
 const NO_VALUE = '-';
 
 export default function AnalyticsTable(props: Readonly<Props>) {
-  const { filters, loading, matrices, projects, taskStatuses } = props;
+  const { filters, loading, matrices, onOpenScorecard, projects, taskStatuses } = props;
   const [query, setQuery] = React.useState('');
   const [sort, setSort] = React.useState<{ asc: boolean; key: SortKey }>({
     key: 'issues',
@@ -203,7 +206,18 @@ export default function AnalyticsTable(props: Readonly<Props>) {
             {rows.slice(0, visible).map((project) => (
               <TableRow key={project.key}>
                 <ContentCell>
-                  <Link to={getProjectUrl(project.key)}>{project.name}</Link>
+                  <span className="sw-flex sw-items-center sw-gap-2 sw-min-w-0">
+                    <Link className="sw-truncate" to={getProjectUrl(project.key)}>
+                      {project.name}
+                    </Link>
+                    <Button
+                      onClick={() => onOpenScorecard(project)}
+                      size={ButtonSize.Medium}
+                      variety={ButtonVariety.DefaultGhost}
+                    >
+                      {translate('analytics.scorecard.button')}
+                    </Button>
+                  </span>
                 </ContentCell>
                 <ContentCell className="sw-whitespace-nowrap">
                   <QualityGateIndicator

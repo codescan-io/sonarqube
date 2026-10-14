@@ -35,6 +35,8 @@ import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
 
 public class IssueChangeDao implements Dao {
 
+  private static final long CREATED_AT_MARGIN_MS = 24L * 60 * 60 * 1000;
+
   public List<FieldDiffs> selectChangelogByIssue(DbSession session, String issueKey) {
     return selectByTypeAndIssueKeys(session, singletonList(issueKey), IssueChangeDto.TYPE_FIELD_CHANGE)
       .stream()
@@ -89,5 +91,20 @@ public class IssueChangeDao implements Dao {
 
   private static IssueChangeMapper mapper(DbSession session) {
     return session.getMapper(IssueChangeMapper.class);
+  }
+
+  /**
+   * Streams the changelog entries of the organization's main branch issues made in [{@code fromDate}, {@code toDate}) that touched
+   * the resolution. Entries of closed issues disappear with them, after the closed issues retention period.
+   * <p>
+   * The date of a change cannot be indexed, as it falls back to the row creation date, so the rows are first narrowed down
+   * by creation date, which is indexed. A row is never created before the change it records (changes copied from another
+   * branch get the date of the copy), so this keeps every change of the period; the margin covers a scanner clock ahead of
+   * the server's.
+   */
+  public void scrollResolutionChangesForOrganization(DbSession dbSession, String organizationUuid, long fromDate, long toDate,
+    ResultHandler<IssueResolutionChangeDto> handler) {
+    dbSession.getMapper(IssueChangeMapper.class).scrollResolutionChangesForOrganization(organizationUuid, fromDate, toDate,
+      fromDate - CREATED_AT_MARGIN_MS, handler);
   }
 }

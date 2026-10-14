@@ -52,15 +52,15 @@ export default function OrganizationNavigationMenu({ location, organization }: O
       <NavBarTabLink to={getQualityGatesUrl(organization.kee)} text={translate('quality_gates.page')} />
       <NavBarTabLink to={`/organizations/${organization.kee}/members`} text={translate('organization.members.page')} />
       <OrganizationNavigationExtensions location={location} organization={organization}/>
+      {canViewAnalytics(organization) && (
+        <NavBarTabLink to={`/organizations/${organization.kee}/analytics`} text={translate('analytics.page')} />
+      )}
       {actions.admin && (
         <OrganizationNavigationAdministration
           billing={billing?.details}
           location={location}
           organization={organization}
         />
-      )}
-      {canViewAnalytics(organization) && (
-        <NavBarTabLink to={`/organizations/${organization.kee}/analytics`} text={translate('analytics.page')} />
       )}
     </NavBarTabs>
   );

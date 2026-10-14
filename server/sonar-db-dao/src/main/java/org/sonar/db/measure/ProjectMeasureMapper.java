@@ -22,6 +22,7 @@ package org.sonar.db.measure;
 import java.util.List;
 import javax.annotation.CheckForNull;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.session.ResultHandler;
 
 public interface ProjectMeasureMapper {
 
@@ -42,4 +43,6 @@ public interface ProjectMeasureMapper {
 
   void insert(ProjectMeasureDto projectMeasureDto);
 
+  void scrollMainBranchHistoryForOrganization(@Param("organizationUuid") String organizationUuid, @Param("fromDate") long fromDate,
+    @Param("toDate") long toDate, @Param("metricKeys") List<String> metricKeys, ResultHandler<MainBranchMeasureHistoryDto> handler);
 }

@@ -1,0 +1,15 @@
+{
+  "paging": {"pageIndex": 1, "pageSize": 20, "total": 412},
+  "projects": [
+    {
+      "key": "my-org_force-app",
+      "name": "Force App",
+      "analyses": 58,
+      "success": 55,
+      "failed": 3,
+      "canceled": 0,
+      "avgExecutionTimeMs": 61200,
+      "lastAnalysisAt": "2026-10-12T09:41:07+0000"
+    }
+  ]
+}

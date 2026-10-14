@@ -26,19 +26,29 @@ export interface LegendItem {
   color: string;
   key: string;
   label: string;
+  /** Mirrors the mark: a box for bars and areas, a stroke for lines. */
+  shape?: 'box' | 'line' | 'dashed-line';
   value?: number;
 }
 
 export default function Legend({ items }: Readonly<{ items: LegendItem[] }>) {
   return (
     <ul className="sw-flex sw-flex-wrap sw-gap-x-6 sw-gap-y-2">
-      {items.map(({ color, key, label, value }) => (
+      {items.map(({ color, key, label, shape = 'box', value }) => (
         <li className="sw-flex sw-items-center sw-gap-2" key={key}>
-          <span
-            aria-hidden
-            className="sw-inline-block sw-w-3 sw-h-3 sw-rounded-1 sw-shrink-0"
-            style={{ backgroundColor: color }}
-          />
+          {shape === 'box' ? (
+            <span
+              aria-hidden
+              className="sw-inline-block sw-w-3 sw-h-3 sw-rounded-1 sw-shrink-0"
+              style={{ backgroundColor: color }}
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="sw-inline-block sw-w-4 sw-shrink-0"
+              style={{ borderTop: `2px ${shape === 'dashed-line' ? 'dashed' : 'solid'} ${color}` }}
+            />
+          )}
           <Text>{label}</Text>
           {value !== undefined && (
             <Text className="sw-typo-semibold">{formatMeasure(value, MetricType.Integer)}</Text>

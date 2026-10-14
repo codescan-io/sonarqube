@@ -31,6 +31,17 @@ export const ISSUE_TYPE_COLORS: Record<AnalyticsIssueType, string> = {
   VULNERABILITY: '#1baf7a',
 };
 
+/*
+ * How issues got resolved, stacked in this order. Slots 1-4 of the reference palette pass the adjacent-pair checks
+ * in this order; aqua and yellow are under 3:1 contrast, so the chart always ships with a totals list.
+ */
+export const RESOLUTION_COLORS = {
+  fixed: '#2a78d6',
+  accepted: '#eb6834',
+  falsePositive: '#1baf7a',
+  removed: '#eda100',
+};
+
 // Magnitude-only bars (one series) use the product accent, so they never read as an issue type.
 export const MAGNITUDE_COLOR = 'var(--echoes-color-background-accent-default)';
 

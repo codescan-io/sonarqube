@@ -1,0 +1,18 @@
+{
+  "projects": [
+    {
+      "key": "payments-api",
+      "issues": {
+        "BUG": {"CRITICAL": 2, "MAJOR": 5},
+        "CODE_SMELL": {"MAJOR": 41, "MINOR": 120},
+        "VULNERABILITY": {"BLOCKER": 1}
+      }
+    },
+    {
+      "key": "web-portal",
+      "issues": {
+        "CODE_SMELL": {"INFO": 3}
+      }
+    }
+  ]
+}

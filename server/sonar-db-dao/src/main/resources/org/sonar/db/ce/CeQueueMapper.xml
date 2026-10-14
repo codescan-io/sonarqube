@@ -372,4 +372,49 @@
       cq.status = 'IN_PROGRESS'
   </select>
 
+  <select id="countByStatusForOrganization" parameterType="map" resultType="org.sonar.db.ce.CeQueueStatusCount">
+    select
+      cq.status as status,
+      count(1) as total,
+      min(cq.created_at) as oldestCreatedAt
+    from ce_queue cq
+    inner join projects p on p.uuid = cq.entity_uuid
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+    group by cq.status
+  </select>
+
+  <select id="selectStatusesForOrganization" parameterType="map" resultType="org.sonar.db.ce.AnalyticsProjectTaskStatusDto">
+    select
+      p.kee as projectKey,
+      cq.status as status,
+      cq.created_at as createdAt,
+      cq.uuid as uuid
+    from ce_queue cq
+    inner join projects p on p.uuid = cq.entity_uuid
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+  </select>
+
+  <select id="selectForOrganizationAnalytics" parameterType="map" resultType="org.sonar.db.ce.AnalyticsTaskDto">
+    select
+      cq.uuid as uuid,
+      cq.task_type as taskType,
+      cq.status as status,
+      p.kee as projectKey,
+      p.name as projectName,
+      pb.kee as branchKey,
+      pb.branch_type as branchType,
+      pb.is_main as isMain,
+      cq.created_at as submittedAt,
+      cq.started_at as startedAt
+    from ce_queue cq
+    inner join projects p on p.uuid = cq.entity_uuid
+    left outer join project_branches pb on pb.uuid = cq.component_uuid
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+    order by case when cq.status = 'IN_PROGRESS' then 0 else 1 end, cq.created_at, cq.uuid
+    <include refid="org.sonar.db.common.Common.pagination"/>
+  </select>
+
 </mapper>

@@ -1,0 +1,51 @@
+{
+  "period": {
+    "from": "2026-10-06",
+    "to": "2026-10-08",
+    "timeZone": "Europe/Paris",
+    "interval": "day"
+  },
+  "totalProjects": 530,
+  "analyses": {
+    "total": 640,
+    "success": 626,
+    "failed": 12,
+    "canceled": 2,
+    "projects": 412,
+    "avgExecutionTimeMs": 61200,
+    "medianExecutionTimeMs": 48000,
+    "p90ExecutionTimeMs": 182000,
+    "avgQueueTimeMs": 4100,
+    "medianQueueTimeMs": 900
+  },
+  "previous": {
+    "from": "2026-10-03",
+    "to": "2026-10-05",
+    "analyses": {
+      "total": 571,
+      "success": 560,
+      "failed": 11,
+      "canceled": 0,
+      "projects": 398,
+      "avgExecutionTimeMs": 58800,
+      "medianExecutionTimeMs": 46000,
+      "p90ExecutionTimeMs": 175000,
+      "avgQueueTimeMs": 3900,
+      "medianQueueTimeMs": 800
+    }
+  },
+  "taskTypes": [
+    {"type": "ISSUE_SYNC", "total": 4, "success": 4, "failed": 0, "canceled": 0},
+    {"type": "REPORT", "total": 640, "success": 626, "failed": 12, "canceled": 2}
+  ],
+  "targets": [
+    {"target": "MAIN", "total": 210, "success": 205, "failed": 5, "canceled": 0, "projects": 380},
+    {"target": "BRANCH", "total": 130, "success": 127, "failed": 2, "canceled": 1, "projects": 95},
+    {"target": "PULL_REQUEST", "total": 300, "success": 294, "failed": 5, "canceled": 1, "projects": 140}
+  ],
+  "timeline": [
+    {"date": "2026-10-06", "total": 220, "success": 216, "failed": 4, "canceled": 0, "medianExecutionTimeMs": 47000, "p90ExecutionTimeMs": 179000},
+    {"date": "2026-10-07", "total": 205, "success": 200, "failed": 4, "canceled": 1, "medianExecutionTimeMs": 49000, "p90ExecutionTimeMs": 185000},
+    {"date": "2026-10-08", "total": 215, "success": 210, "failed": 4, "canceled": 1, "medianExecutionTimeMs": 48000, "p90ExecutionTimeMs": 181000}
+  ]
+}

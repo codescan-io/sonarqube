@@ -74,6 +74,8 @@ public class DbVersion108 implements DbVersion {
       .add(10_8_031, "Add 'codefix_status' column to 'issues' table", AddCodefixStatusColumnToIssuesTable.class)
       .add(10_8_032, "Update 'is_archived' column default value to 'false' in 'organizations' table", AlterArchiveColumnsToFalse.class)
       .add(10_8_033, "Add 'issue_ai_metadata' column to 'issues' table", AddIssueAiMetadataColumnToIssuesTable.class)
+      .add(10_8_034, "Create index on 'entity_uuid' and 'submitted_at' in 'ce_activity' table", CreateIndexOnCeActivityEntityUuidAndSubmittedAt.class)
+      .add(10_8_035, "Create index on 'project_uuid' and 'created_at' in 'issue_changes' table", CreateIndexOnIssueChangesProjectUuidAndCreatedAt.class)
     ;
   }
 

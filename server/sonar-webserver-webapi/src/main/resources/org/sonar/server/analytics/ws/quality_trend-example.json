@@ -1,0 +1,9 @@
+{
+  "period": {"from": "2026-09-14", "to": "2026-10-11", "timeZone": "Europe/Paris", "interval": "week"},
+  "timeline": [
+    {"date": "2026-09-14", "projects": 410, "passed": 330, "failed": 80, "openIssues": 52310, "vulnerabilities": 412, "blockerIssues": 96},
+    {"date": "2026-09-21", "projects": 412, "passed": 336, "failed": 76, "openIssues": 51980, "vulnerabilities": 398, "blockerIssues": 90},
+    {"date": "2026-09-28", "projects": 415, "passed": 341, "failed": 74, "openIssues": 51022, "vulnerabilities": 371, "blockerIssues": 84},
+    {"date": "2026-10-05", "projects": 418, "passed": 350, "failed": 68, "openIssues": 50510, "vulnerabilities": 360, "blockerIssues": 81}
+  ]
+}

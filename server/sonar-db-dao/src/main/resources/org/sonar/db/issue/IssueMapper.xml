@@ -938,4 +938,55 @@
     WHERE kee = #{issueKey, jdbcType=VARCHAR}
   </update>
 
+  <sql id="expiringExceptionsWhere">
+    where
+      i.resolution in ('WONTFIX', 'FALSE-POSITIVE')
+      and i.issue_resolution_expires_at is not null
+      and i.issue_resolution_expires_at &lt; #{expiresBefore,jdbcType=BIGINT}
+      and p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+  </sql>
+
+  <select id="selectExpiringExceptionsForOrganization" parameterType="map" resultType="org.sonar.db.issue.ExpiringExceptionDto">
+    select
+      i.kee as issueKey,
+      i.resolution as resolution,
+      i.issue_resolution_expires_at as expiresAt,
+      r.plugin_name as ruleRepository,
+      r.plugin_rule_key as ruleKey,
+      r.name as ruleName,
+      p.kee as projectKey,
+      p.name as projectName,
+      c.path as filePath,
+      i.assignee as assigneeUuid
+    from issues i
+    inner join project_branches pb on pb.uuid = i.project_uuid and pb.is_main = ${_true}
+    inner join projects p on p.uuid = pb.project_uuid
+    inner join rules r on r.uuid = i.rule_uuid
+    left outer join components c on c.uuid = i.component_uuid
+    <include refid="expiringExceptionsWhere"/>
+    order by i.issue_resolution_expires_at, i.kee
+    <include refid="org.sonar.db.common.Common.pagination"/>
+  </select>
+
+  <select id="countExpiringExceptionsForOrganization" parameterType="map" resultType="int">
+    select count(1)
+    from issues i
+    inner join project_branches pb on pb.uuid = i.project_uuid and pb.is_main = ${_true}
+    inner join projects p on p.uuid = pb.project_uuid
+    <include refid="expiringExceptionsWhere"/>
+  </select>
+
+  <select id="scrollCreationDatesForOrganization" parameterType="map" resultType="long" fetchSize="${_scrollFetchSize}"
+          resultSetType="FORWARD_ONLY">
+    select i.issue_creation_date
+    from issues i
+    inner join project_branches pb on pb.uuid = i.project_uuid and pb.is_main = ${_true}
+    inner join projects p on p.uuid = pb.project_uuid
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+      and i.issue_type &lt;&gt; 4
+      and i.issue_creation_date &gt;= #{fromDate,jdbcType=BIGINT}
+      and i.issue_creation_date &lt; #{toDate,jdbcType=BIGINT}
+  </select>
+
 </mapper>
