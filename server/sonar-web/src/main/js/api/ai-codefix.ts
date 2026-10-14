@@ -58,6 +58,11 @@ export interface CodefixStatusResponse {
   status: string;
 }
 
+export interface CodefixIntegrationResponse {
+  integrationType?: string;
+  supported: boolean;
+}
+
 export interface AiCreditsSummary {
   allocatedCredits: number;
   consumedCredits: number;
@@ -96,6 +101,12 @@ export function queueCodeFix(data: {
       .then((response) => checkStatus(response, false))
       .then(() => resolve(), reject);
   });
+}
+
+export function isAiCodefixLicensed(organizationKey: string): Promise<boolean> {
+  return get(`${CODEFIX_BASE}/quota`, { organizationKey })
+    .then(parseJSON)
+    .then((quota) => quota?.moduleLicensed === true);
 }
 
 export function getCodefixQuota(organizationKey: string): Promise<{
@@ -141,6 +152,10 @@ export function createCodefixPr(
       .then((response) => checkStatus(response, false))
       .then(() => resolve(), reject);
   });
+}
+
+export function getCodefixIntegration(projectKey: string): Promise<CodefixIntegrationResponse> {
+  return get(`${CODEFIX_BASE}/integration`, {projectKey}).then(parseJSON);
 }
 
 export function getCodefixStatus(issueKey: string): Promise<CodefixStatusResponse> {

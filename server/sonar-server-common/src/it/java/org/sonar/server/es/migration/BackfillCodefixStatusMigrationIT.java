@@ -21,6 +21,7 @@ package org.sonar.server.es.migration;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -63,17 +64,18 @@ public class BackfillCodefixStatusMigrationIT {
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
     ComponentDto file = db.components().insertComponent(newFileDto(project));
 
-    RuleDto enabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true));
+    RuleDto enabledRule = insertAiFixEnabledRule(r -> {
+    });
     RuleDto disabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(false));
     // enabled variable-naming rule with no AI metadata: normal analysis indexing would leave this NULL (variableType
     // narrowing), but the one-off BLANKET backfill marks every in-scope issue AVAILABLE, so this must become AVAILABLE too.
-    RuleDto namingRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setRuleKey(RuleKey.of("pmd", "ShortVariable")));
+    RuleDto namingRule = insertAiFixEnabledRule(r -> r.setRuleKey(RuleKey.of("pmd", "ShortVariable")));
     // REMOVED rule: enabled flag may linger but its issues are out of scope (status != 'REMOVED').
-    RuleDto removedRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setStatus(RuleStatus.REMOVED));
+    RuleDto removedRule = insertAiFixEnabledRule(r -> r.setStatus(RuleStatus.REMOVED));
 
     IssueDto onEnabled = db.issues().insert(enabledRule, project, file);
     IssueDto onDisabled = db.issues().insert(disabledRule, project, file);
-    IssueDto onEnabledPreset = db.issues().insert(enabledRule, project, file, t -> t.setCodefixStatus("FIX_GENERATED"));
+    IssueDto onEnabledPreset = insertIssueWithCodefixStatus(enabledRule, project, file, "FIX_GENERATED");
     IssueDto onNaming = db.issues().insert(namingRule, project, file);
     IssueDto onRemoved = db.issues().insert(removedRule, project, file);
 
@@ -110,10 +112,11 @@ public class BackfillCodefixStatusMigrationIT {
 
   @Test
   public void estimate_counts_index_docs_of_enabled_rules_from_elasticsearch() {
-    RuleDto enabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true));
+    RuleDto enabledRule = insertAiFixEnabledRule(r -> {
+    });
     RuleDto disabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(false));
-    RuleDto namingRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setRuleKey(RuleKey.of("pmd", "ShortVariable")));
-    RuleDto removedRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true).setStatus(RuleStatus.REMOVED));
+    RuleDto namingRule = insertAiFixEnabledRule(r -> r.setRuleKey(RuleKey.of("pmd", "ShortVariable")));
+    RuleDto removedRule = insertAiFixEnabledRule(r -> r.setStatus(RuleStatus.REMOVED));
 
     // docs already live in the index (issues are indexed at analysis time; the backfill only refreshes a field)
     es.putDocuments(TYPE_ISSUE,
@@ -131,7 +134,8 @@ public class BackfillCodefixStatusMigrationIT {
   public void estimate_and_execute_are_noops_when_issues_index_is_absent() {
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
     ComponentDto file = db.components().insertComponent(newFileDto(project));
-    RuleDto enabledRule = db.rules().insert(r -> r.setAiCodeFixEnabled(true));
+    RuleDto enabledRule = insertAiFixEnabledRule(r -> {
+    });
     db.issues().insert(enabledRule, project, file);
 
     // Simulate a deleted index: it will be recreated and repopulated by the normal startup reindex flow, so this
@@ -139,13 +143,49 @@ public class BackfillCodefixStatusMigrationIT {
     // index_not_found_exception before the guard.
     es.client().deleteIndex(new DeleteIndexRequest(TYPE_ISSUE.getMainType().getIndex().getName()));
 
-    // dry-run (estimate) must NOT throw and reports nothing to backfill
-    assertThat(underTest.estimate(db.getSession())).isZero();
+    try {
+      // dry-run (estimate) must NOT throw and reports nothing to backfill
+      assertThat(underTest.estimate(db.getSession())).isZero();
 
-    // execute must NOT throw and reports it stepped aside
-    EsDataMigrationExecution execution = underTest.execute(db.getSession());
-    assertThat(execution.asyncTaskId()).isEmpty();
-    assertThat(execution.detail()).contains("issues index absent");
+      // execute must NOT throw and reports it stepped aside
+      EsDataMigrationExecution execution = underTest.execute(db.getSession());
+      assertThat(execution.asyncTaskId()).isEmpty();
+      assertThat(execution.detail()).contains("issues index absent");
+    } finally {
+      // EsTester shares ONE static node and creates the core indices only once per JVM, so a deleted index stays
+      // deleted for every test that runs afterwards (they fail with index_not_found_exception, in whatever order the
+      // runner picks). Put it back even if an assertion above fails.
+      es.recreateIndexes();
+    }
+  }
+
+  /**
+   * {@code rules.ai_code_fix_enabled} is NOT part of the rule INSERT statement — only of the dedicated
+   * {@code updateAiCodeFixEnabled} one. Setting it on the DTO passed to {@code db.rules().insert()} persists nothing, so
+   * {@code RuleDao#selectAiCodeFixBackfillRuleUuids} (which filters on that column) would find no rules at all and the
+   * migration would report "no ai_code_fix_enabled rules". The flag has to be pushed with a follow-up update.
+   */
+  private RuleDto insertAiFixEnabledRule(Consumer<RuleDto> populator) {
+    RuleDto rule = db.rules().insert(r -> {
+      r.setAiCodeFixEnabled(true);
+      populator.accept(r);
+    });
+    db.getDbClient().ruleDao().updateAiCodeFixEnabled(db.getSession(), rule);
+    db.commit();
+    return rule;
+  }
+
+  /**
+   * {@code issues.codefix_status} is NOT part of the issue INSERT statement — only of {@code update}. In production the
+   * value arrives via SetCodefixStatusAction -> IssueUpdater; reproduce that with an explicit update, or the column
+   * stays NULL however the DTO was populated (and COALESCE would then default it to AVAILABLE).
+   */
+  private IssueDto insertIssueWithCodefixStatus(RuleDto rule, ComponentDto branch, ComponentDto file, String codefixStatus) {
+    IssueDto issue = db.issues().insert(rule, branch, file);
+    issue.setCodefixStatus(codefixStatus);
+    db.getDbClient().issueDao().update(db.getSession(), issue);
+    db.commit();
+    return issue;
   }
 
   private Map<String, String> codefixStatusByKey() {
