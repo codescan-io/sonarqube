@@ -40,6 +40,7 @@ public class BulkChangeRequest {
   private String sendNotifications;
   private List<String> setSeverity;
   private List<String> setType;
+  private String changeAuthor;
 
   /**
    * Example value: "security,java8"
@@ -178,5 +179,19 @@ public class BulkChangeRequest {
 
   public List<String> getSetType() {
     return setType;
+  }
+
+  /**
+   * Codescan customization: uuid of the user the change (and its comment) should be attributed to instead of the
+   * caller. Honored only when the caller is a system administrator. Used by the resolution-transfer feature to
+   * credit the original resolver.
+   */
+  public BulkChangeRequest setChangeAuthor(String changeAuthor) {
+    this.changeAuthor = changeAuthor;
+    return this;
+  }
+
+  public String getChangeAuthor() {
+    return changeAuthor;
   }
 }

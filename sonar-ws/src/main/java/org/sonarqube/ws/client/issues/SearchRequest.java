@@ -65,6 +65,7 @@ public class SearchRequest {
   private String inNewCodePeriod;
   private List<String> sonarsourceSecurity;
   private List<String> statuses;
+  private List<String> issueStatuses;
   private List<String> tags;
   private List<String> types;
   private String organization;
@@ -608,6 +609,26 @@ public class SearchRequest {
 
   public List<String> getStatuses() {
     return statuses;
+  }
+
+  /**
+   * Example value: "OPEN,ACCEPTED"
+   * Possible values:
+   * <ul>
+   *   <li>"OPEN"</li>
+   *   <li>"CONFIRMED"</li>
+   *   <li>"FALSE_POSITIVE"</li>
+   *   <li>"ACCEPTED"</li>
+   *   <li>"FIXED"</li>
+   * </ul>
+   */
+  public SearchRequest setIssueStatuses(List<String> issueStatuses) {
+    this.issueStatuses = issueStatuses;
+    return this;
+  }
+
+  public List<String> getIssueStatuses() {
+    return issueStatuses;
   }
 
   /**
