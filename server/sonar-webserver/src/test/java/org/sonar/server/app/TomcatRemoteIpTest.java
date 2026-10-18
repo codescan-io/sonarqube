@@ -22,15 +22,23 @@ package org.sonar.server.app;
 import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.catalina.Context;
 import org.apache.catalina.Valve;
+import org.apache.catalina.connector.Request;
+import org.apache.catalina.connector.Response;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.valves.RemoteIpValve;
 import org.apache.commons.io.IOUtils;
@@ -46,6 +54,7 @@ import org.sonar.process.Props;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 public class TomcatRemoteIpTest {
@@ -146,11 +155,61 @@ public class TomcatRemoteIpTest {
   }
 
   @Test
-  public void client_sent_copy_of_internal_header_is_ignored() throws Exception {
+  public void request_with_100_headers_including_forwarded_for_is_served() throws Exception {
+    startTomcat(new Properties());
+    List<String> headers = new ArrayList<>();
+    headers.add("X-Forwarded-For: 1.2.3.4, 203.0.113.9");
+    for (int i = 0; i < 97; i++) {
+      headers.add("X-Filler-" + i + ": v");
+    }
+
+    Raw raw = raw(headers);
+
+    assertThat(raw.status).isEqualTo(200);
+    assertThat(raw.echo.remote).isEqualTo("203.0.113.9");
+    assertThat(raw.echo.forwardedFor).isEqualTo("1.2.3.4, 203.0.113.9");
+  }
+
+  @Test
+  public void request_with_many_forwarded_for_lines_at_the_header_limit_is_served() throws Exception {
+    startTomcat(new Properties());
+    List<String> headers = new ArrayList<>();
+    for (int i = 1; i <= 98; i++) {
+      headers.add("X-Forwarded-For: 203.0.113." + i);
+    }
+
+    Raw raw = raw(headers);
+
+    assertThat(raw.status).isEqualTo(200);
+    assertThat(raw.echo.remote).isEqualTo("203.0.113.98");
+    assertThat(raw.echo.forwardedFor.split(";")).hasSize(98).startsWith("203.0.113.1", "203.0.113.2").endsWith("203.0.113.98");
+  }
+
+  @Test
+  public void several_forwarded_for_lines_are_read_as_one_chain_and_left_as_sent() throws Exception {
     startTomcat(new Properties());
 
-    assertThat(get(null, TomcatRemoteIp.CLIENT_CHAIN_HEADER, "9.9.9.9").remote).isEqualTo("127.0.0.1");
-    assertThat(get("203.0.113.9", TomcatRemoteIp.CLIENT_CHAIN_HEADER, "9.9.9.9").remote).isEqualTo("203.0.113.9");
+    Raw raw = raw(List.of("X-Forwarded-For: 1.2.3.4", "X-Forwarded-For: 5.6.7.8, 203.0.113.9", "X-Forwarded-For: 10.0.0.5"));
+
+    assertThat(raw.status).isEqualTo(200);
+    assertThat(raw.echo.remote).isEqualTo("203.0.113.9");
+    assertThat(raw.echo.forwardedFor).isEqualTo("1.2.3.4;5.6.7.8, 203.0.113.9;10.0.0.5");
+  }
+
+  @Test
+  public void ipv6_client_address_in_the_chain_is_used() throws Exception {
+    startTomcat(new Properties());
+
+    assertThat(raw(List.of("X-Forwarded-For: 2001:db8::1, 10.0.0.5")).echo.remote).isEqualTo("2001:db8::1");
+    assertThat(raw(List.of("X-Forwarded-For: 203.0.113.9, ::1")).echo.remote).isEqualTo("203.0.113.9");
+  }
+
+  @Test
+  public void non_address_text_in_the_chain_is_returned_as_the_client_address() throws Exception {
+    startTomcat(new Properties());
+
+    assertThat(raw(List.of("X-Forwarded-For: not-an-ip, 10.0.0.5")).echo.remote).isEqualTo("not-an-ip");
+    assertThat(raw(List.of("X-Forwarded-For: 1.2.3.4, unknown")).echo.remote).isEqualTo("unknown");
   }
 
   @Test
@@ -185,6 +244,35 @@ public class TomcatRemoteIpTest {
     assertThat(echo.remote).isEqualTo("1.2.3.4");
   }
 
+  @Test
+  public void restoring_valve_still_passes_the_request_on_when_restoring_fails() throws Exception {
+    Request request = mock(Request.class);
+    Response response = mock(Response.class);
+    Mockito.when(request.getNote(TomcatRemoteIp.ORIGINAL_FORWARDED_FOR_NOTE)).thenReturn(List.of("1.2.3.4"));
+    Mockito.when(request.getCoyoteRequest()).thenThrow(new IllegalStateException("boom"));
+    Valve next = mock(Valve.class);
+    TomcatRemoteIp.ForwardedForRestoringValve valve = new TomcatRemoteIp.ForwardedForRestoringValve();
+    valve.setNext(next);
+
+    valve.invoke(request, response);
+
+    verify(next).invoke(request, response);
+  }
+
+  @Test
+  public void restoring_valve_passes_the_request_on_when_nothing_was_remembered() throws Exception {
+    Request request = mock(Request.class);
+    Response response = mock(Response.class);
+    Valve next = mock(Valve.class);
+    TomcatRemoteIp.ForwardedForRestoringValve valve = new TomcatRemoteIp.ForwardedForRestoringValve();
+    valve.setNext(next);
+
+    valve.invoke(request, response);
+
+    verify(next).invoke(request, response);
+    verify(request, Mockito.never()).getCoyoteRequest();
+  }
+
   private Props props(String trustedProxies) {
     Properties p = new Properties();
     p.setProperty(PROPERTY, trustedProxies);
@@ -193,9 +281,9 @@ public class TomcatRemoteIpTest {
 
   private RemoteIpValve captureValve() {
     ArgumentCaptor<Valve> captor = ArgumentCaptor.forClass(Valve.class);
-    verify(mockTomcat.getEngine().getPipeline()).addValve(captor.capture());
-    assertThat(captor.getValue()).isInstanceOf(RemoteIpValve.class);
-    return (RemoteIpValve) captor.getValue();
+    verify(mockTomcat.getEngine().getPipeline(), times(2)).addValve(captor.capture());
+    assertThat(captor.getAllValues().get(0)).isInstanceOf(RemoteIpValve.class);
+    return (RemoteIpValve) captor.getAllValues().get(0);
   }
 
   private int port;
@@ -233,11 +321,43 @@ public class TomcatRemoteIpTest {
     }
   }
 
+  private Raw raw(List<String> headerLines) throws IOException {
+    try (Socket socket = new Socket()) {
+      socket.connect(new InetSocketAddress("127.0.0.1", port), 5_000);
+      socket.setSoTimeout(5_000);
+      StringBuilder request = new StringBuilder("GET /echo HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n");
+      headerLines.forEach(line -> request.append(line).append("\r\n"));
+      request.append("\r\n");
+      OutputStream out = socket.getOutputStream();
+      out.write(request.toString().getBytes(StandardCharsets.US_ASCII));
+      out.flush();
+      String response = IOUtils.toString(socket.getInputStream(), StandardCharsets.UTF_8);
+      int status = Integer.parseInt(response.split(" ", 3)[1]);
+      int bodyStart = response.indexOf("\r\n\r\n");
+      String body = bodyStart < 0 ? "" : response.substring(bodyStart + 4);
+      return new Raw(status, status == 200 ? new Echo(body) : null);
+    }
+  }
+
+  private static class Raw {
+    final int status;
+    final Echo echo;
+
+    Raw(int status, Echo echo) {
+      this.status = status;
+      this.echo = echo;
+    }
+  }
+
   private static class EchoServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+      List<String> forwardedFor = Collections.list(req.getHeaders("X-Forwarded-For"));
+      String body = req.getRemoteAddr() + "|" + (forwardedFor.isEmpty() ? "null" : String.join(";", forwardedFor)) + "|" + req.getScheme() + "|" + req.isSecure();
+      byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
       resp.setContentType("text/plain");
-      resp.getWriter().print(req.getRemoteAddr() + "|" + req.getHeader("X-Forwarded-For") + "|" + req.getScheme() + "|" + req.isSecure());
+      resp.setContentLength(bytes.length);
+      resp.getOutputStream().write(bytes);
     }
   }
 
