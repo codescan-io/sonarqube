@@ -26,7 +26,7 @@ import { getOrganization, getOrganizationBillingDetails, getOrganizationNavigati
 import { useCurrentOrganizationKey } from '../../../app/components/current-organization/CurrentOrganizationKeyContext';
 import { useAppState } from '../../../app/components/app-state/withAppStateContext';
 import { isDeploymentForAmazon } from '../../../helpers/urls';
-import { getIpAllowlistBlockedMessage } from '../../../helpers/ipAllowlist';
+import { getIpAllowlistBlockedMessage, showIpAllowlistBlockedPage } from '../../../helpers/ipAllowlist';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { Helmet } from "react-helmet-async";
 import Suggestions from "../../../components/embed-docs-modal/Suggestions";
@@ -84,8 +84,8 @@ const OrganizationApp: React.FC<OrganizationAppProps> = ({  userOrganizations, l
           }
         ).catch(async (e) => {
           const blockedMessage = await getIpAllowlistBlockedMessage(e);
-          if (blockedMessage) {
-            navigate('/sessions/ip-blocked', { state: { message: blockedMessage } });
+          if (blockedMessage !== undefined) {
+            showIpAllowlistBlockedPage(navigate, blockedMessage);
           } else {
             return throwGlobalError(e);
           }

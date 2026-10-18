@@ -18,7 +18,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import { NavigateFunction } from 'react-router-dom';
+import { dismissAllGlobalMessages } from '~design-system';
 import { HttpStatus } from './request';
+
+export const IP_ALLOWLIST_BLOCKED_PATH = '/sessions/ip-blocked';
 
 // Must match IpAllowlistBlockedException.MESSAGE_MARKER on the server.
 const MESSAGE_MARKER = 'is blocked by its IP allowlist';
@@ -39,4 +43,14 @@ export async function getIpAllowlistBlockedMessage(e: unknown): Promise<string |
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Show the blocked page in place of the page that was loading. The API wrappers have already put the
+ * same message in an error toast by now, so that is dismissed. The blocked page replaces the current
+ * history entry: going back would only load the blocked page again.
+ */
+export function showIpAllowlistBlockedPage(navigate: NavigateFunction, message: string) {
+  dismissAllGlobalMessages();
+  navigate(IP_ALLOWLIST_BLOCKED_PATH, { replace: true, state: { message } });
 }

@@ -19,41 +19,61 @@
  */
 
 import { screen } from '@testing-library/react';
-import { Route, useLocation } from 'react-router-dom';
-import { getOrganization, getOrganizationNavigation } from '../../../../api/organizations';
+import { Route, useLocation, useNavigationType } from 'react-router-dom';
+import { getJSON } from '~sonar-aligned/helpers/request';
 import { HttpStatus } from '../../../../helpers/request';
 import { renderAppRoutes } from '../../../../helpers/testReactTestingUtils';
 import OrganizationApp from '../OrganizationApp';
 
-jest.mock('../../../../api/organizations', () => ({
-  getOrganization: jest.fn(),
-  getOrganizationNavigation: jest.fn(),
-  getOrganizationBillingDetails: jest.fn().mockResolvedValue({}),
+// Only the lowest-level request is mocked, so the API wrappers' own throwGlobalError runs for real.
+jest.mock('~sonar-aligned/helpers/request', () => ({
+  ...jest.requireActual('~sonar-aligned/helpers/request'),
+  getJSON: jest.fn(),
 }));
 
 const MSG =
   "Access to organization 'acme' is blocked by its IP allowlist. Your IP address is 192.0.2.1.";
 
-afterEach(() => {
-  jest.clearAllMocks();
+function forbidden(msg: string) {
+  return new Response(JSON.stringify({ errors: [{ msg }] }), { status: HttpStatus.Forbidden });
+}
+
+beforeEach(() => {
+  jest.mocked(getJSON).mockImplementation((url: string) => {
+    if (url === '/api/navigation/organization') {
+      return Promise.reject(forbidden(MSG));
+    }
+    return Promise.resolve({ kee: 'acme' });
+  });
 });
 
-it('opens the blocked page when the organization is blocked by its IP allowlist', async () => {
-  jest
-    .mocked(getOrganization)
-    .mockRejectedValue(
-      new Response(JSON.stringify({ errors: [{ msg: MSG }] }), { status: HttpStatus.Forbidden }),
-    );
-  jest.mocked(getOrganizationNavigation).mockResolvedValue({} as never);
+afterEach(() => {
+  jest.resetAllMocks();
+});
 
+it('opens the blocked page, replacing the organization page in the history', async () => {
   renderOrganizationApp();
 
-  expect(await screen.findByText(`/sessions/ip-blocked|${MSG}`)).toBeInTheDocument();
+  expect(await screen.findByText(`/sessions/ip-blocked|REPLACE|${MSG}`)).toBeInTheDocument();
+});
+
+it('does not leave the error message toast on top of the blocked page', async () => {
+  renderOrganizationApp();
+
+  expect(await screen.findByText(/^\/sessions\/ip-blocked\|/)).toBeInTheDocument();
+
+  // A dismissed toast stays in the page until its exit animation ends, which jsdom never fires.
+  // Its "data-in" flag turns false as soon as it is dismissed, so use that.
+  // eslint-disable-next-line testing-library/no-node-access
+  const toast = screen.getByText(MSG).closest('.Toastify__toast');
+  expect(toast).toHaveAttribute('data-in', 'false');
 });
 
 function BlockedPageProbe() {
   const location = useLocation();
-  return <div>{`${location.pathname}|${(location.state as { message?: string })?.message}`}</div>;
+  const navigationType = useNavigationType();
+  const message = (location.state as { message?: string } | null)?.message;
+  return <div>{`${location.pathname}|${navigationType}|${message}`}</div>;
 }
 
 function renderOrganizationApp() {

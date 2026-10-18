@@ -30,7 +30,7 @@ import { isPortfolioLike } from '~sonar-aligned/helpers/component';
 import { getTasksForComponent } from '../../api/ce';
 import { getComponentData } from '../../api/components';
 import { getComponentNavigation } from '../../api/navigation';
-import { getIpAllowlistBlockedMessage } from '../../helpers/ipAllowlist';
+import { getIpAllowlistBlockedMessage, showIpAllowlistBlockedPage } from '../../helpers/ipAllowlist';
 import { HttpStatus } from '../../helpers/request';
 import { getPortfolioUrl, getProjectUrl, getPullRequestUrl } from '../../helpers/urls';
 import { useCurrentBranchQuery } from '../../queries/branch';
@@ -128,8 +128,8 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
         }
       } catch (e) {
         const blockedMessage = await getIpAllowlistBlockedMessage(e);
-        if (blockedMessage) {
-          router.navigate('/sessions/ip-blocked', { state: { message: blockedMessage } });
+        if (blockedMessage !== undefined) {
+          showIpAllowlistBlockedPage(router.navigate, blockedMessage);
         } else if (e instanceof Response && e.status === HttpStatus.Forbidden) {
           handleRequiredAuthorization();
         }

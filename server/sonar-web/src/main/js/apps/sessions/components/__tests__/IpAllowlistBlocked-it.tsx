@@ -42,7 +42,7 @@ it('shows the server message and a link home', async () => {
   ).toBeInTheDocument();
   expect(screen.getByText(MSG)).toBeInTheDocument();
   expect(screen.getByText('ip_allowlist.blocked.contact_admin')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'layout.home' })).toHaveAttribute('href', '/');
+  expect(screen.getByRole('link', { name: 'layout.home' })).toHaveAttribute('href', '/projects');
 });
 
 it('falls back to a generic text without state', async () => {

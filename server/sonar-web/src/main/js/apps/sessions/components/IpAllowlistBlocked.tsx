@@ -40,7 +40,8 @@ export default function IpAllowlistBlocked() {
           </p>
           <p className="sw-mt-4">{translate('ip_allowlist.blocked.contact_admin')}</p>
           <div className="sw-mt-8">
-            <Link to="/">{translate('layout.home')}</Link>
+            {/* Not "/": the landing page can send the user to their home page, which may be the blocked organization. */}
+            <Link to="/projects">{translate('layout.home')}</Link>
           </div>
         </Card>
       </PageContentFontWrapper>
