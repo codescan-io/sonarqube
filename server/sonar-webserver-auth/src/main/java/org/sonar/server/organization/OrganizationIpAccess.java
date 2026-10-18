@@ -25,7 +25,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,15 +52,25 @@ import static java.util.stream.Collectors.toSet;
  * only the addresses inside its ranges, a missing or unparseable address is blocked, and a range that cannot be
  * parsed is skipped, which can only narrow access.
  *
- * <p>All organizations with the allowlist on are read in one query and kept for {@link #SNAPSHOT_TTL_MS}. A failed
- * read is thrown to the caller and not kept. Callers must treat it as a failed request, never as allowed.
+ * <p>All organizations with the allowlist on are read in one query and kept for {@link #SNAPSHOT_TTL_MS}.
+ * When the snapshot is older, one thread reloads it. The others keep answering from the old snapshot, so a slow
+ * database does not stall every request. A snapshot that can no longer be trusted is never served: it is dropped
+ * once it is {@link #MAX_STALE_MS} old (twice the cache time), or if the clock went backwards since it was read.
+ * The old snapshot is also used when a reload fails, within the same limit. When there is no usable snapshot,
+ * callers wait (at most {@link #LOAD_WAIT_TIMEOUT_MS}) for the one load in progress and share its outcome. If that
+ * load fails, or the wait runs out, the call throws. A failed read is never kept. Callers must treat an exception
+ * as a failed request, never as allowed.
  */
 @ServerSide
 public class OrganizationIpAccess {
 
   public static final String INTERNAL_CIDR_PROPERTY = "sonar.codescan.internalCidr";
   static final long SNAPSHOT_TTL_MS = 30_000L;
+  /** Oldest a snapshot may be and still answer while a reload is running or after a reload failed. */
+  static final long MAX_STALE_MS = 2 * SNAPSHOT_TTL_MS;
+  static final long LOAD_WAIT_TIMEOUT_MS = 10_000L;
   static final long BLOCK_LOG_INTERVAL_MS = 60_000L;
+  static final long BLOCK_LOG_CLEANUP_INTERVAL_MS = 10_000L;
   static final int MAX_TRACKED_BLOCKS = 10_000;
   static final int MAX_REPORTED_BAD_RANGES = 1_000;
   private static final int MAX_LOGGED_VALUE_LENGTH = 100;
@@ -64,27 +82,43 @@ public class OrganizationIpAccess {
   private final List<IpRangeMatcher> internalRanges;
   private final Map<String, Long> lastBlockLogByOrgAndIp = new ConcurrentHashMap<>();
   private final Set<String> reportedBadRanges = ConcurrentHashMap.newKeySet();
+  private final AtomicLong lastBlockLogCleanupAt = new AtomicLong();
+  private final AtomicInteger blockLogCleanups = new AtomicInteger();
+
+  private final AtomicReference<CompletableFuture<Snapshot>> loadInProgress = new AtomicReference<>();
+  private final AtomicLong lastLoadFailureLogAt = new AtomicLong();
+  private final long loadWaitTimeoutMs;
 
   private volatile Snapshot snapshot;
 
   public OrganizationIpAccess(DbClient dbClient, System2 system2, Configuration config) {
+    this(dbClient, system2, config, LOAD_WAIT_TIMEOUT_MS);
+  }
+
+  OrganizationIpAccess(DbClient dbClient, System2 system2, Configuration config, long loadWaitTimeoutMs) {
     this.dbClient = dbClient;
     this.system2 = system2;
+    this.loadWaitTimeoutMs = loadWaitTimeoutMs;
     this.internalRanges = parseInternalRanges(config.getStringArray(INTERNAL_CIDR_PROPERTY));
   }
 
   /**
+   * @param isOrgAdmin whether the caller administers the organization. It is asked only when the answer depends on
+   *        it: the organization has the allowlist on, the address is not allowed, and the allowlist does not apply to
+   *        admins. So no permission lookup is made for an organization without an allowlist. Whatever it throws is
+   *        passed on, never taken as "allowed".
+   * @return false for a null organization, as for one without an allowlist
    * @throws RuntimeException when the allowlist cannot be read, for example when the database is unavailable
    */
-  public boolean isBlocked(String organizationUuid, @Nullable String clientIp, boolean isOrgAdmin) {
+  public boolean isBlocked(@Nullable String organizationUuid, @Nullable String clientIp, BooleanSupplier isOrgAdmin) {
+    if (organizationUuid == null) {
+      return false;
+    }
     Policy policy = policies().get(organizationUuid);
-    if (policy == null) {
+    if (policy == null || policy.allows(clientIp)) {
       return false;
     }
-    if (isOrgAdmin && !policy.appliesToAdmins()) {
-      return false;
-    }
-    return !policy.allows(clientIp);
+    return policy.appliesToAdmins() || !isOrgAdmin.getAsBoolean();
   }
 
   /**
@@ -116,17 +150,17 @@ public class OrganizationIpAccess {
   /**
    * Same line as codescanng's IpAllowlistGuard, so one log search finds blocks from both apps.
    */
-  public void logBlocked(String organizationKey, @Nullable String clientIp, @Nullable String login) {
+  public void logBlocked(@Nullable String organizationKey, @Nullable String clientIp, @Nullable String login) {
     if (shouldLogBlock(organizationKey, clientIp)) {
       LOG.warn("Request blocked by IP allowlist: organization={}, ip={}, user={}", printable(organizationKey), printable(clientIp),
         login != null ? printable(login) : "anonymous");
     }
   }
 
-  boolean shouldLogBlock(String organizationKey, @Nullable String clientIp) {
+  boolean shouldLogBlock(@Nullable String organizationKey, @Nullable String clientIp) {
     long now = system2.now();
     if (lastBlockLogByOrgAndIp.size() > MAX_TRACKED_BLOCKS) {
-      lastBlockLogByOrgAndIp.values().removeIf(loggedAt -> now - loggedAt >= BLOCK_LOG_INTERVAL_MS);
+      cleanUpBlockLog(now);
       if (lastBlockLogByOrgAndIp.size() > MAX_TRACKED_BLOCKS) {
         // Full of entries from the last minute, as when addresses are scanned: skip this line rather than grow.
         return false;
@@ -141,24 +175,90 @@ public class OrganizationIpAccess {
     return now - previous >= BLOCK_LOG_INTERVAL_MS && lastBlockLogByOrgAndIp.replace(key, previous, now);
   }
 
+  /** Scanning the whole map for every blocked request while it is full would cost more than the requests. */
+  private void cleanUpBlockLog(long now) {
+    long last = lastBlockLogCleanupAt.get();
+    boolean due = last == 0 || now < last || now - last >= BLOCK_LOG_CLEANUP_INTERVAL_MS;
+    if (due && lastBlockLogCleanupAt.compareAndSet(last, now)) {
+      blockLogCleanups.incrementAndGet();
+      lastBlockLogByOrgAndIp.values().removeIf(loggedAt -> now - loggedAt >= BLOCK_LOG_INTERVAL_MS);
+    }
+  }
+
+  int trackedBlockCleanupCount() {
+    return blockLogCleanups.get();
+  }
+
   int trackedBlockCount() {
     return lastBlockLogByOrgAndIp.size();
   }
 
   private Map<String, Policy> policies() {
+    long now = system2.now();
     Snapshot current = snapshot;
-    if (current != null && !current.isOlderThanTtl(system2.now())) {
+    if (current != null && current.isFresh(now)) {
       return current.policies();
     }
-    synchronized (this) {
-      // One thread reloads; the others wait for it instead of each querying the database.
-      current = snapshot;
-      long now = system2.now();
-      if (current == null || current.isOlderThanTtl(now)) {
-        current = new Snapshot(load(), now);
-        snapshot = current;
-      }
+    CompletableFuture<Snapshot> mine = new CompletableFuture<>();
+    CompletableFuture<Snapshot> running = loadInProgress.compareAndExchange(null, mine);
+    if (running == null) {
+      return reload(mine, now);
+    }
+    if (current != null && current.isUsableWhenStale(now)) {
       return current.policies();
+    }
+    return awaitLoad(running);
+  }
+
+  /** Runs the one load. Every other thread that has no usable snapshot is waiting on {@code mine}. */
+  private Map<String, Policy> reload(CompletableFuture<Snapshot> mine, long now) {
+    try {
+      // A load that finished just before this thread took over has already refreshed the snapshot.
+      Snapshot current = snapshot;
+      if (current != null && current.isFresh(system2.now())) {
+        mine.complete(current);
+        return current.policies();
+      }
+      Snapshot loaded = new Snapshot(load(), system2.now());
+      snapshot = loaded;
+      mine.complete(loaded);
+      return loaded.policies();
+    } catch (RuntimeException e) {
+      mine.completeExceptionally(e);
+      Snapshot old = snapshot;
+      if (old != null && old.isUsableWhenStale(now)) {
+        logLoadFailure(e);
+        return old.policies();
+      }
+      throw e;
+    } finally {
+      if (!mine.isDone()) {
+        // an Error, not an exception: do not leave the waiting threads until their deadline
+        mine.completeExceptionally(new IllegalStateException("The IP allowlist load was aborted"));
+      }
+      loadInProgress.set(null);
+    }
+  }
+
+  private Map<String, Policy> awaitLoad(CompletableFuture<Snapshot> running) {
+    try {
+      return running.get(loadWaitTimeoutMs, TimeUnit.MILLISECONDS).policies();
+    } catch (ExecutionException e) {
+      throw new IllegalStateException("Cannot read the IP allowlist", e.getCause());
+    } catch (TimeoutException e) {
+      throw new IllegalStateException("Timed out waiting for the IP allowlist to load", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while waiting for the IP allowlist to load", e);
+    }
+  }
+
+  /** While the database is down every request would otherwise log. */
+  private void logLoadFailure(RuntimeException e) {
+    long now = system2.now();
+    long last = lastLoadFailureLogAt.get();
+    if ((last == 0 || now < last || now - last >= BLOCK_LOG_INTERVAL_MS) && lastLoadFailureLogAt.compareAndSet(last, now)) {
+      LOG.warn("Cannot reload the IP allowlist, using the previous one for at most {} seconds", MAX_STALE_MS / 1000, e);
     }
   }
 
@@ -238,8 +338,13 @@ public class OrganizationIpAccess {
   }
 
   private record Snapshot(Map<String, Policy> policies, long loadedAt) {
-    boolean isOlderThanTtl(long now) {
-      return now - loadedAt >= SNAPSHOT_TTL_MS;
+    /** A clock that went backwards makes the age unknown, so the snapshot is not fresh and not usable when stale. */
+    boolean isFresh(long now) {
+      return now >= loadedAt && now - loadedAt < SNAPSHOT_TTL_MS;
+    }
+
+    boolean isUsableWhenStale(long now) {
+      return now >= loadedAt && now - loadedAt < MAX_STALE_MS;
     }
   }
 

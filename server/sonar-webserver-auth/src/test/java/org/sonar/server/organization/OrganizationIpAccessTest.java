@@ -20,6 +20,12 @@
 package org.sonar.server.organization;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -67,28 +73,28 @@ public class OrganizationIpAccessTest {
 
   @Test
   public void org_without_allowlist_is_never_blocked() {
-    assertThat(underTest.isBlocked("org-other", "192.0.2.1", false)).isFalse();
-    assertThat(underTest.isBlocked("org-other", null, false)).isFalse();
+    assertThat(underTest.isBlocked("org-other", "192.0.2.1", () -> false)).isFalse();
+    assertThat(underTest.isBlocked("org-other", null, () -> false)).isFalse();
   }
 
   @Test
   public void ip_inside_list_is_allowed_and_outside_is_blocked() {
-    assertThat(underTest.isBlocked("org-a", "203.0.113.9", false)).isFalse();
-    assertThat(underTest.isBlocked("org-a", "192.0.2.1", false)).isTrue();
+    assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
   }
 
   @Test
   public void missing_or_unparseable_client_ip_is_blocked() {
-    assertThat(underTest.isBlocked("org-a", null, false)).isTrue();
-    assertThat(underTest.isBlocked("org-a", "", false)).isTrue();
-    assertThat(underTest.isBlocked("org-a", "example.com", false)).isTrue();
-    assertThat(underTest.isBlocked("org-a", "not an ip", false)).isTrue();
+    assertThat(underTest.isBlocked("org-a", null, () -> false)).isTrue();
+    assertThat(underTest.isBlocked("org-a", "", () -> false)).isTrue();
+    assertThat(underTest.isBlocked("org-a", "example.com", () -> false)).isTrue();
+    assertThat(underTest.isBlocked("org-a", "not an ip", () -> false)).isTrue();
   }
 
   @Test
   public void ipv4_mapped_ipv6_client_is_checked_as_ipv4() {
-    assertThat(underTest.isBlocked("org-a", "::ffff:203.0.113.9", false)).isFalse();
-    assertThat(underTest.isBlocked("org-a", "::ffff:192.0.2.1", false)).isTrue();
+    assertThat(underTest.isBlocked("org-a", "::ffff:203.0.113.9", () -> false)).isFalse();
+    assertThat(underTest.isBlocked("org-a", "::ffff:192.0.2.1", () -> false)).isTrue();
   }
 
   @Test
@@ -98,20 +104,20 @@ public class OrganizationIpAccessTest {
       range("org-v6-upper", false, "2001:DB8::/32")));
     OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig());
 
-    assertThat(access.isBlocked("org-v6", "2001:DB8::1", false)).isFalse();
-    assertThat(access.isBlocked("org-v6-upper", "2001:db8::1", false)).isFalse();
-    assertThat(access.isBlocked("org-v6", "2001:dba::1", false)).isTrue();
+    assertThat(access.isBlocked("org-v6", "2001:DB8::1", () -> false)).isFalse();
+    assertThat(access.isBlocked("org-v6-upper", "2001:db8::1", () -> false)).isFalse();
+    assertThat(access.isBlocked("org-v6", "2001:dba::1", () -> false)).isTrue();
   }
 
   @Test
   public void admins_are_exempt_unless_applies_to_admins() {
-    assertThat(underTest.isBlocked("org-a", "192.0.2.1", true)).isFalse();
-    assertThat(underTest.isBlocked("org-admins", "192.0.2.1", true)).isTrue();
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> true)).isFalse();
+    assertThat(underTest.isBlocked("org-admins", "192.0.2.1", () -> true)).isTrue();
   }
 
   @Test
   public void enabled_org_with_no_range_blocks_everyone() {
-    assertThat(underTest.isBlocked("org-empty", "203.0.113.9", false)).isTrue();
+    assertThat(underTest.isBlocked("org-empty", "203.0.113.9", () -> false)).isTrue();
   }
 
   @Test
@@ -124,11 +130,11 @@ public class OrganizationIpAccessTest {
       range("org-ok", false, "198.51.100.0/24")));
     OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig());
 
-    assertThat(access.isBlocked("org-mixed", "203.0.113.9", false)).isFalse();
-    assertThat(access.isBlocked("org-mixed", "192.0.2.1", false)).isTrue();
+    assertThat(access.isBlocked("org-mixed", "203.0.113.9", () -> false)).isFalse();
+    assertThat(access.isBlocked("org-mixed", "192.0.2.1", () -> false)).isTrue();
     // nothing valid is left, so the list lets nobody in: skipping never widens access
-    assertThat(access.isBlocked("org-only-bad", "203.0.113.9", false)).isTrue();
-    assertThat(access.isBlocked("org-ok", "198.51.100.5", false)).isFalse();
+    assertThat(access.isBlocked("org-only-bad", "203.0.113.9", () -> false)).isTrue();
+    assertThat(access.isBlocked("org-ok", "198.51.100.5", () -> false)).isFalse();
     assertThat(logTester.logs(Level.WARN)).anyMatch(l -> l.contains("not-an-ip") && l.contains("org-mixed"));
   }
 
@@ -140,11 +146,11 @@ public class OrganizationIpAccessTest {
     OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig());
     logTester.clear();
 
-    access.isBlocked("org-mixed", "203.0.113.9", false);
+    access.isBlocked("org-mixed", "203.0.113.9", () -> false);
     system2.setNow(1_000_000L + 30_000L);
-    access.isBlocked("org-mixed", "203.0.113.9", false);
+    access.isBlocked("org-mixed", "203.0.113.9", () -> false);
     system2.setNow(1_000_000L + 60_000L);
-    access.isBlocked("org-mixed", "203.0.113.9", false);
+    access.isBlocked("org-mixed", "203.0.113.9", () -> false);
 
     verify(dao, times(3)).selectEnabledRanges(any());
     assertThat(logTester.logs(Level.WARN)).filteredOn(l -> l.contains("not-an-ip")).hasSize(1);
@@ -164,13 +170,13 @@ public class OrganizationIpAccessTest {
 
   @Test
   public void snapshot_is_reused_for_30_seconds_then_reloaded() {
-    underTest.isBlocked("org-a", "192.0.2.1", false);
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     system2.setNow(1_000_000L + 29_999L);
-    underTest.isBlocked("org-a", "192.0.2.1", false);
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     verify(dao, times(1)).selectEnabledRanges(any());
 
     system2.setNow(1_000_000L + 30_000L);
-    underTest.isBlocked("org-a", "192.0.2.1", false);
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     verify(dao, times(2)).selectEnabledRanges(any());
   }
 
@@ -178,11 +184,11 @@ public class OrganizationIpAccessTest {
   public void failed_load_is_thrown_to_the_caller_and_not_cached() {
     when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
 
-    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", false)).isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(IllegalStateException.class);
 
     doReturn(List.of(range("org-a", false, "203.0.113.0/24"))).when(dao).selectEnabledRanges(any());
-    assertThat(underTest.isBlocked("org-a", "203.0.113.9", false)).isFalse();
-    assertThat(underTest.isBlocked("org-a", "192.0.2.1", false)).isTrue();
+    assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
   }
 
   @Test
@@ -190,7 +196,7 @@ public class OrganizationIpAccessTest {
     DbSession session = mock(DbSession.class);
     when(dbClient.openSession(false)).thenReturn(session);
 
-    underTest.isBlocked("org-a", "192.0.2.1", false);
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
 
     verify(session).close();
   }
@@ -373,6 +379,265 @@ public class OrganizationIpAccessTest {
 
     assertThat(underTest.shouldLogBlock("new-org", "192.0.2.1")).isFalse();
     assertThat(underTest.trackedBlockCount()).isEqualTo(full);
+  }
+
+  // ---- null organization, clock, and a slow or failing database ----
+
+  @Test
+  public void null_organization_uuid_is_never_blocked() {
+    assertThat(underTest.isBlocked(null, "192.0.2.1", () -> false)).isFalse();
+    assertThat(underTest.isBlocked(null, null, () -> true)).isFalse();
+  }
+
+  @Test
+  public void logBlocked_accepts_a_null_organization_key() {
+    logTester.clear();
+
+    underTest.logBlocked(null, "192.0.2.1", null);
+
+    assertThat(logTester.logs(Level.WARN)).hasSize(1);
+  }
+
+  @Test
+  public void snapshot_is_reloaded_when_the_clock_goes_backwards() {
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
+
+    system2.setNow(1_000_000L - 1_000L);
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
+
+    verify(dao, times(2)).selectEnabledRanges(any());
+  }
+
+  @Test
+  public void clock_going_backwards_with_a_failing_database_throws_instead_of_serving_a_snapshot_of_unknown_age() {
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
+    when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
+
+    system2.setNow(1_000_000L - 1_000L);
+
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  public void old_snapshot_is_served_while_another_thread_reloads() throws Exception {
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
+    system2.setNow(1_000_000L + 30_000L);
+    CountDownLatch reloadStarted = new CountDownLatch(1);
+    CountDownLatch finishReload = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      reloadStarted.countDown();
+      assertThat(finishReload.await(10, TimeUnit.SECONDS)).isTrue();
+      return List.of(range("org-a", false, "198.51.100.0/24"));
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      Future<Boolean> leader = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(reloadStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      // answered at once from the old snapshot, without waiting for the reload or starting a second one
+      assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+      verify(dao, times(2)).selectEnabledRanges(any());
+
+      finishReload.countDown();
+      assertThat(leader.get(10, TimeUnit.SECONDS)).isTrue();
+    } finally {
+      finishReload.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void old_snapshot_is_served_for_up_to_twice_the_ttl_when_the_reload_fails() {
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
+    when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
+
+    system2.setNow(1_000_000L + 30_000L);
+    assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
+    system2.setNow(1_000_000L + 59_999L);
+    assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+
+    system2.setNow(1_000_000L + 60_000L);
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  public void failed_reload_is_logged_at_most_once_a_minute() {
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
+    when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
+    logTester.clear();
+
+    system2.setNow(1_000_000L + 30_000L);
+    for (int i = 0; i < 20; i++) {
+      underTest.isBlocked("org-a", "192.0.2.1", () -> false);
+    }
+
+    assertThat(logTester.logs(Level.WARN)).hasSize(1);
+  }
+
+  @Test
+  public void threads_without_a_snapshot_wait_for_one_load_and_share_its_result() throws Exception {
+    CountDownLatch loadStarted = new CountDownLatch(1);
+    CountDownLatch finishLoad = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      loadStarted.countDown();
+      assertThat(finishLoad.await(10, TimeUnit.SECONDS)).isTrue();
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newFixedThreadPool(3);
+    try {
+      Future<Boolean> first = executor.submit(() -> underTest.isBlocked("org-a", "192.0.2.1", () -> false));
+      assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      Future<Boolean> second = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      Future<Boolean> third = executor.submit(() -> underTest.isBlocked("org-a", "192.0.2.1", () -> false));
+      Thread.sleep(100);
+
+      finishLoad.countDown();
+
+      assertThat(first.get(10, TimeUnit.SECONDS)).isTrue();
+      assertThat(second.get(10, TimeUnit.SECONDS)).isFalse();
+      assertThat(third.get(10, TimeUnit.SECONDS)).isTrue();
+      verify(dao, times(1)).selectEnabledRanges(any());
+    } finally {
+      finishLoad.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void threads_without_a_snapshot_all_fail_when_the_one_load_fails() throws Exception {
+    CountDownLatch loadStarted = new CountDownLatch(1);
+    CountDownLatch finishLoad = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      loadStarted.countDown();
+      assertThat(finishLoad.await(10, TimeUnit.SECONDS)).isTrue();
+      throw new IllegalStateException("db down");
+    });
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Future<Boolean> first = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      Future<Boolean> second = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      Thread.sleep(100);
+
+      finishLoad.countDown();
+
+      assertThatThrownBy(() -> first.get(10, TimeUnit.SECONDS)).hasRootCauseInstanceOf(IllegalStateException.class);
+      assertThatThrownBy(() -> second.get(10, TimeUnit.SECONDS)).hasRootCauseInstanceOf(IllegalStateException.class);
+      verify(dao, times(1)).selectEnabledRanges(any());
+    } finally {
+      finishLoad.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  // ---- the admin check is only made when it can change the answer ----
+
+  @Test
+  public void admin_check_is_not_made_for_an_organization_without_allowlist() {
+    AtomicInteger calls = new AtomicInteger();
+
+    assertThat(underTest.isBlocked("org-other", "192.0.2.1", countingAdminCheck(calls, true))).isFalse();
+    assertThat(underTest.isBlocked(null, "192.0.2.1", countingAdminCheck(calls, true))).isFalse();
+
+    assertThat(calls).hasValue(0);
+  }
+
+  @Test
+  public void admin_check_is_not_made_when_the_ip_is_allowed() {
+    AtomicInteger calls = new AtomicInteger();
+
+    assertThat(underTest.isBlocked("org-a", "203.0.113.9", countingAdminCheck(calls, false))).isFalse();
+
+    assertThat(calls).hasValue(0);
+  }
+
+  @Test
+  public void admin_check_is_not_made_when_the_allowlist_applies_to_admins() {
+    AtomicInteger calls = new AtomicInteger();
+
+    assertThat(underTest.isBlocked("org-admins", "192.0.2.1", countingAdminCheck(calls, true))).isTrue();
+
+    assertThat(calls).hasValue(0);
+  }
+
+  @Test
+  public void admin_check_decides_when_the_ip_is_outside_and_admins_are_exempt() {
+    AtomicInteger calls = new AtomicInteger();
+
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", countingAdminCheck(calls, true))).isFalse();
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", countingAdminCheck(calls, false))).isTrue();
+
+    assertThat(calls).hasValue(2);
+  }
+
+  @Test
+  public void admin_check_is_made_once_per_call() {
+    AtomicInteger calls = new AtomicInteger();
+
+    underTest.isBlocked("org-a", null, countingAdminCheck(calls, false));
+
+    assertThat(calls).hasValue(1);
+  }
+
+  @Test
+  public void failing_admin_check_is_thrown_not_treated_as_allowed() {
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "192.0.2.1", () -> {
+      throw new IllegalStateException("role lookup failed");
+    })).isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  public void thread_that_waits_too_long_for_the_one_load_throws() throws Exception {
+    OrganizationIpAccess impatient = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), 50L);
+    CountDownLatch loadStarted = new CountDownLatch(1);
+    CountDownLatch finishLoad = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      loadStarted.countDown();
+      assertThat(finishLoad.await(10, TimeUnit.SECONDS)).isTrue();
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      Future<Boolean> leader = executor.submit(() -> impatient.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      assertThatThrownBy(() -> impatient.isBlocked("org-a", "203.0.113.9", () -> false))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Timed out");
+
+      finishLoad.countDown();
+      assertThat(leader.get(10, TimeUnit.SECONDS)).isFalse();
+    } finally {
+      finishLoad.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void full_tracker_is_cleaned_at_most_once_per_interval() {
+    for (int i = 0; i <= OrganizationIpAccess.MAX_TRACKED_BLOCKS; i++) {
+      underTest.shouldLogBlock("org-" + i, "192.0.2.1");
+    }
+    int cleanupsBefore = underTest.trackedBlockCleanupCount();
+
+    for (int i = 0; i < 100; i++) {
+      assertThat(underTest.shouldLogBlock("flood-" + i, "192.0.2.1")).isFalse();
+    }
+
+    assertThat(underTest.trackedBlockCleanupCount() - cleanupsBefore).isEqualTo(1);
+    assertThat(underTest.trackedBlockCount()).isEqualTo(OrganizationIpAccess.MAX_TRACKED_BLOCKS + 1);
+
+    system2.setNow(1_000_000L + OrganizationIpAccess.BLOCK_LOG_CLEANUP_INTERVAL_MS);
+    underTest.shouldLogBlock("flood-again", "192.0.2.1");
+    assertThat(underTest.trackedBlockCleanupCount() - cleanupsBefore).isEqualTo(2);
+  }
+
+  private static java.util.function.BooleanSupplier countingAdminCheck(AtomicInteger calls, boolean isAdmin) {
+    return () -> {
+      calls.incrementAndGet();
+      return isAdmin;
+    };
   }
 
   private OrganizationIpAccess accessWithInternal(String cidrs) {
