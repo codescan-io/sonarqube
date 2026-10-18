@@ -122,14 +122,31 @@ public class EmbeddedTomcatTest {
 
       File accessLog = new File(logs, "access.log");
       long deadline = System.currentTimeMillis() + 5_000;
-      while (!accessLog.exists() && System.currentTimeMillis() < deadline) {
+      String content = "";
+      while (!content.contains("\n") && System.currentTimeMillis() < deadline) {
         Thread.sleep(50);
+        if (accessLog.exists()) {
+          content = FileUtils.readFileToString(accessLog, StandardCharsets.UTF_8);
+        }
       }
-      assertThat(FileUtils.readFileToString(accessLog, StandardCharsets.UTF_8))
-        .startsWith("203.0.113.9 ");
+      assertThat(content).startsWith("203.0.113.9 ");
     } finally {
       tomcat.terminate();
     }
+  }
+
+  @Test
+  public void start_whenTrustedProxiesRegexIsInvalid_shouldFailNamingTheProperty() throws IOException {
+    InetAddress address = InetAddress.getLoopbackAddress();
+    int httpPort = NetworkUtilsImpl.INSTANCE.getNextLoopbackAvailablePort();
+    Props props = getProps(address, httpPort);
+    props.set("sonar.web.trustedProxiesRegex", "10\\.(");
+
+    EmbeddedTomcat tomcat = new EmbeddedTomcat(props, new TomcatHttpConnectorFactory());
+
+    assertThatThrownBy(tomcat::start)
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessageContaining("sonar.web.trustedProxiesRegex");
   }
 
   private Props getProps(InetAddress address, int httpPort) throws IOException {
