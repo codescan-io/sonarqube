@@ -81,6 +81,8 @@ public class ServerUserSession extends AbstractUserSession {
   private final Set<String> organizationMembership = new HashSet<>();
   private final Map<String, Boolean> organizationsArchivedStatus = new HashMap<>();
   private final Map<String, Boolean> ipBlockedByOrganizationUuid = new HashMap<>();
+  // organization key to uuid, empty for an unknown key; a session lives for one request, so it cannot go stale
+  private final Map<String, Optional<String>> organizationUuidByKey = new HashMap<>();
 
   @CheckForNull
   private OrganizationIpAccess ipAccess;
@@ -185,9 +187,11 @@ public class ServerUserSession extends AbstractUserSession {
 
   @CheckForNull
   private String findOrganizationUuid(String organizationKey) {
-    try (DbSession dbSession = dbClient.openSession(false)) {
-      return dbClient.organizationDao().selectByKey(dbSession, organizationKey).map(OrganizationDto::getUuid).orElse(null);
-    }
+    return organizationUuidByKey.computeIfAbsent(organizationKey, key -> {
+      try (DbSession dbSession = dbClient.openSession(false)) {
+        return dbClient.organizationDao().selectByKey(dbSession, key).map(OrganizationDto::getUuid);
+      }
+    }).orElse(null);
   }
 
   /**
@@ -563,10 +567,8 @@ public class ServerUserSession extends AbstractUserSession {
 
   @Override
   public boolean hasMembershipImpl(String organizationKey) {
-    try (DbSession dbSession = dbClient.openSession(false)) {
-      Optional<OrganizationDto> organizationDto = dbClient.organizationDao().selectByKey(dbSession, organizationKey);
-      return organizationDto.filter(dto -> isMember(dto.getUuid())).isPresent();
-    }
+    String organizationUuid = findOrganizationUuid(organizationKey);
+    return organizationUuid != null && isMember(organizationUuid);
   }
 
   private boolean isMember(String organizationUuid) {

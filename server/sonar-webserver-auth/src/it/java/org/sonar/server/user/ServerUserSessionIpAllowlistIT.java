@@ -30,10 +30,12 @@ import org.sonar.api.web.UserRole;
 import org.slf4j.event.Level;
 import org.sonar.api.testfixtures.log.LogTester;
 import org.sonar.api.utils.System2;
+import org.sonar.db.DbClient;
 import org.sonar.db.DbTester;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.component.ComponentTesting;
 import org.sonar.db.component.ProjectData;
+import org.sonar.db.organization.OrganizationDao;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.user.TokenType;
@@ -48,7 +50,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -430,6 +434,26 @@ public class ServerUserSessionIpAllowlistIT {
     blockEveryone(ORG);
 
     assertThat(session(member, OUTSIDE_IP).isMemberBlockedByIpAllowlistForKey(ORG_KEY)).isFalse();
+  }
+
+  @Test
+  public void organization_key_is_looked_up_once_per_request() {
+    UserDto member = insertMember("u1");
+    blockEveryone(ORG);
+    DbClient dbClient = spy(db.getDbClient());
+    OrganizationDao organizationDao = spy(db.getDbClient().organizationDao());
+    doReturn(organizationDao).when(dbClient).organizationDao();
+    ServerUserSession session = new ServerUserSession(dbClient, member, false).withIpAllowlist(ipAccess, OUTSIDE_IP, null);
+
+    assertThat(session.isBlockedByIpAllowlistForKey(ORG_KEY)).isTrue();
+    assertThat(session.isBlockedByIpAllowlistForKey(ORG_KEY)).isTrue();
+    assertThat(session.hasMembership(ORG_KEY)).isFalse();
+    assertThat(session.isMemberBlockedByIpAllowlistForKey(ORG_KEY)).isTrue();
+    assertThat(session.isBlockedByIpAllowlistForKey("no-such-org")).isFalse();
+    assertThat(session.isBlockedByIpAllowlistForKey("no-such-org")).isFalse();
+
+    verify(organizationDao, times(1)).selectByKey(any(), eq(ORG_KEY));
+    verify(organizationDao, times(1)).selectByKey(any(), eq("no-such-org"));
   }
 
   @Test
