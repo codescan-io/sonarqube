@@ -19,6 +19,7 @@
  */
 package org.sonar.server.user;
 
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import javax.annotation.Nullable;
 import org.junit.Rule;
@@ -262,6 +263,75 @@ public class ServerUserSessionIpAllowlistIT {
     when(ipAccess.isInternalServiceAddress(INTERNAL_IP)).thenReturn(true);
 
     assertThat(serviceSession(job, INTERNAL_IP, "no-such-org").hasMembership(ORG_KEY)).isFalse();
+  }
+
+  @Test
+  public void blocked_check_by_key_answers_for_the_organization_with_that_key() {
+    insertOrg();
+    blockEveryone(ORG);
+
+    ServerUserSession session = session(user("u1"), OUTSIDE_IP);
+
+    assertThat(session.isBlockedByIpAllowlistForKey(ORG_KEY)).isTrue();
+  }
+
+  @Test
+  public void blocked_check_by_key_is_false_for_an_unknown_or_missing_key() {
+    insertOrg();
+    blockEveryone(ORG);
+
+    ServerUserSession session = session(user("u1"), OUTSIDE_IP);
+
+    assertThat(session.isBlockedByIpAllowlistForKey("no-such-org")).isFalse();
+    assertThat(session.isBlockedByIpAllowlistForKey(null)).isFalse();
+  }
+
+  @Test
+  public void blocked_organizations_lists_every_organization_that_blocks_the_request() {
+    insertOrg();
+    insertOrg(OTHER_ORG, OTHER_ORG_KEY);
+    blockEveryone(ORG);
+    blockEveryone(OTHER_ORG);
+    when(ipAccess.blockedOrganizationUuids(OUTSIDE_IP)).thenReturn(Set.of(ORG, OTHER_ORG));
+
+    assertThat(session(user("u1"), OUTSIDE_IP).getIpBlockedOrganizationUuids()).containsExactlyInAnyOrder(ORG, OTHER_ORG);
+  }
+
+  @Test
+  public void blocked_organizations_leaves_out_those_where_the_user_is_an_exempt_admin() {
+    UserDto user = insertMember("u1");
+    insertOrgPermission(user, OrganizationPermission.ADMINISTER);
+    insertOrg(OTHER_ORG, OTHER_ORG_KEY);
+    blockUnlessAdmin(ORG);
+    blockUnlessAdmin(OTHER_ORG);
+    when(ipAccess.blockedOrganizationUuids(OUTSIDE_IP)).thenReturn(Set.of(ORG, OTHER_ORG));
+
+    assertThat(session(user, OUTSIDE_IP).getIpBlockedOrganizationUuids()).containsExactly(OTHER_ORG);
+  }
+
+  @Test
+  public void blocked_organizations_of_a_service_login_leaves_out_only_its_own_organization() {
+    UserDto job = insertMember("job");
+    insertOrg(OTHER_ORG, OTHER_ORG_KEY);
+    blockEveryone(ORG);
+    blockEveryone(OTHER_ORG);
+    when(ipAccess.isInternalServiceAddress(INTERNAL_IP)).thenReturn(true);
+    when(ipAccess.blockedOrganizationUuids(INTERNAL_IP)).thenReturn(Set.of(ORG, OTHER_ORG));
+
+    assertThat(serviceSession(job, INTERNAL_IP, ORG_KEY).getIpBlockedOrganizationUuids()).containsExactly(OTHER_ORG);
+  }
+
+  @Test
+  public void blocked_organizations_are_read_once_per_request() {
+    insertOrg();
+    blockEveryone(ORG);
+    when(ipAccess.blockedOrganizationUuids(OUTSIDE_IP)).thenReturn(Set.of(ORG));
+    ServerUserSession session = session(user("u1"), OUTSIDE_IP);
+
+    session.getIpBlockedOrganizationUuids();
+    session.getIpBlockedOrganizationUuids();
+
+    verify(ipAccess, times(1)).blockedOrganizationUuids(OUTSIDE_IP);
   }
 
   private void blockEveryone(String organizationUuid) {

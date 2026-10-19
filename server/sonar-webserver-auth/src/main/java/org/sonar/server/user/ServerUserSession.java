@@ -87,6 +87,8 @@ public class ServerUserSession extends AbstractUserSession {
   private boolean exemptServiceOrganizationLookedUp;
   @CheckForNull
   private String exemptServiceOrganizationUuid;
+  @CheckForNull
+  private Set<String> ipBlockedOrganizationUuids;
 
   public ServerUserSession(DbClient dbClient, @Nullable UserDto userDto, boolean isAuthenticatedBrowserSession) {
     this.dbClient = dbClient;
@@ -125,6 +127,30 @@ public class ServerUserSession extends AbstractUserSession {
     // decided once per organization per request; a failed read throws and is not remembered
     return ipBlockedByOrganizationUuid.computeIfAbsent(organizationUuid,
       uuid -> !isExemptServiceLogin(access, uuid) && access.isBlocked(uuid, clientIp, () -> isOrganizationAdmin(uuid)));
+  }
+
+  @Override
+  public boolean isBlockedByIpAllowlistForKey(@Nullable String organizationKey) {
+    if (ipAccess == null || organizationKey == null || isRoot()) {
+      return false;
+    }
+    String organizationUuid = findOrganizationUuid(organizationKey);
+    return organizationUuid != null && isBlockedByIpAllowlist(organizationUuid);
+  }
+
+  @Override
+  public Set<String> getIpBlockedOrganizationUuids() {
+    OrganizationIpAccess access = ipAccess;
+    if (access == null || isRoot()) {
+      return Set.of();
+    }
+    if (ipBlockedOrganizationUuids == null) {
+      // the organizations whose allowlist leaves this address out, less those where this login is exempt
+      ipBlockedOrganizationUuids = access.blockedOrganizationUuids(clientIp).stream()
+        .filter(this::isBlockedByIpAllowlist)
+        .collect(Collectors.toUnmodifiableSet());
+    }
+    return ipBlockedOrganizationUuids;
   }
 
   /**
