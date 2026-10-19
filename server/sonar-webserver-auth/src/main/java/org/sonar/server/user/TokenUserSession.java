@@ -89,8 +89,10 @@ public class TokenUserSession extends ServerUserSession {
     return switch (tokenType) {
       case USER_TOKEN, GLOBAL_ANALYSIS_TOKEN -> super.doKeepAuthorizedEntities(permission, entities);
       case PROJECT_ANALYSIS_TOKEN ->
+        // this path skips the membership check, which is where the IP allowlist is applied, so apply it here
         (SCAN.equals(permission) || USER.equals(permission)) ? entities.stream()
           .filter(entity -> entity.getUuid().equals(userToken.getProjectUuid()))
+          .filter(entity -> !isBlockedByIpAllowlist(entity.getOrganizationUuid()))
           .toList() : Collections.emptyList();
       default -> throw new IllegalArgumentException(format(TOKEN_ASSERTION_ERROR_MESSAGE, tokenType.name()));
     };
