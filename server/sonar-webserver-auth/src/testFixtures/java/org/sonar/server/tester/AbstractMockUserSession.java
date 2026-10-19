@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.web.UserRole;
@@ -55,6 +57,9 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
   private final Set<String> projectPermissions = new HashSet<>();
   private boolean systemAdministrator = false;
   private boolean resetPassword = false;
+  private final Set<String> ipBlockedOrganizationUuids = new HashSet<>();
+  @CheckForNull
+  private String clientIp;
 
   protected AbstractMockUserSession(Class<T> clazz) {
     this.clazz = clazz;
@@ -230,6 +235,33 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
   @Override
   public boolean shouldResetPassword() {
     return resetPassword;
+  }
+
+  public T setIpBlockedOrganizationUuids(String... organizationUuids) {
+    this.ipBlockedOrganizationUuids.clear();
+    this.ipBlockedOrganizationUuids.addAll(Arrays.asList(organizationUuids));
+    return clazz.cast(this);
+  }
+
+  public T setClientIp(@Nullable String clientIp) {
+    this.clientIp = clientIp;
+    return clazz.cast(this);
+  }
+
+  @Override
+  public boolean isBlockedByIpAllowlist(@Nullable String organizationUuid) {
+    return organizationUuid != null && ipBlockedOrganizationUuids.contains(organizationUuid);
+  }
+
+  @Override
+  public Set<String> getIpBlockedOrganizationUuids() {
+    return Set.copyOf(ipBlockedOrganizationUuids);
+  }
+
+  @Override
+  @CheckForNull
+  public String getClientIp() {
+    return clientIp;
   }
 
   public abstract void flagAsBrowserSession();
