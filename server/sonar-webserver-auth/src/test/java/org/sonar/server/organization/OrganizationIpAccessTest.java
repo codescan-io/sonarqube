@@ -610,6 +610,30 @@ public class OrganizationIpAccessTest {
     verify(dao, times(1)).selectEnabledRanges(any());
   }
 
+  @Test
+  public void block_logged_under_a_clock_that_later_went_back_is_logged_again() {
+    system2.setNow(10_000_000L);
+    assertThat(underTest.shouldLogBlock("org-a", "192.0.2.1")).isTrue();
+
+    system2.setNow(10_000_000L - 3_600_000L);
+
+    assertThat(underTest.shouldLogBlock("org-a", "192.0.2.1")).isTrue();
+    assertThat(underTest.shouldLogBlock("org-a", "192.0.2.1")).isFalse();
+  }
+
+  @Test
+  public void full_tracker_drops_entries_stamped_in_the_future_of_the_clock() {
+    system2.setNow(10_000_000L);
+    for (int i = 0; i <= OrganizationIpAccess.MAX_TRACKED_BLOCKS; i++) {
+      underTest.shouldLogBlock("org-" + i, "192.0.2.1");
+    }
+
+    system2.setNow(10_000_000L - 3_600_000L);
+
+    assertThat(underTest.shouldLogBlock("new-org", "192.0.2.1")).isTrue();
+    assertThat(underTest.trackedBlockCount()).isEqualTo(1);
+  }
+
   // ---- a load that never returns ----
 
   @Test(timeout = 30_000)

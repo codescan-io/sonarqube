@@ -178,7 +178,12 @@ public class OrganizationIpAccess {
       return lastBlockLogByOrgAndIp.putIfAbsent(key, now) == null;
     }
     // replace() loses to a concurrent writer, so only one thread logs per window
-    return now - previous >= BLOCK_LOG_INTERVAL_MS && lastBlockLogByOrgAndIp.replace(key, previous, now);
+    return isExpired(previous, now) && lastBlockLogByOrgAndIp.replace(key, previous, now);
+  }
+
+  /** A stamp ahead of the clock (the clock was set back) counts as expired, or the line would stay silent until the clock caught up. */
+  private static boolean isExpired(long loggedAt, long now) {
+    return now < loggedAt || now - loggedAt >= BLOCK_LOG_INTERVAL_MS;
   }
 
   /** Scanning the whole map for every blocked request while it is full would cost more than the requests. */
@@ -187,7 +192,7 @@ public class OrganizationIpAccess {
     boolean due = last == 0 || now < last || now - last >= BLOCK_LOG_CLEANUP_INTERVAL_MS;
     if (due && lastBlockLogCleanupAt.compareAndSet(last, now)) {
       blockLogCleanups.incrementAndGet();
-      lastBlockLogByOrgAndIp.values().removeIf(loggedAt -> now - loggedAt >= BLOCK_LOG_INTERVAL_MS);
+      lastBlockLogByOrgAndIp.values().removeIf(loggedAt -> isExpired(loggedAt, now));
     }
   }
 
