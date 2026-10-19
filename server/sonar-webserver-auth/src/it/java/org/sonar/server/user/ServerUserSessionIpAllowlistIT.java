@@ -1,0 +1,243 @@
+/*
+ * SonarQube
+ * Copyright (C) 2009-2024 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+package org.sonar.server.user;
+
+import java.util.function.BooleanSupplier;
+import javax.annotation.Nullable;
+import org.junit.Rule;
+import org.junit.Test;
+import org.sonar.api.utils.System2;
+import org.sonar.db.DbTester;
+import org.sonar.db.organization.OrganizationDto;
+import org.sonar.db.permission.OrganizationPermission;
+import org.sonar.db.user.UserDto;
+import org.sonar.server.organization.OrganizationIpAccess;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+public class ServerUserSessionIpAllowlistIT {
+
+  private static final String ORG = "org-uuid";
+  private static final String ORG_KEY = "org-key";
+  private static final String OUTSIDE_IP = "192.0.2.1";
+
+  @Rule
+  public DbTester db = DbTester.create(System2.INSTANCE);
+
+  private final OrganizationIpAccess ipAccess = mock(OrganizationIpAccess.class);
+
+  @Test
+  public void member_outside_the_list_loses_membership_and_org_permissions() {
+    UserDto user = insertMember("u1");
+    insertOrgPermission(user, OrganizationPermission.SCAN);
+    blockUnlessAdmin(ORG);
+
+    ServerUserSession session = session(user, OUTSIDE_IP);
+
+    assertThat(session.hasMembership(org())).isFalse();
+    assertThat(session.hasMembership(ORG_KEY)).isFalse();
+    assertThat(session.hasPermission(OrganizationPermission.SCAN, ORG)).isFalse();
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isTrue();
+    assertThat(session.getClientIp()).isEqualTo(OUTSIDE_IP);
+  }
+
+  @Test
+  public void member_inside_the_list_keeps_membership_and_org_permissions() {
+    UserDto user = insertMember("u1");
+    insertOrgPermission(user, OrganizationPermission.SCAN);
+    when(ipAccess.isBlocked(eq(ORG), anyString(), any(BooleanSupplier.class))).thenReturn(false);
+
+    ServerUserSession session = session(user, "203.0.113.9");
+
+    assertThat(session.hasMembership(org())).isTrue();
+    assertThat(session.hasPermission(OrganizationPermission.SCAN, ORG)).isTrue();
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isFalse();
+  }
+
+  @Test
+  public void org_admin_is_exempt_when_the_allowlist_does_not_apply_to_admins() {
+    UserDto user = insertMember("u1");
+    insertOrgPermission(user, OrganizationPermission.ADMINISTER);
+    blockUnlessAdmin(ORG);
+
+    ServerUserSession session = session(user, OUTSIDE_IP);
+
+    assertThat(session.hasMembership(org())).isTrue();
+    assertThat(session.hasPermission(OrganizationPermission.ADMINISTER, ORG)).isTrue();
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isFalse();
+  }
+
+  @Test
+  public void customer_admin_counts_as_org_admin() {
+    UserDto user = insertMember("u1");
+    insertOrgPermission(user, OrganizationPermission.ADMINISTER_CUSTOMER);
+    blockUnlessAdmin(ORG);
+
+    assertThat(session(user, OUTSIDE_IP).hasMembership(org())).isTrue();
+  }
+
+  @Test
+  public void org_admin_is_blocked_when_the_allowlist_applies_to_admins() {
+    UserDto user = insertMember("u1");
+    insertOrgPermission(user, OrganizationPermission.ADMINISTER);
+    when(ipAccess.isBlocked(eq(ORG), eq(OUTSIDE_IP), any(BooleanSupplier.class))).thenReturn(true);
+
+    ServerUserSession session = session(user, OUTSIDE_IP);
+
+    assertThat(session.hasMembership(org())).isFalse();
+    assertThat(session.hasPermission(OrganizationPermission.ADMINISTER, ORG)).isFalse();
+  }
+
+  @Test
+  public void root_is_never_blocked_and_the_allowlist_is_not_consulted() {
+    UserDto root = user("root-uuid");
+    root.setRoot(true);
+    insertOrg();
+
+    ServerUserSession session = session(root, OUTSIDE_IP);
+
+    assertThat(session.hasMembership(org())).isTrue();
+    assertThat(session.hasPermission(OrganizationPermission.ADMINISTER, ORG)).isTrue();
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isFalse();
+    assertThat(session.isBlockedByIpAllowlistForKey(ORG_KEY)).isFalse();
+    assertThat(session.getIpBlockedOrganizationUuids()).isEmpty();
+    verifyNoInteractions(ipAccess);
+  }
+
+  @Test
+  public void anonymous_loses_org_permissions_of_a_blocked_org() {
+    insertOrg();
+    db.executeInsert("group_roles", "uuid", "gr1", "organization_uuid", ORG, "role", "scan");
+    when(ipAccess.isBlocked(eq(ORG), eq(OUTSIDE_IP), any(BooleanSupplier.class))).thenReturn(true);
+
+    ServerUserSession anonymous = session(null, OUTSIDE_IP);
+
+    assertThat(anonymous.hasPermission(OrganizationPermission.SCAN, ORG)).isFalse();
+  }
+
+  @Test
+  public void anonymous_keeps_org_permissions_of_an_org_that_does_not_block_it() {
+    insertOrg();
+    db.executeInsert("group_roles", "uuid", "gr1", "organization_uuid", ORG, "role", "scan");
+    when(ipAccess.isBlocked(eq(ORG), eq(OUTSIDE_IP), any(BooleanSupplier.class))).thenReturn(false);
+
+    ServerUserSession anonymous = session(null, OUTSIDE_IP);
+
+    assertThat(anonymous.hasPermission(OrganizationPermission.SCAN, ORG)).isTrue();
+  }
+
+  @Test
+  public void anonymous_is_never_taken_for_an_admin() {
+    insertOrg();
+    db.executeInsert("group_roles", "uuid", "gr1", "organization_uuid", ORG, "role", "admin");
+    blockUnlessAdmin(ORG);
+
+    assertThat(session(null, OUTSIDE_IP).isBlockedByIpAllowlist(ORG)).isTrue();
+  }
+
+  @Test
+  public void decision_is_made_once_per_organization_per_request() {
+    UserDto user = insertMember("u1");
+    insertOrgPermission(user, OrganizationPermission.SCAN);
+    blockUnlessAdmin(ORG);
+    ServerUserSession session = session(user, OUTSIDE_IP);
+
+    session.hasMembership(org());
+    session.hasPermission(OrganizationPermission.SCAN, ORG);
+    session.isBlockedByIpAllowlist(ORG);
+
+    verify(ipAccess, times(1)).isBlocked(eq(ORG), eq(OUTSIDE_IP), any(BooleanSupplier.class));
+  }
+
+  @Test
+  public void missing_or_unparseable_client_ip_is_passed_to_the_decision_as_is() {
+    UserDto user = insertMember("u1");
+    when(ipAccess.isBlocked(eq(ORG), eq("unknown"), any(BooleanSupplier.class))).thenReturn(true);
+    when(ipAccess.isBlocked(eq(ORG), eq(""), any(BooleanSupplier.class))).thenReturn(true);
+
+    assertThat(session(user, "unknown").hasMembership(org())).isFalse();
+    assertThat(session(user, "").hasMembership(org())).isFalse();
+  }
+
+  @Test
+  public void null_organization_is_not_blocked() {
+    UserDto user = insertMember("u1");
+
+    assertThat(session(user, OUTSIDE_IP).isBlockedByIpAllowlist(null)).isFalse();
+  }
+
+  @Test
+  public void session_without_allowlist_context_behaves_as_before() {
+    UserDto user = insertMember("u1");
+
+    ServerUserSession session = new ServerUserSession(db.getDbClient(), user, false);
+
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isFalse();
+    assertThat(session.getIpBlockedOrganizationUuids()).isEmpty();
+    assertThat(session.getClientIp()).isNull();
+    assertThat(session.hasMembership(org())).isTrue();
+    verifyNoInteractions(ipAccess);
+  }
+
+  private void blockUnlessAdmin(String organizationUuid) {
+    when(ipAccess.isBlocked(eq(organizationUuid), anyString(), any(BooleanSupplier.class)))
+      .thenAnswer(invocation -> !invocation.<BooleanSupplier>getArgument(2).getAsBoolean());
+  }
+
+  private ServerUserSession session(@Nullable UserDto user, @Nullable String ip) {
+    return new ServerUserSession(db.getDbClient(), user, false).withIpAllowlist(ipAccess, ip, null);
+  }
+
+  private static UserDto user(String uuid) {
+    return new UserDto().setUuid(uuid).setLogin("login-" + uuid).setActive(true);
+  }
+
+  private UserDto insertMember(String userUuid) {
+    insertOrg();
+    db.executeInsert("organization_members", "organization_uuid", ORG, "user_uuid", userUuid, "type", "STANDARD");
+    return user(userUuid);
+  }
+
+  private void insertOrg() {
+    if (db.countSql("select count(*) from organizations where uuid = '" + ORG + "'") == 0) {
+      db.executeInsert("organizations",
+        "uuid", ORG, "kee", ORG_KEY, "name", "Org", "default_quality_gate_uuid", "qg",
+        "new_project_private", false, "subscription", "FREE", "created_at", 1L, "updated_at", 1L,
+        "is_archived", false);
+    }
+  }
+
+  private OrganizationDto org() {
+    return db.getDbClient().organizationDao().selectByUuid(db.getSession(), ORG).orElseThrow();
+  }
+
+  private void insertOrgPermission(UserDto user, OrganizationPermission permission) {
+    db.executeInsert("user_roles", "uuid", "ur-" + permission.getKey(), "organization_uuid", ORG,
+      "role", permission.getKey(), "user_uuid", user.getUuid());
+  }
+}

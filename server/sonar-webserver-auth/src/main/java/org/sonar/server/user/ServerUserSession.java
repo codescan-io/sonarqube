@@ -46,6 +46,7 @@ import org.sonar.db.organization.OrganizationMemberDto;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
+import org.sonar.server.organization.OrganizationIpAccess;
 
 import static java.util.Collections.singleton;
 import static java.util.Objects.requireNonNull;
@@ -74,11 +75,65 @@ public class ServerUserSession extends AbstractUserSession {
   private Collection<GroupDto> groups;
   private final Set<String> organizationMembership = new HashSet<>();
   private final Map<String, Boolean> organizationsArchivedStatus = new HashMap<>();
+  private final Map<String, Boolean> ipBlockedByOrganizationUuid = new HashMap<>();
+
+  @CheckForNull
+  private OrganizationIpAccess ipAccess;
+  @CheckForNull
+  private String clientIp;
+  @CheckForNull
+  private String serviceLoginOrganizationKey;
 
   public ServerUserSession(DbClient dbClient, @Nullable UserDto userDto, boolean isAuthenticatedBrowserSession) {
     this.dbClient = dbClient;
     this.userDto = userDto;
     this.isAuthenticatedBrowserSession = isAuthenticatedBrowserSession;
+  }
+
+  /**
+   * Applies the organizations' IP allowlists (CSN-74) to this session. Called once per web request, before the
+   * session is used. A session this is never called on, such as one built outside a web request, is not restricted.
+   *
+   * @param clientIp the address the request came from, as Tomcat resolved it; a missing or unparseable one is blocked
+   *        by every organization with an allowlist
+   * @param serviceLoginOrganizationKey key of the organization the analysis job's service login is tied to, or null
+   *        for any other login
+   */
+  public ServerUserSession withIpAllowlist(OrganizationIpAccess ipAccess, @Nullable String clientIp, @Nullable String serviceLoginOrganizationKey) {
+    this.ipAccess = requireNonNull(ipAccess);
+    this.clientIp = clientIp;
+    this.serviceLoginOrganizationKey = serviceLoginOrganizationKey;
+    return this;
+  }
+
+  @Override
+  @CheckForNull
+  public String getClientIp() {
+    return clientIp;
+  }
+
+  @Override
+  public boolean isBlockedByIpAllowlist(@Nullable String organizationUuid) {
+    OrganizationIpAccess access = ipAccess;
+    if (access == null || organizationUuid == null || isRoot()) {
+      return false;
+    }
+    // decided once per organization per request; a failed read throws and is not remembered
+    return ipBlockedByOrganizationUuid.computeIfAbsent(organizationUuid,
+      uuid -> access.isBlocked(uuid, clientIp, () -> isOrganizationAdmin(uuid)));
+  }
+
+  /**
+   * Reads the raw organization permissions, not {@link #hasPermissionImpl}, which asks the allowlist and would call
+   * back into this check. A visitor who is not logged in is never an administrator, whatever the anonymous
+   * permissions say.
+   */
+  private boolean isOrganizationAdmin(String organizationUuid) {
+    if (!isLoggedIn()) {
+      return false;
+    }
+    Set<OrganizationPermission> permissions = permissionsByOrganizationUuid.computeIfAbsent(organizationUuid, this::loadOrganizationPermissions);
+    return permissions.contains(OrganizationPermission.ADMINISTER) || permissions.contains(OrganizationPermission.ADMINISTER_CUSTOMER);
   }
 
   private Collection<GroupDto> loadGroups() {
@@ -342,6 +397,9 @@ public class ServerUserSession extends AbstractUserSession {
     if (isRoot() && !isArchivedOrganization(organizationUuid)){
       return true;
     }
+    if (isBlockedByIpAllowlist(organizationUuid)) {
+      return false;
+    }
     Set<OrganizationPermission> permissions = permissionsByOrganizationUuid.computeIfAbsent(organizationUuid, this::loadOrganizationPermissions);
     return permissions.contains(permission);
   }
@@ -450,6 +508,10 @@ public class ServerUserSession extends AbstractUserSession {
     }
     if (isRoot()) {
       return true;
+    }
+    // also hides the organization's projects and components: loadEntityPermissions and the keepAuthorized* filters ask here
+    if (isBlockedByIpAllowlist(organizationUuid)) {
+      return false;
     }
 
     if (organizationMembership.contains(organizationUuid)) {
