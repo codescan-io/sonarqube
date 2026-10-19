@@ -184,7 +184,7 @@ public class OrganizationIpAccessTest {
   public void failed_load_is_thrown_to_the_caller_and_not_cached() {
     when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
 
-    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(OrganizationIpAccessUnavailableException.class);
 
     doReturn(List.of(range("org-a", false, "203.0.113.0/24"))).when(dao).selectEnabledRanges(any());
     assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
@@ -415,7 +415,7 @@ public class OrganizationIpAccessTest {
 
     system2.setNow(1_000_000L - 1_000L);
 
-    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(OrganizationIpAccessUnavailableException.class);
   }
 
   @Test
@@ -458,7 +458,7 @@ public class OrganizationIpAccessTest {
     assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
 
     system2.setNow(1_000_000L + 60_000L);
-    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(OrganizationIpAccessUnavailableException.class);
   }
 
   @Test
@@ -471,7 +471,20 @@ public class OrganizationIpAccessTest {
 
     system2.setNow(1_000_000L + 59_000L);
 
-    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(OrganizationIpAccessUnavailableException.class);
+  }
+
+  @Test
+  public void failed_load_without_a_snapshot_throws_the_unavailable_exception_with_the_database_error_as_cause() {
+    IllegalStateException dbError = new IllegalStateException("db down");
+    when(dao.selectEnabledRanges(any())).thenThrow(dbError);
+
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false))
+      .isInstanceOf(OrganizationIpAccessUnavailableException.class)
+      .hasCause(dbError);
+    assertThatThrownBy(() -> underTest.blockedOrganizationUuids("203.0.113.9"))
+      .isInstanceOf(OrganizationIpAccessUnavailableException.class)
+      .hasCause(dbError);
   }
 
   @Test
@@ -535,8 +548,12 @@ public class OrganizationIpAccessTest {
 
       finishLoad.countDown();
 
-      assertThatThrownBy(() -> first.get(10, TimeUnit.SECONDS)).hasRootCauseInstanceOf(IllegalStateException.class);
-      assertThatThrownBy(() -> second.get(10, TimeUnit.SECONDS)).hasRootCauseInstanceOf(IllegalStateException.class);
+      assertThatThrownBy(() -> first.get(10, TimeUnit.SECONDS))
+        .hasCauseInstanceOf(OrganizationIpAccessUnavailableException.class)
+        .hasRootCauseMessage("db down");
+      assertThatThrownBy(() -> second.get(10, TimeUnit.SECONDS))
+        .hasCauseInstanceOf(OrganizationIpAccessUnavailableException.class)
+        .hasRootCauseMessage("db down");
       verify(dao, times(1)).selectEnabledRanges(any());
     } finally {
       finishLoad.countDown();
@@ -616,7 +633,7 @@ public class OrganizationIpAccessTest {
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
       assertThatThrownBy(() -> impatient.isBlocked("org-a", "203.0.113.9", () -> false))
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(OrganizationIpAccessUnavailableException.class)
         .hasMessageContaining("Timed out");
 
       finishLoad.countDown();

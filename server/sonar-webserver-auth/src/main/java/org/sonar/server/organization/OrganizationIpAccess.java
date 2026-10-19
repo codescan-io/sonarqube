@@ -58,7 +58,7 @@ import static java.util.stream.Collectors.toSet;
  * once it is {@link #MAX_STALE_MS} old (twice the cache time), or if the clock went backwards since it was read.
  * The old snapshot is also used when a reload fails, within the same limit. When there is no usable snapshot,
  * callers wait (at most {@link #LOAD_WAIT_TIMEOUT_MS}) for the one load in progress and share its outcome. If that
- * load fails, or the wait runs out, the call throws. A failed read is never kept. Callers must treat an exception
+ * load fails, or the wait runs out, the call throws {@link OrganizationIpAccessUnavailableException}. A failed read is never kept. Callers must treat an exception
  * as a failed request, never as allowed.
  */
 @ServerSide
@@ -108,7 +108,8 @@ public class OrganizationIpAccess {
    *        admins. So no permission lookup is made for an organization without an allowlist. Whatever it throws is
    *        passed on, never taken as "allowed".
    * @return false for a null organization, as for one without an allowlist
-   * @throws RuntimeException when the allowlist cannot be read, for example when the database is unavailable
+   * @throws OrganizationIpAccessUnavailableException when the allowlist cannot be read, for example when the
+   *         database is unavailable
    */
   public boolean isBlocked(@Nullable String organizationUuid, @Nullable String clientIp, BooleanSupplier isOrgAdmin) {
     if (organizationUuid == null) {
@@ -125,7 +126,8 @@ public class OrganizationIpAccess {
    * Organizations whose allowlist is on and does not let {@code clientIp} in. Whether the caller is an admin
    * is not taken into account.
    *
-   * @throws RuntimeException when the allowlist cannot be read, for example when the database is unavailable
+   * @throws OrganizationIpAccessUnavailableException when the allowlist cannot be read, for example when the
+   *         database is unavailable
    */
   public Set<String> blockedOrganizationUuids(@Nullable String clientIp) {
     return policies().entrySet().stream()
@@ -230,7 +232,7 @@ public class OrganizationIpAccess {
         logLoadFailure(e);
         return old.policies();
       }
-      throw e;
+      throw new OrganizationIpAccessUnavailableException("Cannot read the IP allowlist", e);
     } finally {
       if (!mine.isDone()) {
         // an Error, not an exception: do not leave the waiting threads until their deadline
@@ -244,12 +246,12 @@ public class OrganizationIpAccess {
     try {
       return running.get(loadWaitTimeoutMs, TimeUnit.MILLISECONDS).policies();
     } catch (ExecutionException e) {
-      throw new IllegalStateException("Cannot read the IP allowlist", e.getCause());
+      throw new OrganizationIpAccessUnavailableException("Cannot read the IP allowlist", e.getCause());
     } catch (TimeoutException e) {
-      throw new IllegalStateException("Timed out waiting for the IP allowlist to load", e);
+      throw new OrganizationIpAccessUnavailableException("Timed out waiting for the IP allowlist to load", e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted while waiting for the IP allowlist to load", e);
+      throw new OrganizationIpAccessUnavailableException("Interrupted while waiting for the IP allowlist to load", e);
     }
   }
 
