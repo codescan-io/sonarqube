@@ -159,12 +159,12 @@ public class IpAllowlistActionInterceptorTest {
 
   @Test
   public void blank_values_are_ignored() {
-    blockedMemberOfAcme();
+    UserSession session = mock(UserSession.class);
 
-    DumbResponse response = call(userSession, request().setParam("organization", " ").setParam("project", ""));
+    DumbResponse response = call(session, request().setParam("organization", " ").setParam("project", ""));
 
     assertThat(response.stream().outputAsString()).isEqualTo(HANDLED);
-    verifyNoInteractions(dbClient);
+    verifyNoInteractions(session, dbClient);
   }
 
   @Test

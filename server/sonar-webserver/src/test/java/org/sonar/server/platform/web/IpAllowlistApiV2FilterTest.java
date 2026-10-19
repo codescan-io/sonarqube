@@ -129,13 +129,13 @@ public class IpAllowlistApiV2FilterTest {
 
   @Test
   public void blank_organization_is_let_through_without_a_lookup() throws Exception {
-    blockedMemberOfAcme();
+    UserSession session = mock(UserSession.class);
     when(request.getParameter("organization")).thenReturn(" ");
 
-    filter(userSession).doFilter(request, response, chain);
+    filter(session).doFilter(request, response, chain);
 
     verify(chain).doFilter(request, response);
-    verifyNoInteractions(dbClient);
+    verifyNoInteractions(session, dbClient);
   }
 
   @Test
