@@ -63,10 +63,9 @@ import static java.util.stream.Collectors.toSet;
  * that has run longer than {@link #TAKEOVER_AFTER_MS} is considered stuck: the next caller starts a new load, and
  * the stuck one can neither release the new one nor replace its result with an older list. At most
  * {@link #MAX_LOADS_IN_FLIGHT} loads run at once: when that many are stuck, a caller waits on the newest instead of
- * starting another. If a load fails, or the wait runs out,
- * the call throws {@link OrganizationIpAccessUnavailableException}, unless another load has left a usable
- * snapshot in the meantime. A failed read is never kept. Callers must treat an exception as a failed request,
- * never as allowed.
+ * starting another. If a load fails, or the wait runs out, the call throws
+ * {@link OrganizationIpAccessUnavailableException}, unless another load has left a usable snapshot in the meantime.
+ * A failed read is never kept. Callers must treat an exception as a failed request, never as allowed.
  */
 @ServerSide
 public class OrganizationIpAccess {
