@@ -25,6 +25,7 @@ import com.tngtech.java.junit.dataprovider.DataProvider;
 import com.tngtech.java.junit.dataprovider.DataProviderRunner;
 import com.tngtech.java.junit.dataprovider.UseDataProvider;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -53,6 +54,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -199,11 +201,47 @@ public class IpAllowlistActionInterceptorTest {
   }
 
   @Test
+  public void project_is_not_looked_up_when_no_organization_blocks_the_caller() {
+    UserSession session = mock(UserSession.class);
+    when(session.getIpBlockedOrganizationUuids()).thenReturn(Set.of());
+
+    DumbResponse response = call(session, request().setParam("project", "acme-project"));
+
+    assertThat(response.stream().outputAsString()).isEqualTo(HANDLED);
+    verify(dbClient, never()).openSession(anyBoolean());
+    verifyNoInteractions(componentDao);
+    verify(session, never()).isBlockedByIpAllowlist(any());
+  }
+
+  @Test
+  public void organization_is_not_resolved_when_no_organization_blocks_the_caller() {
+    UserSession session = mock(UserSession.class);
+    when(session.getIpBlockedOrganizationUuids()).thenReturn(Set.of());
+
+    DumbResponse response = call(session, request().setParam("organization", "acme"));
+
+    assertThat(response.stream().outputAsString()).isEqualTo(HANDLED);
+    verify(session, never()).isBlockedByIpAllowlistForKey(any());
+    verifyNoInteractions(dbClient);
+  }
+
+  @Test
+  public void project_of_an_organization_that_does_not_block_the_caller_is_not_checked_further() {
+    UserSession session = mock(UserSession.class);
+    when(session.getIpBlockedOrganizationUuids()).thenReturn(Set.of("org-2"));
+
+    DumbResponse response = call(session, request().setParam("project", "acme-project"));
+
+    assertThat(response.stream().outputAsString()).isEqualTo(HANDLED);
+    verify(session, never()).isBlockedByIpAllowlist(any());
+    verifyNoInteractions(organizationDao, organizationMemberDao);
+  }
+
+  @Test
   public void unreadable_allowlist_answers_503_never_403_401_500_or_allowed() {
     UserSession session = mock(UserSession.class);
     IpAllowlistUnavailableException unavailable = new IpAllowlistUnavailableException(new OrganizationIpAccessUnavailableException("db down", null));
-    when(session.isBlockedByIpAllowlistForKey(anyString())).thenThrow(unavailable);
-    when(session.isBlockedByIpAllowlist(anyString())).thenThrow(unavailable);
+    when(session.getIpBlockedOrganizationUuids()).thenThrow(unavailable);
     JsonElement unavailableBody = JsonParser.parseString("{\"errors\":[{\"msg\":\"" + unavailable.getMessage() + "\"}]}");
 
     DumbResponse byOrganization = call(session, request().setParam("organization", "acme"));
@@ -214,6 +252,7 @@ public class IpAllowlistActionInterceptorTest {
     assertThat(byProject.status()).isEqualTo(503);
     assertThat(body(byProject)).isEqualTo(unavailableBody);
     verify(ipAccess, never()).logBlocked(any(), any(), any());
+    verifyNoInteractions(componentDao);
   }
 
   private void blockedMemberOfAcme() {

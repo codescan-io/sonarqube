@@ -24,6 +24,7 @@ import com.google.gson.JsonParser;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.Rule;
 import org.junit.Test;
 import org.sonar.api.server.http.HttpRequest;
@@ -162,10 +163,23 @@ public class IpAllowlistApiV2FilterTest {
   }
 
   @Test
+  public void organization_is_not_resolved_when_no_organization_blocks_the_caller() throws Exception {
+    UserSession session = mock(UserSession.class);
+    when(session.getIpBlockedOrganizationUuids()).thenReturn(Set.of());
+    when(request.getParameter("organization")).thenReturn("acme");
+
+    filter(session).doFilter(request, response, chain);
+
+    verify(chain).doFilter(request, response);
+    verify(session, never()).isBlockedByIpAllowlistForKey(any());
+    verifyNoInteractions(dbClient);
+  }
+
+  @Test
   public void unreadable_allowlist_answers_503_never_403_401_500_or_allowed() throws Exception {
     UserSession session = mock(UserSession.class);
     IpAllowlistUnavailableException unavailable = new IpAllowlistUnavailableException(new OrganizationIpAccessUnavailableException("db down", null));
-    when(session.isBlockedByIpAllowlistForKey("acme")).thenThrow(unavailable);
+    when(session.getIpBlockedOrganizationUuids()).thenThrow(unavailable);
     when(request.getParameter("organization")).thenReturn("acme");
 
     filter(session).doFilter(request, response, chain);
