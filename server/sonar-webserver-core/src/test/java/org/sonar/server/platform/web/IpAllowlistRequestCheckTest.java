@@ -33,6 +33,7 @@ import org.sonar.server.organization.IpAllowlistUnavailableException;
 import org.sonar.server.organization.OrganizationIpAccess;
 import org.sonar.server.organization.OrganizationIpAccessUnavailableException;
 import org.sonar.server.tester.UserSessionRule;
+import org.sonar.server.user.ThreadLocalUserSession;
 import org.sonar.server.user.UserSession;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -166,6 +167,20 @@ public class IpAllowlistRequestCheckTest {
     assertThatThrownBy(() -> check.checkOrganizationKey("acme")).isSameAs(unavailable);
     assertThatThrownBy(() -> check.checkOrganizationUuid("org-1")).isSameAs(unavailable);
     assertThat(unavailable.httpCode()).isEqualTo(503);
+  }
+
+  @Test
+  public void request_that_carries_no_user_session_has_nothing_to_check() {
+    ThreadLocalUserSession threadLocalSession = new ThreadLocalUserSession();
+    IpAllowlistRequestCheck check = new IpAllowlistRequestCheck(dbClient, threadLocalSession, ipAccess);
+    try {
+      assertThat(check.hasUserSession()).isFalse();
+      threadLocalSession.set(userSession);
+      assertThat(check.hasUserSession()).isTrue();
+    } finally {
+      threadLocalSession.unload();
+    }
+    assertThat(underTest.hasUserSession()).isTrue();
   }
 
   private void listAsMember(String userUuid) {

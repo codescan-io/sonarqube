@@ -27,6 +27,7 @@ import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.server.organization.IpAllowlistBlockedException;
 import org.sonar.server.organization.OrganizationIpAccess;
+import org.sonar.server.user.ThreadLocalUserSession;
 import org.sonar.server.user.UserSession;
 
 /**
@@ -47,6 +48,13 @@ public class IpAllowlistRequestCheck {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.ipAccess = ipAccess;
+  }
+
+  /**
+   * False on the URLs the session filter skips, such as project badges. Asking the session there would answer 401.
+   */
+  public boolean hasUserSession() {
+    return !(userSession instanceof ThreadLocalUserSession threadLocalSession) || threadLocalSession.hasSession();
   }
 
   /**
