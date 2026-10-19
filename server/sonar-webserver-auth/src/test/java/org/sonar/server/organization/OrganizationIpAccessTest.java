@@ -561,6 +561,134 @@ public class OrganizationIpAccessTest {
     }
   }
 
+  // ---- a load that never returns ----
+
+  @Test(timeout = 30_000)
+  public void load_stuck_longer_than_the_wait_deadline_is_taken_over_by_another_thread() throws Exception {
+    AtomicInteger calls = new AtomicInteger();
+    CountDownLatch stuckStarted = new CountDownLatch(1);
+    CountDownLatch releaseStuck = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      if (calls.incrementAndGet() == 1) {
+        stuckStarted.countDown();
+        assertThat(releaseStuck.await(10, TimeUnit.SECONDS)).isTrue();
+        return List.of(range("org-a", false, "198.51.100.0/24"));
+      }
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      Future<Boolean> stuck = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      system2.setNow(1_000_000L + OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS);
+      assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+      verify(dao, times(2)).selectEnabledRanges(any());
+
+      releaseStuck.countDown();
+      assertThat(stuck.get(10, TimeUnit.SECONDS)).isTrue();
+      // the late answer of the stuck load, which read the list earlier, does not replace the newer one
+      assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+      verify(dao, times(2)).selectEnabledRanges(any());
+    } finally {
+      releaseStuck.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 30_000)
+  public void load_that_has_not_yet_passed_the_wait_deadline_is_not_taken_over() throws Exception {
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), 50L);
+    CountDownLatch loadStarted = new CountDownLatch(1);
+    CountDownLatch finishLoad = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      loadStarted.countDown();
+      assertThat(finishLoad.await(10, TimeUnit.SECONDS)).isTrue();
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      system2.setNow(1_000_000L + 49L);
+      assertThatThrownBy(() -> access.isBlocked("org-a", "203.0.113.9", () -> false))
+        .isInstanceOf(OrganizationIpAccessUnavailableException.class)
+        .hasMessageContaining("Timed out");
+      verify(dao, times(1)).selectEnabledRanges(any());
+    } finally {
+      finishLoad.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 30_000)
+  public void failed_takeover_load_throws_and_never_lets_the_request_in() throws Exception {
+    AtomicInteger calls = new AtomicInteger();
+    CountDownLatch stuckStarted = new CountDownLatch(1);
+    CountDownLatch releaseStuck = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      if (calls.incrementAndGet() == 1) {
+        stuckStarted.countDown();
+        assertThat(releaseStuck.await(10, TimeUnit.SECONDS)).isTrue();
+        return List.of();
+      }
+      throw new IllegalStateException("db down");
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      system2.setNow(1_000_000L + OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS);
+      assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false))
+        .isInstanceOf(OrganizationIpAccessUnavailableException.class)
+        .hasRootCauseMessage("db down");
+    } finally {
+      releaseStuck.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 30_000)
+  public void finishing_the_stuck_load_does_not_release_the_load_that_took_over() throws Exception {
+    long deadline = 45_000L;
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), deadline);
+    AtomicInteger calls = new AtomicInteger();
+    CountDownLatch stuckStarted = new CountDownLatch(1);
+    CountDownLatch releaseStuck = new CountDownLatch(1);
+    CountDownLatch takeoverStarted = new CountDownLatch(1);
+    CountDownLatch releaseTakeover = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      int call = calls.incrementAndGet();
+      CountDownLatch started = call == 1 ? stuckStarted : takeoverStarted;
+      CountDownLatch release = call == 1 ? releaseStuck : releaseTakeover;
+      started.countDown();
+      assertThat(release.await(10, TimeUnit.SECONDS)).isTrue();
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Future<Boolean> stuck = executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      system2.setNow(1_000_000L + deadline);
+      executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(takeoverStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      releaseStuck.countDown();
+      assertThat(stuck.get(10, TimeUnit.SECONDS)).isFalse();
+
+      // the takeover load is still running: this call serves the old snapshot and starts no third load
+      system2.setNow(1_000_000L + deadline + 1_000L);
+      assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+      verify(dao, times(2)).selectEnabledRanges(any());
+    } finally {
+      releaseStuck.countDown();
+      releaseTakeover.countDown();
+      executor.shutdownNow();
+    }
+  }
+
   // ---- the admin check is only made when it can change the answer ----
 
   @Test

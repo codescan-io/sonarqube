@@ -55,11 +55,14 @@ import static java.util.stream.Collectors.toSet;
  * <p>All organizations with the allowlist on are read in one query and kept for {@link #SNAPSHOT_TTL_MS}.
  * When the snapshot is older, one thread reloads it. The others keep answering from the old snapshot, so a slow
  * database does not stall every request. A snapshot that can no longer be trusted is never served: it is dropped
- * once it is {@link #MAX_STALE_MS} old (twice the cache time), or if the clock went backwards since it was read.
+ * once it is {@link #MAX_STALE_MS} old (twice the cache time, counted from the start of the read and checked
+ * again after a failed reload), or if the clock went backwards since it was read.
  * The old snapshot is also used when a reload fails, within the same limit. When there is no usable snapshot,
- * callers wait (at most {@link #LOAD_WAIT_TIMEOUT_MS}) for the one load in progress and share its outcome. If that
- * load fails, or the wait runs out, the call throws {@link OrganizationIpAccessUnavailableException}. A failed read is never kept. Callers must treat an exception
- * as a failed request, never as allowed.
+ * callers wait (at most {@link #LOAD_WAIT_TIMEOUT_MS}) for the one load in progress and share its outcome. A load
+ * that has run longer than that is considered stuck: the next caller starts a new load, and the stuck one can
+ * neither release the new one nor replace its result with an older list. If a load fails, or the wait runs out,
+ * the call throws {@link OrganizationIpAccessUnavailableException}. A failed read is never kept. Callers must
+ * treat an exception as a failed request, never as allowed.
  */
 @ServerSide
 public class OrganizationIpAccess {
@@ -68,7 +71,7 @@ public class OrganizationIpAccess {
   static final long SNAPSHOT_TTL_MS = 30_000L;
   /** Oldest a snapshot may be and still answer while a reload is running or after a reload failed. */
   static final long MAX_STALE_MS = 2 * SNAPSHOT_TTL_MS;
-  static final long LOAD_WAIT_TIMEOUT_MS = 10_000L;
+  static final long LOAD_WAIT_TIMEOUT_MS = 3_000L;
   static final long BLOCK_LOG_INTERVAL_MS = 60_000L;
   static final long BLOCK_LOG_CLEANUP_INTERVAL_MS = 10_000L;
   static final int MAX_TRACKED_BLOCKS = 10_000;
@@ -85,7 +88,7 @@ public class OrganizationIpAccess {
   private final AtomicLong lastBlockLogCleanupAt = new AtomicLong();
   private final AtomicInteger blockLogCleanups = new AtomicInteger();
 
-  private final AtomicReference<CompletableFuture<Snapshot>> loadInProgress = new AtomicReference<>();
+  private final AtomicReference<Load> loadInProgress = new AtomicReference<>();
   private final AtomicLong lastLoadFailureLogAt = new AtomicLong();
   private final long loadWaitTimeoutMs;
 
@@ -196,37 +199,43 @@ public class OrganizationIpAccess {
   }
 
   private Map<String, Policy> policies() {
-    long now = system2.now();
-    Snapshot current = snapshot;
-    if (current != null && current.isFresh(now)) {
-      return current.policies();
+    while (true) {
+      long now = system2.now();
+      Snapshot current = snapshot;
+      if (current != null && current.isFresh(now)) {
+        return current.policies();
+      }
+      Load running = loadInProgress.get();
+      if (running == null || running.isStuck(now, loadWaitTimeoutMs)) {
+        Load mine = new Load(new CompletableFuture<>(), now);
+        if (loadInProgress.compareAndSet(running, mine)) {
+          return reload(mine);
+        }
+        // another thread started or finished a load first: look again
+        continue;
+      }
+      if (current != null && current.isUsableWhenStale(now)) {
+        return current.policies();
+      }
+      return awaitLoad(running.result());
     }
-    CompletableFuture<Snapshot> mine = new CompletableFuture<>();
-    CompletableFuture<Snapshot> running = loadInProgress.compareAndExchange(null, mine);
-    if (running == null) {
-      return reload(mine);
-    }
-    if (current != null && current.isUsableWhenStale(now)) {
-      return current.policies();
-    }
-    return awaitLoad(running);
   }
 
   /** Runs the one load. Every other thread that has no usable snapshot is waiting on {@code mine}. */
-  private Map<String, Policy> reload(CompletableFuture<Snapshot> mine) {
+  private Map<String, Policy> reload(Load mine) {
     try {
       // A load that finished just before this thread took over has already refreshed the snapshot.
       Snapshot current = snapshot;
       if (current != null && current.isFresh(system2.now())) {
-        mine.complete(current);
+        mine.result().complete(current);
         return current.policies();
       }
-      Snapshot loaded = new Snapshot(load(), system2.now());
-      snapshot = loaded;
-      mine.complete(loaded);
+      Snapshot loaded = new Snapshot(load(), mine.startedAt());
+      publish(loaded);
+      mine.result().complete(loaded);
       return loaded.policies();
     } catch (RuntimeException e) {
-      mine.completeExceptionally(e);
+      mine.result().completeExceptionally(e);
       Snapshot old = snapshot;
       if (old != null && old.isUsableWhenStale(system2.now())) {
         logLoadFailure(e);
@@ -234,11 +243,20 @@ public class OrganizationIpAccess {
       }
       throw new OrganizationIpAccessUnavailableException("Cannot read the IP allowlist", e);
     } finally {
-      if (!mine.isDone()) {
+      if (!mine.result().isDone()) {
         // an Error, not an exception: do not leave the waiting threads until their deadline
-        mine.completeExceptionally(new IllegalStateException("The IP allowlist load was aborted"));
+        mine.result().completeExceptionally(new IllegalStateException("The IP allowlist load was aborted"));
       }
-      loadInProgress.set(null);
+      // not set(null): another thread may have taken over from this load while it was stuck
+      loadInProgress.compareAndSet(mine, null);
+    }
+  }
+
+  /** A load that was taken over from can finish late with a list read earlier than the current one. */
+  private synchronized void publish(Snapshot loaded) {
+    Snapshot current = snapshot;
+    if (current == null || loaded.loadedAt() >= current.loadedAt()) {
+      snapshot = loaded;
     }
   }
 
@@ -337,6 +355,14 @@ public class OrganizationIpAccess {
       out.append(Character.isISOControl(c) ? '_' : c);
     }
     return out.toString();
+  }
+
+  /** {@code startedAt} is when the database read began, so a snapshot is never presented as newer than its data. */
+  private record Load(CompletableFuture<Snapshot> result, long startedAt) {
+    /** A load that has run longer than the wait deadline, or whose start lies in the future of the clock. */
+    boolean isStuck(long now, long deadlineMs) {
+      return now < startedAt || now - startedAt >= deadlineMs;
+    }
   }
 
   private record Snapshot(Map<String, Policy> policies, long loadedAt) {
