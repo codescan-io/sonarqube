@@ -804,6 +804,72 @@ public class OrganizationIpAccessTest {
     }
   }
 
+  @Test(timeout = 30_000)
+  public void thread_waiting_on_a_stuck_load_that_then_fails_gets_the_list_of_the_load_that_took_over() throws Exception {
+    AtomicInteger calls = new AtomicInteger();
+    CountDownLatch stuckStarted = new CountDownLatch(1);
+    CountDownLatch releaseStuck = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      if (calls.incrementAndGet() == 1) {
+        stuckStarted.countDown();
+        assertThat(releaseStuck.await(10, TimeUnit.SECONDS)).isTrue();
+        throw new IllegalStateException("db timed out");
+      }
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      system2.setNow(1_000_000L + 1_000L);
+      Future<Boolean> waiter = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      awaitWaitingThreads(underTest, 1);
+
+      system2.setNow(1_000_000L + OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS);
+      assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+      releaseStuck.countDown();
+
+      assertThat(waiter.get(10, TimeUnit.SECONDS)).isFalse();
+    } finally {
+      releaseStuck.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 30_000)
+  public void thread_whose_wait_on_a_stuck_load_runs_out_gets_the_list_of_the_load_that_took_over() throws Exception {
+    long waitMs = 1_000L;
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), waitMs);
+    AtomicInteger calls = new AtomicInteger();
+    CountDownLatch stuckStarted = new CountDownLatch(1);
+    CountDownLatch releaseStuck = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      if (calls.incrementAndGet() == 1) {
+        stuckStarted.countDown();
+        assertThat(releaseStuck.await(20, TimeUnit.SECONDS)).isTrue();
+        return List.of();
+      }
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      system2.setNow(1_000_000L + 100L);
+      Future<Boolean> waiter = executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      awaitWaitingThreads(access, 1);
+
+      system2.setNow(1_000_000L + waitMs);
+      assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+
+      // the stuck load never finishes: the wait runs out, and the newer list answers
+      assertThat(waiter.get(10, TimeUnit.SECONDS)).isFalse();
+    } finally {
+      releaseStuck.countDown();
+      executor.shutdownNow();
+    }
+  }
+
   // ---- the admin check is only made when it can change the answer ----
 
   @Test

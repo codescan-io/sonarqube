@@ -61,8 +61,9 @@ import static java.util.stream.Collectors.toSet;
  * callers wait (at most {@link #LOAD_WAIT_TIMEOUT_MS}) for the one load in progress and share its outcome. A load
  * that has run longer than that is considered stuck: the next caller starts a new load, and the stuck one can
  * neither release the new one nor replace its result with an older list. If a load fails, or the wait runs out,
- * the call throws {@link OrganizationIpAccessUnavailableException}. A failed read is never kept. Callers must
- * treat an exception as a failed request, never as allowed.
+ * the call throws {@link OrganizationIpAccessUnavailableException}, unless another load has left a usable
+ * snapshot in the meantime. A failed read is never kept. Callers must treat an exception as a failed request,
+ * never as allowed.
  */
 @ServerSide
 public class OrganizationIpAccess {
@@ -283,15 +284,24 @@ public class OrganizationIpAccess {
     try {
       return running.get(loadWaitTimeoutMs, TimeUnit.MILLISECONDS).policies();
     } catch (ExecutionException e) {
-      throw new OrganizationIpAccessUnavailableException("Cannot read the IP allowlist", e.getCause());
+      return usableSnapshotOrThrow("Cannot read the IP allowlist", e.getCause());
     } catch (TimeoutException e) {
-      throw new OrganizationIpAccessUnavailableException("Timed out waiting for the IP allowlist to load", e);
+      return usableSnapshotOrThrow("Timed out waiting for the IP allowlist to load", e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new OrganizationIpAccessUnavailableException("Interrupted while waiting for the IP allowlist to load", e);
     } finally {
       waitingThreads.decrementAndGet();
     }
+  }
+
+  /** The awaited load may have been stuck while another load, which took over from it, refreshed the snapshot. */
+  private Map<String, Policy> usableSnapshotOrThrow(String message, Throwable cause) {
+    Snapshot current = snapshot;
+    if (current != null && current.isUsableWhenStale(system2.now())) {
+      return current.policies();
+    }
+    throw new OrganizationIpAccessUnavailableException(message, cause);
   }
 
   /** While the database is down every request would otherwise log. */
