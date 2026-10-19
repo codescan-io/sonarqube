@@ -28,7 +28,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -96,8 +95,7 @@ public class OrganizationIpAccess {
   private final AtomicInteger blockLogCleanups = new AtomicInteger();
   private final AtomicInteger waitingThreads = new AtomicInteger();
 
-  private final AtomicReference<Load> loadInProgress = new AtomicReference<>();
-  private final Semaphore loadSlots = new Semaphore(MAX_LOADS_IN_FLIGHT);
+  private final AtomicReference<Loads> loads = new AtomicReference<>(new Loads(null, 0));
   private final AtomicLong lastLoadFailureLogAt;
   private final AtomicLong loadNumbers = new AtomicLong();
   private final long loadWaitTimeoutMs;
@@ -228,25 +226,15 @@ public class OrganizationIpAccess {
       if (current != null && current.isFresh(now)) {
         return current.policies();
       }
-      Load running = loadInProgress.get();
-      if (running == null || running.isStuck(now, takeoverAfterMs)) {
-        if (loadSlots.tryAcquire()) {
-          try {
-            Load mine = new Load(new CompletableFuture<>(), loadNumbers.incrementAndGet(), now);
-            if (loadInProgress.compareAndSet(running, mine)) {
-              return reload(mine);
-            }
-          } finally {
-            loadSlots.release();
-          }
-          // another thread started or finished a load first: look again
-          continue;
+      Loads state = loads.get();
+      Load running = state.current();
+      if (running == null || (running.isStuck(now, takeoverAfterMs) && state.inFlight() < MAX_LOADS_IN_FLIGHT)) {
+        Load mine = new Load(new CompletableFuture<>(), loadNumbers.incrementAndGet(), now);
+        if (loads.compareAndSet(state, new Loads(mine, state.inFlight() + 1))) {
+          return reload(mine);
         }
-        if (running == null) {
-          // cannot last: with no load in progress, at most one stuck load holds a slot
-          Thread.onSpinWait();
-          continue;
-        }
+        // another thread started or finished a load first: look again
+        continue;
       }
       if (current != null && current.isUsableWhenStale(now)) {
         return current.policies();
@@ -277,8 +265,8 @@ public class OrganizationIpAccess {
         // an Error, not an exception: do not leave the waiting threads until their deadline
         mine.result().completeExceptionally(new IllegalStateException("The IP allowlist load was aborted"));
       }
-      // not set(null): another thread may have taken over from this load while it was stuck
-      loadInProgress.compareAndSet(mine, null);
+      // another thread may have taken over from this load while it was stuck: that one stays current
+      loads.updateAndGet(s -> new Loads(s.current() == mine ? null : s.current(), s.inFlight() - 1));
     }
   }
 
@@ -415,6 +403,14 @@ public class OrganizationIpAccess {
     boolean isStuck(long now, long deadlineMs) {
       return now - startedAt >= deadlineMs;
     }
+  }
+
+  /**
+   * The current load and the number of loads not yet ended, changed together. Only the current load can be taken
+   * over, and only while fewer than {@link #MAX_LOADS_IN_FLIGHT} run, so when there is no current load fewer than
+   * that many run and a caller can always start one.
+   */
+  private record Loads(@Nullable Load current, int inFlight) {
   }
 
   private record Snapshot(Map<String, Policy> policies, long loadNumber, long loadedAt) {

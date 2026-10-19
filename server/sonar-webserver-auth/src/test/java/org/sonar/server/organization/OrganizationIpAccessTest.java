@@ -27,6 +27,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -1005,6 +1006,67 @@ public class OrganizationIpAccessTest {
     }
   }
 
+  @Test(timeout = 30_000)
+  public void caller_arriving_while_a_load_finishes_gets_an_answer_without_spinning() throws Exception {
+    AtomicLong clockReads = new AtomicLong();
+    AtomicReference<Thread> pauseOnNextRead = new AtomicReference<>();
+    CountDownLatch finishing = new CountDownLatch(1);
+    CountDownLatch finish = new CountDownLatch(1);
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, settings.asConfig(), () -> {
+      clockReads.incrementAndGet();
+      if (pauseOnNextRead.compareAndSet(Thread.currentThread(), null)) {
+        finishing.countDown();
+        assertThat(await(finish)).isTrue();
+      }
+      return clock.get();
+    }, OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    access.isBlocked("org-a", "192.0.2.1", () -> false);
+    AtomicInteger calls = new AtomicInteger();
+    CountDownLatch stuckStarted = new CountDownLatch(1);
+    CountDownLatch releaseStuck = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      int call = calls.incrementAndGet();
+      if (call == 1) {
+        stuckStarted.countDown();
+        assertThat(releaseStuck.await(20, TimeUnit.SECONDS)).isTrue();
+        return List.of();
+      }
+      if (call == 2) {
+        // the load that took over fails, and stops at its next clock reading, on its way out
+        pauseOnNextRead.set(Thread.currentThread());
+        throw new IllegalStateException("db down");
+      }
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      clock.set(1_000_000L + OrganizationIpAccess.MAX_STALE_MS);
+      executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      clock.addAndGet(OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      Future<Boolean> takeover = executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(finishing.await(10, TimeUnit.SECONDS)).isTrue();
+
+      long readsBefore = clockReads.get();
+      assertThatThrownBy(() -> access.isBlocked("org-a", "203.0.113.9", () -> false))
+        .isInstanceOf(OrganizationIpAccessUnavailableException.class)
+        .hasRootCauseMessage("db down");
+      assertThat(clockReads.get() - readsBefore).isLessThanOrEqualTo(3);
+
+      finish.countDown();
+      assertThatThrownBy(() -> takeover.get(10, TimeUnit.SECONDS)).hasCauseInstanceOf(OrganizationIpAccessUnavailableException.class);
+      // the stuck load still runs, yet the next caller starts a load at once
+      readsBefore = clockReads.get();
+      assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+      assertThat(clockReads.get() - readsBefore).isLessThanOrEqualTo(3);
+      assertThat(calls).hasValue(3);
+    } finally {
+      finish.countDown();
+      releaseStuck.countDown();
+      executor.shutdownNow();
+    }
+  }
+
   // ---- the admin check is only made when it can change the answer ----
 
   @Test
@@ -1112,6 +1174,15 @@ public class OrganizationIpAccessTest {
     while (access.waitingThreadCount() < expected) {
       assertThat(System.nanoTime()).as("threads waiting for the load").isLessThan(giveUpAt);
       Thread.sleep(5);
+    }
+  }
+
+  private static boolean await(CountDownLatch latch) {
+    try {
+      return latch.await(10, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return false;
     }
   }
 
