@@ -19,9 +19,17 @@
  */
 package org.sonar.server.authentication;
 
+import com.google.gson.Gson;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import javax.annotation.CheckForNull;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import java.util.Objects;
 import java.util.Optional;
@@ -36,6 +44,10 @@ import org.sonar.db.user.UserTokenDto;
 import org.sonar.server.authentication.event.AuthenticationEvent;
 import org.sonar.server.authentication.event.AuthenticationEvent.Source;
 import org.sonar.server.authentication.event.AuthenticationException;
+import org.sonar.server.http.JavaxHttpRequest;
+import org.sonar.server.organization.IpAllowlistUnavailableException;
+import org.sonar.server.organization.OrganizationIpAccess;
+import org.sonar.server.user.ServerUserSession;
 import org.sonar.server.user.ThreadLocalUserSession;
 import org.sonar.server.user.TokenUserSession;
 import org.sonar.server.user.UserSession;
@@ -52,6 +64,9 @@ import static org.sonar.server.authentication.AuthenticationRedirection.redirect
 
 @ServerSide
 public class UserSessionInitializer {
+
+  private static final Logger LOG = LoggerFactory.getLogger(UserSessionInitializer.class);
+  private static final Gson GSON = new Gson();
 
   /**
    * Key of attribute to be used for displaying user login
@@ -101,13 +116,15 @@ public class UserSessionInitializer {
   private final ThreadLocalUserSession threadLocalSession;
   private final AuthenticationEvent authenticationEvent;
   private final RequestAuthenticator requestAuthenticator;
+  private final OrganizationIpAccess organizationIpAccess;
 
   public UserSessionInitializer(Configuration config, ThreadLocalUserSession threadLocalSession, AuthenticationEvent authenticationEvent,
-    RequestAuthenticator requestAuthenticator) {
+    RequestAuthenticator requestAuthenticator, OrganizationIpAccess organizationIpAccess) {
     this.config = config;
     this.threadLocalSession = threadLocalSession;
     this.authenticationEvent = authenticationEvent;
     this.requestAuthenticator = requestAuthenticator;
+    this.organizationIpAccess = organizationIpAccess;
   }
 
   public boolean initUserSession(HttpRequest request, HttpResponse response) {
@@ -140,6 +157,24 @@ public class UserSessionInitializer {
       // Web pages should redirect to Login Page
       redirectTo(response, request.getContextPath() + returnUrl);
       return false;
+    } catch (IpAllowlistUnavailableException e) {
+      // not a login failure: the user stays logged in and can retry once the allowlist can be read again
+      answerUnavailable(response, e);
+      return false;
+    }
+  }
+
+  /** Same body as the web service layer gives a failed call, so the UI shows the message. Already logged. */
+  private static void answerUnavailable(HttpResponse response, IpAllowlistUnavailableException e) {
+    response.setStatus(e.httpCode());
+    response.setContentType("application/json");
+    try {
+      PrintWriter writer = response.getWriter();
+      writer.write(GSON.toJson(Map.of("errors", List.of(Map.of("msg", e.getMessage())))));
+      writer.flush();
+    } catch (IOException | RuntimeException writeFailure) {
+      // the status is set; the client most likely went away
+      LOG.debug("Cannot write the body of the HTTP 503 answer", writeFailure);
     }
   }
 
@@ -150,6 +185,10 @@ public class UserSessionInitializer {
 
   private void loadUserSession(HttpRequest request, HttpResponse response, boolean urlSupportsSystemPasscode, String path) {
     UserSession session = requestAuthenticator.authenticate(request, response);
+    if (session instanceof ServerUserSession serverUserSession) {
+      // covers anonymous and token sessions too; must happen before the session is used below
+      serverUserSession.withIpAllowlist(organizationIpAccess, request.getRemoteAddr(), serviceLoginOrganization(request));
+    }
     if (!session.isLoggedIn() && !urlSupportsSystemPasscode && config.getBoolean(CORE_FORCE_AUTHENTICATION_PROPERTY).orElse(CORE_FORCE_AUTHENTICATION_DEFAULT_VALUE)) {
       // authentication is required
       throw AuthenticationException.newBuilder()
@@ -161,7 +200,8 @@ public class UserSessionInitializer {
         String[] organizationKeys = request.getParameterValues("organization");
       if (ArrayUtils.isNotEmpty(organizationKeys)) {
         boolean hasPermission = Arrays.stream(organizationKeys)
-                .map(session::hasMembership).reduce(true, (a, b) -> a && b);
+                // a member blocked by the IP allowlist goes on, so the web service can say why, instead of being logged out
+                .map(key -> session.hasMembership(key) || session.isBlockedByIpAllowlistForKey(key)).reduce(true, (a, b) -> a && b);
         if (!hasPermission) {
           throw AuthenticationException.newBuilder()
                   .setSource(Source.local(AuthenticationEvent.Method.BASIC))
@@ -175,6 +215,24 @@ public class UserSessionInitializer {
     checkTokenUserSession(response, session);
     request.setAttribute(ACCESS_LOG_LOGIN, Objects.toString(session.getLogin(), "-"));
     MDC.put(USER_LOGIN_MDC_KEY, Objects.toString(session.getLogin(), "-"));
+  }
+
+  /**
+   * Key of the organization the analysis job's service login is tied to, as recorded by {@link JwtHttpHandler} while
+   * authenticating. Null for every other login, including a service login whose token names no organization.
+   */
+  @CheckForNull
+  private static String serviceLoginOrganization(HttpRequest request) {
+    if (!(request instanceof JavaxHttpRequest javaxRequest)) {
+      return null;
+    }
+    javax.servlet.http.HttpServletRequest servletRequest = javaxRequest.getDelegate();
+    if (!Boolean.TRUE.equals(servletRequest.getAttribute(JwtHttpHandler.SERVICE_LOGIN_ATTRIBUTE))) {
+      return null;
+    }
+    return servletRequest.getAttribute(JwtHttpHandler.SERVICE_LOGIN_ORG_ATTRIBUTE) instanceof String organizationKey && !organizationKey.isBlank()
+      ? organizationKey
+      : null;
   }
 
   private static void checkTokenUserSession(HttpResponse response, UserSession session) {

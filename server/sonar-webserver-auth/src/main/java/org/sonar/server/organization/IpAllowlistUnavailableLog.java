@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.sonar.server.exceptions.ServerException;
 
 /**
  * Turns "the IP allowlist cannot be read" into the HTTP 503 the request fails with, and logs it. The web service
@@ -36,8 +35,6 @@ public class IpAllowlistUnavailableLog {
   private static final Logger LOG = LoggerFactory.getLogger(IpAllowlistUnavailableLog.class);
 
   static final long INTERVAL_MS = 60_000L;
-  static final String MESSAGE = "Access to this organization cannot be checked because its IP allowlist cannot be read right now. "
-    + "Try again in a few minutes.";
 
   private final LongSupplier clock;
   private final AtomicLong nextWarningAt = new AtomicLong(Long.MIN_VALUE);
@@ -48,11 +45,9 @@ public class IpAllowlistUnavailableLog {
   }
 
   /** Logs the failure and returns the exception to throw. Never returns a result that lets the request through. */
-  public ServerException unavailable(OrganizationIpAccessUnavailableException failure) {
+  public IpAllowlistUnavailableException unavailable(OrganizationIpAccessUnavailableException failure) {
     log(failure);
-    ServerException result = new ServerException(503, MESSAGE);
-    result.initCause(failure);
-    return result;
+    return new IpAllowlistUnavailableException(failure);
   }
 
   private void log(OrganizationIpAccessUnavailableException failure) {

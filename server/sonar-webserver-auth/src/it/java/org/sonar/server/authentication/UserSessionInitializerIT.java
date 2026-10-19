@@ -19,6 +19,8 @@
  */
 package org.sonar.server.authentication;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import org.junit.Before;
@@ -39,18 +41,27 @@ import org.sonar.server.authentication.event.AuthenticationEvent;
 import org.sonar.server.authentication.event.AuthenticationEvent.Method;
 import org.sonar.server.authentication.event.AuthenticationEvent.Source;
 import org.sonar.server.authentication.event.AuthenticationException;
+import org.sonar.server.http.JavaxHttpRequest;
+import org.sonar.server.organization.IpAllowlistUnavailableException;
+import org.sonar.server.organization.OrganizationIpAccess;
+import org.sonar.server.organization.OrganizationIpAccessUnavailableException;
 import org.sonar.server.tester.AnonymousMockUserSession;
 import org.sonar.server.tester.MockUserSession;
+import org.sonar.server.user.ServerUserSession;
 import org.sonar.server.user.ThreadLocalUserSession;
 import org.sonar.server.user.TokenUserSession;
 import org.sonar.server.user.UserSession;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.sonar.api.utils.DateUtils.formatDateTime;
@@ -68,7 +79,9 @@ public class UserSessionInitializerIT {
   private MapSettings settings = new MapSettings();
   private ArgumentCaptor<Cookie> cookieArgumentCaptor = ArgumentCaptor.forClass(Cookie.class);
 
-  private UserSessionInitializer underTest = new UserSessionInitializer(settings.asConfig(), threadLocalSession, authenticationEvent, authenticator);
+  private OrganizationIpAccess ipAccess = mock(OrganizationIpAccess.class);
+
+  private UserSessionInitializer underTest = new UserSessionInitializer(settings.asConfig(), threadLocalSession, authenticationEvent, authenticator, ipAccess);
 
   @Before
   public void setUp() {
@@ -246,6 +259,140 @@ public class UserSessionInitializerIT {
     underTest.removeUserSession();
 
     assertThat(MDC.get("LOGIN")).isNull();
+  }
+
+  @Test
+  public void server_session_gets_the_client_address_and_the_service_login_organization() {
+    JavaxHttpRequest javaxRequest = javaxRequest("/api/issues/search", "10.0.0.5", true, "org-key");
+    ServerUserSession session = loggedInServerSession(javaxRequest);
+
+    assertThat(underTest.initUserSession(javaxRequest, response)).isTrue();
+
+    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", "org-key");
+    verify(threadLocalSession).set(session);
+  }
+
+  @Test
+  public void service_flag_without_an_organization_gives_no_service_organization() {
+    JavaxHttpRequest javaxRequest = javaxRequest("/api/issues/search", "10.0.0.5", true, null);
+    ServerUserSession session = loggedInServerSession(javaxRequest);
+
+    underTest.initUserSession(javaxRequest, response);
+
+    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null);
+  }
+
+  @Test
+  public void organization_without_the_service_flag_gives_no_service_organization() {
+    JavaxHttpRequest javaxRequest = javaxRequest("/api/issues/search", "10.0.0.5", false, "org-key");
+    ServerUserSession session = loggedInServerSession(javaxRequest);
+
+    underTest.initUserSession(javaxRequest, response);
+
+    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null);
+  }
+
+  @Test
+  public void blank_or_non_text_service_organization_is_ignored() {
+    JavaxHttpRequest javaxRequest = javaxRequest("/api/issues/search", "10.0.0.5", true, " ");
+    ServerUserSession session = loggedInServerSession(javaxRequest);
+    underTest.initUserSession(javaxRequest, response);
+    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null);
+
+    JavaxHttpRequest numberOrgRequest = javaxRequest("/api/issues/search", "10.0.0.5", true, 42);
+    ServerUserSession other = loggedInServerSession(numberOrgRequest);
+    underTest.initUserSession(numberOrgRequest, response);
+    verify(other).withIpAllowlist(ipAccess, "10.0.0.5", null);
+  }
+
+  @Test
+  public void request_that_is_not_a_javax_request_gives_no_service_organization() {
+    when(request.getRemoteAddr()).thenReturn("192.0.2.1");
+    ServerUserSession session = loggedInServerSession(request);
+
+    underTest.initUserSession(request, response);
+
+    verify(session).withIpAllowlist(ipAccess, "192.0.2.1", null);
+  }
+
+  @Test
+  public void missing_client_address_is_passed_on_as_is() {
+    when(request.getRemoteAddr()).thenReturn(null);
+    ServerUserSession session = loggedInServerSession(request);
+
+    underTest.initUserSession(request, response);
+
+    verify(session).withIpAllowlist(ipAccess, null, null);
+  }
+
+  @Test
+  public void blocked_member_on_an_organization_url_is_not_logged_out() {
+    when(request.getRequestURI()).thenReturn("/api/organizations/search");
+    when(request.getParameterValues("organization")).thenReturn(new String[] {"org-key"});
+    ServerUserSession session = loggedInServerSession(request);
+    when(session.hasMembership("org-key")).thenReturn(false);
+    when(session.isBlockedByIpAllowlistForKey("org-key")).thenReturn(true);
+
+    assertThat(underTest.initUserSession(request, response)).isTrue();
+
+    verify(threadLocalSession).set(session);
+    verifyNoInteractions(authenticationEvent);
+    verify(response, never()).setStatus(anyInt());
+  }
+
+  @Test
+  public void non_member_that_is_not_blocked_still_gets_401() {
+    when(request.getRequestURI()).thenReturn("/api/organizations/search");
+    when(request.getParameterValues("organization")).thenReturn(new String[] {"org-key"});
+    ServerUserSession session = loggedInServerSession(request);
+    when(session.hasMembership("org-key")).thenReturn(false);
+    when(session.isBlockedByIpAllowlistForKey("org-key")).thenReturn(false);
+
+    assertThat(underTest.initUserSession(request, response)).isFalse();
+
+    verify(response).setStatus(401);
+    verify(authenticationEvent).loginFailure(eq(request), any(AuthenticationException.class));
+  }
+
+  @Test
+  public void allowlist_that_cannot_be_read_answers_503_and_does_not_log_out() throws Exception {
+    when(request.getRequestURI()).thenReturn("/api/organizations/search");
+    when(request.getParameterValues("organization")).thenReturn(new String[] {"org-key"});
+    ServerUserSession session = loggedInServerSession(request);
+    IpAllowlistUnavailableException unavailable = new IpAllowlistUnavailableException(
+      new OrganizationIpAccessUnavailableException("Cannot read the IP allowlist", new IllegalStateException("db-host down")));
+    when(session.hasMembership("org-key")).thenThrow(unavailable);
+    StringWriter body = new StringWriter();
+    when(response.getWriter()).thenReturn(new PrintWriter(body));
+
+    assertThat(underTest.initUserSession(request, response)).isFalse();
+
+    verify(response).setStatus(503);
+    verify(response).setContentType("application/json");
+    assertThat(body.toString())
+      .startsWith("{\"errors\":[{\"msg\":\"")
+      .contains("IP allowlist")
+      .doesNotContain("db-host");
+    verifyNoInteractions(authenticationEvent);
+    verify(threadLocalSession, never()).set(any());
+  }
+
+  private ServerUserSession loggedInServerSession(HttpRequest forRequest) {
+    ServerUserSession session = mock(ServerUserSession.class);
+    when(session.isLoggedIn()).thenReturn(true);
+    when(session.getLogin()).thenReturn("job");
+    when(authenticator.authenticate(forRequest, response)).thenReturn(session);
+    return session;
+  }
+
+  private static JavaxHttpRequest javaxRequest(String path, String remoteAddr, boolean serviceLogin, Object serviceOrganization) {
+    javax.servlet.http.HttpServletRequest servletRequest = mock(javax.servlet.http.HttpServletRequest.class);
+    when(servletRequest.getContextPath()).thenReturn("");
+    when(servletRequest.getRequestURI()).thenReturn(path);
+    when(servletRequest.getRemoteAddr()).thenReturn(remoteAddr);
+    when(servletRequest.getAttribute(JwtHttpHandler.SERVICE_LOGIN_ATTRIBUTE)).thenReturn(serviceLogin ? Boolean.TRUE : null);
+    when(servletRequest.getAttribute(JwtHttpHandler.SERVICE_LOGIN_ORG_ATTRIBUTE)).thenReturn(serviceOrganization);
+    return new JavaxHttpRequest(servletRequest);
   }
 
   private void assertPathIsIgnored(String path) {
