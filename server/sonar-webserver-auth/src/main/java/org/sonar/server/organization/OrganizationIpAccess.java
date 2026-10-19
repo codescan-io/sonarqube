@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import java.util.function.LongSupplier;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,15 +56,14 @@ import static java.util.stream.Collectors.toSet;
  *
  * <p>All organizations with the allowlist on are read in one query and kept for {@link #SNAPSHOT_TTL_MS}.
  * When the snapshot is older, one thread reloads it. The others keep answering from the old snapshot, so a slow
- * database does not stall every request. A snapshot that can no longer be trusted is never served: it is dropped
- * once it is {@link #MAX_STALE_MS} old (twice the cache time, counted from the start of the read and checked
- * again after a failed reload), or if the clock went backwards since it was read.
- * The old snapshot is also used when a reload fails, within the same limit. When there is no usable snapshot,
- * callers wait (at most {@link #LOAD_WAIT_TIMEOUT_MS}) for the one load in progress and share its outcome. A load
- * that has run longer than {@link #TAKEOVER_AFTER_MS} is considered stuck: the next caller starts a new load, and
- * the stuck one can neither release the new one nor replace its result with an older list. At most
- * {@link #MAX_LOADS_IN_FLIGHT} loads run at once: when that many are stuck, a caller waits on the newest instead of
- * starting another. If a load fails, or the wait runs out, the call throws
+ * database does not stall every request. A snapshot is never served once it is {@link #MAX_STALE_MS} old (twice
+ * the cache time, counted from the start of the read and checked again after a failed reload). Ages and deadlines
+ * are measured on a clock that never goes backwards. The old snapshot is also used when a reload fails, within the
+ * same limit. When there is no usable snapshot, callers wait (at most {@link #LOAD_WAIT_TIMEOUT_MS}) for the one
+ * load in progress and share its outcome. A load that has run longer than {@link #TAKEOVER_AFTER_MS} is considered
+ * stuck: the next caller starts a new load, and the stuck one can neither release the new one nor replace its
+ * result: of two loads, the one started last wins. At most {@link #MAX_LOADS_IN_FLIGHT} loads run at once: when
+ * that many are stuck, a caller waits on the newest instead of starting another. If a load fails, or the wait runs out, the call throws
  * {@link OrganizationIpAccessUnavailableException}, unless another load has left a usable snapshot in the meantime.
  * A failed read is never kept. Callers must treat an exception as a failed request, never as allowed.
  */
@@ -88,32 +88,41 @@ public class OrganizationIpAccess {
   private static final Logger LOG = LoggerFactory.getLogger(OrganizationIpAccess.class);
 
   private final DbClient dbClient;
-  private final System2 system2;
+  private final LongSupplier clock;
   private final List<IpRangeMatcher> internalRanges;
   private final Map<String, Long> lastBlockLogByOrgAndIp = new ConcurrentHashMap<>();
   private final Set<String> reportedBadRanges = ConcurrentHashMap.newKeySet();
-  private final AtomicLong lastBlockLogCleanupAt = new AtomicLong();
+  private final AtomicLong lastBlockLogCleanupAt;
   private final AtomicInteger blockLogCleanups = new AtomicInteger();
   private final AtomicInteger waitingThreads = new AtomicInteger();
 
   private final AtomicReference<Load> loadInProgress = new AtomicReference<>();
   private final Semaphore loadSlots = new Semaphore(MAX_LOADS_IN_FLIGHT);
-  private final AtomicLong lastLoadFailureLogAt = new AtomicLong();
+  private final AtomicLong lastLoadFailureLogAt;
+  private final AtomicLong loadNumbers = new AtomicLong();
   private final long loadWaitTimeoutMs;
   private final long takeoverAfterMs;
 
   private volatile Snapshot snapshot;
 
+  /**
+   * {@code system2} is not read: the wall clock can be set back or forward, so every age and deadline here is
+   * measured on {@link System#nanoTime()}, which never goes backwards.
+   */
   public OrganizationIpAccess(DbClient dbClient, System2 system2, Configuration config) {
-    this(dbClient, system2, config, LOAD_WAIT_TIMEOUT_MS, TAKEOVER_AFTER_MS);
+    this(dbClient, config, () -> System.nanoTime() / 1_000_000L, LOAD_WAIT_TIMEOUT_MS, TAKEOVER_AFTER_MS);
   }
 
-  OrganizationIpAccess(DbClient dbClient, System2 system2, Configuration config, long loadWaitTimeoutMs, long takeoverAfterMs) {
+  /** @param clock milliseconds on a clock that never goes backwards */
+  OrganizationIpAccess(DbClient dbClient, Configuration config, LongSupplier clock, long loadWaitTimeoutMs, long takeoverAfterMs) {
     this.dbClient = dbClient;
-    this.system2 = system2;
+    this.clock = clock;
     this.loadWaitTimeoutMs = loadWaitTimeoutMs;
     this.takeoverAfterMs = takeoverAfterMs;
     this.internalRanges = parseInternalRanges(config.getStringArray(INTERNAL_CIDR_PROPERTY));
+    long now = clock.getAsLong();
+    this.lastBlockLogCleanupAt = new AtomicLong(now - BLOCK_LOG_CLEANUP_INTERVAL_MS);
+    this.lastLoadFailureLogAt = new AtomicLong(now - BLOCK_LOG_INTERVAL_MS);
   }
 
   /**
@@ -174,7 +183,7 @@ public class OrganizationIpAccess {
   }
 
   boolean shouldLogBlock(@Nullable String organizationKey, @Nullable String clientIp) {
-    long now = system2.now();
+    long now = clock.getAsLong();
     if (lastBlockLogByOrgAndIp.size() > MAX_TRACKED_BLOCKS) {
       cleanUpBlockLog(now);
       if (lastBlockLogByOrgAndIp.size() > MAX_TRACKED_BLOCKS) {
@@ -191,16 +200,14 @@ public class OrganizationIpAccess {
     return isExpired(previous, now) && lastBlockLogByOrgAndIp.replace(key, previous, now);
   }
 
-  /** A stamp ahead of the clock (the clock was set back) counts as expired, or the line would stay silent until the clock caught up. */
   private static boolean isExpired(long loggedAt, long now) {
-    return now < loggedAt || now - loggedAt >= BLOCK_LOG_INTERVAL_MS;
+    return now - loggedAt >= BLOCK_LOG_INTERVAL_MS;
   }
 
   /** Scanning the whole map for every blocked request while it is full would cost more than the requests. */
   private void cleanUpBlockLog(long now) {
     long last = lastBlockLogCleanupAt.get();
-    boolean due = last == 0 || now < last || now - last >= BLOCK_LOG_CLEANUP_INTERVAL_MS;
-    if (due && lastBlockLogCleanupAt.compareAndSet(last, now)) {
+    if (now - last >= BLOCK_LOG_CLEANUP_INTERVAL_MS && lastBlockLogCleanupAt.compareAndSet(last, now)) {
       blockLogCleanups.incrementAndGet();
       lastBlockLogByOrgAndIp.values().removeIf(loggedAt -> isExpired(loggedAt, now));
     }
@@ -216,8 +223,8 @@ public class OrganizationIpAccess {
 
   private Map<String, Policy> policies() {
     while (true) {
-      long now = system2.now();
       Snapshot current = snapshot;
+      long now = clock.getAsLong();
       if (current != null && current.isFresh(now)) {
         return current.policies();
       }
@@ -225,7 +232,7 @@ public class OrganizationIpAccess {
       if (running == null || running.isStuck(now, takeoverAfterMs)) {
         if (loadSlots.tryAcquire()) {
           try {
-            Load mine = new Load(new CompletableFuture<>(), now);
+            Load mine = new Load(new CompletableFuture<>(), loadNumbers.incrementAndGet(), now);
             if (loadInProgress.compareAndSet(running, mine)) {
               return reload(mine);
             }
@@ -252,14 +259,14 @@ public class OrganizationIpAccess {
   private Map<String, Policy> reload(Load mine) {
     Snapshot before = snapshot;
     try {
-      Snapshot loaded = new Snapshot(load(), mine.startedAt());
+      Snapshot loaded = new Snapshot(load(), mine.number(), mine.startedAt());
       publish(loaded);
       mine.result().complete(loaded);
       return loaded.policies();
     } catch (RuntimeException e) {
       mine.result().completeExceptionally(e);
       Snapshot old = snapshot;
-      if (old != null && old.isUsableWhenStale(system2.now())) {
+      if (old != null && old.isUsableWhenStale(clock.getAsLong())) {
         // a different snapshot means a load that took over from this one has refreshed the list meanwhile
         logLoadFailure(e, old != before);
         return old.policies();
@@ -275,18 +282,10 @@ public class OrganizationIpAccess {
     }
   }
 
-  /**
-   * A load that was taken over from can finish late with a list read earlier than the current one. A snapshot
-   * stamped after the clock (the clock went back) is never served: such a load is not kept, and a current
-   * snapshot like that is replaced by any new load.
-   */
+  /** A load that was taken over can finish after the one that took over from it: the load started last wins. */
   private synchronized void publish(Snapshot loaded) {
-    long now = system2.now();
-    if (loaded.loadedAt() > now) {
-      return;
-    }
     Snapshot current = snapshot;
-    if (current == null || loaded.loadedAt() >= current.loadedAt() || current.loadedAt() > now) {
+    if (current == null || loaded.loadNumber() > current.loadNumber()) {
       snapshot = loaded;
     }
   }
@@ -314,7 +313,7 @@ public class OrganizationIpAccess {
   /** The awaited load may have been stuck while another load, which took over from it, refreshed the snapshot. */
   private Map<String, Policy> usableSnapshotOrThrow(String message, Throwable cause) {
     Snapshot current = snapshot;
-    if (current != null && current.isUsableWhenStale(system2.now())) {
+    if (current != null && current.isUsableWhenStale(clock.getAsLong())) {
       return current.policies();
     }
     throw new OrganizationIpAccessUnavailableException(message, cause);
@@ -322,9 +321,9 @@ public class OrganizationIpAccess {
 
   /** While the database is down every request would otherwise log. */
   private void logLoadFailure(RuntimeException e, boolean newerListInUse) {
-    long now = system2.now();
+    long now = clock.getAsLong();
     long last = lastLoadFailureLogAt.get();
-    if ((last == 0 || now < last || now - last >= BLOCK_LOG_INTERVAL_MS) && lastLoadFailureLogAt.compareAndSet(last, now)) {
+    if (now - last >= BLOCK_LOG_INTERVAL_MS && lastLoadFailureLogAt.compareAndSet(last, now)) {
       if (newerListInUse) {
         LOG.warn("Cannot reload the IP allowlist, using the newer one read by a later reload", e);
       } else {
@@ -408,22 +407,23 @@ public class OrganizationIpAccess {
     return out.toString();
   }
 
-  /** {@code startedAt} is when the database read began, so a snapshot is never presented as newer than its data. */
-  private record Load(CompletableFuture<Snapshot> result, long startedAt) {
-    /** A load that has run longer than the takeover deadline, or whose start lies in the future of the clock. */
+  /**
+   * {@code number} orders loads by when they started. {@code startedAt} is when the database read began, so a
+   * snapshot is never presented as newer than its data.
+   */
+  private record Load(CompletableFuture<Snapshot> result, long number, long startedAt) {
     boolean isStuck(long now, long deadlineMs) {
-      return now < startedAt || now - startedAt >= deadlineMs;
+      return now - startedAt >= deadlineMs;
     }
   }
 
-  private record Snapshot(Map<String, Policy> policies, long loadedAt) {
-    /** A clock that went backwards makes the age unknown, so the snapshot is not fresh and not usable when stale. */
+  private record Snapshot(Map<String, Policy> policies, long loadNumber, long loadedAt) {
     boolean isFresh(long now) {
-      return now >= loadedAt && now - loadedAt < SNAPSHOT_TTL_MS;
+      return now - loadedAt < SNAPSHOT_TTL_MS;
     }
 
     boolean isUsableWhenStale(long now) {
-      return now >= loadedAt && now - loadedAt < MAX_STALE_MS;
+      return now - loadedAt < MAX_STALE_MS;
     }
   }
 

@@ -26,10 +26,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.event.Level;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.impl.utils.TestSystem2;
 import org.sonar.api.testfixtures.log.LogTester;
@@ -49,12 +51,17 @@ import static org.mockito.Mockito.when;
 
 public class OrganizationIpAccessTest {
 
+  private static final long WALL_NOW = 1_700_000_000_000L;
+
   @Rule
   public LogTester logTester = new LogTester();
 
   private final DbClient dbClient = mock(DbClient.class);
   private final IpAllowlistDao dao = mock(IpAllowlistDao.class);
-  private final TestSystem2 system2 = new TestSystem2().setNow(1_000_000L);
+  /** Never goes backwards; every age and deadline is measured on it. */
+  private final AtomicLong clock = new AtomicLong(1_000_000L);
+  /** Can be set back or forward, as an administrator or NTP does; nothing may depend on it. */
+  private final TestSystem2 wallClock = new TestSystem2().setNow(WALL_NOW);
   private final MapSettings settings = new MapSettings();
   private OrganizationIpAccess underTest;
 
@@ -68,7 +75,7 @@ public class OrganizationIpAccessTest {
       range("org-admins", true, "198.51.100.7/32"),
       range("org-empty", false, null)));
     settings.setProperty("sonar.codescan.internalCidr", "10.0.0.0/16,10.1.0.0/16");
-    underTest = new OrganizationIpAccess(dbClient, system2, settings.asConfig());
+    underTest = access(settings.asConfig());
   }
 
   @Test
@@ -102,7 +109,7 @@ public class OrganizationIpAccessTest {
     when(dao.selectEnabledRanges(any())).thenReturn(List.of(
       range("org-v6", false, "2001:db8::/32"),
       range("org-v6-upper", false, "2001:DB8::/32")));
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig());
+    OrganizationIpAccess access = access(settings.asConfig());
 
     assertThat(access.isBlocked("org-v6", "2001:DB8::1", () -> false)).isFalse();
     assertThat(access.isBlocked("org-v6-upper", "2001:db8::1", () -> false)).isFalse();
@@ -128,7 +135,7 @@ public class OrganizationIpAccessTest {
       range("org-mixed", false, "203.0.113.77/24"),
       range("org-only-bad", false, "example.com/24"),
       range("org-ok", false, "198.51.100.0/24")));
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig());
+    OrganizationIpAccess access = access(settings.asConfig());
 
     assertThat(access.isBlocked("org-mixed", "203.0.113.9", () -> false)).isFalse();
     assertThat(access.isBlocked("org-mixed", "192.0.2.1", () -> false)).isTrue();
@@ -143,13 +150,13 @@ public class OrganizationIpAccessTest {
     when(dao.selectEnabledRanges(any())).thenReturn(List.of(
       range("org-mixed", false, "not-an-ip"),
       range("org-mixed", false, "203.0.113.0/24")));
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig());
+    OrganizationIpAccess access = access(settings.asConfig());
     logTester.clear();
 
     access.isBlocked("org-mixed", "203.0.113.9", () -> false);
-    system2.setNow(1_000_000L + 30_000L);
+    clock.set(1_000_000L + 30_000L);
     access.isBlocked("org-mixed", "203.0.113.9", () -> false);
-    system2.setNow(1_000_000L + 60_000L);
+    clock.set(1_000_000L + 60_000L);
     access.isBlocked("org-mixed", "203.0.113.9", () -> false);
 
     verify(dao, times(3)).selectEnabledRanges(any());
@@ -171,11 +178,11 @@ public class OrganizationIpAccessTest {
   @Test
   public void snapshot_is_reused_for_30_seconds_then_reloaded() {
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
-    system2.setNow(1_000_000L + 29_999L);
+    clock.set(1_000_000L + 29_999L);
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     verify(dao, times(1)).selectEnabledRanges(any());
 
-    system2.setNow(1_000_000L + 30_000L);
+    clock.set(1_000_000L + 30_000L);
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     verify(dao, times(2)).selectEnabledRanges(any());
   }
@@ -275,7 +282,7 @@ public class OrganizationIpAccessTest {
 
   @Test
   public void no_internal_ranges_configured_means_nothing_is_internal() {
-    OrganizationIpAccess noInternal = new OrganizationIpAccess(dbClient, system2, new MapSettings().asConfig());
+    OrganizationIpAccess noInternal = access(new MapSettings().asConfig());
 
     assertThat(noInternal.isInternalServiceAddress("10.0.0.1")).isFalse();
   }
@@ -329,9 +336,9 @@ public class OrganizationIpAccessTest {
     assertThat(underTest.shouldLogBlock("acme", "198.51.100.1")).isTrue();
     assertThat(underTest.shouldLogBlock("other", "192.0.2.1")).isTrue();
 
-    system2.setNow(1_000_000L + 59_999L);
+    clock.set(1_000_000L + 59_999L);
     assertThat(underTest.shouldLogBlock("acme", "192.0.2.1")).isFalse();
-    system2.setNow(1_000_000L + 60_000L);
+    clock.set(1_000_000L + 60_000L);
     assertThat(underTest.shouldLogBlock("acme", "192.0.2.1")).isTrue();
   }
 
@@ -363,7 +370,7 @@ public class OrganizationIpAccessTest {
     for (int i = 0; i <= OrganizationIpAccess.MAX_TRACKED_BLOCKS; i++) {
       underTest.shouldLogBlock("org-" + i, "192.0.2.1");
     }
-    system2.setNow(1_000_000L + 60_000L);
+    clock.set(1_000_000L + 60_000L);
 
     underTest.shouldLogBlock("acme", "192.0.2.1");
 
@@ -398,72 +405,130 @@ public class OrganizationIpAccessTest {
     assertThat(logTester.logs(Level.WARN)).hasSize(1);
   }
 
-  @Test
-  public void snapshot_is_reloaded_when_the_clock_goes_backwards() {
-    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
-    doReturn(List.of(range("org-a", false, "198.51.100.0/24"))).when(dao).selectEnabledRanges(any());
-
-    system2.setNow(1_000_000L - 1_000L);
-    assertThat(underTest.isBlocked("org-a", "198.51.100.5", () -> false)).isFalse();
-    verify(dao, times(2)).selectEnabledRanges(any());
-
-    // the reload is kept: later calls, still before the old stamp, are answered from it
-    for (int i = 1; i <= 100; i++) {
-      system2.setNow(1_000_000L - 1_000L + i * 5L);
-      assertThat(underTest.isBlocked("org-a", "198.51.100.5", () -> false)).isFalse();
-    }
-    verify(dao, times(2)).selectEnabledRanges(any());
-  }
-
   @Test(timeout = 30_000)
-  public void load_stuck_from_before_the_clock_went_back_does_not_replace_the_load_that_took_over() throws Exception {
+  public void older_load_finishing_after_a_newer_one_never_replaces_its_list() throws Exception {
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     AtomicInteger calls = new AtomicInteger();
-    CountDownLatch stuckStarted = new CountDownLatch(1);
-    CountDownLatch releaseStuck = new CountDownLatch(1);
+    CountDownLatch olderStarted = new CountDownLatch(1);
+    CountDownLatch releaseOlder = new CountDownLatch(1);
     when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
       if (calls.incrementAndGet() == 1) {
-        stuckStarted.countDown();
-        assertThat(releaseStuck.await(10, TimeUnit.SECONDS)).isTrue();
+        olderStarted.countDown();
+        assertThat(releaseOlder.await(10, TimeUnit.SECONDS)).isTrue();
         return List.of(range("org-a", false, "192.0.2.0/24"));
       }
       return List.of(range("org-a", false, "198.51.100.0/24"));
     });
     ExecutorService executor = Executors.newSingleThreadExecutor();
     try {
-      system2.setNow(1_000_000L + 30_000L);
-      Future<Boolean> stuck = executor.submit(() -> underTest.isBlocked("org-a", "198.51.100.5", () -> false));
-      assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      clock.set(1_031_000L);
+      Future<Boolean> older = executor.submit(() -> underTest.isBlocked("org-a", "198.51.100.5", () -> false));
+      assertThat(olderStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      clock.set(1_031_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      assertThat(underTest.isBlocked("org-a", "198.51.100.5", () -> false)).as("newer load reads the new list").isFalse();
 
-      system2.setNow(1_000_000L - 1_000L);
-      assertThat(underTest.isBlocked("org-a", "198.51.100.5", () -> false)).isFalse();
+      releaseOlder.countDown();
+      older.get(10, TimeUnit.SECONDS);
 
-      releaseStuck.countDown();
-      assertThat(stuck.get(10, TimeUnit.SECONDS)).isTrue();
-
-      // the stuck load is stamped after the clock: it does not replace the newer list, which keeps answering
-      assertThat(underTest.isBlocked("org-a", "198.51.100.5", () -> false)).isFalse();
+      assertThat(underTest.isBlocked("org-a", "198.51.100.5", () -> false)).as("the older list does not come back").isFalse();
       verify(dao, times(3)).selectEnabledRanges(any());
     } finally {
-      releaseStuck.countDown();
+      releaseOlder.countDown();
       executor.shutdownNow();
     }
   }
 
+  @Test(timeout = 30_000)
+  public void older_load_never_replaces_a_newer_one_that_started_at_the_same_clock_reading() throws Exception {
+    // no wait before a takeover, and the clock does not move: both loads start at the same reading
+    OrganizationIpAccess access = access(settings.asConfig(), OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, 0L);
+    AtomicInteger calls = new AtomicInteger();
+    CountDownLatch olderStarted = new CountDownLatch(1);
+    CountDownLatch releaseOlder = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      if (calls.incrementAndGet() == 1) {
+        olderStarted.countDown();
+        assertThat(releaseOlder.await(10, TimeUnit.SECONDS)).isTrue();
+        return List.of(range("org-a", false, "192.0.2.0/24"));
+      }
+      return List.of(range("org-a", false, "198.51.100.0/24"));
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      Future<Boolean> older = executor.submit(() -> access.isBlocked("org-a", "198.51.100.5", () -> false));
+      assertThat(olderStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      assertThat(access.isBlocked("org-a", "198.51.100.5", () -> false)).as("newer load reads the new list").isFalse();
+
+      releaseOlder.countDown();
+      older.get(10, TimeUnit.SECONDS);
+
+      assertThat(access.isBlocked("org-a", "198.51.100.5", () -> false)).as("the older list does not come back").isFalse();
+      verify(dao, times(2)).selectEnabledRanges(any());
+    } finally {
+      releaseOlder.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  // ---- the wall clock is set back or forward ----
+
   @Test
-  public void clock_going_backwards_with_a_failing_database_throws_instead_of_serving_a_snapshot_of_unknown_age() {
-    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
+  public void wall_clock_going_back_or_forward_causes_no_database_read() {
+    OrganizationIpAccess access = productionAccess();
+    access.isBlocked("org-a", "192.0.2.1", () -> false);
+
+    for (int i = 1; i <= 100; i++) {
+      wallClock.setNow(WALL_NOW + (i % 2 == 0 ? 1 : -1) * (3_600_000L + i));
+      assertThat(access.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
+    }
+
+    verify(dao, times(1)).selectEnabledRanges(any());
+  }
+
+  @Test
+  public void wall_clock_going_back_with_a_failing_database_keeps_answering_from_the_snapshot() {
+    OrganizationIpAccess access = productionAccess();
+    access.isBlocked("org-a", "192.0.2.1", () -> false);
     when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
 
-    system2.setNow(1_000_000L - 1_000L);
+    wallClock.setNow(WALL_NOW - 3_600_000L);
 
-    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(OrganizationIpAccessUnavailableException.class);
+    assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+    verify(dao, times(1)).selectEnabledRanges(any());
+  }
+
+  @Test(timeout = 30_000)
+  public void wall_clock_going_back_does_not_make_a_running_load_look_stuck() throws Exception {
+    OrganizationIpAccess access = productionAccess();
+    CountDownLatch loadStarted = new CountDownLatch(1);
+    CountDownLatch finishLoad = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      loadStarted.countDown();
+      assertThat(finishLoad.await(10, TimeUnit.SECONDS)).isTrue();
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      wallClock.setNow(WALL_NOW - 500L);
+      Future<Boolean> waiter = executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      awaitWaitingThreads(access, 1);
+      finishLoad.countDown();
+
+      assertThat(waiter.get(10, TimeUnit.SECONDS)).isFalse();
+      verify(dao, times(1)).selectEnabledRanges(any());
+    } finally {
+      finishLoad.countDown();
+      executor.shutdownNow();
+    }
   }
 
   @Test(timeout = 30_000)
   public void old_snapshot_is_served_while_another_thread_reloads() throws Exception {
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
-    system2.setNow(1_000_000L + 30_000L);
+    clock.set(1_000_000L + 30_000L);
     CountDownLatch reloadStarted = new CountDownLatch(1);
     CountDownLatch finishReload = new CountDownLatch(1);
     when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
@@ -493,13 +558,13 @@ public class OrganizationIpAccessTest {
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
 
-    system2.setNow(1_000_000L + 30_000L);
+    clock.set(1_000_000L + 30_000L);
     assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
     assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
-    system2.setNow(1_000_000L + 59_999L);
+    clock.set(1_000_000L + 59_999L);
     assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
 
-    system2.setNow(1_000_000L + 60_000L);
+    clock.set(1_000_000L + 60_000L);
     assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(OrganizationIpAccessUnavailableException.class);
   }
 
@@ -507,11 +572,11 @@ public class OrganizationIpAccessTest {
   public void snapshot_that_became_too_old_during_a_slow_failed_reload_is_not_served() {
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
-      system2.setNow(1_000_000L + 59_000L + 31_000L);
+      clock.set(1_000_000L + 59_000L + 31_000L);
       throw new IllegalStateException("db timed out");
     });
 
-    system2.setNow(1_000_000L + 59_000L);
+    clock.set(1_000_000L + 59_000L);
 
     assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(OrganizationIpAccessUnavailableException.class);
   }
@@ -535,7 +600,7 @@ public class OrganizationIpAccessTest {
     when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
     logTester.clear();
 
-    system2.setNow(1_000_000L + 30_000L);
+    clock.set(1_000_000L + 30_000L);
     for (int i = 0; i < 20; i++) {
       underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     }
@@ -638,27 +703,28 @@ public class OrganizationIpAccessTest {
   }
 
   @Test
-  public void block_logged_under_a_clock_that_later_went_back_is_logged_again() {
-    system2.setNow(10_000_000L);
-    assertThat(underTest.shouldLogBlock("org-a", "192.0.2.1")).isTrue();
+  public void wall_clock_going_back_or_forward_does_not_repeat_the_block_log_line_within_the_minute() {
+    OrganizationIpAccess access = productionAccess();
+    assertThat(access.shouldLogBlock("org-a", "192.0.2.1")).isTrue();
 
-    system2.setNow(10_000_000L - 3_600_000L);
-
-    assertThat(underTest.shouldLogBlock("org-a", "192.0.2.1")).isTrue();
-    assertThat(underTest.shouldLogBlock("org-a", "192.0.2.1")).isFalse();
+    wallClock.setNow(WALL_NOW - 3_600_000L);
+    assertThat(access.shouldLogBlock("org-a", "192.0.2.1")).isFalse();
+    wallClock.setNow(WALL_NOW + 3_600_000L);
+    assertThat(access.shouldLogBlock("org-a", "192.0.2.1")).isFalse();
   }
 
   @Test
-  public void full_tracker_drops_entries_stamped_in_the_future_of_the_clock() {
-    system2.setNow(10_000_000L);
+  public void wall_clock_going_back_does_not_empty_a_full_tracker() {
+    OrganizationIpAccess access = productionAccess();
     for (int i = 0; i <= OrganizationIpAccess.MAX_TRACKED_BLOCKS; i++) {
-      underTest.shouldLogBlock("org-" + i, "192.0.2.1");
+      access.shouldLogBlock("org-" + i, "192.0.2.1");
     }
+    int full = access.trackedBlockCount();
 
-    system2.setNow(10_000_000L - 3_600_000L);
+    wallClock.setNow(WALL_NOW - 3_600_000L);
 
-    assertThat(underTest.shouldLogBlock("new-org", "192.0.2.1")).isTrue();
-    assertThat(underTest.trackedBlockCount()).isEqualTo(1);
+    assertThat(access.shouldLogBlock("new-org", "192.0.2.1")).isFalse();
+    assertThat(access.trackedBlockCount()).isEqualTo(full);
   }
 
   // ---- a load that never returns ----
@@ -681,7 +747,7 @@ public class OrganizationIpAccessTest {
       Future<Boolean> stuck = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
-      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
       verify(dao, times(2)).selectEnabledRanges(any());
 
@@ -698,7 +764,7 @@ public class OrganizationIpAccessTest {
 
   @Test(timeout = 30_000)
   public void load_past_the_wait_deadline_is_not_taken_over_before_the_takeover_deadline() throws Exception {
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    OrganizationIpAccess access = access(settings.asConfig(), 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
     AtomicInteger calls = new AtomicInteger();
     CountDownLatch loadStarted = new CountDownLatch(1);
     CountDownLatch finishLoad = new CountDownLatch(1);
@@ -715,13 +781,13 @@ public class OrganizationIpAccessTest {
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
       // well past the 3 second wait, so the load would already be taken over if both used one deadline
-      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS - 1L);
+      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS - 1L);
       assertThatThrownBy(() -> access.isBlocked("org-a", "203.0.113.9", () -> false))
         .isInstanceOf(OrganizationIpAccessUnavailableException.class)
         .hasMessageContaining("Timed out");
       verify(dao, times(1)).selectEnabledRanges(any());
 
-      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
       verify(dao, times(2)).selectEnabledRanges(any());
     } finally {
@@ -748,7 +814,7 @@ public class OrganizationIpAccessTest {
       executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
-      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false))
         .isInstanceOf(OrganizationIpAccessUnavailableException.class)
         .hasRootCauseMessage("db down");
@@ -761,7 +827,7 @@ public class OrganizationIpAccessTest {
   @Test(timeout = 30_000)
   public void finishing_the_stuck_load_does_not_release_the_load_that_took_over() throws Exception {
     long deadline = 45_000L;
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, deadline);
+    OrganizationIpAccess access = access(settings.asConfig(), OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, deadline);
     AtomicInteger calls = new AtomicInteger();
     CountDownLatch stuckStarted = new CountDownLatch(1);
     CountDownLatch releaseStuck = new CountDownLatch(1);
@@ -779,7 +845,7 @@ public class OrganizationIpAccessTest {
     try {
       Future<Boolean> stuck = executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
-      system2.setNow(1_000_000L + deadline);
+      clock.set(1_000_000L + deadline);
       executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(takeoverStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
@@ -787,7 +853,7 @@ public class OrganizationIpAccessTest {
       assertThat(stuck.get(10, TimeUnit.SECONDS)).isFalse();
 
       // the takeover load is still running: this call serves the old snapshot and starts no third load
-      system2.setNow(1_000_000L + deadline + 1_000L);
+      clock.set(1_000_000L + deadline + 1_000L);
       assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
       verify(dao, times(2)).selectEnabledRanges(any());
     } finally {
@@ -814,11 +880,11 @@ public class OrganizationIpAccessTest {
     try {
       executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
-      system2.setNow(1_000_000L + 1_000L);
+      clock.set(1_000_000L + 1_000L);
       Future<Boolean> waiter = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       awaitWaitingThreads(underTest, 1);
 
-      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
       releaseStuck.countDown();
 
@@ -832,7 +898,7 @@ public class OrganizationIpAccessTest {
   @Test(timeout = 30_000)
   public void thread_whose_wait_on_a_stuck_load_runs_out_gets_the_list_of_the_load_that_took_over() throws Exception {
     long waitMs = 1_000L;
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), waitMs, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    OrganizationIpAccess access = access(settings.asConfig(), waitMs, OrganizationIpAccess.TAKEOVER_AFTER_MS);
     AtomicInteger calls = new AtomicInteger();
     CountDownLatch stuckStarted = new CountDownLatch(1);
     CountDownLatch releaseStuck = new CountDownLatch(1);
@@ -848,11 +914,11 @@ public class OrganizationIpAccessTest {
     try {
       executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
-      system2.setNow(1_000_000L + 100L);
+      clock.set(1_000_000L + 100L);
       Future<Boolean> waiter = executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
       awaitWaitingThreads(access, 1);
 
-      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
 
       // the stuck load never finishes: the wait runs out, and the newer list answers
@@ -880,7 +946,7 @@ public class OrganizationIpAccessTest {
     try {
       Future<Boolean> stuck = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
-      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
       logTester.clear();
 
@@ -898,7 +964,7 @@ public class OrganizationIpAccessTest {
 
   @Test(timeout = 30_000)
   public void no_third_load_is_started_while_two_are_stuck_and_the_caller_is_not_let_in() throws Exception {
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), 200L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    OrganizationIpAccess access = access(settings.asConfig(), 200L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
     AtomicInteger calls = new AtomicInteger();
     List<CountDownLatch> started = List.of(new CountDownLatch(1), new CountDownLatch(1), new CountDownLatch(1));
     List<CountDownLatch> release = List.of(new CountDownLatch(1), new CountDownLatch(1), new CountDownLatch(1));
@@ -915,12 +981,12 @@ public class OrganizationIpAccessTest {
     try {
       Future<Boolean> first = executor.submit(() -> access.isBlocked("org-a", "192.0.2.1", () -> false));
       assertThat(started.get(0).await(10, TimeUnit.SECONDS)).isTrue();
-      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       executor.submit(() -> access.isBlocked("org-a", "192.0.2.1", () -> false));
       assertThat(started.get(1).await(10, TimeUnit.SECONDS)).isTrue();
 
       // the second load is stuck as well, but two are already in the database
-      system2.setNow(1_000_000L + 2 * OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      clock.set(1_000_000L + 2 * OrganizationIpAccess.TAKEOVER_AFTER_MS);
       Future<Boolean> third = executor.submit(() -> access.isBlocked("org-a", "192.0.2.1", () -> false));
       assertThatThrownBy(() -> third.get(5, TimeUnit.SECONDS))
         .hasCauseInstanceOf(OrganizationIpAccessUnavailableException.class);
@@ -997,7 +1063,7 @@ public class OrganizationIpAccessTest {
 
   @Test(timeout = 30_000)
   public void thread_that_waits_too_long_for_the_one_load_throws() throws Exception {
-    OrganizationIpAccess impatient = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    OrganizationIpAccess impatient = access(settings.asConfig(), 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
     CountDownLatch loadStarted = new CountDownLatch(1);
     CountDownLatch finishLoad = new CountDownLatch(1);
     when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
@@ -1036,7 +1102,7 @@ public class OrganizationIpAccessTest {
     assertThat(underTest.trackedBlockCleanupCount() - cleanupsBefore).isEqualTo(1);
     assertThat(underTest.trackedBlockCount()).isEqualTo(OrganizationIpAccess.MAX_TRACKED_BLOCKS + 1);
 
-    system2.setNow(1_000_000L + OrganizationIpAccess.BLOCK_LOG_CLEANUP_INTERVAL_MS);
+    clock.set(1_000_000L + OrganizationIpAccess.BLOCK_LOG_CLEANUP_INTERVAL_MS);
     underTest.shouldLogBlock("flood-again", "192.0.2.1");
     assertThat(underTest.trackedBlockCleanupCount() - cleanupsBefore).isEqualTo(2);
   }
@@ -1059,7 +1125,20 @@ public class OrganizationIpAccessTest {
   private OrganizationIpAccess accessWithInternal(String cidrs) {
     MapSettings s = new MapSettings();
     s.setProperty("sonar.codescan.internalCidr", cidrs);
-    return new OrganizationIpAccess(dbClient, system2, s.asConfig());
+    return access(s.asConfig());
+  }
+
+  private OrganizationIpAccess access(Configuration config) {
+    return access(config, OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+  }
+
+  private OrganizationIpAccess access(Configuration config, long loadWaitTimeoutMs, long takeoverAfterMs) {
+    return new OrganizationIpAccess(dbClient, config, clock::get, loadWaitTimeoutMs, takeoverAfterMs);
+  }
+
+  /** Built as in production, so its ages run on the real steady clock and the wall clock is only {@link #wallClock}. */
+  private OrganizationIpAccess productionAccess() {
+    return new OrganizationIpAccess(dbClient, wallClock, settings.asConfig());
   }
 
   private static IpAllowlistRangeDto range(String org, boolean appliesToAdmins, String cidr) {
