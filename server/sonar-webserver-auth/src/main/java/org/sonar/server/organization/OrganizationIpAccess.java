@@ -202,7 +202,7 @@ public class OrganizationIpAccess {
     CompletableFuture<Snapshot> mine = new CompletableFuture<>();
     CompletableFuture<Snapshot> running = loadInProgress.compareAndExchange(null, mine);
     if (running == null) {
-      return reload(mine, now);
+      return reload(mine);
     }
     if (current != null && current.isUsableWhenStale(now)) {
       return current.policies();
@@ -211,7 +211,7 @@ public class OrganizationIpAccess {
   }
 
   /** Runs the one load. Every other thread that has no usable snapshot is waiting on {@code mine}. */
-  private Map<String, Policy> reload(CompletableFuture<Snapshot> mine, long now) {
+  private Map<String, Policy> reload(CompletableFuture<Snapshot> mine) {
     try {
       // A load that finished just before this thread took over has already refreshed the snapshot.
       Snapshot current = snapshot;
@@ -226,7 +226,7 @@ public class OrganizationIpAccess {
     } catch (RuntimeException e) {
       mine.completeExceptionally(e);
       Snapshot old = snapshot;
-      if (old != null && old.isUsableWhenStale(now)) {
+      if (old != null && old.isUsableWhenStale(system2.now())) {
         logLoadFailure(e);
         return old.policies();
       }

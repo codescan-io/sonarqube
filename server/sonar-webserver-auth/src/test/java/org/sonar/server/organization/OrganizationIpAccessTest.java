@@ -462,6 +462,19 @@ public class OrganizationIpAccessTest {
   }
 
   @Test
+  public void snapshot_that_became_too_old_during_a_slow_failed_reload_is_not_served() {
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      system2.setNow(1_000_000L + 59_000L + 31_000L);
+      throw new IllegalStateException("db timed out");
+    });
+
+    system2.setNow(1_000_000L + 59_000L);
+
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
   public void failed_reload_is_logged_at_most_once_a_minute() {
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
