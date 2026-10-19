@@ -878,6 +878,49 @@ public class OrganizationIpAccessTest {
     }
   }
 
+  @Test(timeout = 30_000)
+  public void no_third_load_is_started_while_two_are_stuck_and_the_caller_is_not_let_in() throws Exception {
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), 200L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    AtomicInteger calls = new AtomicInteger();
+    List<CountDownLatch> started = List.of(new CountDownLatch(1), new CountDownLatch(1), new CountDownLatch(1));
+    List<CountDownLatch> release = List.of(new CountDownLatch(1), new CountDownLatch(1), new CountDownLatch(1));
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      int call = calls.getAndIncrement();
+      started.get(call).countDown();
+      assertThat(release.get(call).await(20, TimeUnit.SECONDS)).isTrue();
+      if (call == 0) {
+        throw new IllegalStateException("db timed out");
+      }
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newFixedThreadPool(4);
+    try {
+      Future<Boolean> first = executor.submit(() -> access.isBlocked("org-a", "192.0.2.1", () -> false));
+      assertThat(started.get(0).await(10, TimeUnit.SECONDS)).isTrue();
+      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      executor.submit(() -> access.isBlocked("org-a", "192.0.2.1", () -> false));
+      assertThat(started.get(1).await(10, TimeUnit.SECONDS)).isTrue();
+
+      // the second load is stuck as well, but two are already in the database
+      system2.setNow(1_000_000L + 2 * OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      Future<Boolean> third = executor.submit(() -> access.isBlocked("org-a", "192.0.2.1", () -> false));
+      assertThatThrownBy(() -> third.get(5, TimeUnit.SECONDS))
+        .hasCauseInstanceOf(OrganizationIpAccessUnavailableException.class);
+      assertThat(calls).hasValue(2);
+
+      // once the first stuck load ends, a new load may take over from the second
+      release.get(0).countDown();
+      assertThatThrownBy(() -> first.get(10, TimeUnit.SECONDS))
+        .hasCauseInstanceOf(OrganizationIpAccessUnavailableException.class);
+      executor.submit(() -> access.isBlocked("org-a", "192.0.2.1", () -> false));
+      assertThat(started.get(2).await(10, TimeUnit.SECONDS)).isTrue();
+      assertThat(calls).hasValue(3);
+    } finally {
+      release.forEach(CountDownLatch::countDown);
+      executor.shutdownNow();
+    }
+  }
+
   // ---- the admin check is only made when it can change the answer ----
 
   @Test

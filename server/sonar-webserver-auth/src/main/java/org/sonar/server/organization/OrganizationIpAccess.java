@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,7 +61,9 @@ import static java.util.stream.Collectors.toSet;
  * The old snapshot is also used when a reload fails, within the same limit. When there is no usable snapshot,
  * callers wait (at most {@link #LOAD_WAIT_TIMEOUT_MS}) for the one load in progress and share its outcome. A load
  * that has run longer than {@link #TAKEOVER_AFTER_MS} is considered stuck: the next caller starts a new load, and
- * the stuck one can neither release the new one nor replace its result with an older list. If a load fails, or the wait runs out,
+ * the stuck one can neither release the new one nor replace its result with an older list. At most
+ * {@link #MAX_LOADS_IN_FLIGHT} loads run at once: when that many are stuck, a caller waits on the newest instead of
+ * starting another. If a load fails, or the wait runs out,
  * the call throws {@link OrganizationIpAccessUnavailableException}, unless another load has left a usable
  * snapshot in the meantime. A failed read is never kept. Callers must treat an exception as a failed request,
  * never as allowed.
@@ -75,6 +78,8 @@ public class OrganizationIpAccess {
   static final long LOAD_WAIT_TIMEOUT_MS = 3_000L;
   /** Longer than the 5 second statement timeout of the read, so a load that the database will still end is left to end. */
   static final long TAKEOVER_AFTER_MS = 8_000L;
+  /** Loads that hang in the database each hold a request thread, so their number is capped. */
+  static final int MAX_LOADS_IN_FLIGHT = 2;
   static final long BLOCK_LOG_INTERVAL_MS = 60_000L;
   static final long BLOCK_LOG_CLEANUP_INTERVAL_MS = 10_000L;
   static final int MAX_TRACKED_BLOCKS = 10_000;
@@ -93,6 +98,7 @@ public class OrganizationIpAccess {
   private final AtomicInteger waitingThreads = new AtomicInteger();
 
   private final AtomicReference<Load> loadInProgress = new AtomicReference<>();
+  private final Semaphore loadSlots = new Semaphore(MAX_LOADS_IN_FLIGHT);
   private final AtomicLong lastLoadFailureLogAt = new AtomicLong();
   private final long loadWaitTimeoutMs;
   private final long takeoverAfterMs;
@@ -218,12 +224,23 @@ public class OrganizationIpAccess {
       }
       Load running = loadInProgress.get();
       if (running == null || running.isStuck(now, takeoverAfterMs)) {
-        Load mine = new Load(new CompletableFuture<>(), now);
-        if (loadInProgress.compareAndSet(running, mine)) {
-          return reload(mine);
+        if (loadSlots.tryAcquire()) {
+          try {
+            Load mine = new Load(new CompletableFuture<>(), now);
+            if (loadInProgress.compareAndSet(running, mine)) {
+              return reload(mine);
+            }
+          } finally {
+            loadSlots.release();
+          }
+          // another thread started or finished a load first: look again
+          continue;
         }
-        // another thread started or finished a load first: look again
-        continue;
+        if (running == null) {
+          // cannot last: with no load in progress, at most one stuck load holds a slot
+          Thread.onSpinWait();
+          continue;
+        }
       }
       if (current != null && current.isUsableWhenStale(now)) {
         return current.policies();
