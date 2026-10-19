@@ -281,5 +281,8 @@ public class IssueLifecycle {
     toIssue.setIsNewCodeReferenceIssue(fromIssue.isNewCodeReferenceIssue());
     toIssue.setPrioritizedRule(fromIssue.isPrioritizedRule());
     toIssue.setIssueResolutionExpiresAt(fromIssue.issueResolutionExpiresAt());
+    // Carried over on every re-analysis. Without it a rescan clears the AI fix state, and an issue
+    // whose fix is already in a pull request looks untouched and gets fixed and charged again.
+    toIssue.setCodefixStatus(fromIssue.getCodefixStatus());
   }
 }
