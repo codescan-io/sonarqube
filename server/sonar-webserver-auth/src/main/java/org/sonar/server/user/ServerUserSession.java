@@ -46,7 +46,9 @@ import org.sonar.db.organization.OrganizationMemberDto;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
+import org.sonar.server.organization.IpAllowlistUnavailableLog;
 import org.sonar.server.organization.OrganizationIpAccess;
+import org.sonar.server.organization.OrganizationIpAccessUnavailableException;
 
 import static java.util.Collections.singleton;
 import static java.util.Objects.requireNonNull;
@@ -65,6 +67,9 @@ public class ServerUserSession extends AbstractUserSession {
   private static final Set<String> QUALIFIERS = Set.of(VIEW, SUBVIEW);
 
   @CheckForNull
+  // shared by every session, so the "allowlist cannot be read" warning is rate-limited across requests
+  private static final IpAllowlistUnavailableLog IP_ALLOWLIST_UNAVAILABLE = new IpAllowlistUnavailableLog(System::currentTimeMillis);
+
   private final UserDto userDto;
   private final boolean isAuthenticatedBrowserSession;
   private final DbClient dbClient;
@@ -125,8 +130,12 @@ public class ServerUserSession extends AbstractUserSession {
       return false;
     }
     // decided once per organization per request; a failed read throws and is not remembered
-    return ipBlockedByOrganizationUuid.computeIfAbsent(organizationUuid,
-      uuid -> !isExemptServiceLogin(access, uuid) && access.isBlocked(uuid, clientIp, () -> isOrganizationAdmin(uuid)));
+    try {
+      return ipBlockedByOrganizationUuid.computeIfAbsent(organizationUuid,
+        uuid -> !isExemptServiceLogin(access, uuid) && access.isBlocked(uuid, clientIp, () -> isOrganizationAdmin(uuid)));
+    } catch (OrganizationIpAccessUnavailableException e) {
+      throw IP_ALLOWLIST_UNAVAILABLE.unavailable(e);
+    }
   }
 
   @Override
@@ -146,7 +155,13 @@ public class ServerUserSession extends AbstractUserSession {
     }
     if (ipBlockedOrganizationUuids == null) {
       // the organizations whose allowlist leaves this address out, less those where this login is exempt
-      ipBlockedOrganizationUuids = access.blockedOrganizationUuids(clientIp).stream()
+      Set<String> candidates;
+      try {
+        candidates = access.blockedOrganizationUuids(clientIp);
+      } catch (OrganizationIpAccessUnavailableException e) {
+        throw IP_ALLOWLIST_UNAVAILABLE.unavailable(e);
+      }
+      ipBlockedOrganizationUuids = candidates.stream()
         .filter(this::isBlockedByIpAllowlist)
         .collect(Collectors.toUnmodifiableSet());
     }
