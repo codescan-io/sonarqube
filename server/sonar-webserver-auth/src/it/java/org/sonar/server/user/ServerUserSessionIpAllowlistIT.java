@@ -52,6 +52,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -533,6 +534,31 @@ public class ServerUserSessionIpAllowlistIT {
 
     assertThatThrownBy(() -> session.hasMembership(org())).isInstanceOf(ServerException.class);
     assertThat(session.hasMembership(org())).isTrue();
+  }
+
+  @Test
+  public void membership_of_a_non_member_is_answered_without_asking_the_allowlist() {
+    insertOrg();
+    blockEveryone(ORG);
+    ServerUserSession session = session(user("outsider"), OUTSIDE_IP);
+
+    assertThat(session.hasMembership(org())).isFalse();
+    assertThat(session.hasMembership(ORG_KEY)).isFalse();
+
+    verify(ipAccess, never()).isBlocked(any(), any(), any(BooleanSupplier.class));
+  }
+
+  @Test
+  public void non_member_is_not_a_member_rather_than_failing_when_the_allowlist_cannot_be_read() {
+    UserDto member = insertMember("u1");
+    ProjectData project = insertPrivateProject(ORG, member);
+    when(ipAccess.isBlocked(any(), any(), any(BooleanSupplier.class)))
+      .thenThrow(new OrganizationIpAccessUnavailableException("Cannot read the IP allowlist", new IllegalStateException()));
+    ServerUserSession session = session(user("outsider"), OUTSIDE_IP);
+
+    assertThat(session.hasMembership(org())).isFalse();
+    assertThat(session.hasMembership(ORG_KEY)).isFalse();
+    assertThat(session.hasEntityPermission(UserRole.USER, project.getProjectDto())).isFalse();
   }
 
   private static void assertUnavailable(ThrowingCallable call, OrganizationIpAccessUnavailableException cause) {

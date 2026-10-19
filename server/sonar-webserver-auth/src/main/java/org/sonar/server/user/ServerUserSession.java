@@ -578,11 +578,9 @@ public class ServerUserSession extends AbstractUserSession {
     if (isRoot()) {
       return true;
     }
-    // also hides the organization's projects and components: loadEntityPermissions and the keepAuthorized* filters ask here
-    if (isBlockedByIpAllowlist(organizationUuid)) {
-      return false;
-    }
-    return isListedMember(organizationUuid);
+    // also hides the organization's projects and components: loadEntityPermissions and the keepAuthorized* filters ask here.
+    // Only a listed member is asked about the allowlist, so a non-member costs no allowlist read and is never failed by one.
+    return isListedMember(organizationUuid) && !isBlockedByIpAllowlist(organizationUuid);
   }
 
   /**
