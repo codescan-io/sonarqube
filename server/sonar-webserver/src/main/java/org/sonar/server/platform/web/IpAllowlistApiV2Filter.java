@@ -36,6 +36,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * The {@code /api/v2} counterpart of {@link IpAllowlistActionInterceptor}, for the endpoints that take the organization
  * key as the {@code organization} query parameter. The answer has the {@code /api} error body, not the {@code /api/v2}
  * one, so the web app recognises a block the same way on both.
+ * <p>
+ * Other ways of naming an organization are not resolved, and a blocked caller still gets the user session's generic
+ * 403: a JSON request body (creating a group, updating a group, creating a rule, creating a bound project, creating a
+ * group membership) and an {@code {id}} path value.
  */
 public class IpAllowlistApiV2Filter extends HttpFilter {
 

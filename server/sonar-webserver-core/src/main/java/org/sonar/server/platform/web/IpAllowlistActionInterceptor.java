@@ -39,6 +39,11 @@ import static java.util.stream.Collectors.toCollection;
  * the organization or one of its projects. Requests that name neither are left to the user session, which already
  * withholds a blocked organization's data.
  * <p>
+ * A caller that no organization blocks costs no lookup at all. Only these ways of naming an organization are resolved:
+ * the {@code organization} parameter and the single-key project, component, application and portfolio parameters.
+ * Others are not, and a blocked caller still gets the user session's generic 403: the plural parameters
+ * ({@code projects}, {@code components}, {@code componentKeys}, {@code key}).
+ * <p>
  * Reads the raw parameters: {@link Request#param} throws for a parameter the action does not declare. Only the first
  * value of each parameter counts, as the action reads it.
  */
