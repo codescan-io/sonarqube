@@ -20,8 +20,9 @@
 
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import * as React from 'react';
 import { useContext } from 'react';
-import { Route } from 'react-router-dom';
+import { Route, useLocation as useRouterLocation } from 'react-router-dom';
 import * as withRouter from '~sonar-aligned/components/hoc/withRouter';
 import { byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import { ComponentQualifier, Visibility } from '~sonar-aligned/types/component';
@@ -41,6 +42,7 @@ import handleRequiredAuthorization from '../../utils/handleRequiredAuthorization
 import ComponentContainer, { isSameBranch } from '../ComponentContainer';
 import { WithAvailableFeaturesProps } from '../available-features/withAvailableFeatures';
 import { ComponentContext } from '../componentContext/ComponentContext';
+import { CurrentOrgContext } from '../nav/organization/CurrentOrgContext';
 
 jest.mock('../../../api/ce', () => ({
   getTasksForComponent: jest.fn().mockResolvedValue({ queue: [] }),
@@ -405,6 +407,21 @@ describe('redirects', () => {
     });
   });
 
+  it('should show the blocked page, not log in again, when the IP allowlist blocks the user', async () => {
+    const message =
+      "Access to organization 'acme' is blocked by its IP allowlist. Your IP address is 192.0.2.1.";
+    jest.mocked(getComponentNavigation).mockRejectedValueOnce(
+      new Response(JSON.stringify({ errors: [{ msg: message }] }), {
+        status: HttpStatus.Forbidden,
+      }),
+    );
+
+    renderComponentContainerWithBlockedPage();
+
+    expect(await screen.findByText(`/sessions/ip-blocked|${message}`)).toBeInTheDocument();
+    expect(handleRequiredAuthorization).not.toHaveBeenCalled();
+  });
+
   it('should redirect to portfolio when using dashboard path', async () => {
     renderComponentContainer(
       { hasFeature: jest.fn().mockReturnValue(true) },
@@ -617,7 +634,9 @@ function renderComponentContainerAsComponent(props: Partial<WithAvailableFeature
   return renderComponent(
     <>
       <div id="component-nav-portal" />
-      <ComponentContainer {...props} />
+      <WithCurrentOrg>
+        <ComponentContainer {...props} />
+      </WithCurrentOrg>
     </>,
     '/?id=foo',
   );
@@ -631,7 +650,13 @@ function renderComponentContainer(
   renderAppRoutes(
     path,
     () => (
-      <Route element={<ComponentContainer {...props} />}>
+      <Route
+        element={
+          <WithCurrentOrg>
+            <ComponentContainer {...props} />
+          </WithCurrentOrg>
+        }
+      >
         <Route path="*" element={<TestComponent />} />
         <Route path="portfolio" element={<div>portfolio</div>} />
         <Route path="dashboard" element={<div>project</div>} />
@@ -640,6 +665,40 @@ function renderComponentContainer(
     {
       navigateTo,
     },
+  );
+}
+
+// ComponentContainer calls useCurrentOrg(), which throws outside its provider.
+function WithCurrentOrg({ children }: Readonly<{ children: React.ReactNode }>) {
+  const value = React.useMemo(() => ({ orgKee: null, setOrgKee: jest.fn() }), []);
+  return <CurrentOrgContext.Provider value={value}>{children}</CurrentOrgContext.Provider>;
+}
+
+function renderComponentContainerWithBlockedPage() {
+  renderAppRoutes(
+    '/',
+    () => (
+      <>
+        <Route
+          element={
+            <WithCurrentOrg>
+              <ComponentContainer />
+            </WithCurrentOrg>
+          }
+        >
+          <Route path="*" element={<TestComponent />} />
+        </Route>
+        <Route path="sessions/ip-blocked" element={<BlockedPageProbe />} />
+      </>
+    ),
+    { navigateTo: '?id=foo' },
+  );
+}
+
+function BlockedPageProbe() {
+  const location = useRouterLocation();
+  return (
+    <div>{`${location.pathname}|${(location.state as { message?: string } | null)?.message}`}</div>
   );
 }
 

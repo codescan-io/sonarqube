@@ -20,6 +20,7 @@
 
 import { Route } from 'react-router-dom';
 import SimpleSessionsContainer from '../../app/components/SimpleSessionsContainer';
+import IpAllowlistBlocked from './components/IpAllowlistBlocked';
 import LoginContainer from './components/LoginContainer';
 import Logout from './components/Logout';
 import Unauthorized from './components/Unauthorized';
@@ -30,6 +31,7 @@ const routes = () => (
     <Route path="new" element={<LoginContainer />} />
     <Route path="logout" element={<Logout />} />
     <Route path="unauthorized" element={<Unauthorized />} />
+    <Route path="ip-blocked" element={<IpAllowlistBlocked />} />
     <Route path="sso" element={<SamlLogin />} />
   </Route>
 );
