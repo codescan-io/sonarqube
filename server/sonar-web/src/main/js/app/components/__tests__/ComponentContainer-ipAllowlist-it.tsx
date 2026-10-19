@@ -18,8 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { Route, useLocation, useNavigationType } from 'react-router-dom';
+import { addGlobalErrorMessage } from '~design-system';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import { HttpStatus } from '../../../helpers/request';
 import { renderAppRoutes } from '../../../helpers/testReactTestingUtils';
@@ -40,37 +41,75 @@ jest.mock('../../../queries/mode', () => ({
 const MSG =
   "Access to organization 'acme' is blocked by its IP allowlist. Your IP address is 192.0.2.1.";
 
-beforeEach(() => {
-  jest.mocked(getJSON).mockImplementation((url: string) => {
-    if (url === '/api/navigation/component') {
-      return Promise.reject(
-        new Response(JSON.stringify({ errors: [{ msg: MSG }] }), { status: HttpStatus.Forbidden }),
-      );
-    }
-    return Promise.resolve({});
+const NAVIGATION_URL = '/api/navigation/component'; // its wrapper shows a toast on failure
+const COMPONENT_URL = '/api/components/show'; // its wrapper does not
+
+function forbidden() {
+  return new Response(JSON.stringify({ errors: [{ msg: MSG }] }), {
+    status: HttpStatus.Forbidden,
   });
-});
+}
+
+function failAfter(ms: number) {
+  return new Promise((_resolve, reject) => {
+    setTimeout(() => reject(forbidden()), ms);
+  });
+}
+
+function mockRequests(handlers: Record<string, () => Promise<unknown>>) {
+  jest.mocked(getJSON).mockImplementation((url: string) => {
+    return handlers[url]?.() ?? Promise.resolve({});
+  });
+}
 
 afterEach(() => {
   jest.resetAllMocks();
 });
 
 it('opens the blocked page, replacing the component page in the history', async () => {
+  mockRequests({ [NAVIGATION_URL]: () => Promise.reject(forbidden()) });
   renderComponentContainer();
 
   expect(await screen.findByText(`/sessions/ip-blocked|REPLACE|${MSG}`)).toBeInTheDocument();
 });
 
-it('does not leave the error message toast on top of the blocked page', async () => {
+it('shows no error toast on the blocked page', async () => {
+  mockRequests({ [NAVIGATION_URL]: () => Promise.reject(forbidden()) });
   renderComponentContainer();
 
   expect(await screen.findByText(/^\/sessions\/ip-blocked\|/)).toBeInTheDocument();
+  expect(screen.queryByText(MSG)).not.toBeInTheDocument();
+});
 
+it('shows no error toast when the request without a toast fails first and the other follows', async () => {
+  mockRequests({
+    [COMPONENT_URL]: () => Promise.reject(forbidden()),
+    [NAVIGATION_URL]: () => failAfter(30),
+  });
+  renderComponentContainer();
+
+  expect(await screen.findByText(/^\/sessions\/ip-blocked\|/)).toBeInTheDocument();
+  await act(async () => {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
+  });
+  expect(screen.queryByText(MSG)).not.toBeInTheDocument();
+});
+
+it('leaves unrelated toasts alone', async () => {
+  mockRequests({ [NAVIGATION_URL]: () => Promise.reject(forbidden()) });
+  renderComponentContainer();
+  act(() => {
+    addGlobalErrorMessage('Unrelated problem');
+  });
+
+  expect(await screen.findByText(/^\/sessions\/ip-blocked\|/)).toBeInTheDocument();
   // A dismissed toast stays in the page until its exit animation ends, which jsdom never fires.
   // Its "data-in" flag turns false as soon as it is dismissed, so use that.
   // eslint-disable-next-line testing-library/no-node-access
-  const toast = screen.getByText(MSG).closest('.Toastify__toast');
-  expect(toast).toHaveAttribute('data-in', 'false');
+  const toast = screen.getByText('Unrelated problem').closest('.Toastify__toast');
+  expect(toast).toHaveAttribute('data-in', 'true');
 });
 
 function BlockedPageProbe() {

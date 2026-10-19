@@ -20,6 +20,7 @@
 
 import { addGlobalErrorMessage } from '~design-system';
 import handleRequiredAuthentication from '../../helpers/handleRequiredAuthentication';
+import { getIpAllowlistBlockedMessage } from '../../helpers/ipAllowlist';
 import { HttpStatus, parseError } from '../../helpers/request';
 
 interface ThrowGlobalErrorOptions {
@@ -38,19 +39,13 @@ export function throwGlobalError(
   }
 
   if (param instanceof Response) {
-    return parseError(param)
-      .then(
-        (...args) => {
-          addGlobalErrorMessage(...args);
-          if (options.redirectUnauthorizedNoReasons && param.status === HttpStatus.Unauthorized) {
-            handleRequiredAuthentication();
-          }
-        },
-        () => {
-          /* ignore parsing errors */
-        },
-      )
-      .then(() => Promise.reject(param));
+    const response = param;
+    return getIpAllowlistBlockedMessage(response).then((blockedMessage) =>
+      // The blocked page explains this one; a toast on top of it would only repeat the message.
+      blockedMessage === undefined
+        ? showMessageThenReject(response, options)
+        : Promise.reject(response),
+    );
   }
 
   // Axios response object
@@ -61,4 +56,23 @@ export function throwGlobalError(
   }
 
   return Promise.reject(param);
+}
+
+function showMessageThenReject(
+  response: Response,
+  options: ThrowGlobalErrorOptions,
+): Promise<never> {
+  return parseError(response)
+    .then(
+      (...args) => {
+        addGlobalErrorMessage(...args);
+        if (options.redirectUnauthorizedNoReasons && response.status === HttpStatus.Unauthorized) {
+          handleRequiredAuthentication();
+        }
+      },
+      () => {
+        /* ignore parsing errors */
+      },
+    )
+    .then(() => Promise.reject(response));
 }
