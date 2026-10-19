@@ -33,6 +33,7 @@ import org.slf4j.event.Level;
 import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.impl.utils.TestSystem2;
 import org.sonar.api.testfixtures.log.LogTester;
+import org.sonar.api.utils.System2;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.IpAllowlistDao;
@@ -418,7 +419,7 @@ public class OrganizationIpAccessTest {
     assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(OrganizationIpAccessUnavailableException.class);
   }
 
-  @Test
+  @Test(timeout = 30_000)
   public void old_snapshot_is_served_while_another_thread_reloads() throws Exception {
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     system2.setNow(1_000_000L + 30_000L);
@@ -501,7 +502,7 @@ public class OrganizationIpAccessTest {
     assertThat(logTester.logs(Level.WARN)).hasSize(1);
   }
 
-  @Test
+  @Test(timeout = 30_000)
   public void threads_without_a_snapshot_wait_for_one_load_and_share_its_result() throws Exception {
     CountDownLatch loadStarted = new CountDownLatch(1);
     CountDownLatch finishLoad = new CountDownLatch(1);
@@ -516,7 +517,7 @@ public class OrganizationIpAccessTest {
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
       Future<Boolean> second = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       Future<Boolean> third = executor.submit(() -> underTest.isBlocked("org-a", "192.0.2.1", () -> false));
-      Thread.sleep(100);
+      awaitWaitingThreads(underTest, 2);
 
       finishLoad.countDown();
 
@@ -530,7 +531,7 @@ public class OrganizationIpAccessTest {
     }
   }
 
-  @Test
+  @Test(timeout = 30_000)
   public void threads_without_a_snapshot_all_fail_when_the_one_load_fails() throws Exception {
     CountDownLatch loadStarted = new CountDownLatch(1);
     CountDownLatch finishLoad = new CountDownLatch(1);
@@ -544,7 +545,7 @@ public class OrganizationIpAccessTest {
       Future<Boolean> first = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
       Future<Boolean> second = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
-      Thread.sleep(100);
+      awaitWaitingThreads(underTest, 1);
 
       finishLoad.countDown();
 
@@ -559,6 +560,54 @@ public class OrganizationIpAccessTest {
       finishLoad.countDown();
       executor.shutdownNow();
     }
+  }
+
+  @Test(timeout = 30_000)
+  public void error_during_the_load_releases_the_waiting_threads_at_once_and_does_not_block_the_next_load() throws Exception {
+    AtomicInteger calls = new AtomicInteger();
+    CountDownLatch loadStarted = new CountDownLatch(1);
+    CountDownLatch finishLoad = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      if (calls.incrementAndGet() == 1) {
+        loadStarted.countDown();
+        assertThat(finishLoad.await(10, TimeUnit.SECONDS)).isTrue();
+        throw new AssertionError("out of memory, say");
+      }
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Future<Boolean> leader = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      Future<Boolean> waiter = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      awaitWaitingThreads(underTest, 1);
+
+      finishLoad.countDown();
+
+      assertThatThrownBy(() -> leader.get(10, TimeUnit.SECONDS)).hasRootCauseInstanceOf(AssertionError.class);
+      assertThatThrownBy(() -> waiter.get(10, TimeUnit.SECONDS))
+        .hasCauseInstanceOf(OrganizationIpAccessUnavailableException.class)
+        .hasStackTraceContaining("load was aborted");
+      assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+      assertThat(calls).hasValue(2);
+    } finally {
+      finishLoad.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void snapshot_that_is_fresh_by_the_time_the_load_starts_is_used_without_reading_the_database() {
+    System2 clock = mock(System2.class);
+    doReturn(1_000_000L).when(clock).now();
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, clock, settings.asConfig());
+    access.isBlocked("org-a", "192.0.2.1", () -> false);
+    // the first reading makes the snapshot look stale; when the load starts it is fresh again
+    doReturn(1_040_000L, 1_010_000L).when(clock).now();
+
+    assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+
+    verify(dao, times(1)).selectEnabledRanges(any());
   }
 
   // ---- a load that never returns ----
@@ -745,7 +794,7 @@ public class OrganizationIpAccessTest {
     })).isInstanceOf(IllegalStateException.class);
   }
 
-  @Test
+  @Test(timeout = 30_000)
   public void thread_that_waits_too_long_for_the_one_load_throws() throws Exception {
     OrganizationIpAccess impatient = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), 50L);
     CountDownLatch loadStarted = new CountDownLatch(1);
@@ -789,6 +838,14 @@ public class OrganizationIpAccessTest {
     system2.setNow(1_000_000L + OrganizationIpAccess.BLOCK_LOG_CLEANUP_INTERVAL_MS);
     underTest.shouldLogBlock("flood-again", "192.0.2.1");
     assertThat(underTest.trackedBlockCleanupCount() - cleanupsBefore).isEqualTo(2);
+  }
+
+  private static void awaitWaitingThreads(OrganizationIpAccess access, int expected) throws InterruptedException {
+    long giveUpAt = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (access.waitingThreadCount() < expected) {
+      assertThat(System.nanoTime()).as("threads waiting for the load").isLessThan(giveUpAt);
+      Thread.sleep(5);
+    }
   }
 
   private static java.util.function.BooleanSupplier countingAdminCheck(AtomicInteger calls, boolean isAdmin) {
