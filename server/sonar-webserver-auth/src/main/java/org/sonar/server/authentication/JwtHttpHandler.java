@@ -60,7 +60,7 @@ public class JwtHttpHandler {
   private static final String REFRESH_TOKEN_PARAM = "refreshToken";
 
   /**
-   * Claims codescanng signs into the login of an analysis job (CSN-74). The job is exempt from an organization's
+   * Claims codescanng signs into the login of an analysis job. The job is exempt from an organization's
    * IP allowlist only for the organization named by {@link #SERVICE_LOGIN_ORG_CLAIM}, and only from an internal address.
    */
   public static final String SERVICE_LOGIN_CLAIM = "codescanService";

@@ -104,8 +104,9 @@ public class ServerUserSession extends AbstractUserSession {
   }
 
   /**
-   * Applies the organizations' IP allowlists (CSN-74) to this session. Called once per web request, before the
-   * session is used. A session this is never called on, such as one built outside a web request, is not restricted.
+   * Applies the organizations' IP allowlists to this session. Called once, before the session is used: for each web
+   * request, and for each SonarLint push event with the address its push connection came from. A session this is never
+   * called on is not restricted.
    *
    * @param clientIp the address the request came from, as Tomcat resolved it; a missing or unparseable one is blocked
    *        by every organization with an allowlist

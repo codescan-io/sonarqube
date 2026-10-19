@@ -266,7 +266,7 @@ public interface UserSession {
   }
 
   /**
-   * True when the organization's IP allowlist blocks this request (CSN-74). Root, exempt organization
+   * True when the organization's IP allowlist blocks this request. Root, exempt organization
    * administrators and the analysis job's service login for its own organization are never blocked.
    * A session that does not apply the allowlist, such as one used outside a web request, returns false.
    * Implementations that wrap another session must delegate, or the check is off for every request.
