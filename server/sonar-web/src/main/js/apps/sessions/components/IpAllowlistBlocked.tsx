@@ -18,13 +18,18 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
 import { Card, CenteredLayout, Link, PageContentFontWrapper } from '~design-system';
+import { markIpAllowlistBlockedPageMounted } from '../../../helpers/ipAllowlist';
 import { translate } from '../../../helpers/l10n';
 
 export default function IpAllowlistBlocked() {
   const location = useLocation();
+  // While this page is shown, requests that fail with the same 403 must not add a toast of their own.
+  useEffect(markIpAllowlistBlockedPageMounted, []);
+
   const message = (location.state as { message?: unknown } | null)?.message;
 
   return (

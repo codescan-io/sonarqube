@@ -18,8 +18,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Navigate, Route } from 'react-router-dom';
+import { throwGlobalError } from '~sonar-aligned/helpers/error';
+import { HttpStatus } from '../../../../helpers/request';
 import { renderAppRoutes } from '../../../../helpers/testReactTestingUtils';
 import IpAllowlistBlocked from '../IpAllowlistBlocked';
 
@@ -56,4 +59,45 @@ it('shows a message that contains markup as plain text', async () => {
   renderBlockedPage({ message: hostile });
   expect(await screen.findByText(hostile)).toBeInTheDocument();
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
+});
+
+describe('error toast for the same 403', () => {
+  function allowlistResponse() {
+    return new Response(JSON.stringify({ errors: [{ msg: MSG }] }), {
+      status: HttpStatus.Forbidden,
+    });
+  }
+
+  async function failWithAllowlist403() {
+    await act(async () => {
+      await expect(throwGlobalError(allowlistResponse())).rejects.toBeInstanceOf(Response);
+    });
+  }
+
+  it('shows the toast on a page that does not redirect', async () => {
+    renderAppRoutes('/', () => <Route path="/" element={<div>some other page</div>} />);
+
+    await failWithAllowlist403();
+
+    expect(await screen.findByTestId('global-message__ERROR')).toHaveTextContent(MSG);
+  });
+
+  it('shows no toast while the blocked page is on screen', async () => {
+    renderBlockedPage({ message: MSG });
+    await screen.findByRole('heading', { level: 1, name: 'ip_allowlist.blocked.title' });
+
+    await failWithAllowlist403();
+
+    expect(screen.queryByTestId('global-message__ERROR')).not.toBeInTheDocument();
+  });
+
+  it('shows the toast again once the user has left the blocked page', async () => {
+    renderBlockedPage({ message: MSG });
+    await userEvent.click(await screen.findByRole('link', { name: 'layout.home' }));
+    expect(await screen.findByText('/projects')).toBeInTheDocument();
+
+    await failWithAllowlist403();
+
+    expect(await screen.findByTestId('global-message__ERROR')).toHaveTextContent(MSG);
+  });
 });

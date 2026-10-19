@@ -18,9 +18,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import { ToastOptions } from 'react-toastify';
 import { addGlobalErrorMessage } from '~design-system';
 import handleRequiredAuthentication from '../../helpers/handleRequiredAuthentication';
-import { getIpAllowlistBlockedMessage } from '../../helpers/ipAllowlist';
+import {
+  IP_ALLOWLIST_TOAST_ID,
+  getIpAllowlistBlockedMessage,
+  isIpAllowlistToastSuppressed,
+} from '../../helpers/ipAllowlist';
 import { HttpStatus, parseError } from '../../helpers/request';
 
 interface ThrowGlobalErrorOptions {
@@ -40,12 +45,17 @@ export function throwGlobalError(
 
   if (param instanceof Response) {
     const response = param;
-    return getIpAllowlistBlockedMessage(response).then((blockedMessage) =>
-      // The blocked page explains this one; a toast on top of it would only repeat the message.
-      blockedMessage === undefined
-        ? showMessageThenReject(response, options)
-        : Promise.reject(response),
-    );
+    return getIpAllowlistBlockedMessage(response).then((blockedMessage) => {
+      if (blockedMessage === undefined) {
+        return showMessageThenReject(response, options);
+      }
+      // The blocked page already says this; a toast on top of it would only repeat it. Anywhere else
+      // the toast is the only thing that tells the user, and it carries an id so that the redirect
+      // can remove just this one.
+      return isIpAllowlistToastSuppressed()
+        ? Promise.reject(response)
+        : showMessageThenReject(response, options, { toastId: IP_ALLOWLIST_TOAST_ID });
+    });
   }
 
   // Axios response object
@@ -61,11 +71,16 @@ export function throwGlobalError(
 function showMessageThenReject(
   response: Response,
   options: ThrowGlobalErrorOptions,
+  toastOptions?: ToastOptions,
 ): Promise<never> {
   return parseError(response)
     .then(
-      (...args) => {
-        addGlobalErrorMessage(...args);
+      (message) => {
+        if (toastOptions) {
+          addGlobalErrorMessage(message, toastOptions);
+        } else {
+          addGlobalErrorMessage(message);
+        }
         if (options.redirectUnauthorizedNoReasons && response.status === HttpStatus.Unauthorized) {
           handleRequiredAuthentication();
         }

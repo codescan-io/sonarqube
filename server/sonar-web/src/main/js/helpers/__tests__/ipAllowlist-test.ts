@@ -18,8 +18,19 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { getIpAllowlistBlockedMessage } from '../ipAllowlist';
+import { dismissGlobalMessage } from '~design-system';
+import {
+  IP_ALLOWLIST_TOAST_ID,
+  getIpAllowlistBlockedMessage,
+  isIpAllowlistToastSuppressed,
+  markIpAllowlistBlockedPageMounted,
+  showIpAllowlistBlockedPage,
+} from '../ipAllowlist';
 import { HttpStatus } from '../request';
+
+jest.mock('~design-system', () => ({
+  dismissGlobalMessage: jest.fn(),
+}));
 
 const MSG =
   "Access to organization 'acme' is blocked by its IP allowlist. Your IP address is 192.0.2.1.";
@@ -68,4 +79,56 @@ it('ignores non-403 and non-Response values', async () => {
   ).toBeUndefined();
   expect(await getIpAllowlistBlockedMessage(new Error('x'))).toBeUndefined();
   expect(await getIpAllowlistBlockedMessage(undefined)).toBeUndefined();
+});
+
+describe('suppressing the allowlist toast', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
+  it('does not suppress anything by default', () => {
+    expect(isIpAllowlistToastSuppressed()).toBe(false);
+  });
+
+  it('suppresses while the blocked page is shown, and stops when it goes away', () => {
+    const unmount = markIpAllowlistBlockedPageMounted();
+    expect(isIpAllowlistToastSuppressed()).toBe(true);
+
+    unmount();
+
+    expect(isIpAllowlistToastSuppressed()).toBe(false);
+  });
+
+  it('suppresses while a redirect to the blocked page is under way, but not forever', () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    showIpAllowlistBlockedPage(jest.fn(), MSG);
+    expect(isIpAllowlistToastSuppressed()).toBe(true);
+
+    now.mockReturnValue(1_000_000 + 60_000);
+
+    expect(isIpAllowlistToastSuppressed()).toBe(false);
+  });
+
+  it('stops suppressing as soon as the blocked page is left, even within the redirect window', () => {
+    showIpAllowlistBlockedPage(jest.fn(), MSG);
+    const unmount = markIpAllowlistBlockedPageMounted();
+
+    unmount();
+
+    expect(isIpAllowlistToastSuppressed()).toBe(false);
+  });
+
+  it('removes only the allowlist toast when redirecting', () => {
+    const navigate = jest.fn();
+
+    showIpAllowlistBlockedPage(navigate, MSG);
+
+    expect(dismissGlobalMessage).toHaveBeenCalledTimes(1);
+    expect(dismissGlobalMessage).toHaveBeenCalledWith(IP_ALLOWLIST_TOAST_ID);
+    expect(navigate).toHaveBeenCalledWith('/sessions/ip-blocked', {
+      replace: true,
+      state: { message: MSG },
+    });
+  });
 });

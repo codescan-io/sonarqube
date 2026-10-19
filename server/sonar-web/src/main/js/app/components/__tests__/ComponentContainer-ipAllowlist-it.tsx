@@ -22,6 +22,7 @@ import { act, screen } from '@testing-library/react';
 import { Route, useLocation, useNavigationType } from 'react-router-dom';
 import { addGlobalErrorMessage } from '~design-system';
 import { getJSON } from '~sonar-aligned/helpers/request';
+import { IP_ALLOWLIST_TOAST_ID } from '../../../helpers/ipAllowlist';
 import { HttpStatus } from '../../../helpers/request';
 import { renderAppRoutes } from '../../../helpers/testReactTestingUtils';
 import ComponentContainer from '../ComponentContainer';
@@ -73,12 +74,17 @@ it('opens the blocked page, replacing the component page in the history', async 
   expect(await screen.findByText(`/sessions/ip-blocked|REPLACE|${MSG}`)).toBeInTheDocument();
 });
 
-it('shows no error toast on the blocked page', async () => {
-  mockRequests({ [NAVIGATION_URL]: () => Promise.reject(forbidden()) });
+it('removes the allowlist toast that was already showing when it redirects', async () => {
+  mockRequests({ [NAVIGATION_URL]: () => failAfter(200) });
   renderComponentContainer();
+  act(() => {
+    addGlobalErrorMessage(MSG, { toastId: IP_ALLOWLIST_TOAST_ID });
+  });
+  expect(toastOf(MSG)).toHaveAttribute('data-in', 'true');
 
   expect(await screen.findByText(/^\/sessions\/ip-blocked\|/)).toBeInTheDocument();
-  expect(screen.queryByText(MSG)).not.toBeInTheDocument();
+  await settle();
+  expect(toastOf(MSG)).toHaveAttribute('data-in', 'false');
 });
 
 it('shows no error toast when the request without a toast fails first and the other follows', async () => {
@@ -89,11 +95,7 @@ it('shows no error toast when the request without a toast fails first and the ot
   renderComponentContainer();
 
   expect(await screen.findByText(/^\/sessions\/ip-blocked\|/)).toBeInTheDocument();
-  await act(async () => {
-    await new Promise((resolve) => {
-      setTimeout(resolve, 100);
-    });
-  });
+  await settle();
   expect(screen.queryByText(MSG)).not.toBeInTheDocument();
 });
 
@@ -105,12 +107,26 @@ it('leaves unrelated toasts alone', async () => {
   });
 
   expect(await screen.findByText(/^\/sessions\/ip-blocked\|/)).toBeInTheDocument();
-  // A dismissed toast stays in the page until its exit animation ends, which jsdom never fires.
-  // Its "data-in" flag turns false as soon as it is dismissed, so use that.
   // eslint-disable-next-line testing-library/no-node-access
   const toast = screen.getByText('Unrelated problem').closest('.Toastify__toast');
   expect(toast).toHaveAttribute('data-in', 'true');
 });
+
+// Gives a toast that was just added time to finish showing, so a missing dismissal is noticed.
+async function settle() {
+  await act(async () => {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
+  });
+}
+
+// A dismissed toast stays in the page until its exit animation ends, which jsdom never fires.
+// Its "data-in" flag turns false as soon as it is dismissed, so use that.
+function toastOf(text: string) {
+  // eslint-disable-next-line testing-library/no-node-access
+  return screen.getByText(text).closest('.Toastify__toast');
+}
 
 function BlockedPageProbe() {
   const location = useLocation();

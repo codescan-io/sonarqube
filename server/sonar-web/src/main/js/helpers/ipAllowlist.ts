@@ -19,9 +19,19 @@
  */
 
 import { NavigateFunction } from 'react-router-dom';
+import { dismissGlobalMessage } from '~design-system';
 import { HttpStatus } from './request';
 
 export const IP_ALLOWLIST_BLOCKED_PATH = '/sessions/ip-blocked';
+
+// Fixed id of the error toast for this 403, so it can be removed without touching any other toast.
+export const IP_ALLOWLIST_TOAST_ID = 'ip-allowlist-blocked';
+
+// How long after starting a redirect the toast stays suppressed if the blocked page never shows.
+const REDIRECT_GRACE_MS = 10_000;
+
+let redirectingUntil = 0;
+let blockedPagesShown = 0;
 
 // Must match IpAllowlistBlockedException.MESSAGE_MARKER on the server.
 const MESSAGE_MARKER = 'is blocked by its IP allowlist';
@@ -46,9 +56,31 @@ export async function getIpAllowlistBlockedMessage(e: unknown): Promise<string |
 
 /**
  * Show the blocked page in place of the page that was loading. It replaces the current history entry:
- * going back would only load the blocked page again. No error toast is shown for this error, because
- * throwGlobalError skips it.
+ * going back would only load the blocked page again.
+ *
+ * A request that fails with the same 403 while the redirect happens, or after it, must not put its
+ * toast on top of the blocked page (see isIpAllowlistToastSuppressed). A toast that is already
+ * showing is removed, and only that one.
  */
 export function showIpAllowlistBlockedPage(navigate: NavigateFunction, message: string) {
+  redirectingUntil = Date.now() + REDIRECT_GRACE_MS;
+  dismissGlobalMessage(IP_ALLOWLIST_TOAST_ID);
   navigate(IP_ALLOWLIST_BLOCKED_PATH, { replace: true, state: { message } });
+}
+
+/**
+ * Called by the blocked page while it is on screen. Returns the function that says it has gone, which
+ * also ends the redirect window, so that toasts come back as soon as the user is on another page.
+ */
+export function markIpAllowlistBlockedPageMounted(): () => void {
+  blockedPagesShown += 1;
+  return () => {
+    blockedPagesShown = Math.max(0, blockedPagesShown - 1);
+    redirectingUntil = 0;
+  };
+}
+
+/** True when the user is on the blocked page, or is being sent there right now. */
+export function isIpAllowlistToastSuppressed(): boolean {
+  return blockedPagesShown > 0 || Date.now() < redirectingUntil;
 }

@@ -20,6 +20,7 @@
 
 import { addGlobalErrorMessage } from '~design-system';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
+import { IP_ALLOWLIST_TOAST_ID, markIpAllowlistBlockedPageMounted } from '../ipAllowlist';
 
 jest.mock('~design-system', () => ({
   addGlobalErrorMessage: jest.fn(),
@@ -99,12 +100,30 @@ describe('IP allowlist 403', () => {
     return new Response(JSON.stringify({ errors: [{ msg }] }), { status });
   }
 
-  it('rejects with the response but shows no message', async () => {
+  it('shows the message, with a known toast id, when no blocked page is involved', async () => {
+    const response = jsonResponse(403, MSG);
+
+    await expect(throwGlobalError(response)).rejects.toBe(response);
+
+    expect(addGlobalErrorMessage).toHaveBeenCalledWith(MSG, { toastId: IP_ALLOWLIST_TOAST_ID });
+  });
+
+  it('shows no message while the blocked page is on screen, but still rejects', async () => {
+    const unmount = markIpAllowlistBlockedPageMounted();
     const response = jsonResponse(403, MSG);
 
     await expect(throwGlobalError(response)).rejects.toBe(response);
 
     expect(addGlobalErrorMessage).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it('shows the message again once the blocked page has gone', async () => {
+    markIpAllowlistBlockedPageMounted()();
+
+    await throwGlobalError(jsonResponse(403, MSG)).catch(() => {});
+
+    expect(addGlobalErrorMessage).toHaveBeenCalledWith(MSG, { toastId: IP_ALLOWLIST_TOAST_ID });
   });
 
   it('still shows the message of any other 403', async () => {
