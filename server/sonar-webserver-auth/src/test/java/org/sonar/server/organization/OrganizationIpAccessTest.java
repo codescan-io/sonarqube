@@ -575,6 +575,40 @@ public class OrganizationIpAccessTest {
     assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isInstanceOf(OrganizationIpAccessUnavailableException.class);
   }
 
+  @Test(timeout = 30_000)
+  public void old_snapshot_is_not_served_once_60_seconds_old_while_a_slow_reload_runs() throws Exception {
+    OrganizationIpAccess access = access(settings.asConfig(), 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    access.isBlocked("org-a", "192.0.2.1", () -> false);
+    CountDownLatch reloadStarted = new CountDownLatch(1);
+    CountDownLatch finishReload = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      reloadStarted.countDown();
+      assertThat(finishReload.await(10, TimeUnit.SECONDS)).isTrue();
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      // started 5 seconds before the snapshot turns 60 seconds old, so it is not taken over by then
+      clock.set(1_000_000L + 55_000L);
+      Future<Boolean> leader = executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(reloadStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      clock.set(1_000_000L + 59_999L);
+      assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+
+      clock.set(1_000_000L + 60_000L);
+      assertThatThrownBy(() -> access.isBlocked("org-a", "203.0.113.9", () -> false))
+        .isInstanceOf(OrganizationIpAccessUnavailableException.class)
+        .hasMessageContaining("Timed out");
+      verify(dao, times(2)).selectEnabledRanges(any());
+
+      finishReload.countDown();
+      assertThat(leader.get(10, TimeUnit.SECONDS)).isFalse();
+    } finally {
+      finishReload.countDown();
+      executor.shutdownNow();
+    }
+  }
+
   @Test
   public void snapshot_that_became_too_old_during_a_slow_failed_reload_is_not_served() {
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
@@ -788,13 +822,13 @@ public class OrganizationIpAccessTest {
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
       // well past the 3 second wait, so the load would already be taken over if both used one deadline
-      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS - 1L);
+      clock.set(1_000_000L + 7_999L);
       assertThatThrownBy(() -> access.isBlocked("org-a", "203.0.113.9", () -> false))
         .isInstanceOf(OrganizationIpAccessUnavailableException.class)
         .hasMessageContaining("Timed out");
       verify(dao, times(1)).selectEnabledRanges(any());
 
-      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      clock.set(1_000_000L + 8_000L);
       assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
       verify(dao, times(2)).selectEnabledRanges(any());
     } finally {
@@ -1182,6 +1216,36 @@ public class OrganizationIpAccessTest {
       assertThatThrownBy(() -> impatient.isBlocked("org-a", "203.0.113.9", () -> false))
         .isInstanceOf(OrganizationIpAccessUnavailableException.class)
         .hasMessageContaining("Timed out");
+
+      finishLoad.countDown();
+      assertThat(leader.get(10, TimeUnit.SECONDS)).isFalse();
+    } finally {
+      finishLoad.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 30_000)
+  public void caller_without_a_usable_list_waits_3_seconds_for_the_load_then_throws() throws Exception {
+    OrganizationIpAccess access = productionAccess();
+    CountDownLatch loadStarted = new CountDownLatch(1);
+    CountDownLatch finishLoad = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      loadStarted.countDown();
+      assertThat(finishLoad.await(20, TimeUnit.SECONDS)).isTrue();
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      Future<Boolean> leader = executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      long start = System.nanoTime();
+      assertThatThrownBy(() -> access.isBlocked("org-a", "203.0.113.9", () -> false))
+        .isInstanceOf(OrganizationIpAccessUnavailableException.class)
+        .hasMessageContaining("Timed out");
+      assertThat((System.nanoTime() - start) / 1_000_000L).isBetween(3_000L, 6_000L);
+      verify(dao, times(1)).selectEnabledRanges(any());
 
       finishLoad.countDown();
       assertThat(leader.get(10, TimeUnit.SECONDS)).isFalse();
