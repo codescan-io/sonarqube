@@ -19,16 +19,21 @@
  */
 package org.sonar.server.user;
 
+import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import javax.annotation.Nullable;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.Rule;
 import org.junit.Test;
+import org.sonar.api.web.UserRole;
 import org.slf4j.event.Level;
 import org.sonar.api.testfixtures.log.LogTester;
 import org.sonar.api.utils.System2;
 import org.sonar.db.DbTester;
+import org.sonar.db.component.ComponentDto;
+import org.sonar.db.component.ComponentTesting;
+import org.sonar.db.component.ProjectData;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.user.TokenType;
@@ -172,6 +177,57 @@ public class ServerUserSessionIpAllowlistIT {
     blockUnlessAdmin(ORG);
 
     assertThat(tokenSession(member, TokenType.USER_TOKEN, OUTSIDE_IP).isBlockedByIpAllowlist(ORG)).isTrue();
+  }
+
+  @Test
+  public void blocked_member_gets_no_permission_on_the_projects_and_components_of_the_blocked_organization() {
+    UserDto user = insertMember("u1");
+    ProjectData project = insertPrivateProject(ORG, user);
+    ComponentDto file = insertFile(project, ORG);
+    blockEveryone(ORG);
+
+    ServerUserSession session = session(user, OUTSIDE_IP);
+
+    assertThat(session.hasEntityPermission(UserRole.USER, project.getProjectDto())).isFalse();
+    assertThat(session.hasEntityPermission(UserRole.USER, project.getProjectDto().getUuid())).isFalse();
+    assertThat(session.hasComponentPermission(UserRole.USER, project.getMainBranchComponent())).isFalse();
+    assertThat(session.hasComponentPermission(UserRole.USER, file)).isFalse();
+  }
+
+  @Test
+  public void blocked_member_keeps_none_of_the_blocked_organizations_projects_or_components_and_all_of_an_allowed_ones() {
+    UserDto user = insertMember("u1");
+    insertMember("u1", OTHER_ORG, OTHER_ORG_KEY);
+    ProjectData blockedPrivate = insertPrivateProject(ORG, user);
+    ProjectData blockedPublic = insertPublicProject(ORG);
+    ComponentDto blockedFile = insertFile(blockedPrivate, ORG);
+    ProjectData allowedPrivate = insertPrivateProject(OTHER_ORG, user);
+    ProjectData allowedPublic = insertPublicProject(OTHER_ORG);
+    ComponentDto allowedFile = insertFile(allowedPrivate, OTHER_ORG);
+    blockEveryone(ORG);
+    when(ipAccess.isBlocked(eq(OTHER_ORG), anyString(), any(BooleanSupplier.class))).thenReturn(false);
+
+    ServerUserSession session = session(user, OUTSIDE_IP);
+
+    assertThat(session.keepAuthorizedEntities(UserRole.USER, List.of(blockedPrivate.getProjectDto(), blockedPublic.getProjectDto(),
+      allowedPrivate.getProjectDto(), allowedPublic.getProjectDto())))
+      .containsExactly(allowedPrivate.getProjectDto(), allowedPublic.getProjectDto());
+    assertThat(session.keepAuthorizedComponents(UserRole.USER, List.of(blockedPrivate.getMainBranchComponent(), blockedFile,
+      blockedPublic.getMainBranchComponent(), allowedPrivate.getMainBranchComponent(), allowedFile, allowedPublic.getMainBranchComponent())))
+      .containsExactly(allowedPrivate.getMainBranchComponent(), allowedFile, allowedPublic.getMainBranchComponent());
+  }
+
+  @Test
+  public void member_of_an_organization_that_lets_the_request_in_keeps_its_project_and_component_permissions() {
+    UserDto user = insertMember("u1");
+    ProjectData project = insertPrivateProject(ORG, user);
+    ComponentDto file = insertFile(project, ORG);
+    when(ipAccess.isBlocked(eq(ORG), anyString(), any(BooleanSupplier.class))).thenReturn(false);
+
+    ServerUserSession session = session(user, OUTSIDE_IP);
+
+    assertThat(session.hasEntityPermission(UserRole.USER, project.getProjectDto())).isTrue();
+    assertThat(session.hasComponentPermission(UserRole.USER, file)).isTrue();
   }
 
   @Test
@@ -443,6 +499,21 @@ public class ServerUserSessionIpAllowlistIT {
   private void blockUnlessAdmin(String organizationUuid) {
     when(ipAccess.isBlocked(eq(organizationUuid), anyString(), any(BooleanSupplier.class)))
       .thenAnswer(invocation -> !invocation.<BooleanSupplier>getArgument(2).getAsBoolean());
+  }
+
+  private ProjectData insertPrivateProject(String organizationUuid, UserDto userWithBrowsePermission) {
+    ProjectData project = db.components().insertPrivateProject(c -> c.setOrganizationUuid(organizationUuid), p -> p.setOrganizationUuid(organizationUuid));
+    db.executeInsert("user_roles", "uuid", "ur-" + project.getProjectDto().getUuid(), "organization_uuid", organizationUuid,
+      "role", UserRole.USER, "user_uuid", userWithBrowsePermission.getUuid(), "entity_uuid", project.getProjectDto().getUuid());
+    return project;
+  }
+
+  private ProjectData insertPublicProject(String organizationUuid) {
+    return db.components().insertPublicProject(c -> c.setOrganizationUuid(organizationUuid), p -> p.setOrganizationUuid(organizationUuid));
+  }
+
+  private ComponentDto insertFile(ProjectData project, String organizationUuid) {
+    return db.components().insertComponent(ComponentTesting.newFileDto(project.getMainBranchComponent()).setOrganizationUuid(organizationUuid));
   }
 
   private TokenUserSession tokenSession(UserDto user, TokenType type, String ip) {
