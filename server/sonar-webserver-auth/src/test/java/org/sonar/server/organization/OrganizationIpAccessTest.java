@@ -679,7 +679,7 @@ public class OrganizationIpAccessTest {
   // ---- a load that never returns ----
 
   @Test(timeout = 30_000)
-  public void load_stuck_longer_than_the_wait_deadline_is_taken_over_by_another_thread() throws Exception {
+  public void load_stuck_longer_than_the_takeover_deadline_is_taken_over_by_another_thread() throws Exception {
     AtomicInteger calls = new AtomicInteger();
     CountDownLatch stuckStarted = new CountDownLatch(1);
     CountDownLatch releaseStuck = new CountDownLatch(1);
@@ -696,7 +696,7 @@ public class OrganizationIpAccessTest {
       Future<Boolean> stuck = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
-      system2.setNow(1_000_000L + OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS);
+      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
       verify(dao, times(2)).selectEnabledRanges(any());
 
@@ -712,13 +712,16 @@ public class OrganizationIpAccessTest {
   }
 
   @Test(timeout = 30_000)
-  public void load_that_has_not_yet_passed_the_wait_deadline_is_not_taken_over() throws Exception {
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), 50L);
+  public void load_past_the_wait_deadline_is_not_taken_over_before_the_takeover_deadline() throws Exception {
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    AtomicInteger calls = new AtomicInteger();
     CountDownLatch loadStarted = new CountDownLatch(1);
     CountDownLatch finishLoad = new CountDownLatch(1);
     when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
-      loadStarted.countDown();
-      assertThat(finishLoad.await(10, TimeUnit.SECONDS)).isTrue();
+      if (calls.incrementAndGet() == 1) {
+        loadStarted.countDown();
+        assertThat(finishLoad.await(10, TimeUnit.SECONDS)).isTrue();
+      }
       return List.of(range("org-a", false, "203.0.113.0/24"));
     });
     ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -726,11 +729,16 @@ public class OrganizationIpAccessTest {
       executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
-      system2.setNow(1_000_000L + 49L);
+      // well past the 3 second wait, so the load would already be taken over if both used one deadline
+      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS - 1L);
       assertThatThrownBy(() -> access.isBlocked("org-a", "203.0.113.9", () -> false))
         .isInstanceOf(OrganizationIpAccessUnavailableException.class)
         .hasMessageContaining("Timed out");
       verify(dao, times(1)).selectEnabledRanges(any());
+
+      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+      verify(dao, times(2)).selectEnabledRanges(any());
     } finally {
       finishLoad.countDown();
       executor.shutdownNow();
@@ -755,7 +763,7 @@ public class OrganizationIpAccessTest {
       executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
-      system2.setNow(1_000_000L + OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS);
+      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false))
         .isInstanceOf(OrganizationIpAccessUnavailableException.class)
         .hasRootCauseMessage("db down");
@@ -768,7 +776,7 @@ public class OrganizationIpAccessTest {
   @Test(timeout = 30_000)
   public void finishing_the_stuck_load_does_not_release_the_load_that_took_over() throws Exception {
     long deadline = 45_000L;
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), deadline);
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, deadline);
     AtomicInteger calls = new AtomicInteger();
     CountDownLatch stuckStarted = new CountDownLatch(1);
     CountDownLatch releaseStuck = new CountDownLatch(1);
@@ -825,7 +833,7 @@ public class OrganizationIpAccessTest {
       Future<Boolean> waiter = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       awaitWaitingThreads(underTest, 1);
 
-      system2.setNow(1_000_000L + OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS);
+      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
       releaseStuck.countDown();
 
@@ -839,7 +847,7 @@ public class OrganizationIpAccessTest {
   @Test(timeout = 30_000)
   public void thread_whose_wait_on_a_stuck_load_runs_out_gets_the_list_of_the_load_that_took_over() throws Exception {
     long waitMs = 1_000L;
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), waitMs);
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), waitMs, OrganizationIpAccess.TAKEOVER_AFTER_MS);
     AtomicInteger calls = new AtomicInteger();
     CountDownLatch stuckStarted = new CountDownLatch(1);
     CountDownLatch releaseStuck = new CountDownLatch(1);
@@ -859,7 +867,7 @@ public class OrganizationIpAccessTest {
       Future<Boolean> waiter = executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
       awaitWaitingThreads(access, 1);
 
-      system2.setNow(1_000_000L + waitMs);
+      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
 
       // the stuck load never finishes: the wait runs out, and the newer list answers
@@ -928,7 +936,7 @@ public class OrganizationIpAccessTest {
 
   @Test(timeout = 30_000)
   public void thread_that_waits_too_long_for_the_one_load_throws() throws Exception {
-    OrganizationIpAccess impatient = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), 50L);
+    OrganizationIpAccess impatient = new OrganizationIpAccess(dbClient, system2, settings.asConfig(), 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
     CountDownLatch loadStarted = new CountDownLatch(1);
     CountDownLatch finishLoad = new CountDownLatch(1);
     when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {

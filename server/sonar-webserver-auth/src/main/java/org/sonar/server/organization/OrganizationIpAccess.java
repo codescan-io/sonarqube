@@ -59,8 +59,8 @@ import static java.util.stream.Collectors.toSet;
  * again after a failed reload), or if the clock went backwards since it was read.
  * The old snapshot is also used when a reload fails, within the same limit. When there is no usable snapshot,
  * callers wait (at most {@link #LOAD_WAIT_TIMEOUT_MS}) for the one load in progress and share its outcome. A load
- * that has run longer than that is considered stuck: the next caller starts a new load, and the stuck one can
- * neither release the new one nor replace its result with an older list. If a load fails, or the wait runs out,
+ * that has run longer than {@link #TAKEOVER_AFTER_MS} is considered stuck: the next caller starts a new load, and
+ * the stuck one can neither release the new one nor replace its result with an older list. If a load fails, or the wait runs out,
  * the call throws {@link OrganizationIpAccessUnavailableException}, unless another load has left a usable
  * snapshot in the meantime. A failed read is never kept. Callers must treat an exception as a failed request,
  * never as allowed.
@@ -73,6 +73,8 @@ public class OrganizationIpAccess {
   /** Oldest a snapshot may be and still answer while a reload is running or after a reload failed. */
   static final long MAX_STALE_MS = 2 * SNAPSHOT_TTL_MS;
   static final long LOAD_WAIT_TIMEOUT_MS = 3_000L;
+  /** Longer than the 5 second statement timeout of the read, so a load that the database will still end is left to end. */
+  static final long TAKEOVER_AFTER_MS = 8_000L;
   static final long BLOCK_LOG_INTERVAL_MS = 60_000L;
   static final long BLOCK_LOG_CLEANUP_INTERVAL_MS = 10_000L;
   static final int MAX_TRACKED_BLOCKS = 10_000;
@@ -93,17 +95,19 @@ public class OrganizationIpAccess {
   private final AtomicReference<Load> loadInProgress = new AtomicReference<>();
   private final AtomicLong lastLoadFailureLogAt = new AtomicLong();
   private final long loadWaitTimeoutMs;
+  private final long takeoverAfterMs;
 
   private volatile Snapshot snapshot;
 
   public OrganizationIpAccess(DbClient dbClient, System2 system2, Configuration config) {
-    this(dbClient, system2, config, LOAD_WAIT_TIMEOUT_MS);
+    this(dbClient, system2, config, LOAD_WAIT_TIMEOUT_MS, TAKEOVER_AFTER_MS);
   }
 
-  OrganizationIpAccess(DbClient dbClient, System2 system2, Configuration config, long loadWaitTimeoutMs) {
+  OrganizationIpAccess(DbClient dbClient, System2 system2, Configuration config, long loadWaitTimeoutMs, long takeoverAfterMs) {
     this.dbClient = dbClient;
     this.system2 = system2;
     this.loadWaitTimeoutMs = loadWaitTimeoutMs;
+    this.takeoverAfterMs = takeoverAfterMs;
     this.internalRanges = parseInternalRanges(config.getStringArray(INTERNAL_CIDR_PROPERTY));
   }
 
@@ -213,7 +217,7 @@ public class OrganizationIpAccess {
         return current.policies();
       }
       Load running = loadInProgress.get();
-      if (running == null || running.isStuck(now, loadWaitTimeoutMs)) {
+      if (running == null || running.isStuck(now, takeoverAfterMs)) {
         Load mine = new Load(new CompletableFuture<>(), now);
         if (loadInProgress.compareAndSet(running, mine)) {
           return reload(mine);
@@ -390,7 +394,7 @@ public class OrganizationIpAccess {
 
   /** {@code startedAt} is when the database read began, so a snapshot is never presented as newer than its data. */
   private record Load(CompletableFuture<Snapshot> result, long startedAt) {
-    /** A load that has run longer than the wait deadline, or whose start lies in the future of the clock. */
+    /** A load that has run longer than the takeover deadline, or whose start lies in the future of the clock. */
     boolean isStuck(long now, long deadlineMs) {
       return now < startedAt || now - startedAt >= deadlineMs;
     }
