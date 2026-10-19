@@ -19,8 +19,13 @@
  */
 package org.sonar.server.tester;
 
+import java.util.List;
 import org.junit.Test;
+import org.sonar.api.web.UserRole;
+import org.sonar.db.component.ComponentDto;
+import org.sonar.db.component.ComponentTesting;
 import org.sonar.db.organization.OrganizationDto;
+import org.sonar.db.project.ProjectDto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -135,5 +140,87 @@ public class UserSessionRuleIpAllowlistTest {
     assertThat(session.isBlockedByIpAllowlistForKey("org-key-1")).isFalse();
     assertThat(session.isBlockedByIpAllowlist("org-1")).isFalse();
     assertThat(session.isBlockedByIpAllowlistForKey("org-key-3")).isTrue();
+  }
+
+  @Test
+  public void project_of_a_blocked_organization_gets_no_permission() {
+    ProjectDto blockedProject = project("p-1", blockedOrg, true);
+    ProjectDto otherProject = project("p-3", otherOrg, true);
+    MockUserSession session = new MockUserSession("login")
+      .addProjectPermission(UserRole.USER, blockedProject, otherProject)
+      .setIpBlockedOrganizations(blockedOrg);
+
+    assertThat(session.hasEntityPermission(UserRole.USER, blockedProject)).isFalse();
+    assertThat(session.hasEntityPermission(UserRole.USER, blockedProject.getUuid())).isFalse();
+    assertThat(session.hasEntityPermission(UserRole.USER, otherProject)).isTrue();
+  }
+
+  @Test
+  public void project_of_an_organization_blocked_by_uuid_only_gets_no_permission() {
+    ProjectDto blockedProject = project("p-1", blockedOrg, true);
+    MockUserSession session = new MockUserSession("login")
+      .addProjectPermission(UserRole.USER, blockedProject)
+      .setIpBlockedOrganizationUuids("org-1");
+
+    assertThat(session.hasEntityPermission(UserRole.USER, blockedProject)).isFalse();
+  }
+
+  @Test
+  public void component_of_a_blocked_organization_gets_no_permission() {
+    ComponentDto blockedBranch = ComponentTesting.newPrivateProjectDto("b-1").setOrganizationUuid("org-1");
+    ComponentDto blockedFile = ComponentTesting.newFileDto(blockedBranch).setOrganizationUuid("org-1");
+    ComponentDto otherBranch = ComponentTesting.newPrivateProjectDto("b-3").setOrganizationUuid("org-3");
+    MockUserSession session = new MockUserSession("login")
+      .addProjectPermission(UserRole.USER, blockedBranch, otherBranch)
+      .registerComponents(blockedFile)
+      .setIpBlockedOrganizations(blockedOrg);
+
+    assertThat(session.hasComponentPermission(UserRole.USER, blockedBranch)).isFalse();
+    assertThat(session.hasComponentPermission(UserRole.USER, blockedFile)).isFalse();
+    assertThat(session.hasComponentUuidPermission(UserRole.USER, blockedFile.uuid())).isFalse();
+    assertThat(session.hasComponentPermission(UserRole.USER, otherBranch)).isTrue();
+  }
+
+  @Test
+  public void projects_of_a_blocked_organization_are_filtered_out_even_when_public() {
+    ProjectDto blockedPrivate = project("p-1", blockedOrg, true);
+    ProjectDto blockedPublic = project("p-2", blockedOrg, false);
+    ProjectDto otherPrivate = project("p-3", otherOrg, true);
+    ProjectDto otherPublic = project("p-4", otherOrg, false);
+    MockUserSession session = new MockUserSession("login")
+      .addProjectPermission(UserRole.USER, blockedPrivate, otherPrivate)
+      .registerProjects(blockedPublic, otherPublic)
+      .setIpBlockedOrganizations(blockedOrg);
+
+    assertThat(session.keepAuthorizedEntities(UserRole.USER, List.of(blockedPrivate, blockedPublic, otherPrivate, otherPublic)))
+      .containsExactly(otherPrivate, otherPublic);
+  }
+
+  @Test
+  public void components_of_a_blocked_organization_are_filtered_out_even_when_public() {
+    ComponentDto blockedPrivate = ComponentTesting.newPrivateProjectDto("b-1").setOrganizationUuid("org-1");
+    ComponentDto blockedPublic = ComponentTesting.newPublicProjectDto("b-2").setOrganizationUuid("org-1");
+    ComponentDto otherPrivate = ComponentTesting.newPrivateProjectDto("b-3").setOrganizationUuid("org-3");
+    ComponentDto otherPublic = ComponentTesting.newPublicProjectDto("b-4").setOrganizationUuid("org-3");
+    MockUserSession session = new MockUserSession("login")
+      .addProjectPermission(UserRole.USER, blockedPrivate, otherPrivate)
+      .registerComponents(blockedPublic, otherPublic)
+      .setIpBlockedOrganizations(blockedOrg);
+
+    assertThat(session.keepAuthorizedComponents(UserRole.USER, List.of(blockedPrivate, blockedPublic, otherPrivate, otherPublic)))
+      .containsExactly(otherPrivate, otherPublic);
+  }
+
+  @Test
+  public void project_permissions_set_on_the_rule_are_withheld_for_a_blocked_organization() {
+    ProjectDto blockedProject = project("p-1", blockedOrg, true);
+    userSession.logIn().addProjectPermission(UserRole.USER, blockedProject).setIpBlockedOrganizations(blockedOrg);
+
+    assertThat(userSession.hasEntityPermission(UserRole.USER, blockedProject)).isFalse();
+    assertThat(userSession.keepAuthorizedEntities(UserRole.USER, List.of(blockedProject))).isEmpty();
+  }
+
+  private static ProjectDto project(String uuid, OrganizationDto organization, boolean isPrivate) {
+    return new ProjectDto().setUuid(uuid).setKee("key-" + uuid).setQualifier("TRK").setPrivate(isPrivate).setOrganizationUuid(organization.getUuid());
   }
 }

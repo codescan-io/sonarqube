@@ -22,8 +22,10 @@ package org.sonar.server.tester;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSet;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -35,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import org.sonar.api.web.UserRole;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
+import org.sonar.db.entity.EntityDto;
 import org.sonar.db.permission.GlobalPermission;
 import org.sonar.db.portfolio.PortfolioDto;
 import org.sonar.db.organization.OrganizationDto;
@@ -56,6 +59,8 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
   private final Map<String, Set<String>> applicationProjects = new HashMap<>();
   private final Map<String, Set<String>> portfolioProjects = new HashMap<>();
   private final Set<String> projectPermissions = new HashSet<>();
+  // organization of each registered project, portfolio and branch, by the entity uuid permissions are checked on
+  private final Map<String, String> organizationUuidByEntityUuid = new HashMap<>();
   private boolean systemAdministrator = false;
   private boolean resetPassword = false;
   private final Set<String> ipBlockedOrganizationUuids = new HashSet<>();
@@ -86,6 +91,7 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
           this.projectPermissions.add(UserRole.CODEVIEWER);
         }
         this.projectUuidByComponentUuid.put(component.uuid(), component.branchUuid());
+        recordOrganization(component.branchUuid(), component.getOrganizationUuid());
       });
     return clazz.cast(this);
   }
@@ -100,6 +106,7 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
           this.projectPermissions.add(UserRole.CODEVIEWER);
         }
         this.projectUuidByComponentUuid.put(project.getUuid(), project.getUuid());
+        recordOrganization(project.getUuid(), project.getOrganizationUuid());
       });
     return clazz.cast(this);
   }
@@ -126,6 +133,7 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
           this.projectPermissions.add(UserRole.CODEVIEWER);
         }
         this.projectUuidByComponentUuid.put(portfolio.getUuid(), portfolio.getUuid());
+        recordOrganization(portfolio.getUuid(), portfolio.getOrganizationUuid());
       });
     return clazz.cast(this);
   }
@@ -184,6 +192,12 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
     return clazz.cast(this);
   }
 
+  private void recordOrganization(String entityUuid, @Nullable String organizationUuid) {
+    if (organizationUuid != null) {
+      organizationUuidByEntityUuid.put(entityUuid, organizationUuid);
+    }
+  }
+
   @Override
   protected Optional<String> componentUuidToEntityUuid(String componentUuid) {
     return Optional.ofNullable(Optional.ofNullable(projectUuidByBranchUuid.get(componentUuid))
@@ -192,6 +206,9 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
 
   @Override
   public boolean hasComponentPermission(String permission, ComponentDto component) {
+    if (isBlockedByIpAllowlist(component.getOrganizationUuid())) {
+      return false;
+    }
     return componentUuidToEntityUuid(component.uuid())
       .or(() -> componentUuidToEntityUuid(component.branchUuid()))
       .map(projectUuid -> hasEntityUuidPermission(permission, projectUuid)).orElseGet(() -> {
@@ -202,6 +219,9 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
 
   @Override
   protected boolean hasEntityUuidPermission(String permission, String entityUuid) {
+    if (isBlockedByIpAllowlist(organizationUuidByEntityUuid.get(entityUuid))) {
+      return false;
+    }
     return projectPermissions.contains(permission) && projectUuidByPermission.get(permission).contains(entityUuid);
   }
 
@@ -217,6 +237,17 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
     return portfolioProjects.containsKey(portfolioUuid) && portfolioProjects.get(portfolioUuid)
       .stream()
       .allMatch(projectUuid -> projectPermissions.contains(permission) && projectUuidByPermission.get(permission).contains(projectUuid));
+  }
+
+  /** Like the real session, a project or component of an organization blocked by its IP allowlist is never kept. */
+  @Override
+  protected <E extends EntityDto> List<E> doKeepAuthorizedEntities(String permission, Collection<E> entities) {
+    return super.doKeepAuthorizedEntities(permission, entities.stream().filter(e -> !isBlockedByIpAllowlist(e.getOrganizationUuid())).toList());
+  }
+
+  @Override
+  protected List<ComponentDto> doKeepAuthorizedComponents(String permission, Collection<ComponentDto> components) {
+    return super.doKeepAuthorizedComponents(permission, components.stream().filter(c -> !isBlockedByIpAllowlist(c.getOrganizationUuid())).toList());
   }
 
   public T setSystemAdministrator(boolean b) {
@@ -242,7 +273,8 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
   /**
    * Organizations whose IP allowlist blocks this session, by uuid only: {@link #isBlockedByIpAllowlistForKey(String)}
    * answers false for them. Use {@link #setIpBlockedOrganizations(OrganizationDto...)} to block by key too.
-   * Replaces whatever was set before.
+   * Replaces whatever was set before. The organization's projects and components lose every permission and are
+   * filtered out, found by the organization uuid of the DTOs registered with or passed to this session.
    */
   public T setIpBlockedOrganizationUuids(String... organizationUuids) {
     this.ipBlockedOrganizationUuids.clear();
@@ -253,6 +285,8 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
 
   /**
    * Organizations whose IP allowlist blocks this session, answered by uuid and by key. Replaces whatever was set before.
+   * Membership, projects and components of these organizations are withheld as by
+   * {@link #setIpBlockedOrganizationUuids(String...)}.
    */
   public T setIpBlockedOrganizations(OrganizationDto... organizations) {
     this.ipBlockedOrganizationUuids.clear();
