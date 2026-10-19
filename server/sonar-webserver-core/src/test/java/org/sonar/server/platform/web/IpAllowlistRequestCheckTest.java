@@ -149,6 +149,18 @@ public class IpAllowlistRequestCheckTest {
   }
 
   @Test
+  public void member_of_an_archived_organization_is_not_told_about_the_allowlist() {
+    OrganizationDto archived = new OrganizationDto().setUuid("org-1").setKey("acme");
+    archived.setArchived(true);
+    when(organizationDao.selectByKey(any(), eq("acme"))).thenReturn(Optional.of(archived));
+    userSession.logIn("jdoe").setIpBlockedOrganizations(archived).setClientIp(OUTSIDE_IP);
+    listAsMember(userSession.getUuid());
+
+    assertThatCode(() -> underTest.checkOrganizationKey("acme")).doesNotThrowAnyException();
+    verifyNoInteractions(ipAccess);
+  }
+
+  @Test
   public void anonymous_visitor_is_not_told_about_the_allowlist() {
     userSession.anonymous().setIpBlockedOrganizations(ACME).setClientIp(OUTSIDE_IP);
 

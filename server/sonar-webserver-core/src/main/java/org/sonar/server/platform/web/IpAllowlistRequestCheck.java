@@ -78,6 +78,8 @@ public class IpAllowlistRequestCheck {
   private void refuseMember(Function<DbSession, Optional<OrganizationDto>> blockedOrganization) {
     try (DbSession dbSession = dbClient.openSession(false)) {
       blockedOrganization.apply(dbSession)
+        // nobody may use an archived organization, so the allowlist is not the reason for the refusal
+        .filter(organization -> !organization.isArchived())
         .filter(organization -> isListedMember(dbSession, organization))
         .ifPresent(this::refuse);
     }
