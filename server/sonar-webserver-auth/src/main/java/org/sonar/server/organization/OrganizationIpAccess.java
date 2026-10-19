@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 import javax.annotation.Nullable;
+import javax.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.config.Configuration;
@@ -100,6 +101,7 @@ public class OrganizationIpAccess {
    * {@code system2} is not read: the wall clock can be set back or forward, so every age and deadline here is
    * measured on {@link System#nanoTime()}, which never goes backwards.
    */
+  @Inject
   public OrganizationIpAccess(DbClient dbClient, System2 system2, Configuration config) {
     this(dbClient, config, () -> System.nanoTime() / 1_000_000L, LOAD_WAIT_TIMEOUT_MS, TAKEOVER_AFTER_MS);
   }
