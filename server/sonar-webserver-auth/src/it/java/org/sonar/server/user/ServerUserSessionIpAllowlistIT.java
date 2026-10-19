@@ -45,6 +45,9 @@ public class ServerUserSessionIpAllowlistIT {
   private static final String ORG = "org-uuid";
   private static final String ORG_KEY = "org-key";
   private static final String OUTSIDE_IP = "192.0.2.1";
+  private static final String INTERNAL_IP = "10.0.0.5";
+  private static final String OTHER_ORG = "other-org-uuid";
+  private static final String OTHER_ORG_KEY = "other-org-key";
 
   @Rule
   public DbTester db = DbTester.create(System2.INSTANCE);
@@ -204,6 +207,71 @@ public class ServerUserSessionIpAllowlistIT {
     verifyNoInteractions(ipAccess);
   }
 
+  @Test
+  public void service_login_from_the_internal_range_is_exempt_for_its_own_organization() {
+    UserDto job = insertMember("job");
+    insertOrgPermission(job, OrganizationPermission.SCAN);
+    blockEveryone(ORG);
+    when(ipAccess.isInternalServiceAddress(INTERNAL_IP)).thenReturn(true);
+
+    ServerUserSession session = serviceSession(job, INTERNAL_IP, ORG_KEY);
+
+    assertThat(session.hasMembership(org())).isTrue();
+    assertThat(session.hasPermission(OrganizationPermission.SCAN, ORG)).isTrue();
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isFalse();
+  }
+
+  @Test
+  public void service_login_from_the_internal_range_is_blocked_for_another_organization() {
+    UserDto job = insertMember("job");
+    insertMember("job", OTHER_ORG, OTHER_ORG_KEY);
+    blockEveryone(ORG);
+    blockEveryone(OTHER_ORG);
+    when(ipAccess.isInternalServiceAddress(INTERNAL_IP)).thenReturn(true);
+
+    ServerUserSession session = serviceSession(job, INTERNAL_IP, ORG_KEY);
+
+    assertThat(session.hasMembership(OTHER_ORG_KEY)).isFalse();
+    assertThat(session.isBlockedByIpAllowlist(OTHER_ORG)).isTrue();
+    assertThat(session.hasMembership(ORG_KEY)).isTrue();
+  }
+
+  @Test
+  public void service_login_from_outside_the_internal_range_is_blocked() {
+    UserDto job = insertMember("job");
+    blockEveryone(ORG);
+    when(ipAccess.isInternalServiceAddress(OUTSIDE_IP)).thenReturn(false);
+
+    assertThat(serviceSession(job, OUTSIDE_IP, ORG_KEY).hasMembership(ORG_KEY)).isFalse();
+  }
+
+  @Test
+  public void service_login_without_an_organization_is_blocked() {
+    UserDto job = insertMember("job");
+    blockEveryone(ORG);
+    when(ipAccess.isInternalServiceAddress(INTERNAL_IP)).thenReturn(true);
+
+    assertThat(serviceSession(job, INTERNAL_IP, null).hasMembership(ORG_KEY)).isFalse();
+    assertThat(serviceSession(job, INTERNAL_IP, " ").hasMembership(ORG_KEY)).isFalse();
+  }
+
+  @Test
+  public void service_login_tied_to_an_unknown_organization_is_blocked() {
+    UserDto job = insertMember("job");
+    blockEveryone(ORG);
+    when(ipAccess.isInternalServiceAddress(INTERNAL_IP)).thenReturn(true);
+
+    assertThat(serviceSession(job, INTERNAL_IP, "no-such-org").hasMembership(ORG_KEY)).isFalse();
+  }
+
+  private void blockEveryone(String organizationUuid) {
+    when(ipAccess.isBlocked(eq(organizationUuid), anyString(), any(BooleanSupplier.class))).thenReturn(true);
+  }
+
+  private ServerUserSession serviceSession(UserDto user, String ip, @Nullable String serviceLoginOrganizationKey) {
+    return new ServerUserSession(db.getDbClient(), user, false).withIpAllowlist(ipAccess, ip, serviceLoginOrganizationKey);
+  }
+
   private void blockUnlessAdmin(String organizationUuid) {
     when(ipAccess.isBlocked(eq(organizationUuid), anyString(), any(BooleanSupplier.class)))
       .thenAnswer(invocation -> !invocation.<BooleanSupplier>getArgument(2).getAsBoolean());
@@ -218,15 +286,23 @@ public class ServerUserSessionIpAllowlistIT {
   }
 
   private UserDto insertMember(String userUuid) {
-    insertOrg();
-    db.executeInsert("organization_members", "organization_uuid", ORG, "user_uuid", userUuid, "type", "STANDARD");
+    return insertMember(userUuid, ORG, ORG_KEY);
+  }
+
+  private UserDto insertMember(String userUuid, String organizationUuid, String organizationKey) {
+    insertOrg(organizationUuid, organizationKey);
+    db.executeInsert("organization_members", "organization_uuid", organizationUuid, "user_uuid", userUuid, "type", "STANDARD");
     return user(userUuid);
   }
 
   private void insertOrg() {
-    if (db.countSql("select count(*) from organizations where uuid = '" + ORG + "'") == 0) {
+    insertOrg(ORG, ORG_KEY);
+  }
+
+  private void insertOrg(String organizationUuid, String organizationKey) {
+    if (db.countSql("select count(*) from organizations where uuid = '" + organizationUuid + "'") == 0) {
       db.executeInsert("organizations",
-        "uuid", ORG, "kee", ORG_KEY, "name", "Org", "default_quality_gate_uuid", "qg",
+        "uuid", organizationUuid, "kee", organizationKey, "name", "Org " + organizationKey, "default_quality_gate_uuid", "qg",
         "new_project_private", false, "subscription", "FREE", "created_at", 1L, "updated_at", 1L,
         "is_archived", false);
     }

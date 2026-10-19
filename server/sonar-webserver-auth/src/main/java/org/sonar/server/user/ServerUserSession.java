@@ -83,6 +83,10 @@ public class ServerUserSession extends AbstractUserSession {
   private String clientIp;
   @CheckForNull
   private String serviceLoginOrganizationKey;
+  // the organization the service login is exempt for, looked up once per request; null when there is none
+  private boolean exemptServiceOrganizationLookedUp;
+  @CheckForNull
+  private String exemptServiceOrganizationUuid;
 
   public ServerUserSession(DbClient dbClient, @Nullable UserDto userDto, boolean isAuthenticatedBrowserSession) {
     this.dbClient = dbClient;
@@ -120,7 +124,29 @@ public class ServerUserSession extends AbstractUserSession {
     }
     // decided once per organization per request; a failed read throws and is not remembered
     return ipBlockedByOrganizationUuid.computeIfAbsent(organizationUuid,
-      uuid -> access.isBlocked(uuid, clientIp, () -> isOrganizationAdmin(uuid)));
+      uuid -> !isExemptServiceLogin(access, uuid) && access.isBlocked(uuid, clientIp, () -> isOrganizationAdmin(uuid)));
+  }
+
+  /**
+   * The analysis job's service login skips the allowlist of one organization only: the one named in its token, and
+   * only when the request comes from the internal service range. Every other organization is checked as usual.
+   */
+  private boolean isExemptServiceLogin(OrganizationIpAccess access, String organizationUuid) {
+    if (serviceLoginOrganizationKey == null || serviceLoginOrganizationKey.isBlank()) {
+      return false;
+    }
+    if (!exemptServiceOrganizationLookedUp) {
+      exemptServiceOrganizationUuid = access.isInternalServiceAddress(clientIp) ? findOrganizationUuid(serviceLoginOrganizationKey) : null;
+      exemptServiceOrganizationLookedUp = true;
+    }
+    return organizationUuid.equals(exemptServiceOrganizationUuid);
+  }
+
+  @CheckForNull
+  private String findOrganizationUuid(String organizationKey) {
+    try (DbSession dbSession = dbClient.openSession(false)) {
+      return dbClient.organizationDao().selectByKey(dbSession, organizationKey).map(OrganizationDto::getUuid).orElse(null);
+    }
   }
 
   /**
