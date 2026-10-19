@@ -21,6 +21,8 @@ package org.sonar.server.pushapi.sonarlint;
 
 import java.util.Objects;
 import java.util.Set;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import javax.servlet.AsyncContext;
 import org.sonar.server.pushapi.ServerPushClient;
 
@@ -30,12 +32,17 @@ public class SonarLintClient extends ServerPushClient {
   private final Set<String> projectUuids;
 
   private final String userUuid;
+  // the address the push connection was opened from; every event is checked against the IP allowlists with it
+  @CheckForNull
+  private final String clientIp;
 
-  public SonarLintClient(SonarLintPushEventExecutorService executorService, AsyncContext asyncContext, Set<String> projectUuids, Set<String> languages, String userUuid) {
+  public SonarLintClient(SonarLintPushEventExecutorService executorService, AsyncContext asyncContext, Set<String> projectUuids, Set<String> languages, String userUuid,
+    @Nullable String clientIp) {
     super(executorService, asyncContext);
     this.projectUuids = projectUuids;
     this.languages = languages;
     this.userUuid = userUuid;
+    this.clientIp = clientIp;
   }
 
   public Set<String> getLanguages() {
@@ -67,5 +74,10 @@ public class SonarLintClient extends ServerPushClient {
 
   public String getUserUuid() {
     return userUuid;
+  }
+
+  @CheckForNull
+  public String getClientIp() {
+    return clientIp;
   }
 }

@@ -59,6 +59,7 @@ import org.sonar.db.measure.ProjectMeasureDao;
 import org.sonar.db.metric.MetricDao;
 import org.sonar.db.newcodeperiod.NewCodePeriodDao;
 import org.sonar.db.notification.NotificationQueueDao;
+import org.sonar.db.organization.IpAllowlistDao;
 import org.sonar.db.organization.OrganizationDao;
 import org.sonar.db.organization.OrganizationMemberDao;
 import org.sonar.db.permission.AuthorizationDao;
@@ -165,6 +166,7 @@ public class DaoModule extends Module {
     MetricDao.class,
     NewCodePeriodDao.class,
     NotificationQueueDao.class,
+    IpAllowlistDao.class,
     OrganizationDao.class,
     OrganizationMemberDao.class,
     PermissionTemplateCharacteristicDao.class,

@@ -46,6 +46,9 @@ import org.sonar.db.organization.OrganizationMemberDto;
 import org.sonar.db.permission.OrganizationPermission;
 import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
+import org.sonar.server.organization.IpAllowlistUnavailableLog;
+import org.sonar.server.organization.OrganizationIpAccess;
+import org.sonar.server.organization.OrganizationIpAccessUnavailableException;
 
 import static java.util.Collections.singleton;
 import static java.util.Objects.requireNonNull;
@@ -64,6 +67,9 @@ public class ServerUserSession extends AbstractUserSession {
   private static final Set<String> QUALIFIERS = Set.of(VIEW, SUBVIEW);
 
   @CheckForNull
+  // shared by every session, so the "allowlist cannot be read" warning is rate-limited across requests
+  private static final IpAllowlistUnavailableLog IP_ALLOWLIST_UNAVAILABLE = new IpAllowlistUnavailableLog(System::currentTimeMillis);
+
   private final UserDto userDto;
   private final boolean isAuthenticatedBrowserSession;
   private final DbClient dbClient;
@@ -74,11 +80,132 @@ public class ServerUserSession extends AbstractUserSession {
   private Collection<GroupDto> groups;
   private final Set<String> organizationMembership = new HashSet<>();
   private final Map<String, Boolean> organizationsArchivedStatus = new HashMap<>();
+  private final Map<String, Boolean> ipBlockedByOrganizationUuid = new HashMap<>();
+  // organization key to uuid, empty for an unknown key; a session lives for one request, so it cannot go stale
+  private final Map<String, Optional<String>> organizationUuidByKey = new HashMap<>();
+
+  @CheckForNull
+  private OrganizationIpAccess ipAccess;
+  @CheckForNull
+  private String clientIp;
+  @CheckForNull
+  private String serviceLoginOrganizationKey;
+  // the organization the service login is exempt for, looked up once per request; null when there is none
+  private boolean exemptServiceOrganizationLookedUp;
+  @CheckForNull
+  private String exemptServiceOrganizationUuid;
+  @CheckForNull
+  private Set<String> ipBlockedOrganizationUuids;
 
   public ServerUserSession(DbClient dbClient, @Nullable UserDto userDto, boolean isAuthenticatedBrowserSession) {
     this.dbClient = dbClient;
     this.userDto = userDto;
     this.isAuthenticatedBrowserSession = isAuthenticatedBrowserSession;
+  }
+
+  /**
+   * Applies the organizations' IP allowlists to this session. Called once, before the session is used: for each web
+   * request, and for each SonarLint push event with the address its push connection came from. A session this is never
+   * called on is not restricted.
+   *
+   * @param clientIp the address the request came from, as Tomcat resolved it; a missing or unparseable one is blocked
+   *        by every organization with an allowlist
+   * @param serviceLoginOrganizationKey key of the organization the analysis job's service login is tied to, or null
+   *        for any other login
+   */
+  public ServerUserSession withIpAllowlist(OrganizationIpAccess ipAccess, @Nullable String clientIp, @Nullable String serviceLoginOrganizationKey) {
+    this.ipAccess = requireNonNull(ipAccess);
+    this.clientIp = clientIp;
+    this.serviceLoginOrganizationKey = serviceLoginOrganizationKey;
+    return this;
+  }
+
+  @Override
+  @CheckForNull
+  public String getClientIp() {
+    return clientIp;
+  }
+
+  @Override
+  public boolean isBlockedByIpAllowlist(@Nullable String organizationUuid) {
+    OrganizationIpAccess access = ipAccess;
+    if (access == null || organizationUuid == null || isRoot()) {
+      return false;
+    }
+    // decided once per organization per request; a failed read throws and is not remembered
+    try {
+      return ipBlockedByOrganizationUuid.computeIfAbsent(organizationUuid,
+        uuid -> !isExemptServiceLogin(access, uuid) && access.isBlocked(uuid, clientIp, () -> isOrganizationAdmin(uuid)));
+    } catch (OrganizationIpAccessUnavailableException e) {
+      throw IP_ALLOWLIST_UNAVAILABLE.unavailable(e);
+    }
+  }
+
+  @Override
+  public boolean isBlockedByIpAllowlistForKey(@Nullable String organizationKey) {
+    if (ipAccess == null || organizationKey == null || isRoot()) {
+      return false;
+    }
+    String organizationUuid = findOrganizationUuid(organizationKey);
+    return organizationUuid != null && isBlockedByIpAllowlist(organizationUuid);
+  }
+
+  @Override
+  public Set<String> getIpBlockedOrganizationUuids() {
+    OrganizationIpAccess access = ipAccess;
+    if (access == null || isRoot()) {
+      return Set.of();
+    }
+    if (ipBlockedOrganizationUuids == null) {
+      // the organizations whose allowlist leaves this address out, less those where this login is exempt
+      Set<String> candidates;
+      try {
+        candidates = access.blockedOrganizationUuids(clientIp);
+      } catch (OrganizationIpAccessUnavailableException e) {
+        throw IP_ALLOWLIST_UNAVAILABLE.unavailable(e);
+      }
+      ipBlockedOrganizationUuids = candidates.stream()
+        .filter(this::isBlockedByIpAllowlist)
+        .collect(Collectors.toUnmodifiableSet());
+    }
+    return ipBlockedOrganizationUuids;
+  }
+
+  /**
+   * The analysis job's service login skips the allowlist of one organization only: the one named in its token, and
+   * only when the request comes from the internal service range. Every other organization is checked as usual.
+   */
+  private boolean isExemptServiceLogin(OrganizationIpAccess access, String organizationUuid) {
+    if (serviceLoginOrganizationKey == null || serviceLoginOrganizationKey.isBlank()) {
+      return false;
+    }
+    if (!exemptServiceOrganizationLookedUp) {
+      exemptServiceOrganizationUuid = access.isInternalServiceAddress(clientIp) ? findOrganizationUuid(serviceLoginOrganizationKey) : null;
+      exemptServiceOrganizationLookedUp = true;
+    }
+    return organizationUuid.equals(exemptServiceOrganizationUuid);
+  }
+
+  @CheckForNull
+  private String findOrganizationUuid(String organizationKey) {
+    return organizationUuidByKey.computeIfAbsent(organizationKey, key -> {
+      try (DbSession dbSession = dbClient.openSession(false)) {
+        return dbClient.organizationDao().selectByKey(dbSession, key).map(OrganizationDto::getUuid);
+      }
+    }).orElse(null);
+  }
+
+  /**
+   * Reads the raw organization permissions, not {@link #hasPermissionImpl}, which asks the allowlist and would call
+   * back into this check. A visitor who is not logged in is never an administrator, whatever the anonymous
+   * permissions say.
+   */
+  protected boolean isOrganizationAdmin(String organizationUuid) {
+    if (!isLoggedIn()) {
+      return false;
+    }
+    Set<OrganizationPermission> permissions = permissionsByOrganizationUuid.computeIfAbsent(organizationUuid, this::loadOrganizationPermissions);
+    return permissions.contains(OrganizationPermission.ADMINISTER) || permissions.contains(OrganizationPermission.ADMINISTER_CUSTOMER);
   }
 
   private Collection<GroupDto> loadGroups() {
@@ -342,6 +469,9 @@ public class ServerUserSession extends AbstractUserSession {
     if (isRoot() && !isArchivedOrganization(organizationUuid)){
       return true;
     }
+    if (isBlockedByIpAllowlist(organizationUuid)) {
+      return false;
+    }
     Set<OrganizationPermission> permissions = permissionsByOrganizationUuid.computeIfAbsent(organizationUuid, this::loadOrganizationPermissions);
     return permissions.contains(permission);
   }
@@ -438,10 +568,8 @@ public class ServerUserSession extends AbstractUserSession {
 
   @Override
   public boolean hasMembershipImpl(String organizationKey) {
-    try (DbSession dbSession = dbClient.openSession(false)) {
-      Optional<OrganizationDto> organizationDto = dbClient.organizationDao().selectByKey(dbSession, organizationKey);
-      return organizationDto.filter(dto -> isMember(dto.getUuid())).isPresent();
-    }
+    String organizationUuid = findOrganizationUuid(organizationKey);
+    return organizationUuid != null && isMember(organizationUuid);
   }
 
   private boolean isMember(String organizationUuid) {
@@ -451,7 +579,29 @@ public class ServerUserSession extends AbstractUserSession {
     if (isRoot()) {
       return true;
     }
+    // also hides the organization's projects and components: loadEntityPermissions and the keepAuthorized* filters ask here.
+    // Only a listed member is asked about the allowlist, so a non-member costs no allowlist read and is never failed by one.
+    return isListedMember(organizationUuid) && !isBlockedByIpAllowlist(organizationUuid);
+  }
 
+  /**
+   * True when the user is a member of the organization that its IP allowlist blocks, so the request may go on and be
+   * refused with the reason instead of being logged out. A non-member gets false whatever the address, so the answer
+   * does not tell an outsider whether the organization has an allowlist.
+   */
+  public boolean isMemberBlockedByIpAllowlistForKey(@Nullable String organizationKey) {
+    if (ipAccess == null || organizationKey == null || !isLoggedIn() || isRoot()) {
+      return false;
+    }
+    String organizationUuid = findOrganizationUuid(organizationKey);
+    return organizationUuid != null
+      && !isArchivedOrganization(organizationUuid)
+      && isListedMember(organizationUuid)
+      && isBlockedByIpAllowlist(organizationUuid);
+  }
+
+  /** Reads the organization's members table, without the IP allowlist. */
+  private boolean isListedMember(String organizationUuid) {
     if (organizationMembership.contains(organizationUuid)) {
       return true;
     }
