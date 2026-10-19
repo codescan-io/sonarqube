@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -1187,6 +1188,43 @@ public class OrganizationIpAccessTest {
     }
   }
 
+  @Test(timeout = 30_000)
+  public void interrupted_waiter_throws_and_keeps_its_interrupt_flag() throws Exception {
+    CountDownLatch loadStarted = new CountDownLatch(1);
+    CountDownLatch finishLoad = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      loadStarted.countDown();
+      assertThat(finishLoad.await(10, TimeUnit.SECONDS)).isTrue();
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      AtomicReference<Thread> waiterThread = new AtomicReference<>();
+      AtomicBoolean interruptFlagKept = new AtomicBoolean();
+      Future<Boolean> waiter = executor.submit(() -> {
+        waiterThread.set(Thread.currentThread());
+        try {
+          return underTest.isBlocked("org-a", "203.0.113.9", () -> false);
+        } finally {
+          interruptFlagKept.set(Thread.interrupted());
+        }
+      });
+      awaitWaiting(waiterThread);
+
+      waiterThread.get().interrupt();
+
+      assertThatThrownBy(() -> waiter.get(10, TimeUnit.SECONDS))
+        .hasCauseInstanceOf(OrganizationIpAccessUnavailableException.class)
+        .hasRootCauseInstanceOf(InterruptedException.class);
+      assertThat(interruptFlagKept).isTrue();
+    } finally {
+      finishLoad.countDown();
+      executor.shutdownNow();
+    }
+  }
+
   @Test
   public void full_tracker_is_cleaned_at_most_once_per_interval() {
     for (int i = 0; i <= OrganizationIpAccess.MAX_TRACKED_BLOCKS; i++) {
@@ -1210,6 +1248,15 @@ public class OrganizationIpAccessTest {
     long giveUpAt = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
     while (access.waitingThreadCount() < expected) {
       assertThat(System.nanoTime()).as("threads waiting for the load").isLessThan(giveUpAt);
+      Thread.sleep(5);
+    }
+  }
+
+  /** A thread parked with a deadline, as one waiting for a load is. */
+  private static void awaitWaiting(AtomicReference<Thread> thread) throws InterruptedException {
+    long giveUpAt = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (thread.get() == null || thread.get().getState() != Thread.State.TIMED_WAITING) {
+      assertThat(System.nanoTime()).as("thread waiting for the load").isLessThan(giveUpAt);
       Thread.sleep(5);
     }
   }
