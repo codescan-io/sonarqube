@@ -53,6 +53,14 @@ class IpAllowlistDaoIT {
   }
 
   @Test
+  void selectEnabledRanges_has_a_statement_timeout_so_a_stuck_read_gives_up() {
+    Integer timeoutSeconds = db.getSession().getConfiguration()
+      .getMappedStatement("org.sonar.db.organization.IpAllowlistMapper.selectEnabledRanges").getTimeout();
+
+    assertThat(timeoutSeconds).isEqualTo(5);
+  }
+
+  @Test
   void selectEnabledRanges_returns_enabled_org_without_ranges_with_null_cidr() {
     insertOrg("org-empty", true, false);
 

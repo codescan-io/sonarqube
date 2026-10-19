@@ -3,7 +3,7 @@
 
 <mapper namespace="org.sonar.db.organization.IpAllowlistMapper">
 
-  <select id="selectEnabledRanges" resultType="org.sonar.db.organization.IpAllowlistRangeDto">
+  <select id="selectEnabledRanges" resultType="org.sonar.db.organization.IpAllowlistRangeDto" timeout="5">
     select
       org.uuid as "organizationUuid",
       org.ip_allowlist_applies_to_admins as "appliesToAdmins",
