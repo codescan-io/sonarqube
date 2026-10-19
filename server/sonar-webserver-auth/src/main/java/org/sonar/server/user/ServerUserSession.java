@@ -580,7 +580,27 @@ public class ServerUserSession extends AbstractUserSession {
     if (isBlockedByIpAllowlist(organizationUuid)) {
       return false;
     }
+    return isListedMember(organizationUuid);
+  }
 
+  /**
+   * True when the user is a member of the organization that its IP allowlist blocks, so the request may go on and be
+   * refused with the reason instead of being logged out. A non-member gets false whatever the address, so the answer
+   * does not tell an outsider whether the organization has an allowlist.
+   */
+  public boolean isMemberBlockedByIpAllowlistForKey(@Nullable String organizationKey) {
+    if (ipAccess == null || organizationKey == null || !isLoggedIn() || isRoot()) {
+      return false;
+    }
+    String organizationUuid = findOrganizationUuid(organizationKey);
+    return organizationUuid != null
+      && !isArchivedOrganization(organizationUuid)
+      && isListedMember(organizationUuid)
+      && isBlockedByIpAllowlist(organizationUuid);
+  }
+
+  /** Reads the organization's members table, without the IP allowlist. */
+  private boolean isListedMember(String organizationUuid) {
     if (organizationMembership.contains(organizationUuid)) {
       return true;
     }

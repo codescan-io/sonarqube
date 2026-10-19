@@ -201,7 +201,7 @@ public class UserSessionInitializer {
       if (ArrayUtils.isNotEmpty(organizationKeys)) {
         boolean hasPermission = Arrays.stream(organizationKeys)
                 // a member blocked by the IP allowlist goes on, so the web service can say why, instead of being logged out
-                .map(key -> session.hasMembership(key) || session.isBlockedByIpAllowlistForKey(key)).reduce(true, (a, b) -> a && b);
+                .map(key -> session.hasMembership(key) || isMemberBlockedByIpAllowlist(session, key)).reduce(true, (a, b) -> a && b);
         if (!hasPermission) {
           throw AuthenticationException.newBuilder()
                   .setSource(Source.local(AuthenticationEvent.Method.BASIC))
@@ -215,6 +215,10 @@ public class UserSessionInitializer {
     checkTokenUserSession(response, session);
     request.setAttribute(ACCESS_LOG_LOGIN, Objects.toString(session.getLogin(), "-"));
     MDC.put(USER_LOGIN_MDC_KEY, Objects.toString(session.getLogin(), "-"));
+  }
+
+  private static boolean isMemberBlockedByIpAllowlist(UserSession session, String organizationKey) {
+    return session instanceof ServerUserSession serverUserSession && serverUserSession.isMemberBlockedByIpAllowlistForKey(organizationKey);
   }
 
   /**

@@ -400,6 +400,39 @@ public class ServerUserSessionIpAllowlistIT {
   }
 
   @Test
+  public void member_blocked_check_is_true_only_for_a_listed_member_of_an_organization_that_blocks_the_request() {
+    UserDto member = insertMember("u1");
+    insertOrg(OTHER_ORG, OTHER_ORG_KEY);
+    blockEveryone(ORG);
+    when(ipAccess.isBlocked(eq(OTHER_ORG), anyString(), any(BooleanSupplier.class))).thenReturn(false);
+
+    ServerUserSession session = session(member, OUTSIDE_IP);
+
+    assertThat(session.isMemberBlockedByIpAllowlistForKey(ORG_KEY)).isTrue();
+    assertThat(session.isMemberBlockedByIpAllowlistForKey(OTHER_ORG_KEY)).isFalse();
+    assertThat(session.isMemberBlockedByIpAllowlistForKey("no-such-org")).isFalse();
+    assertThat(session.isMemberBlockedByIpAllowlistForKey(null)).isFalse();
+  }
+
+  @Test
+  public void member_blocked_check_is_false_for_a_non_member_or_anonymous_even_when_the_organization_blocks_the_request() {
+    insertOrg();
+    blockEveryone(ORG);
+
+    assertThat(session(user("outsider"), OUTSIDE_IP).isMemberBlockedByIpAllowlistForKey(ORG_KEY)).isFalse();
+    assertThat(session(null, OUTSIDE_IP).isMemberBlockedByIpAllowlistForKey(ORG_KEY)).isFalse();
+  }
+
+  @Test
+  public void member_blocked_check_is_false_for_an_archived_organization() {
+    UserDto member = insertMember("u1");
+    db.executeUpdateSql("update organizations set is_archived = true where uuid = '" + ORG + "'");
+    blockEveryone(ORG);
+
+    assertThat(session(member, OUTSIDE_IP).isMemberBlockedByIpAllowlistForKey(ORG_KEY)).isFalse();
+  }
+
+  @Test
   public void blocked_organizations_lists_every_organization_that_blocks_the_request() {
     insertOrg();
     insertOrg(OTHER_ORG, OTHER_ORG_KEY);

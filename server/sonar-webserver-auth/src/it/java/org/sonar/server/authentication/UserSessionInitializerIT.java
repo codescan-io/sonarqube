@@ -60,6 +60,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -327,11 +328,10 @@ public class UserSessionInitializerIT {
 
   @Test
   public void blocked_member_on_an_organization_url_is_not_logged_out() {
-    when(request.getRequestURI()).thenReturn("/api/organizations/search");
-    when(request.getParameterValues("organization")).thenReturn(new String[] {"org-key"});
-    ServerUserSession session = loggedInServerSession(request);
-    when(session.hasMembership("org-key")).thenReturn(false);
-    when(session.isBlockedByIpAllowlistForKey("org-key")).thenReturn(true);
+    insertOrganization();
+    UserDto member = user("member");
+    insertMembership(member);
+    ServerUserSession session = realServerSessionOnOrganizationUrl(member, BLOCKED_IP);
 
     assertThat(underTest.initUserSession(request, response)).isTrue();
 
@@ -341,17 +341,31 @@ public class UserSessionInitializerIT {
   }
 
   @Test
-  public void non_member_that_is_not_blocked_still_gets_401() {
-    when(request.getRequestURI()).thenReturn("/api/organizations/search");
-    when(request.getParameterValues("organization")).thenReturn(new String[] {"org-key"});
-    ServerUserSession session = loggedInServerSession(request);
-    when(session.hasMembership("org-key")).thenReturn(false);
-    when(session.isBlockedByIpAllowlistForKey("org-key")).thenReturn(false);
+  public void non_member_from_a_blocked_address_gets_the_same_401_as_from_an_allowed_address() {
+    insertOrganization();
+    UserDto outsider = user("outsider");
 
+    realServerSessionOnOrganizationUrl(outsider, ALLOWED_IP);
+    assertThat(underTest.initUserSession(request, response)).isFalse();
+    realServerSessionOnOrganizationUrl(outsider, BLOCKED_IP);
     assertThat(underTest.initUserSession(request, response)).isFalse();
 
-    verify(response).setStatus(401);
-    verify(authenticationEvent).loginFailure(eq(request), any(AuthenticationException.class));
+    verify(response, times(2)).setStatus(401);
+    verify(authenticationEvent, times(2)).loginFailure(eq(request), any(AuthenticationException.class));
+    verify(threadLocalSession, never()).set(any());
+  }
+
+  @Test
+  public void member_from_an_allowed_address_is_let_in() {
+    insertOrganization();
+    UserDto member = user("member");
+    insertMembership(member);
+    ServerUserSession session = realServerSessionOnOrganizationUrl(member, ALLOWED_IP);
+
+    assertThat(underTest.initUserSession(request, response)).isTrue();
+
+    verify(threadLocalSession).set(session);
+    verifyNoInteractions(authenticationEvent);
   }
 
   @Test
@@ -375,6 +389,37 @@ public class UserSessionInitializerIT {
       .doesNotContain("db-host");
     verifyNoInteractions(authenticationEvent);
     verify(threadLocalSession, never()).set(any());
+  }
+
+  private static final String ORG_UUID = "org-uuid";
+  private static final String ORG_KEY = "org-key";
+  private static final String BLOCKED_IP = "192.0.2.1";
+  private static final String ALLOWED_IP = "203.0.113.9";
+
+  /** A real session, so membership comes from the members table and the allowlist decision from the mocked access. */
+  private ServerUserSession realServerSessionOnOrganizationUrl(UserDto user, String clientIp) {
+    when(ipAccess.isBlocked(eq(ORG_UUID), eq(BLOCKED_IP), any())).thenReturn(true);
+    when(ipAccess.isBlocked(eq(ORG_UUID), eq(ALLOWED_IP), any())).thenReturn(false);
+    when(request.getRequestURI()).thenReturn("/api/organizations/search");
+    when(request.getParameterValues("organization")).thenReturn(new String[] {ORG_KEY});
+    when(request.getRemoteAddr()).thenReturn(clientIp);
+    ServerUserSession session = new ServerUserSession(dbTester.getDbClient(), user, false);
+    when(authenticator.authenticate(request, response)).thenReturn(session);
+    return session;
+  }
+
+  private void insertOrganization() {
+    dbTester.executeInsert("organizations",
+      "uuid", ORG_UUID, "kee", ORG_KEY, "name", "Org", "default_quality_gate_uuid", "qg",
+      "new_project_private", false, "subscription", "FREE", "created_at", 1L, "updated_at", 1L, "is_archived", false);
+  }
+
+  private static UserDto user(String uuid) {
+    return new UserDto().setUuid(uuid).setLogin("login-" + uuid).setActive(true);
+  }
+
+  private void insertMembership(UserDto user) {
+    dbTester.executeInsert("organization_members", "organization_uuid", ORG_UUID, "user_uuid", user.getUuid(), "type", "STANDARD");
   }
 
   private ServerUserSession loggedInServerSession(HttpRequest forRequest) {
