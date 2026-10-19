@@ -541,7 +541,7 @@ public class OrganizationIpAccessTest {
       underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     }
 
-    assertThat(logTester.logs(Level.WARN)).hasSize(1);
+    assertThat(logTester.logs(Level.WARN)).singleElement().asString().contains("previous");
   }
 
   @Test(timeout = 30_000)
@@ -872,6 +872,39 @@ public class OrganizationIpAccessTest {
 
       // the stuck load never finishes: the wait runs out, and the newer list answers
       assertThat(waiter.get(10, TimeUnit.SECONDS)).isFalse();
+    } finally {
+      releaseStuck.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 30_000)
+  public void stuck_load_that_fails_after_a_newer_load_succeeded_logs_that_the_newer_list_is_in_use() throws Exception {
+    AtomicInteger calls = new AtomicInteger();
+    CountDownLatch stuckStarted = new CountDownLatch(1);
+    CountDownLatch releaseStuck = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      if (calls.incrementAndGet() == 1) {
+        stuckStarted.countDown();
+        assertThat(releaseStuck.await(10, TimeUnit.SECONDS)).isTrue();
+        throw new IllegalStateException("db timed out");
+      }
+      return List.of(range("org-a", false, "203.0.113.0/24"));
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      Future<Boolean> stuck = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
+      system2.setNow(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
+      assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+      logTester.clear();
+
+      releaseStuck.countDown();
+
+      assertThat(stuck.get(10, TimeUnit.SECONDS)).isFalse();
+      assertThat(logTester.logs(Level.WARN)).singleElement().asString()
+        .contains("newer")
+        .doesNotContain("previous");
     } finally {
       releaseStuck.countDown();
       executor.shutdownNow();

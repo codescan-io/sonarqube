@@ -251,12 +251,12 @@ public class OrganizationIpAccess {
 
   /** Runs the one load. Every other thread that has no usable snapshot is waiting on {@code mine}. */
   private Map<String, Policy> reload(Load mine) {
+    Snapshot before = snapshot;
     try {
       // A load that finished just before this thread took over has already refreshed the snapshot.
-      Snapshot current = snapshot;
-      if (current != null && current.isFresh(system2.now())) {
-        mine.result().complete(current);
-        return current.policies();
+      if (before != null && before.isFresh(system2.now())) {
+        mine.result().complete(before);
+        return before.policies();
       }
       Snapshot loaded = new Snapshot(load(), mine.startedAt());
       publish(loaded);
@@ -266,7 +266,8 @@ public class OrganizationIpAccess {
       mine.result().completeExceptionally(e);
       Snapshot old = snapshot;
       if (old != null && old.isUsableWhenStale(system2.now())) {
-        logLoadFailure(e);
+        // a different snapshot means a load that took over from this one has refreshed the list meanwhile
+        logLoadFailure(e, old != before);
         return old.policies();
       }
       throw new OrganizationIpAccessUnavailableException("Cannot read the IP allowlist", e);
@@ -326,11 +327,15 @@ public class OrganizationIpAccess {
   }
 
   /** While the database is down every request would otherwise log. */
-  private void logLoadFailure(RuntimeException e) {
+  private void logLoadFailure(RuntimeException e, boolean newerListInUse) {
     long now = system2.now();
     long last = lastLoadFailureLogAt.get();
     if ((last == 0 || now < last || now - last >= BLOCK_LOG_INTERVAL_MS) && lastLoadFailureLogAt.compareAndSet(last, now)) {
-      LOG.warn("Cannot reload the IP allowlist, using the previous one for at most {} seconds", MAX_STALE_MS / 1000, e);
+      if (newerListInUse) {
+        LOG.warn("Cannot reload the IP allowlist, using the newer one read by a later reload", e);
+      } else {
+        LOG.warn("Cannot reload the IP allowlist, using the previous one for at most {} seconds", MAX_STALE_MS / 1000, e);
+      }
     }
   }
 
