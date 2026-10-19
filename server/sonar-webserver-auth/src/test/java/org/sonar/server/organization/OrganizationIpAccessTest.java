@@ -33,7 +33,6 @@ import org.slf4j.event.Level;
 import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.impl.utils.TestSystem2;
 import org.sonar.api.testfixtures.log.LogTester;
-import org.sonar.api.utils.System2;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.IpAllowlistDao;
@@ -636,20 +635,6 @@ public class OrganizationIpAccessTest {
       finishLoad.countDown();
       executor.shutdownNow();
     }
-  }
-
-  @Test
-  public void snapshot_that_is_fresh_by_the_time_the_load_starts_is_used_without_reading_the_database() {
-    System2 clock = mock(System2.class);
-    doReturn(1_000_000L).when(clock).now();
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, clock, settings.asConfig());
-    access.isBlocked("org-a", "192.0.2.1", () -> false);
-    // the first reading makes the snapshot look stale; when the load starts it is fresh again
-    doReturn(1_040_000L, 1_010_000L).when(clock).now();
-
-    assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
-
-    verify(dao, times(1)).selectEnabledRanges(any());
   }
 
   @Test

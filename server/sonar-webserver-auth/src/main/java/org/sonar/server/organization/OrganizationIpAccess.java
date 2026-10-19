@@ -253,11 +253,6 @@ public class OrganizationIpAccess {
   private Map<String, Policy> reload(Load mine) {
     Snapshot before = snapshot;
     try {
-      // A load that finished just before this thread took over has already refreshed the snapshot.
-      if (before != null && before.isFresh(system2.now())) {
-        mine.result().complete(before);
-        return before.policies();
-      }
       Snapshot loaded = new Snapshot(load(), mine.startedAt());
       publish(loaded);
       mine.result().complete(loaded);
