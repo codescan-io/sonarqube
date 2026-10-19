@@ -258,10 +258,18 @@ public class OrganizationIpAccess {
     }
   }
 
-  /** A load that was taken over from can finish late with a list read earlier than the current one. */
+  /**
+   * A load that was taken over from can finish late with a list read earlier than the current one. A snapshot
+   * stamped after the clock (the clock went back) is never served: such a load is not kept, and a current
+   * snapshot like that is replaced by any new load.
+   */
   private synchronized void publish(Snapshot loaded) {
+    long now = system2.now();
+    if (loaded.loadedAt() > now) {
+      return;
+    }
     Snapshot current = snapshot;
-    if (current == null || loaded.loadedAt() >= current.loadedAt()) {
+    if (current == null || loaded.loadedAt() >= current.loadedAt() || current.loadedAt() > now) {
       snapshot = loaded;
     }
   }

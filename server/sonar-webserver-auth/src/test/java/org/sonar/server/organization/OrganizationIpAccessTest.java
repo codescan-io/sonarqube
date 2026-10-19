@@ -402,11 +402,53 @@ public class OrganizationIpAccessTest {
   @Test
   public void snapshot_is_reloaded_when_the_clock_goes_backwards() {
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
+    doReturn(List.of(range("org-a", false, "198.51.100.0/24"))).when(dao).selectEnabledRanges(any());
 
     system2.setNow(1_000_000L - 1_000L);
-    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
-
+    assertThat(underTest.isBlocked("org-a", "198.51.100.5", () -> false)).isFalse();
     verify(dao, times(2)).selectEnabledRanges(any());
+
+    // the reload is kept: later calls, still before the old stamp, are answered from it
+    for (int i = 1; i <= 100; i++) {
+      system2.setNow(1_000_000L - 1_000L + i * 5L);
+      assertThat(underTest.isBlocked("org-a", "198.51.100.5", () -> false)).isFalse();
+    }
+    verify(dao, times(2)).selectEnabledRanges(any());
+  }
+
+  @Test(timeout = 30_000)
+  public void load_stuck_from_before_the_clock_went_back_does_not_replace_the_load_that_took_over() throws Exception {
+    underTest.isBlocked("org-a", "192.0.2.1", () -> false);
+    AtomicInteger calls = new AtomicInteger();
+    CountDownLatch stuckStarted = new CountDownLatch(1);
+    CountDownLatch releaseStuck = new CountDownLatch(1);
+    when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
+      if (calls.incrementAndGet() == 1) {
+        stuckStarted.countDown();
+        assertThat(releaseStuck.await(10, TimeUnit.SECONDS)).isTrue();
+        return List.of(range("org-a", false, "192.0.2.0/24"));
+      }
+      return List.of(range("org-a", false, "198.51.100.0/24"));
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      system2.setNow(1_000_000L + 30_000L);
+      Future<Boolean> stuck = executor.submit(() -> underTest.isBlocked("org-a", "198.51.100.5", () -> false));
+      assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      system2.setNow(1_000_000L - 1_000L);
+      assertThat(underTest.isBlocked("org-a", "198.51.100.5", () -> false)).isFalse();
+
+      releaseStuck.countDown();
+      assertThat(stuck.get(10, TimeUnit.SECONDS)).isTrue();
+
+      // the stuck load is stamped after the clock: it does not replace the newer list, which keeps answering
+      assertThat(underTest.isBlocked("org-a", "198.51.100.5", () -> false)).isFalse();
+      verify(dao, times(3)).selectEnabledRanges(any());
+    } finally {
+      releaseStuck.countDown();
+      executor.shutdownNow();
+    }
   }
 
   @Test
