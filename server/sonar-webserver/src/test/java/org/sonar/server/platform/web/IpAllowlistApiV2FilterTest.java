@@ -24,7 +24,6 @@ import com.google.gson.JsonParser;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Optional;
-import java.util.Set;
 import org.junit.Rule;
 import org.junit.Test;
 import org.sonar.api.server.http.HttpRequest;
@@ -165,7 +164,8 @@ public class IpAllowlistApiV2FilterTest {
   @Test
   public void organization_is_not_resolved_when_no_organization_blocks_the_caller() throws Exception {
     UserSession session = mock(UserSession.class);
-    when(session.getIpBlockedOrganizationUuids()).thenReturn(Set.of());
+    when(session.mayBeBlockedByIpAllowlist()).thenReturn(false);
+    when(session.getIpBlockedOrganizationUuids()).thenThrow(new AssertionError("must not list every blocking organization"));
     when(request.getParameter("organization")).thenReturn("acme");
 
     filter(session).doFilter(request, response, chain);
@@ -176,14 +176,56 @@ public class IpAllowlistApiV2FilterTest {
   }
 
   @Test
-  public void unreadable_allowlist_answers_503_never_403_401_500_or_allowed() throws Exception {
+  public void blocked_member_is_refused_by_asking_about_the_named_organization_only() throws Exception {
     UserSession session = mock(UserSession.class);
-    IpAllowlistUnavailableException unavailable = new IpAllowlistUnavailableException(new OrganizationIpAccessUnavailableException("db down", null));
-    when(session.getIpBlockedOrganizationUuids()).thenThrow(unavailable);
+    when(session.mayBeBlockedByIpAllowlist()).thenReturn(true);
+    when(session.getIpBlockedOrganizationUuids()).thenThrow(new AssertionError("must not list every blocking organization"));
+    when(session.isBlockedByIpAllowlistForKey("acme")).thenReturn(true);
+    when(session.isLoggedIn()).thenReturn(true);
+    when(session.getUuid()).thenReturn("u1");
+    when(session.getLogin()).thenReturn("jdoe");
+    when(session.getClientIp()).thenReturn(OUTSIDE_IP);
+    when(organizationMemberDao.select(any(), eq("org-1"), eq("u1")))
+      .thenReturn(Optional.of(new OrganizationMemberDto().setOrganizationUuid("org-1").setUserUuid("u1")));
     when(request.getParameter("organization")).thenReturn("acme");
 
     filter(session).doFilter(request, response, chain);
 
+    verify(response).setStatus(403);
+    verify(chain, never()).doFilter(any(), any());
+    verify(session, never()).getIpBlockedOrganizationUuids();
+  }
+
+  @Test
+  public void unreadable_allowlist_answers_503_never_403_401_500_or_allowed() throws Exception {
+    UserSession session = mock(UserSession.class);
+    IpAllowlistUnavailableException unavailable = unavailable();
+    when(session.mayBeBlockedByIpAllowlist()).thenThrow(unavailable);
+    when(request.getParameter("organization")).thenReturn("acme");
+
+    filter(session).doFilter(request, response, chain);
+
+    assertUnavailableAnswer(unavailable);
+  }
+
+  @Test
+  public void allowlist_that_cannot_be_read_for_the_named_organization_answers_503_not_allowed() throws Exception {
+    UserSession session = mock(UserSession.class);
+    IpAllowlistUnavailableException unavailable = unavailable();
+    when(session.mayBeBlockedByIpAllowlist()).thenReturn(true);
+    when(session.isBlockedByIpAllowlistForKey("acme")).thenThrow(unavailable);
+    when(request.getParameter("organization")).thenReturn("acme");
+
+    filter(session).doFilter(request, response, chain);
+
+    assertUnavailableAnswer(unavailable);
+  }
+
+  private static IpAllowlistUnavailableException unavailable() {
+    return new IpAllowlistUnavailableException(new OrganizationIpAccessUnavailableException("db down", null));
+  }
+
+  private void assertUnavailableAnswer(IpAllowlistUnavailableException unavailable) throws Exception {
     verify(response).setStatus(503);
     verify(response).setContentType("application/json");
     JsonElement expected = JsonParser.parseString("{\"errors\":[{\"msg\":\"" + unavailable.getMessage() + "\"}]}");

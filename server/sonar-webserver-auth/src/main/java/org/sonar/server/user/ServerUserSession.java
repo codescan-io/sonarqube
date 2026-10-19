@@ -95,6 +95,8 @@ public class ServerUserSession extends AbstractUserSession {
   @CheckForNull
   private String exemptServiceOrganizationUuid;
   @CheckForNull
+  private Set<String> ipAllowlistCandidateUuids;
+  @CheckForNull
   private Set<String> ipBlockedOrganizationUuids;
 
   public ServerUserSession(DbClient dbClient, @Nullable UserDto userDto, boolean isAuthenticatedBrowserSession) {
@@ -151,24 +153,42 @@ public class ServerUserSession extends AbstractUserSession {
   }
 
   @Override
+  public boolean mayBeBlockedByIpAllowlist() {
+    return !ipAllowlistCandidateUuids().isEmpty();
+  }
+
+  @Override
   public Set<String> getIpBlockedOrganizationUuids() {
-    OrganizationIpAccess access = ipAccess;
-    if (access == null || isRoot()) {
+    Set<String> candidates = ipAllowlistCandidateUuids();
+    if (candidates.isEmpty()) {
       return Set.of();
     }
     if (ipBlockedOrganizationUuids == null) {
-      // the organizations whose allowlist leaves this address out, less those where this login is exempt
-      Set<String> candidates;
-      try {
-        candidates = access.blockedOrganizationUuids(clientIp);
-      } catch (OrganizationIpAccessUnavailableException e) {
-        throw IP_ALLOWLIST_UNAVAILABLE.unavailable(e);
-      }
+      // less those where this login is exempt
       ipBlockedOrganizationUuids = candidates.stream()
         .filter(this::isBlockedByIpAllowlist)
         .collect(Collectors.toUnmodifiableSet());
     }
     return ipBlockedOrganizationUuids;
+  }
+
+  /**
+   * Organizations whose allowlist leaves this address out, exemptions not applied: read from the policies alone, so
+   * no permission lookup. Read once per request; a failed read throws and is not remembered.
+   */
+  private Set<String> ipAllowlistCandidateUuids() {
+    OrganizationIpAccess access = ipAccess;
+    if (access == null || isRoot()) {
+      return Set.of();
+    }
+    if (ipAllowlistCandidateUuids == null) {
+      try {
+        ipAllowlistCandidateUuids = Set.copyOf(access.blockedOrganizationUuids(clientIp));
+      } catch (OrganizationIpAccessUnavailableException e) {
+        throw IP_ALLOWLIST_UNAVAILABLE.unavailable(e);
+      }
+    }
+    return ipAllowlistCandidateUuids;
   }
 
   /**

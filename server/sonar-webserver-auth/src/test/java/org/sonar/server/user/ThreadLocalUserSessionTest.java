@@ -182,6 +182,15 @@ public class ThreadLocalUserSessionTest {
   }
 
   @Test
+  public void mayBeBlockedByIpAllowlist_is_answered_by_the_session_of_the_request() {
+    UserSession session = mock(UserSession.class);
+    when(session.mayBeBlockedByIpAllowlist()).thenReturn(true);
+    threadLocalUserSession.set(session);
+
+    assertThat(threadLocalUserSession.mayBeBlockedByIpAllowlist()).isTrue();
+  }
+
+  @Test
   public void getIpBlockedOrganizationUuids_is_answered_by_the_session_of_the_request() {
     UserSession session = mock(UserSession.class);
     when(session.getIpBlockedOrganizationUuids()).thenReturn(Set.of("org-1", "org-2"));

@@ -493,6 +493,11 @@ public class UserSessionRule implements TestRule, UserSession, BeforeTestExecuti
   }
 
   @Override
+  public boolean mayBeBlockedByIpAllowlist() {
+    return currentUserSession.mayBeBlockedByIpAllowlist();
+  }
+
+  @Override
   public Set<String> getIpBlockedOrganizationUuids() {
     return currentUserSession.getIpBlockedOrganizationUuids();
   }

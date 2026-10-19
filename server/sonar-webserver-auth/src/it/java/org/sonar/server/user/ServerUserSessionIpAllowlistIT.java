@@ -48,6 +48,7 @@ import org.sonar.server.organization.OrganizationIpAccessUnavailableException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -503,6 +504,95 @@ public class ServerUserSessionIpAllowlistIT {
     session.getIpBlockedOrganizationUuids();
 
     verify(ipAccess, times(1)).blockedOrganizationUuids(OUTSIDE_IP);
+  }
+
+  @Test
+  public void may_be_blocked_is_true_when_an_allowlist_leaves_the_address_out_and_asks_for_no_permission() {
+    UserDto user = insertMember("u1");
+    insertOrg(OTHER_ORG, OTHER_ORG_KEY);
+    blockUnlessAdmin(ORG);
+    blockUnlessAdmin(OTHER_ORG);
+    when(ipAccess.blockedOrganizationUuids(OUTSIDE_IP)).thenReturn(Set.of(ORG, OTHER_ORG));
+    DbClient dbClient = spy(db.getDbClient());
+    ServerUserSession session = new ServerUserSession(dbClient, user, false).withIpAllowlist(ipAccess, OUTSIDE_IP, null);
+
+    assertThat(session.mayBeBlockedByIpAllowlist()).isTrue();
+
+    verify(ipAccess, never()).isBlocked(any(), any(), any(BooleanSupplier.class));
+    verify(dbClient, never()).openSession(anyBoolean());
+  }
+
+  @Test
+  public void checking_one_organization_leaves_the_permissions_for_the_other_candidates_unread() {
+    UserDto user = insertMember("u1");
+    insertOrg(OTHER_ORG, OTHER_ORG_KEY);
+    blockUnlessAdmin(ORG);
+    blockUnlessAdmin(OTHER_ORG);
+    when(ipAccess.blockedOrganizationUuids(OUTSIDE_IP)).thenReturn(Set.of(ORG, OTHER_ORG));
+    ServerUserSession session = session(user, OUTSIDE_IP);
+
+    assertThat(session.mayBeBlockedByIpAllowlist()).isTrue();
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isTrue();
+
+    verify(ipAccess).isBlocked(eq(ORG), eq(OUTSIDE_IP), any(BooleanSupplier.class));
+    verify(ipAccess, never()).isBlocked(eq(OTHER_ORG), any(), any(BooleanSupplier.class));
+  }
+
+  @Test
+  public void may_be_blocked_is_false_when_no_allowlist_leaves_the_address_out() {
+    UserDto user = insertMember("u1");
+    when(ipAccess.blockedOrganizationUuids(OUTSIDE_IP)).thenReturn(Set.of());
+
+    assertThat(session(user, OUTSIDE_IP).mayBeBlockedByIpAllowlist()).isFalse();
+  }
+
+  @Test
+  public void may_be_blocked_does_not_depend_on_the_login_being_an_exempt_admin() {
+    UserDto user = insertMember("u1");
+    insertOrgPermission(user, OrganizationPermission.ADMINISTER);
+    blockUnlessAdmin(ORG);
+    when(ipAccess.blockedOrganizationUuids(OUTSIDE_IP)).thenReturn(Set.of(ORG));
+
+    ServerUserSession session = session(user, OUTSIDE_IP);
+
+    assertThat(session.mayBeBlockedByIpAllowlist()).isTrue();
+    assertThat(session.getIpBlockedOrganizationUuids()).isEmpty();
+  }
+
+  @Test
+  public void may_be_blocked_and_blocked_organizations_share_one_read_of_the_allowlist() {
+    insertOrg();
+    blockEveryone(ORG);
+    when(ipAccess.blockedOrganizationUuids(OUTSIDE_IP)).thenReturn(Set.of(ORG));
+    ServerUserSession session = session(user("u1"), OUTSIDE_IP);
+
+    session.mayBeBlockedByIpAllowlist();
+    session.getIpBlockedOrganizationUuids();
+    session.mayBeBlockedByIpAllowlist();
+
+    verify(ipAccess, times(1)).blockedOrganizationUuids(OUTSIDE_IP);
+  }
+
+  @Test
+  public void may_be_blocked_is_false_for_root_and_for_a_session_without_allowlist_context() {
+    UserDto root = user("root-uuid");
+    root.setRoot(true);
+    when(ipAccess.blockedOrganizationUuids(OUTSIDE_IP)).thenReturn(Set.of(ORG));
+
+    assertThat(session(root, OUTSIDE_IP).mayBeBlockedByIpAllowlist()).isFalse();
+    assertThat(new ServerUserSession(db.getDbClient(), user("u1"), false).mayBeBlockedByIpAllowlist()).isFalse();
+    verifyNoInteractions(ipAccess);
+  }
+
+  @Test
+  public void may_be_blocked_fails_with_503_when_the_allowlist_cannot_be_read_and_is_not_remembered() {
+    OrganizationIpAccessUnavailableException failure = new OrganizationIpAccessUnavailableException("Cannot read the IP allowlist",
+      new IllegalStateException("connection refused to db-host:5432"));
+    when(ipAccess.blockedOrganizationUuids(OUTSIDE_IP)).thenThrow(failure).thenReturn(Set.of());
+    ServerUserSession session = session(user("u1"), OUTSIDE_IP);
+
+    assertUnavailable(session::mayBeBlockedByIpAllowlist, failure);
+    assertThat(session.mayBeBlockedByIpAllowlist()).isFalse();
   }
 
   @Test

@@ -269,6 +269,11 @@ public class ThreadLocalUserSession implements UserSession {
   }
 
   @Override
+  public boolean mayBeBlockedByIpAllowlist() {
+    return get().mayBeBlockedByIpAllowlist();
+  }
+
+  @Override
   public Set<String> getIpBlockedOrganizationUuids() {
     return get().getIpBlockedOrganizationUuids();
   }

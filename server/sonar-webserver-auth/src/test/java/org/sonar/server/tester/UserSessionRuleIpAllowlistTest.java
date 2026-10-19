@@ -51,6 +51,19 @@ public class UserSessionRuleIpAllowlistTest {
   }
 
   @Test
+  public void session_may_be_blocked_only_when_an_organization_is_set_on_it() {
+    userSession.logIn();
+    assertThat(userSession.mayBeBlockedByIpAllowlist()).isFalse();
+
+    userSession.setIpBlockedOrganizationUuids("org-1");
+    assertThat(userSession.mayBeBlockedByIpAllowlist()).isTrue();
+
+    userSession.setIpBlockedOrganizations();
+    assertThat(userSession.mayBeBlockedByIpAllowlist()).isFalse();
+    assertThat(new MockUserSession("login").setIpBlockedOrganizations(new OrganizationDto().setUuid("org-1").setKey("k")).mayBeBlockedByIpAllowlist()).isTrue();
+  }
+
+  @Test
   public void client_ip_set_on_the_rule_is_reported() {
     userSession.logIn().setClientIp("192.0.2.1");
 
