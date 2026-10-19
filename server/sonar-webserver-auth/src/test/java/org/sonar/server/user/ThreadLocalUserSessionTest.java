@@ -21,6 +21,7 @@ package org.sonar.server.user;
 
 import org.junit.After;
 import org.junit.Before;
+import java.util.Set;
 import org.junit.Test;
 import org.sonar.db.component.ComponentQualifiers;
 import org.sonar.db.component.ComponentDto;
@@ -36,6 +37,8 @@ import org.sonar.server.tester.MockUserSession;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.sonar.api.web.UserRole.USER;
 
 public class ThreadLocalUserSessionTest {
@@ -158,5 +161,41 @@ public class ThreadLocalUserSessionTest {
     threadLocalUserSession.set(expected);
 
     assertThat(threadLocalUserSession.checkChildProjectsPermission(USER, applicationAsProjectDto)).isEqualTo(threadLocalUserSession);
+  }
+
+  @Test
+  public void isBlockedByIpAllowlist_is_answered_by_the_session_of_the_request() {
+    UserSession session = mock(UserSession.class);
+    when(session.isBlockedByIpAllowlist("org-uuid")).thenReturn(true);
+    threadLocalUserSession.set(session);
+
+    assertThat(threadLocalUserSession.isBlockedByIpAllowlist("org-uuid")).isTrue();
+  }
+
+  @Test
+  public void isBlockedByIpAllowlistForKey_is_answered_by_the_session_of_the_request() {
+    UserSession session = mock(UserSession.class);
+    when(session.isBlockedByIpAllowlistForKey("org-key")).thenReturn(true);
+    threadLocalUserSession.set(session);
+
+    assertThat(threadLocalUserSession.isBlockedByIpAllowlistForKey("org-key")).isTrue();
+  }
+
+  @Test
+  public void getIpBlockedOrganizationUuids_is_answered_by_the_session_of_the_request() {
+    UserSession session = mock(UserSession.class);
+    when(session.getIpBlockedOrganizationUuids()).thenReturn(Set.of("org-1", "org-2"));
+    threadLocalUserSession.set(session);
+
+    assertThat(threadLocalUserSession.getIpBlockedOrganizationUuids()).containsExactlyInAnyOrder("org-1", "org-2");
+  }
+
+  @Test
+  public void getClientIp_is_answered_by_the_session_of_the_request() {
+    UserSession session = mock(UserSession.class);
+    when(session.getClientIp()).thenReturn("192.0.2.1");
+    threadLocalUserSession.set(session);
+
+    assertThat(threadLocalUserSession.getClientIp()).isEqualTo("192.0.2.1");
   }
 }

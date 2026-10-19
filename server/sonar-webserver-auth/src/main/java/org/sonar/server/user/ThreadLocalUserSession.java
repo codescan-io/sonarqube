@@ -22,7 +22,9 @@ package org.sonar.server.user;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.entity.EntityDto;
 import org.sonar.db.organization.OrganizationDto;
@@ -254,6 +256,27 @@ public class ThreadLocalUserSession implements UserSession {
   @Override
   public void checkMembership(OrganizationDto organization) {
     get().checkMembership(organization);
+  }
+
+  @Override
+  public boolean isBlockedByIpAllowlist(@Nullable String organizationUuid) {
+    return get().isBlockedByIpAllowlist(organizationUuid);
+  }
+
+  @Override
+  public boolean isBlockedByIpAllowlistForKey(@Nullable String organizationKey) {
+    return get().isBlockedByIpAllowlistForKey(organizationKey);
+  }
+
+  @Override
+  public Set<String> getIpBlockedOrganizationUuids() {
+    return get().getIpBlockedOrganizationUuids();
+  }
+
+  @Override
+  @CheckForNull
+  public String getClientIp() {
+    return get().getClientIp();
   }
 
 }
