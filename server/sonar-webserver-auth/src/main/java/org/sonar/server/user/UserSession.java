@@ -285,6 +285,18 @@ public interface UserSession {
   }
 
   /**
+   * True when some organization's allowlist leaves this request's address out, whoever the caller is. Read from the
+   * allowlist policies alone, with no permission lookup, so it is cheap to ask on every request. False means
+   * {@link #isBlockedByIpAllowlist(String)} is false for every organization. True only means it may be true for some:
+   * an administrator the allowlist exempts is still not blocked.
+   *
+   * @throws org.sonar.server.exceptions.ServerException with HTTP 503 when the allowlist cannot be read
+   */
+  default boolean mayBeBlockedByIpAllowlist() {
+    return false;
+  }
+
+  /**
    * Organizations whose IP allowlist blocks this request, for leaving them out of search results.
    *
    * @throws org.sonar.server.exceptions.ServerException with HTTP 503 when the allowlist cannot be read

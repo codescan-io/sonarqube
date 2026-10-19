@@ -39,7 +39,8 @@ import static java.util.stream.Collectors.toCollection;
  * the organization or one of its projects. Requests that name neither are left to the user session, which already
  * withholds a blocked organization's data.
  * <p>
- * A caller that no organization blocks costs no lookup at all. Only these ways of naming an organization are resolved:
+ * A request that no organization's allowlist can block costs no lookup at all. Otherwise only the organizations the
+ * request names are checked, one by one. Only these ways of naming an organization are resolved:
  * the {@code organization} parameter and the single-key project, component, application and portfolio parameters.
  * Others are not, and a blocked caller still gets the user session's generic 403: the plural parameters
  * ({@code projects}, {@code components}, {@code componentKeys}, {@code key}).
@@ -75,17 +76,14 @@ public class IpAllowlistActionInterceptor implements ActionInterceptor {
     if (organizationKey == null && componentKeys.isEmpty()) {
       return;
     }
-    Set<String> blockedOrganizationUuids = check.blockedOrganizationUuids();
-    if (blockedOrganizationUuids.isEmpty()) {
+    if (!check.mayBeBlocked()) {
       return;
     }
     if (organizationKey != null) {
       check.checkOrganizationKey(organizationKey);
     }
     if (!componentKeys.isEmpty()) {
-      organizationUuidsOf(componentKeys).stream()
-        .filter(blockedOrganizationUuids::contains)
-        .forEach(check::checkOrganizationUuid);
+      organizationUuidsOf(componentKeys).forEach(check::checkOrganizationUuid);
     }
   }
 

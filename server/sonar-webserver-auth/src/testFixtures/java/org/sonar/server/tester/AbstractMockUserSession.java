@@ -325,6 +325,11 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
   }
 
   @Override
+  public boolean mayBeBlockedByIpAllowlist() {
+    return !ipBlockedOrganizationUuids.isEmpty();
+  }
+
+  @Override
   public Set<String> getIpBlockedOrganizationUuids() {
     return Set.copyOf(ipBlockedOrganizationUuids);
   }

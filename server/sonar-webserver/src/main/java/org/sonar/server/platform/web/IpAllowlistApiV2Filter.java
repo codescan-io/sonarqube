@@ -61,7 +61,7 @@ public class IpAllowlistApiV2Filter extends HttpFilter {
     String organizationKey = request.getParameter("organization");
     if (organizationKey != null && !organizationKey.isBlank() && check.hasUserSession()) {
       try {
-        if (!check.blockedOrganizationUuids().isEmpty()) {
+        if (check.mayBeBlocked()) {
           check.checkOrganizationKey(organizationKey.strip());
         }
       } catch (ServerException e) {

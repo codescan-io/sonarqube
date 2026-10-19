@@ -20,7 +20,6 @@
 package org.sonar.server.platform.web;
 
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import org.sonar.api.server.ServerSide;
 import org.sonar.db.DbClient;
@@ -59,11 +58,13 @@ public class IpAllowlistRequestCheck {
   }
 
   /**
-   * Organizations whose allowlist blocks this request. Read once per request by the user session, so asking first
-   * costs nothing and lets a caller that no organization blocks skip every lookup.
+   * False when no organization's allowlist leaves this request's address out, so nothing needs resolving or checking.
+   * Answered from the allowlist policies alone, read once per request, so it costs no database lookup and no
+   * permission query. True does not mean the caller is blocked: that is decided per organization by the two checks
+   * below.
    */
-  public Set<String> blockedOrganizationUuids() {
-    return userSession.getIpBlockedOrganizationUuids();
+  public boolean mayBeBlocked() {
+    return userSession.mayBeBlockedByIpAllowlist();
   }
 
   /**
