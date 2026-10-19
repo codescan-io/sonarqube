@@ -621,8 +621,11 @@ public class BulkChangeAction implements IssuesWsAction {
 
             boolean isExceptionTransition = transitionProps != null
                     && DefaultTransitions.EXCEPTION.equals(transitionProps.get(TRANSITION_PARAMETER));
+            // Codescan customization: an exception's comment stands in for a missing reason; with an explicit
+            // reason it is posted as a comment too, as api/issues/do_transition does.
+            boolean commentIsExceptionReason = isExceptionTransition && request.param(PARAM_EXCEPTION_REASON) == null;
 
-            if (!isExceptionTransition) {
+            if (!commentIsExceptionReason) {
                 properties.put(COMMENT_KEY, new HashMap<>(of(COMMENT_PROPERTY, value)));
             }
         });
