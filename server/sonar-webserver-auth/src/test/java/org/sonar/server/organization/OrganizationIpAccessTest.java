@@ -20,6 +20,9 @@
 package org.sonar.server.organization;
 
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -65,6 +68,7 @@ public class OrganizationIpAccessTest {
   /** Can be set back or forward, as an administrator or NTP does; nothing may depend on it. */
   private final TestSystem2 wallClock = new TestSystem2().setNow(WALL_NOW);
   private final MapSettings settings = new MapSettings();
+  private final Set<Thread> waiters = ConcurrentHashMap.newKeySet();
   private OrganizationIpAccess underTest;
 
   @Before
@@ -515,8 +519,8 @@ public class OrganizationIpAccessTest {
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
       wallClock.setNow(WALL_NOW - 500L);
-      Future<Boolean> waiter = executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
-      awaitWaitingThreads(access, 1);
+      Future<Boolean> waiter = submitWaiter(executor, () -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      awaitWaiters(1);
       finishLoad.countDown();
 
       assertThat(waiter.get(10, TimeUnit.SECONDS)).isFalse();
@@ -623,9 +627,9 @@ public class OrganizationIpAccessTest {
     try {
       Future<Boolean> first = executor.submit(() -> underTest.isBlocked("org-a", "192.0.2.1", () -> false));
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
-      Future<Boolean> second = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
-      Future<Boolean> third = executor.submit(() -> underTest.isBlocked("org-a", "192.0.2.1", () -> false));
-      awaitWaitingThreads(underTest, 2);
+      Future<Boolean> second = submitWaiter(executor, () -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      Future<Boolean> third = submitWaiter(executor, () -> underTest.isBlocked("org-a", "192.0.2.1", () -> false));
+      awaitWaiters(2);
 
       finishLoad.countDown();
 
@@ -652,8 +656,8 @@ public class OrganizationIpAccessTest {
     try {
       Future<Boolean> first = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
-      Future<Boolean> second = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
-      awaitWaitingThreads(underTest, 1);
+      Future<Boolean> second = submitWaiter(executor, () -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      awaitWaiters(1);
 
       finishLoad.countDown();
 
@@ -687,8 +691,8 @@ public class OrganizationIpAccessTest {
     try {
       Future<Boolean> leader = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
-      Future<Boolean> waiter = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
-      awaitWaitingThreads(underTest, 1);
+      Future<Boolean> waiter = submitWaiter(executor, () -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      awaitWaiters(1);
 
       finishLoad.countDown();
 
@@ -883,8 +887,8 @@ public class OrganizationIpAccessTest {
       executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
       clock.set(1_000_000L + 1_000L);
-      Future<Boolean> waiter = executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
-      awaitWaitingThreads(underTest, 1);
+      Future<Boolean> waiter = submitWaiter(executor, () -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
+      awaitWaiters(1);
 
       clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThat(underTest.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
@@ -917,8 +921,8 @@ public class OrganizationIpAccessTest {
       executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(stuckStarted.await(10, TimeUnit.SECONDS)).isTrue();
       clock.set(1_000_000L + 100L);
-      Future<Boolean> waiter = executor.submit(() -> access.isBlocked("org-a", "203.0.113.9", () -> false));
-      awaitWaitingThreads(access, 1);
+      Future<Boolean> waiter = submitWaiter(executor, () -> access.isBlocked("org-a", "203.0.113.9", () -> false));
+      awaitWaiters(1);
 
       clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
@@ -1201,19 +1205,17 @@ public class OrganizationIpAccessTest {
     try {
       executor.submit(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false));
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
-      AtomicReference<Thread> waiterThread = new AtomicReference<>();
       AtomicBoolean interruptFlagKept = new AtomicBoolean();
-      Future<Boolean> waiter = executor.submit(() -> {
-        waiterThread.set(Thread.currentThread());
+      Future<Boolean> waiter = submitWaiter(executor, () -> {
         try {
           return underTest.isBlocked("org-a", "203.0.113.9", () -> false);
         } finally {
           interruptFlagKept.set(Thread.interrupted());
         }
       });
-      awaitWaiting(waiterThread);
+      awaitWaiters(1);
 
-      waiterThread.get().interrupt();
+      waiters.forEach(Thread::interrupt);
 
       assertThatThrownBy(() -> waiter.get(10, TimeUnit.SECONDS))
         .hasCauseInstanceOf(OrganizationIpAccessUnavailableException.class)
@@ -1244,19 +1246,19 @@ public class OrganizationIpAccessTest {
     assertThat(underTest.trackedBlockCleanupCount() - cleanupsBefore).isEqualTo(2);
   }
 
-  private static void awaitWaitingThreads(OrganizationIpAccess access, int expected) throws InterruptedException {
-    long giveUpAt = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-    while (access.waitingThreadCount() < expected) {
-      assertThat(System.nanoTime()).as("threads waiting for the load").isLessThan(giveUpAt);
-      Thread.sleep(5);
-    }
+  /** Runs {@code call} on {@code executor} as a caller that is expected to wait for a load. */
+  private Future<Boolean> submitWaiter(ExecutorService executor, Callable<Boolean> call) {
+    return executor.submit(() -> {
+      waiters.add(Thread.currentThread());
+      return call.call();
+    });
   }
 
-  /** A thread parked with a deadline, as one waiting for a load is. */
-  private static void awaitWaiting(AtomicReference<Thread> thread) throws InterruptedException {
+  /** A thread waiting for a load is parked with a deadline. */
+  private void awaitWaiters(int count) throws InterruptedException {
     long giveUpAt = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-    while (thread.get() == null || thread.get().getState() != Thread.State.TIMED_WAITING) {
-      assertThat(System.nanoTime()).as("thread waiting for the load").isLessThan(giveUpAt);
+    while (waiters.size() < count || waiters.stream().anyMatch(t -> t.getState() != Thread.State.TIMED_WAITING)) {
+      assertThat(System.nanoTime()).as("threads waiting for the load").isLessThan(giveUpAt);
       Thread.sleep(5);
     }
   }

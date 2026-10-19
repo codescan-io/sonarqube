@@ -93,7 +93,6 @@ public class OrganizationIpAccess {
   private final Set<String> reportedBadRanges = ConcurrentHashMap.newKeySet();
   private final AtomicLong lastBlockLogCleanupAt;
   private final AtomicInteger blockLogCleanups = new AtomicInteger();
-  private final AtomicInteger waitingThreads = new AtomicInteger();
 
   private final AtomicReference<Loads> loads = new AtomicReference<>(new Loads(null, 0));
   private final AtomicLong lastLoadFailureLogAt;
@@ -283,12 +282,7 @@ public class OrganizationIpAccess {
     }
   }
 
-  int waitingThreadCount() {
-    return waitingThreads.get();
-  }
-
   private Map<String, Policy> awaitLoad(CompletableFuture<Snapshot> running) {
-    waitingThreads.incrementAndGet();
     try {
       return running.get(loadWaitTimeoutMs, TimeUnit.MILLISECONDS).policies();
     } catch (ExecutionException e) {
@@ -298,8 +292,6 @@ public class OrganizationIpAccess {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new OrganizationIpAccessUnavailableException("Interrupted while waiting for the IP allowlist to load", e);
-    } finally {
-      waitingThreads.decrementAndGet();
     }
   }
 
