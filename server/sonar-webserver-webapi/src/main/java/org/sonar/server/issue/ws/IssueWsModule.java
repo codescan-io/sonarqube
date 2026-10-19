@@ -76,6 +76,7 @@ public class IssueWsModule extends Module {
       ComponentTagsAction.class,
       ReindexAction.class,
       SetCodefixStatusAction.class,
+      CopyFixedFromPullRequestAction.class,
       AuthorsAction.class,
       ChangelogAction.class,
       BulkChangeAction.class,
