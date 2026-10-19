@@ -1007,6 +1007,43 @@ public class OrganizationIpAccessTest {
   }
 
   @Test(timeout = 30_000)
+  public void caller_that_starts_a_load_after_another_load_refreshed_the_list_does_not_read_the_database() throws Exception {
+    AtomicReference<Thread> pauseOnNextRead = new AtomicReference<>();
+    CountDownLatch paused = new CountDownLatch(1);
+    CountDownLatch resume = new CountDownLatch(1);
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, settings.asConfig(), () -> {
+      if (pauseOnNextRead.compareAndSet(Thread.currentThread(), null)) {
+        paused.countDown();
+        assertThat(await(resume)).isTrue();
+      }
+      return clock.get();
+    }, OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    access.isBlocked("org-a", "192.0.2.1", () -> false);
+    when(dao.selectEnabledRanges(any())).thenReturn(
+      List.of(range("org-a", false, "198.51.100.0/24")),
+      List.of(range("org-a", false, "192.0.2.0/24")));
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      clock.set(1_000_000L + OrganizationIpAccess.SNAPSHOT_TTL_MS);
+      // this caller has seen the expired snapshot and stops before deciding to load
+      Future<Boolean> late = executor.submit(() -> {
+        pauseOnNextRead.set(Thread.currentThread());
+        return access.isBlocked("org-a", "198.51.100.5", () -> false);
+      });
+      assertThat(paused.await(10, TimeUnit.SECONDS)).isTrue();
+      assertThat(access.isBlocked("org-a", "198.51.100.5", () -> false)).isFalse();
+
+      resume.countDown();
+
+      assertThat(late.get(10, TimeUnit.SECONDS)).isFalse();
+      verify(dao, times(2)).selectEnabledRanges(any());
+    } finally {
+      resume.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 30_000)
   public void caller_arriving_while_a_load_finishes_gets_an_answer_without_spinning() throws Exception {
     AtomicLong clockReads = new AtomicLong();
     AtomicReference<Thread> pauseOnNextRead = new AtomicReference<>();

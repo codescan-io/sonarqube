@@ -247,6 +247,11 @@ public class OrganizationIpAccess {
   private Map<String, Policy> reload(Load mine) {
     Snapshot before = snapshot;
     try {
+      // another load may have finished since this thread saw the snapshot expire
+      if (before != null && before.isFresh(clock.getAsLong())) {
+        mine.result().complete(before);
+        return before.policies();
+      }
       Snapshot loaded = new Snapshot(load(), mine.number(), mine.startedAt());
       publish(loaded);
       mine.result().complete(loaded);
