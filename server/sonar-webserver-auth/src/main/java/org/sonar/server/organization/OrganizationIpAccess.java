@@ -48,23 +48,17 @@ import org.sonar.db.organization.IpAllowlistRangeDto;
 import static java.util.stream.Collectors.toSet;
 
 /**
- * Decides whether a client address may reach an organization under its IP allowlist (CSN-74). The
- * decision agrees with codescanng's {@code OrgIpAccessService}: an organization with the allowlist on lets in
- * only the addresses inside its ranges, a missing or unparseable address is blocked, and a range that cannot be
- * parsed is skipped, which can only narrow access.
+ * Decides whether a client address may reach an organization under its IP allowlist (CSN-74), with the same rules
+ * as codescanng's {@code OrgIpAccessService}: only addresses inside the ranges get in, a missing or unparseable
+ * address is blocked, and a range that cannot be parsed is skipped, which can only narrow access.
  *
- * <p>All organizations with the allowlist on are read in one query and kept for {@link #SNAPSHOT_TTL_MS}.
- * When the snapshot is older, one thread reloads it. The others keep answering from the old snapshot, so a slow
- * database does not stall every request. A snapshot is never served once it is {@link #MAX_STALE_MS} old (twice
- * the cache time, counted from the start of the read and checked again after a failed reload). Ages and deadlines
- * are measured on a clock that never goes backwards. The old snapshot is also used when a reload fails, within the
- * same limit. When there is no usable snapshot, callers wait (at most {@link #LOAD_WAIT_TIMEOUT_MS}) for the one
- * load in progress and share its outcome. A load that has run longer than {@link #TAKEOVER_AFTER_MS} is considered
- * stuck: the next caller starts a new load, and the stuck one can neither release the new one nor replace its
- * result: of two loads, the one started last wins. At most {@link #MAX_LOADS_IN_FLIGHT} loads run at once: when
- * that many are stuck, a caller waits on the newest instead of starting another. If a load fails, or the wait runs out, the call throws
- * {@link OrganizationIpAccessUnavailableException}, unless another load has left a usable snapshot in the meantime.
- * A failed read is never kept. Callers must treat an exception as a failed request, never as allowed.
+ * <p>All enabled allowlists are read in one query and kept for {@link #SNAPSHOT_TTL_MS}. One caller reloads an
+ * expired snapshot while the others keep using it until it is {@link #MAX_STALE_MS} old, also when the reload
+ * fails. With no usable snapshot, callers wait up to {@link #LOAD_WAIT_TIMEOUT_MS} for the running load. A load
+ * running longer than {@link #TAKEOVER_AFTER_MS} can be taken over, at most {@link #MAX_LOADS_IN_FLIGHT} loads
+ * run, and the load started last wins. Ages are counted from the start of the read, on a clock that never goes
+ * backwards. A failed read is never kept. When no usable list can be had, the call throws
+ * {@link OrganizationIpAccessUnavailableException}: callers must treat it as a failed request, never as allowed.
  */
 @ServerSide
 public class OrganizationIpAccess {
@@ -244,12 +238,12 @@ public class OrganizationIpAccess {
 
   /** Runs the one load. Every other thread that has no usable snapshot is waiting on {@code mine}. */
   private Map<String, Policy> reload(Load mine) {
-    Snapshot before = snapshot;
     try {
       // another load may have finished since this thread saw the snapshot expire
-      if (before != null && before.isFresh(clock.getAsLong())) {
-        mine.result().complete(before);
-        return before.policies();
+      Snapshot current = snapshot;
+      if (current != null && current.isFresh(clock.getAsLong())) {
+        mine.result().complete(current);
+        return current.policies();
       }
       Snapshot loaded = new Snapshot(load(), mine.number(), mine.startedAt());
       publish(loaded);
@@ -257,11 +251,10 @@ public class OrganizationIpAccess {
       return loaded.policies();
     } catch (RuntimeException e) {
       mine.result().completeExceptionally(e);
-      Snapshot old = snapshot;
-      if (old != null && old.isUsableWhenStale(clock.getAsLong())) {
-        // a different snapshot means a load that took over from this one has refreshed the list meanwhile
-        logLoadFailure(e, old != before);
-        return old.policies();
+      Snapshot last = snapshot;
+      if (last != null && last.isUsableWhenStale(clock.getAsLong())) {
+        logLoadFailure(e);
+        return last.policies();
       }
       throw new OrganizationIpAccessUnavailableException("Cannot read the IP allowlist", e);
     } finally {
@@ -305,15 +298,11 @@ public class OrganizationIpAccess {
   }
 
   /** While the database is down every request would otherwise log. */
-  private void logLoadFailure(RuntimeException e, boolean newerListInUse) {
+  private void logLoadFailure(RuntimeException e) {
     long now = clock.getAsLong();
     long last = lastLoadFailureLogAt.get();
     if (now - last >= BLOCK_LOG_INTERVAL_MS && lastLoadFailureLogAt.compareAndSet(last, now)) {
-      if (newerListInUse) {
-        LOG.warn("Cannot reload the IP allowlist, using the newer one read by a later reload", e);
-      } else {
-        LOG.warn("Cannot reload the IP allowlist, using the previous one for at most {} seconds", MAX_STALE_MS / 1000, e);
-      }
+      LOG.warn("Cannot reload the IP allowlist, using the last list read at most until it is {} seconds old", MAX_STALE_MS / 1000, e);
     }
   }
 

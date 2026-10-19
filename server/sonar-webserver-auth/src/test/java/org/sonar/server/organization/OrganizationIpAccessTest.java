@@ -57,6 +57,7 @@ import static org.mockito.Mockito.when;
 public class OrganizationIpAccessTest {
 
   private static final long WALL_NOW = 1_700_000_000_000L;
+  private static final String RELOAD_FAILED_LOG = "Cannot reload the IP allowlist, using the last list read at most until it is 60 seconds old";
 
   @Rule
   public LogTester logTester = new LogTester();
@@ -611,7 +612,7 @@ public class OrganizationIpAccessTest {
       underTest.isBlocked("org-a", "192.0.2.1", () -> false);
     }
 
-    assertThat(logTester.logs(Level.WARN)).singleElement().asString().contains("previous");
+    assertThat(logTester.logs(Level.WARN)).containsExactly(RELOAD_FAILED_LOG);
   }
 
   @Test(timeout = 30_000)
@@ -936,7 +937,7 @@ public class OrganizationIpAccessTest {
   }
 
   @Test(timeout = 30_000)
-  public void stuck_load_that_fails_after_a_newer_load_succeeded_logs_that_the_newer_list_is_in_use() throws Exception {
+  public void stuck_load_that_fails_after_a_newer_load_succeeded_answers_from_the_newer_list() throws Exception {
     AtomicInteger calls = new AtomicInteger();
     CountDownLatch stuckStarted = new CountDownLatch(1);
     CountDownLatch releaseStuck = new CountDownLatch(1);
@@ -959,9 +960,7 @@ public class OrganizationIpAccessTest {
       releaseStuck.countDown();
 
       assertThat(stuck.get(10, TimeUnit.SECONDS)).isFalse();
-      assertThat(logTester.logs(Level.WARN)).singleElement().asString()
-        .contains("newer")
-        .doesNotContain("previous");
+      assertThat(logTester.logs(Level.WARN)).containsExactly(RELOAD_FAILED_LOG);
     } finally {
       releaseStuck.countDown();
       executor.shutdownNow();
