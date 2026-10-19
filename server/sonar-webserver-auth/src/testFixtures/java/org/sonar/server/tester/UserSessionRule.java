@@ -143,6 +143,11 @@ public class UserSessionRule implements TestRule, UserSession, BeforeTestExecuti
     return this;
   }
 
+  public UserSessionRule setIpBlockedOrganizations(OrganizationDto... organizations) {
+    ensureAbstractMockUserSession().setIpBlockedOrganizations(organizations);
+    return this;
+  }
+
   public UserSessionRule setClientIp(@Nullable String clientIp) {
     ensureAbstractMockUserSession().setClientIp(clientIp);
     return this;

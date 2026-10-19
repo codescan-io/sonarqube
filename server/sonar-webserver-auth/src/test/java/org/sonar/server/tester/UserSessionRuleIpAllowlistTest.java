@@ -20,6 +20,7 @@
 package org.sonar.server.tester;
 
 import org.junit.Test;
+import org.sonar.db.organization.OrganizationDto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -70,5 +71,69 @@ public class UserSessionRuleIpAllowlistTest {
     assertThat(session.isBlockedByIpAllowlist(null)).isFalse();
     assertThat(session.getIpBlockedOrganizationUuids()).containsExactly("org-1");
     assertThat(session.getClientIp()).isEqualTo("192.0.2.1");
+  }
+
+  private final OrganizationDto blockedOrg = new OrganizationDto().setUuid("org-1").setKey("org-key-1");
+  private final OrganizationDto otherOrg = new OrganizationDto().setUuid("org-3").setKey("org-key-3");
+
+  @Test
+  public void organizations_set_on_the_mock_session_are_blocked_by_uuid_and_by_key() {
+    MockUserSession session = new MockUserSession("login").setIpBlockedOrganizations(blockedOrg);
+
+    assertThat(session.isBlockedByIpAllowlist("org-1")).isTrue();
+    assertThat(session.isBlockedByIpAllowlistForKey("org-key-1")).isTrue();
+    assertThat(session.isBlockedByIpAllowlistForKey("org-key-3")).isFalse();
+    assertThat(session.isBlockedByIpAllowlistForKey(null)).isFalse();
+    assertThat(session.getIpBlockedOrganizationUuids()).containsExactly("org-1");
+  }
+
+  @Test
+  public void organizations_set_on_the_rule_are_blocked_by_key() {
+    userSession.logIn().setIpBlockedOrganizations(blockedOrg);
+
+    assertThat(userSession.isBlockedByIpAllowlistForKey("org-key-1")).isTrue();
+    assertThat(userSession.isBlockedByIpAllowlist("org-1")).isTrue();
+  }
+
+  @Test
+  public void organizations_blocked_by_uuid_only_have_no_key_to_answer_for() {
+    MockUserSession session = new MockUserSession("login").setIpBlockedOrganizationUuids("org-1");
+
+    assertThat(session.isBlockedByIpAllowlistForKey("org-key-1")).isFalse();
+  }
+
+  @Test
+  public void blocked_organization_gives_no_membership_like_the_real_session() {
+    MockUserSession session = new MockUserSession("login").setIpBlockedOrganizations(blockedOrg);
+
+    assertThat(session.hasMembership(blockedOrg)).isFalse();
+    assertThat(session.hasMembership("org-key-1")).isFalse();
+  }
+
+  @Test
+  public void blocked_organization_uuid_alone_gives_no_membership_for_that_organization() {
+    MockUserSession session = new MockUserSession("login").setIpBlockedOrganizationUuids("org-1");
+
+    assertThat(session.hasMembership(blockedOrg)).isFalse();
+  }
+
+  @Test
+  public void a_new_login_forgets_the_blocked_keys() {
+    userSession.logIn().setIpBlockedOrganizations(blockedOrg);
+
+    userSession.logIn();
+
+    assertThat(userSession.isBlockedByIpAllowlistForKey("org-key-1")).isFalse();
+  }
+
+  @Test
+  public void setting_the_blocked_organizations_again_replaces_the_previous_ones() {
+    MockUserSession session = new MockUserSession("login").setIpBlockedOrganizations(blockedOrg);
+
+    session.setIpBlockedOrganizations(otherOrg);
+
+    assertThat(session.isBlockedByIpAllowlistForKey("org-key-1")).isFalse();
+    assertThat(session.isBlockedByIpAllowlist("org-1")).isFalse();
+    assertThat(session.isBlockedByIpAllowlistForKey("org-key-3")).isTrue();
   }
 }

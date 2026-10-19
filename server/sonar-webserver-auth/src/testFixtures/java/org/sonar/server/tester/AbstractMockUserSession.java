@@ -37,6 +37,7 @@ import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.permission.GlobalPermission;
 import org.sonar.db.portfolio.PortfolioDto;
+import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.server.user.AbstractUserSession;
 
@@ -58,6 +59,7 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
   private boolean systemAdministrator = false;
   private boolean resetPassword = false;
   private final Set<String> ipBlockedOrganizationUuids = new HashSet<>();
+  private final Set<String> ipBlockedOrganizationKeys = new HashSet<>();
   @CheckForNull
   private String clientIp;
 
@@ -237,9 +239,28 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
     return resetPassword;
   }
 
+  /**
+   * Organizations whose IP allowlist blocks this session, by uuid only: {@link #isBlockedByIpAllowlistForKey(String)}
+   * answers false for them. Use {@link #setIpBlockedOrganizations(OrganizationDto...)} to block by key too.
+   * Replaces whatever was set before.
+   */
   public T setIpBlockedOrganizationUuids(String... organizationUuids) {
     this.ipBlockedOrganizationUuids.clear();
+    this.ipBlockedOrganizationKeys.clear();
     this.ipBlockedOrganizationUuids.addAll(Arrays.asList(organizationUuids));
+    return clazz.cast(this);
+  }
+
+  /**
+   * Organizations whose IP allowlist blocks this session, answered by uuid and by key. Replaces whatever was set before.
+   */
+  public T setIpBlockedOrganizations(OrganizationDto... organizations) {
+    this.ipBlockedOrganizationUuids.clear();
+    this.ipBlockedOrganizationKeys.clear();
+    Arrays.stream(organizations).forEach(organization -> {
+      this.ipBlockedOrganizationUuids.add(organization.getUuid());
+      this.ipBlockedOrganizationKeys.add(organization.getKey());
+    });
     return clazz.cast(this);
   }
 
@@ -251,6 +272,22 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
   @Override
   public boolean isBlockedByIpAllowlist(@Nullable String organizationUuid) {
     return organizationUuid != null && ipBlockedOrganizationUuids.contains(organizationUuid);
+  }
+
+  @Override
+  public boolean isBlockedByIpAllowlistForKey(@Nullable String organizationKey) {
+    return organizationKey != null && ipBlockedOrganizationKeys.contains(organizationKey);
+  }
+
+  /** A blocked organization gives no membership, like the real session; any other one is still not implemented. */
+  @Override
+  protected boolean hasMembershipImpl(OrganizationDto organizationDto) {
+    return !isBlockedByIpAllowlist(organizationDto.getUuid()) && super.hasMembershipImpl(organizationDto);
+  }
+
+  @Override
+  protected boolean hasMembershipImpl(String organizationKey) {
+    return !isBlockedByIpAllowlistForKey(organizationKey) && super.hasMembershipImpl(organizationKey);
   }
 
   @Override
