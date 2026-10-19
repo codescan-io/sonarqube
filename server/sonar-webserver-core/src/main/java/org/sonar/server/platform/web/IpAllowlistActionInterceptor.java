@@ -62,16 +62,25 @@ public class IpAllowlistActionInterceptor implements ActionInterceptor {
       return;
     }
     String organizationKey = firstValue(params, ORGANIZATION_PARAM);
-    if (organizationKey != null) {
-      check.checkOrganizationKey(organizationKey);
-    }
     List<String> componentKeys = COMPONENT_KEY_PARAMS.stream()
       .map(param -> firstValue(params, param))
       .filter(Objects::nonNull)
       .distinct()
       .toList();
+    if (organizationKey == null && componentKeys.isEmpty()) {
+      return;
+    }
+    Set<String> blockedOrganizationUuids = check.blockedOrganizationUuids();
+    if (blockedOrganizationUuids.isEmpty()) {
+      return;
+    }
+    if (organizationKey != null) {
+      check.checkOrganizationKey(organizationKey);
+    }
     if (!componentKeys.isEmpty()) {
-      organizationUuidsOf(componentKeys).forEach(check::checkOrganizationUuid);
+      organizationUuidsOf(componentKeys).stream()
+        .filter(blockedOrganizationUuids::contains)
+        .forEach(check::checkOrganizationUuid);
     }
   }
 

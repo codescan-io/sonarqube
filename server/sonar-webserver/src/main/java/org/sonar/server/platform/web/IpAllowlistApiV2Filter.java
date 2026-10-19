@@ -57,7 +57,9 @@ public class IpAllowlistApiV2Filter extends HttpFilter {
     String organizationKey = request.getParameter("organization");
     if (organizationKey != null && !organizationKey.isBlank() && check.hasUserSession()) {
       try {
-        check.checkOrganizationKey(organizationKey.strip());
+        if (!check.blockedOrganizationUuids().isEmpty()) {
+          check.checkOrganizationKey(organizationKey.strip());
+        }
       } catch (ServerException e) {
         // a blocked member's 403, or the 503 of an allowlist that cannot be read
         answer(response, e);

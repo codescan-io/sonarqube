@@ -20,6 +20,7 @@
 package org.sonar.server.platform.web;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import org.sonar.api.server.ServerSide;
 import org.sonar.db.DbClient;
@@ -55,6 +56,14 @@ public class IpAllowlistRequestCheck {
    */
   public boolean hasUserSession() {
     return !(userSession instanceof ThreadLocalUserSession threadLocalSession) || threadLocalSession.hasSession();
+  }
+
+  /**
+   * Organizations whose allowlist blocks this request. Read once per request by the user session, so asking first
+   * costs nothing and lets a caller that no organization blocks skip every lookup.
+   */
+  public Set<String> blockedOrganizationUuids() {
+    return userSession.getIpBlockedOrganizationUuids();
   }
 
   /**
