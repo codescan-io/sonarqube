@@ -195,7 +195,7 @@ public class ServerUserSession extends AbstractUserSession {
    * back into this check. A visitor who is not logged in is never an administrator, whatever the anonymous
    * permissions say.
    */
-  private boolean isOrganizationAdmin(String organizationUuid) {
+  protected boolean isOrganizationAdmin(String organizationUuid) {
     if (!isLoggedIn()) {
       return false;
     }

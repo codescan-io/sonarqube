@@ -31,7 +31,9 @@ import org.sonar.api.utils.System2;
 import org.sonar.db.DbTester;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.permission.OrganizationPermission;
+import org.sonar.db.user.TokenType;
 import org.sonar.db.user.UserDto;
+import org.sonar.db.user.UserTokenDto;
 import org.sonar.server.exceptions.ServerException;
 import org.sonar.server.organization.OrganizationIpAccess;
 import org.sonar.server.organization.OrganizationIpAccessUnavailableException;
@@ -123,6 +125,53 @@ public class ServerUserSessionIpAllowlistIT {
 
     assertThat(session.hasMembership(org())).isFalse();
     assertThat(session.hasPermission(OrganizationPermission.ADMINISTER, ORG)).isFalse();
+  }
+
+  @Test
+  public void project_analysis_token_of_an_org_admin_is_not_exempt_when_admins_are_exempt() {
+    UserDto admin = insertMember("u1");
+    insertOrgPermission(admin, OrganizationPermission.ADMINISTER);
+    blockUnlessAdmin(ORG);
+
+    TokenUserSession session = tokenSession(admin, TokenType.PROJECT_ANALYSIS_TOKEN, OUTSIDE_IP);
+
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isTrue();
+    assertThat(session.hasMembership(org())).isFalse();
+  }
+
+  @Test
+  public void global_analysis_token_of_an_org_admin_is_not_exempt_when_admins_are_exempt() {
+    UserDto admin = insertMember("u1");
+    insertOrgPermission(admin, OrganizationPermission.ADMINISTER);
+    insertOrgPermission(admin, OrganizationPermission.SCAN);
+    blockUnlessAdmin(ORG);
+
+    TokenUserSession session = tokenSession(admin, TokenType.GLOBAL_ANALYSIS_TOKEN, OUTSIDE_IP);
+
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isTrue();
+    assertThat(session.hasPermission(OrganizationPermission.SCAN, ORG)).isFalse();
+  }
+
+  @Test
+  public void user_token_of_an_org_admin_is_exempt_when_admins_are_exempt() {
+    UserDto admin = insertMember("u1");
+    insertOrgPermission(admin, OrganizationPermission.ADMINISTER);
+    blockUnlessAdmin(ORG);
+
+    TokenUserSession session = tokenSession(admin, TokenType.USER_TOKEN, OUTSIDE_IP);
+
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isFalse();
+    assertThat(session.hasMembership(org())).isTrue();
+    assertThat(session.hasPermission(OrganizationPermission.ADMINISTER, ORG)).isTrue();
+  }
+
+  @Test
+  public void user_token_of_a_plain_member_is_blocked_when_admins_are_exempt() {
+    UserDto member = insertMember("u1");
+    insertOrgPermission(member, OrganizationPermission.SCAN);
+    blockUnlessAdmin(ORG);
+
+    assertThat(tokenSession(member, TokenType.USER_TOKEN, OUTSIDE_IP).isBlockedByIpAllowlist(ORG)).isTrue();
   }
 
   @Test
@@ -394,6 +443,13 @@ public class ServerUserSessionIpAllowlistIT {
   private void blockUnlessAdmin(String organizationUuid) {
     when(ipAccess.isBlocked(eq(organizationUuid), anyString(), any(BooleanSupplier.class)))
       .thenAnswer(invocation -> !invocation.<BooleanSupplier>getArgument(2).getAsBoolean());
+  }
+
+  private TokenUserSession tokenSession(UserDto user, TokenType type, String ip) {
+    UserTokenDto token = new UserTokenDto().setType(type.name()).setProjectUuid("project-uuid");
+    TokenUserSession session = new TokenUserSession(db.getDbClient(), user, token);
+    session.withIpAllowlist(ipAccess, ip, null);
+    return session;
   }
 
   private ServerUserSession session(@Nullable UserDto user, @Nullable String ip) {

@@ -99,6 +99,21 @@ public class TokenUserSession extends ServerUserSession {
   }
 
   /**
+   * The allowlist's administrator exemption is there so an administrator can always reach the organization to fix
+   * the list. An analysis token cannot edit the list, so it is checked like any member's request. A user token
+   * carries its owner's full rights, so it keeps the exemption.
+   */
+  @Override
+  protected boolean isOrganizationAdmin(String organizationUuid) {
+    TokenType tokenType = TokenType.valueOf(userToken.getType());
+    return switch (tokenType) {
+      case USER_TOKEN -> super.isOrganizationAdmin(organizationUuid);
+      case PROJECT_ANALYSIS_TOKEN, GLOBAL_ANALYSIS_TOKEN -> false;
+      default -> throw new IllegalArgumentException(format(TOKEN_ASSERTION_ERROR_MESSAGE, tokenType.name()));
+    };
+  }
+
+  /**
    * Required to override doKeepAuthorizedComponents to handle the case of a project analysis token
    */
   @Override
