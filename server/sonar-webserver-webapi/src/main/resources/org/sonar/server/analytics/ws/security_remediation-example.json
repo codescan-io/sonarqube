@@ -1,0 +1,26 @@
+{
+  "period": {"from": "2026-09-14", "to": "2026-10-11", "timeZone": "Europe/Paris", "interval": "week"},
+  "retentionDays": 30,
+  "completeFrom": "2026-09-12",
+  "totals": {
+    "fixed": 42, "fixedWithinSla": 35, "medianTimeToFixMs": 950400000, "averageTimeToFixMs": 1468800000,
+    "open": 118, "openPastSla": 21
+  },
+  "previous": {
+    "from": "2026-08-17", "to": "2026-09-13", "complete": false,
+    "fixed": 30, "fixedWithinSla": 22, "medianTimeToFixMs": 1728000000
+  },
+  "severities": [
+    {"severity": "BLOCKER", "slaDays": 30, "fixed": 4, "fixedWithinSla": 4, "medianTimeToFixMs": 432000000, "open": 2, "openPastSla": 0, "oldestOpenAgeMs": 864000000},
+    {"severity": "HIGH", "slaDays": 30, "fixed": 12, "fixedWithinSla": 10, "medianTimeToFixMs": 1036800000, "open": 19, "openPastSla": 6, "oldestOpenAgeMs": 9504000000},
+    {"severity": "MEDIUM", "slaDays": 90, "fixed": 20, "fixedWithinSla": 17, "medianTimeToFixMs": 1209600000, "open": 61, "openPastSla": 11, "oldestOpenAgeMs": 15552000000},
+    {"severity": "LOW", "slaDays": 180, "fixed": 6, "fixedWithinSla": 4, "medianTimeToFixMs": 2592000000, "open": 36, "openPastSla": 4, "oldestOpenAgeMs": 31104000000},
+    {"severity": "INFO", "slaDays": 365, "fixed": 0, "fixedWithinSla": 0, "open": 0, "openPastSla": 0}
+  ],
+  "timeline": [
+    {"date": "2026-09-14", "fixed": 9, "fixedWithinSla": 7, "medianTimeToFixMs": 1123200000},
+    {"date": "2026-09-21", "fixed": 12, "fixedWithinSla": 10, "medianTimeToFixMs": 1036800000},
+    {"date": "2026-09-28", "fixed": 8, "fixedWithinSla": 7, "medianTimeToFixMs": 864000000},
+    {"date": "2026-10-05", "fixed": 13, "fixedWithinSla": 11, "medianTimeToFixMs": 777600000}
+  ]
+}

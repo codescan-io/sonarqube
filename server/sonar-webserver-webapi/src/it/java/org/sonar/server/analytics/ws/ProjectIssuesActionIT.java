@@ -118,7 +118,7 @@ class ProjectIssuesActionIT {
 
     String json = call().execute().getInput();
 
-    assertJson(json).isSimilarTo("{\"projects\": [{\"key\": \"" + project.projectKey() + "\", \"issues\": {" +
+    assertJson(json).isSimilarTo("{\"projects\": [{\"key\": \"" + project.projectKey() + "\", \"effortMinutes\": 40, \"issues\": {" +
       "\"BUG\": {\"MAJOR\": 2}, \"CODE_SMELL\": {\"MINOR\": 1}, \"VULNERABILITY\": {\"BLOCKER\": 1}}}]}");
     assertThat(json).doesNotContain("CRITICAL", "INFO");
   }
@@ -158,7 +158,7 @@ class ProjectIssuesActionIT {
   }
 
   private void insertIssue(ComponentDto branch, ComponentDto file, RuleType type, String severity) {
-    db.issues().insertIssue(rule, branch, file, i -> i.setType(type).setSeverity(severity));
+    db.issues().insertIssue(rule, branch, file, i -> i.setType(type).setSeverity(severity).setEffort(10L));
   }
 
   private void index() {

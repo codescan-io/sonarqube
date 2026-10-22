@@ -36,10 +36,12 @@ import { withOrganizationContext } from '../../organizations/OrganizationContext
 import { canViewAnalytics } from '../utils';
 import ActivityDashboard from './ActivityDashboard';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import ExecutiveBrief from './ExecutiveBrief';
 import QualityDashboard from './QualityDashboard';
 import ValueDashboard from './ValueDashboard';
 
 enum AnalyticsTab {
+  Brief = 'brief',
   Overview = 'overview',
   Quality = 'quality',
   Activity = 'activity',
@@ -58,11 +60,12 @@ export function AnalyticsApp({ organization }: Readonly<Props>) {
   const allowed = canViewAnalytics(organization);
   const [searchParams, setSearchParams] = useSearchParams();
   // The tab lives in the URL so a link to the Activity tab can be shared.
-  const tab = TABS.find((value) => value === searchParams.get(TAB_PARAM)) ?? AnalyticsTab.Overview;
+  // The brief is the landing tab: the one-page summary first, the detail one click away.
+  const tab = TABS.find((value) => value === searchParams.get(TAB_PARAM)) ?? AnalyticsTab.Brief;
   const changeTab = (value: AnalyticsTab) =>
     setSearchParams(
       (params) => {
-        if (value === AnalyticsTab.Overview) {
+        if (value === AnalyticsTab.Brief) {
           params.delete(TAB_PARAM);
         } else {
           params.set(TAB_PARAM, value);
@@ -91,6 +94,7 @@ export function AnalyticsApp({ organization }: Readonly<Props>) {
           <ToggleButton
             onChange={changeTab}
             options={[
+              { label: translate('analytics.tab.brief'), value: AnalyticsTab.Brief },
               { label: translate('analytics.tab.overview'), value: AnalyticsTab.Overview },
               { label: translate('analytics.tab.quality'), value: AnalyticsTab.Quality },
               { label: translate('analytics.tab.activity'), value: AnalyticsTab.Activity },
@@ -101,6 +105,9 @@ export function AnalyticsApp({ organization }: Readonly<Props>) {
           />
         </header>
         <div aria-labelledby={getTabId(tab)} id={getTabPanelId(tab)} role="tabpanel">
+          {tab === AnalyticsTab.Brief && (
+            <ExecutiveBrief organization={organization.kee} organizationName={organization.name} />
+          )}
           {tab === AnalyticsTab.Overview && <AnalyticsDashboard organization={organization.kee} />}
           {tab === AnalyticsTab.Quality && <QualityDashboard organization={organization.kee} />}
           {tab === AnalyticsTab.Activity && <ActivityDashboard organization={organization.kee} />}

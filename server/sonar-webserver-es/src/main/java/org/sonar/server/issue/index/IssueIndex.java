@@ -72,6 +72,7 @@ import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.elasticsearch.search.aggregations.metrics.Min;
 import org.elasticsearch.search.aggregations.metrics.ParsedMax;
+import org.elasticsearch.search.aggregations.metrics.ParsedSum;
 import org.elasticsearch.search.aggregations.metrics.ParsedValueCount;
 import org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -1367,8 +1368,11 @@ public class IssueIndex {
       .toList();
   }
 
-  /** Number of unresolved issues of one type and severity on the main branch of a project. */
-  public record ProjectIssueCount(String projectUuid, String type, String severity, long count) {
+  /**
+   * Number of unresolved issues of one type and severity on the main branch of a project, and the estimated time to fix
+   * them.
+   */
+  public record ProjectIssueCount(String projectUuid, String type, String severity, long count, long effortMinutes) {
   }
 
   /**
@@ -1392,6 +1396,7 @@ public class IssueIndex {
           new TermsValuesSourceBuilder("project").field(FIELD_ISSUE_PROJECT_UUID),
           new TermsValuesSourceBuilder("type").field(FIELD_ISSUE_TYPE),
           new TermsValuesSourceBuilder("severity").field(FIELD_ISSUE_SEVERITY)))
+        .subAggregation(AggregationBuilders.sum("effort").field(FIELD_ISSUE_EFFORT))
         .size(PROJECT_ISSUE_COUNTS_PAGE_SIZE);
       if (afterKey != null) {
         counts.aggregateAfter(afterKey);
@@ -1403,7 +1408,8 @@ public class IssueIndex {
         (String) bucket.getKey().get("project"),
         (String) bucket.getKey().get("type"),
         (String) bucket.getKey().get("severity"),
-        bucket.getDocCount())));
+        bucket.getDocCount(),
+        Math.round(((ParsedSum) bucket.getAggregations().get("effort")).getValue()))));
       afterKey = result.getBuckets().size() < PROJECT_ISSUE_COUNTS_PAGE_SIZE ? null : result.afterKey();
     } while (afterKey != null);
   }

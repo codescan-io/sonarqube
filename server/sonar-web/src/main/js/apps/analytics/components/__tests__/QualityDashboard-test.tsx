@@ -24,6 +24,7 @@ import {
   getExpiringExceptions,
   getIssueResolutions,
   getQualityTrend,
+  getSecurityRemediation,
 } from '../../../../api/analytics';
 import { getOrganizationHealth } from '../../../../api/codescan-analytics';
 import { searchIssues } from '../../../../api/issues';
@@ -34,7 +35,10 @@ jest.mock('../../../../api/analytics', () => ({
   getExpiringExceptions: jest.fn(),
   getIssueResolutions: jest.fn(),
   getQualityTrend: jest.fn(),
+  getSecurityRemediation: jest.fn(),
 }));
+
+const DAY = 24 * 60 * 60 * 1000;
 jest.mock('../../../../api/issues', () => ({ searchIssues: jest.fn() }));
 
 const mockNavigate = jest.fn();
@@ -105,6 +109,7 @@ beforeEach(() => {
         openIssues: 1200,
         vulnerabilities: 30,
         blockerIssues: 8,
+        remediationEffortMinutes: 6000,
       },
       {
         date: '2026-10-05',
@@ -114,8 +119,42 @@ beforeEach(() => {
         openIssues: 900,
         vulnerabilities: 20,
         blockerIssues: 5,
+        remediationEffortMinutes: 4800,
       },
     ],
+  });
+  jest.mocked(getSecurityRemediation).mockResolvedValue({
+    period: { from: '2026-07-17', to: '2026-10-14', timeZone: 'UTC', interval: 'week' },
+    retentionDays: 30,
+    completeFrom: '2026-09-14',
+    totals: {
+      fixed: 40,
+      fixedWithinSla: 30,
+      medianTimeToFixMs: 10 * DAY,
+      open: 25,
+      openPastSla: 4,
+    },
+    previous: {
+      from: '2026-04-18',
+      to: '2026-07-16',
+      complete: true,
+      fixed: 20,
+      fixedWithinSla: 10,
+      medianTimeToFixMs: 20 * DAY,
+    },
+    severities: [
+      {
+        severity: 'HIGH',
+        slaDays: 30,
+        fixed: 40,
+        fixedWithinSla: 30,
+        medianTimeToFixMs: 10 * DAY,
+        open: 25,
+        openPastSla: 4,
+        oldestOpenAgeMs: 90 * DAY,
+      },
+    ],
+    timeline: [{ date: '2026-09-28', fixed: 40, fixedWithinSla: 30, medianTimeToFixMs: 10 * DAY }],
   });
   jest.mocked(getExpiringExceptions).mockResolvedValue({
     paging: { pageIndex: 1, pageSize: 10, total: 1 },
@@ -264,7 +303,7 @@ it('shows how many issues were introduced and resolved, and how', async () => {
   expect(mockNavigate).toHaveBeenCalledWith(
     expect.objectContaining({
       search: expect.stringMatching(
-        /issueStatuses=CONFIRMED(,|%2C)FALSE_POSITIVE(,|%2C)FIXED(,|%2C)ACCEPTED/,
+        /issueStatuses=FIXED(,|%2C)ACCEPTED(,|%2C)FALSE_POSITIVE$/,
       ),
     }),
   );
@@ -276,4 +315,53 @@ it('shows how many issues were introduced and resolved, and how', async () => {
   expect(screen.getByText('analytics.quality.retention_note.2026-09-14.30')).toBeInTheDocument();
   expect(screen.getByText('issue.issue_status.FIXED')).toBeInTheDocument();
   expect(getIssueResolutions).toHaveBeenCalledWith(expect.objectContaining({ interval: 'week' }));
+});
+
+it('shows how fast security issues get fixed against their SLA', async () => {
+  renderComponent(<QualityDashboard organization="my-org" />);
+
+  const mttr = within(await screen.findByRole('group', { name: 'analytics.security.mttr' }));
+  expect(mttr.getByText('analytics.brief.days.10')).toBeInTheDocument();
+  // twice as fast as the previous period
+  expect(mttr.getByText('-50%')).toBeInTheDocument();
+  const compliance = within(screen.getByRole('group', { name: 'analytics.security.compliance' }));
+  expect(compliance.getByText('75%')).toBeInTheDocument();
+  expect(compliance.getByText('+25 pts')).toBeInTheDocument();
+  expect(
+    within(screen.getByRole('group', { name: 'analytics.security.open_past_sla' })).getByText('4'),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '25' })).toHaveAttribute(
+    'href',
+    expect.stringContaining('impactSoftwareQualities=SECURITY'),
+  );
+  // the period starts before the closed issues retention
+  expect(screen.getByText(/^analytics\.security\.retention_note\.30/)).toBeInTheDocument();
+});
+
+it('loads more expiring exceptions on demand', async () => {
+  const user = userEvent.setup();
+  jest.mocked(getExpiringExceptions).mockImplementation(({ p = 1 }) =>
+    Promise.resolve({
+      paging: { pageIndex: p, pageSize: 10, total: 2 },
+      exceptions: [
+        {
+          issueKey: `ISSUE-${p}`,
+          issueStatus: 'ACCEPTED',
+          expiresAt: '2026-10-20T00:00:00+0000',
+          expired: false,
+          rule: 'apex:Rule',
+          projectKey: `project-${p}`,
+          projectName: `Project ${p}`,
+        },
+      ],
+    }),
+  );
+  renderComponent(<QualityDashboard organization="my-org" />);
+  await screen.findByRole('link', { name: 'Project 1' });
+
+  await user.click(screen.getByRole('button', { name: 'show_more' }));
+
+  expect(await screen.findByRole('link', { name: 'Project 2' })).toBeInTheDocument();
+  expect(getExpiringExceptions).toHaveBeenLastCalledWith(expect.objectContaining({ p: 2 }));
+  expect(screen.queryByRole('button', { name: 'show_more' })).not.toBeInTheDocument();
 });

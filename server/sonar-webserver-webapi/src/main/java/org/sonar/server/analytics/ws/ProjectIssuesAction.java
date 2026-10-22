@@ -54,7 +54,8 @@ public class ProjectIssuesAction implements AnalyticsWsAction {
   public void define(WebService.NewController controller) {
     WebService.NewAction action = controller.createAction("project_issues")
       .setDescription("Unresolved issues on the main branch of every project of the organization the user can browse, counted by " +
-        "type and severity. Security hotspots are left out, and so are projects with no unresolved issue.<br/>" +
+        "type and severity, with the estimated time to fix them. Security hotspots are left out, and so are projects with no " +
+        "unresolved issue.<br/>" +
         "Requires 'Administer' permission on the organization.")
       .setSince("10.8")
       .setInternal(true)
@@ -68,22 +69,26 @@ public class ProjectIssuesAction implements AnalyticsWsAction {
     try (DbSession dbSession = dbClient.openSession(false)) {
       OrganizationDto organization = support.checkCanViewAnalytics(dbSession, request.mandatoryParam(PARAM_ORGANIZATION));
 
-      Map<String, Map<String, Map<String, Long>>> countsByProjectUuid = new HashMap<>();
-      issueIndex.countUnresolvedByProjectTypeAndSeverity(organization.getUuid(), count -> countsByProjectUuid
-        .computeIfAbsent(count.projectUuid(), k -> new TreeMap<>())
-        .computeIfAbsent(count.type(), k -> new TreeMap<>())
-        .put(count.severity(), count.count()));
+      Map<String, ProjectIssues> byProjectUuid = new HashMap<>();
+      issueIndex.countUnresolvedByProjectTypeAndSeverity(organization.getUuid(), count -> {
+        ProjectIssues project = byProjectUuid.computeIfAbsent(count.projectUuid(), k -> new ProjectIssues());
+        project.counts.computeIfAbsent(count.type(), k -> new TreeMap<>()).put(count.severity(), count.count());
+        project.effortMinutes += count.effortMinutes();
+      });
 
-      Map<String, Map<String, Map<String, Long>>> countsByProjectKey = new TreeMap<>();
-      for (ProjectDto project : dbClient.projectDao().selectByUuids(dbSession, countsByProjectUuid.keySet())) {
-        countsByProjectKey.put(project.getKey(), countsByProjectUuid.get(project.getUuid()));
+      Map<String, ProjectIssues> byProjectKey = new TreeMap<>();
+      for (ProjectDto project : dbClient.projectDao().selectByUuids(dbSession, byProjectUuid.keySet())) {
+        byProjectKey.put(project.getKey(), byProjectUuid.get(project.getUuid()));
       }
 
       try (JsonWriter json = response.newJsonWriter()) {
         json.beginObject().name("projects").beginArray();
-        countsByProjectKey.forEach((projectKey, byType) -> {
-          json.beginObject().prop("key", projectKey).name("issues").beginObject();
-          byType.forEach((type, bySeverity) -> {
+        byProjectKey.forEach((projectKey, project) -> {
+          json.beginObject()
+            .prop("key", projectKey)
+            .prop("effortMinutes", project.effortMinutes)
+            .name("issues").beginObject();
+          project.counts.forEach((type, bySeverity) -> {
             json.name(type).beginObject();
             bySeverity.forEach((severity, count) -> json.prop(severity, count.longValue()));
             json.endObject();
@@ -93,5 +98,10 @@ public class ProjectIssuesAction implements AnalyticsWsAction {
         json.endArray().endObject();
       }
     }
+  }
+
+  private static class ProjectIssues {
+    private final Map<String, Map<String, Long>> counts = new TreeMap<>();
+    private long effortMinutes;
   }
 }

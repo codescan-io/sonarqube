@@ -152,11 +152,61 @@ export function getProjectTaskStatuses(
   return getJSON('/api/analytics/project_task_statuses', { organization });
 }
 
-/** Unresolved issues on the main branch of every project of the organization, by type and severity. */
+/**
+ * Unresolved issues on the main branch of every project of the organization, by type and severity, with the
+ * estimated time to fix them.
+ */
 export function getProjectIssues(organization: string): Promise<{
-  projects: Array<{ issues: Partial<Record<string, Partial<Record<string, number>>>>; key: string }>;
+  projects: Array<{
+    effortMinutes: number;
+    issues: Partial<Record<string, Partial<Record<string, number>>>>;
+    key: string;
+  }>;
 }> {
   return getJSON('/api/analytics/project_issues', { organization });
+}
+
+/** Quality gate status of every project of the organization that has one, in one call. */
+export function getProjectQualityGates(
+  organization: string,
+): Promise<{ projects: Array<{ key: string; status: 'OK' | 'ERROR' }> }> {
+  return getJSON('/api/analytics/project_quality_gates', { organization });
+}
+
+export interface RemediationFixes {
+  fixed: number;
+  fixedWithinSla: number;
+  /** Missing when nothing was fixed. */
+  medianTimeToFixMs?: number;
+}
+
+export interface SecurityRemediation {
+  /** Fixes before this day are incomplete: closed issues are deleted after retentionDays. */
+  completeFrom: string;
+  period: OrganizationActivity['period'];
+  previous: RemediationFixes & { complete: boolean; from: string; to: string };
+  retentionDays: number;
+  severities: Array<
+    RemediationFixes & {
+      oldestOpenAgeMs?: number;
+      open: number;
+      openPastSla: number;
+      severity: string;
+      slaDays: number;
+    }
+  >;
+  timeline: Array<RemediationFixes & { date: string }>;
+  totals: RemediationFixes & { averageTimeToFixMs?: number; open: number; openPastSla: number };
+}
+
+export function getSecurityRemediation(data: {
+  from: string;
+  interval?: AnalyticsInterval;
+  organization: string;
+  timeZone?: string;
+  to?: string;
+}): Promise<SecurityRemediation> {
+  return getJSON('/api/analytics/security_remediation', data);
 }
 
 export interface QualityTrendPoint {
@@ -167,6 +217,8 @@ export interface QualityTrendPoint {
   openIssues: number;
   passed: number;
   projects: number;
+  /** Estimated time to fix every open issue. */
+  remediationEffortMinutes: number;
   vulnerabilities: number;
 }
 

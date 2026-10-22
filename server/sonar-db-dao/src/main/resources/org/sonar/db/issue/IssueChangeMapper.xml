@@ -100,6 +100,7 @@
   <select id="scrollResolutionChangesForOrganization" parameterType="map" resultType="org.sonar.db.issue.IssueResolutionChangeDto"
           fetchSize="${_scrollFetchSize}" resultSetType="FORWARD_ONLY">
     select
+      c.issue_key as issueKey,
       c.change_data as changeData,
       coalesce(c.issue_change_creation_date, c.created_at) as changedAt,
       c.user_login as userLogin

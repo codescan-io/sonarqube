@@ -29,16 +29,20 @@ import org.sonar.db.measure.MainBranchMeasureHistoryDto;
 
 import static org.sonar.api.measures.CoreMetrics.ALERT_STATUS_KEY;
 import static org.sonar.api.measures.CoreMetrics.BLOCKER_VIOLATIONS_KEY;
+import static org.sonar.api.measures.CoreMetrics.RELIABILITY_REMEDIATION_EFFORT_KEY;
+import static org.sonar.api.measures.CoreMetrics.SECURITY_REMEDIATION_EFFORT_KEY;
+import static org.sonar.api.measures.CoreMetrics.TECHNICAL_DEBT_KEY;
 import static org.sonar.api.measures.CoreMetrics.VIOLATIONS_KEY;
 import static org.sonar.api.measures.CoreMetrics.VULNERABILITIES_KEY;
 
 /**
  * Replays the main branch analyses of an organization, oldest first, and records at the end of every bucket the state
- * each project was in at that time: its latest quality gate status and issue counts.
+ * each project was in at that time: its latest quality gate status, issue counts and remediation effort.
  */
 class QualityTrendAggregator implements ResultHandler<MainBranchMeasureHistoryDto> {
 
-  static final List<String> METRIC_KEYS = List.of(ALERT_STATUS_KEY, VIOLATIONS_KEY, VULNERABILITIES_KEY, BLOCKER_VIOLATIONS_KEY);
+  static final List<String> METRIC_KEYS = List.of(ALERT_STATUS_KEY, VIOLATIONS_KEY, VULNERABILITIES_KEY, BLOCKER_VIOLATIONS_KEY,
+    TECHNICAL_DEBT_KEY, RELIABILITY_REMEDIATION_EFFORT_KEY, SECURITY_REMEDIATION_EFFORT_KEY);
 
   /** How far before the period analyses are read, so projects analyzed rarely still have a state at its start. */
   static final long LOOKBACK_MS = 365L * 24 * 60 * 60 * 1000;
@@ -71,6 +75,9 @@ class QualityTrendAggregator implements ResultHandler<MainBranchMeasureHistoryDt
       case VIOLATIONS_KEY -> state.issues = value == null ? 0 : value.longValue();
       case VULNERABILITIES_KEY -> state.vulnerabilities = value == null ? 0 : value.longValue();
       case BLOCKER_VIOLATIONS_KEY -> state.blockers = value == null ? 0 : value.longValue();
+      case TECHNICAL_DEBT_KEY -> state.maintainabilityEffort = value == null ? 0 : value.longValue();
+      case RELIABILITY_REMEDIATION_EFFORT_KEY -> state.reliabilityEffort = value == null ? 0 : value.longValue();
+      case SECURITY_REMEDIATION_EFFORT_KEY -> state.securityEffort = value == null ? 0 : value.longValue();
       default -> {
         // not read
       }
@@ -91,6 +98,7 @@ class QualityTrendAggregator implements ResultHandler<MainBranchMeasureHistoryDt
     long issues = 0;
     long vulnerabilities = 0;
     long blockers = 0;
+    long effort = 0;
     for (ProjectState state : states.values()) {
       if ("OK".equals(state.qualityGate)) {
         passed++;
@@ -100,11 +108,14 @@ class QualityTrendAggregator implements ResultHandler<MainBranchMeasureHistoryDt
       issues += state.issues;
       vulnerabilities += state.vulnerabilities;
       blockers += state.blockers;
+      effort += state.maintainabilityEffort + state.reliabilityEffort + state.securityEffort;
     }
-    return new Point(states.size(), passed, failed, issues, vulnerabilities, blockers);
+    return new Point(states.size(), passed, failed, issues, vulnerabilities, blockers, effort);
   }
 
-  record Point(int projects, int passed, int failed, long openIssues, long vulnerabilities, long blockerIssues) {
+  /** @param remediationEffortMinutes time to fix every open issue, as the analysis estimates it */
+  record Point(int projects, int passed, int failed, long openIssues, long vulnerabilities, long blockerIssues,
+    long remediationEffortMinutes) {
   }
 
   private static class ProjectState {
@@ -112,5 +123,8 @@ class QualityTrendAggregator implements ResultHandler<MainBranchMeasureHistoryDt
     private long issues;
     private long vulnerabilities;
     private long blockers;
+    private long maintainabilityEffort;
+    private long reliabilityEffort;
+    private long securityEffort;
   }
 }

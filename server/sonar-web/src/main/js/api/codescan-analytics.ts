@@ -64,10 +64,14 @@ export interface AiValue {
   credits: Array<{ addon: string; calls: number; credits: number }>;
   days: number;
   fixJobs: {
+    /** Analysis estimate of the time developers would have spent on the issues AI resolved. */
+    effortSavedMinutes: number;
     failed: number;
     inProgress: number;
     issuesResolved: number;
     issuesSelected: number;
+    /** Resolved issues that are gone, whose effort is estimated from the others. */
+    issuesWithoutKnownEffort: number;
     merged: number;
     pullRequests: number;
     succeeded: number;

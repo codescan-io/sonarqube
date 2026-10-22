@@ -20,8 +20,11 @@
 package org.sonar.server.analytics.ws;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.sonar.core.issue.FieldDiffs;
 import org.sonar.db.issue.IssueResolutionChangeDto;
 
@@ -34,6 +37,10 @@ import static org.sonar.api.issue.Issue.RESOLUTION_WONT_FIX;
 /**
  * Counts, per bucket of a period, the issues introduced on the organization's main branches and how issues got resolved:
  * fixed (gone from the code), removed (rule removed or file deleted), accepted, marked as false positive, or reopened.
+ * <p>
+ * Each issue counts once, for its net change over the period: resolved when it was open at the start and resolved at the
+ * end, reopened when it was resolved at the start and open at the end. An issue resolved then reopened within the period, or
+ * resolved more than once, does not inflate the counts.
  */
 class ResolutionAggregator {
 
@@ -45,6 +52,8 @@ class ResolutionAggregator {
   private final List<Counts> buckets = new ArrayList<>();
   private final Counts totals = new Counts();
   private int fixedByAnalysis;
+  private final Map<String, IssueTrack> issues = new HashMap<>();
+  private boolean counted;
 
   ResolutionAggregator(AnalyticsPeriod period) {
     this.period = period;
@@ -60,29 +69,83 @@ class ResolutionAggregator {
   }
 
   void addChange(IssueResolutionChangeDto change) {
-    Outcome outcome = outcomeOf(change.getChangeData());
-    Counts bucket = bucketOf(change.getChangedAt());
-    if (outcome == null || bucket == null) {
+    FieldDiffs.Diff<?> diff = resolutionDiff(change.getChangeData());
+    long changedAt = change.getChangedAt();
+    if (diff == null || changedAt < period.startMs() || changedAt >= period.endMs()) {
       return;
     }
-    bucket.add(outcome);
-    totals.add(outcome);
-    if (outcome == Outcome.FIXED && change.getUserLogin() == null) {
-      fixedByAnalysis++;
+    IssueTrack track = issues.computeIfAbsent(change.getIssueKey(), k -> new IssueTrack());
+    if (changedAt < track.firstAt) {
+      track.firstAt = changedAt;
+      track.resolvedAtStart = !isEmpty(valueOf(diff.oldValue()));
     }
+    if (changedAt >= track.lastAt) {
+      track.lastAt = changedAt;
+      track.resolutionAtEnd = valueOf(diff.newValue());
+      track.lastUserLogin = change.getUserLogin();
+    }
+    counted = false;
+  }
+
+  /** Turns the changes of every issue into its net outcome, once every change has been added. */
+  private void count() {
+    if (counted) {
+      return;
+    }
+    buckets.forEach(Counts::clearResolutions);
+    totals.clearResolutions();
+    fixedByAnalysis = 0;
+    for (IssueTrack track : issues.values()) {
+      Outcome outcome = netOutcome(track);
+      Counts bucket = bucketOf(track.lastAt);
+      if (outcome == null || bucket == null) {
+        continue;
+      }
+      bucket.add(outcome);
+      totals.add(outcome);
+      if (outcome == Outcome.FIXED && track.lastUserLogin == null) {
+        fixedByAnalysis++;
+      }
+    }
+    counted = true;
   }
 
   @CheckForNull
+  private static Outcome netOutcome(IssueTrack track) {
+    boolean resolvedAtEnd = !isEmpty(track.resolutionAtEnd);
+    if (track.resolvedAtStart == resolvedAtEnd) {
+      return null;
+    }
+    return resolvedAtEnd ? resolutionOutcome(track.resolutionAtEnd) : Outcome.REOPENED;
+  }
+
+  @CheckForNull
+  private static FieldDiffs.Diff<?> resolutionDiff(String changeData) {
+    return FieldDiffs.parse(changeData).diffs().get("resolution");
+  }
+
+  @CheckForNull
+  private static String valueOf(@Nullable Object value) {
+    return value == null ? null : value.toString();
+  }
+
+  /** What one change did to an issue's resolution, regardless of the issue's other changes. */
+  @CheckForNull
   static Outcome outcomeOf(String changeData) {
-    FieldDiffs.Diff<?> diff = FieldDiffs.parse(changeData).diffs().get("resolution");
+    FieldDiffs.Diff<?> diff = resolutionDiff(changeData);
     if (diff == null) {
       return null;
     }
-    String newValue = diff.newValue() == null ? null : diff.newValue().toString();
+    String newValue = valueOf(diff.newValue());
     if (isEmpty(newValue)) {
-      return diff.oldValue() == null || isEmpty(diff.oldValue().toString()) ? null : Outcome.REOPENED;
+      return isEmpty(valueOf(diff.oldValue())) ? null : Outcome.REOPENED;
     }
-    return switch (newValue) {
+    return resolutionOutcome(newValue);
+  }
+
+  @CheckForNull
+  private static Outcome resolutionOutcome(String resolution) {
+    return switch (resolution) {
       case RESOLUTION_FIXED -> Outcome.FIXED;
       case RESOLUTION_REMOVED -> Outcome.REMOVED;
       case RESOLUTION_WONT_FIX -> Outcome.ACCEPTED;
@@ -101,16 +164,28 @@ class ResolutionAggregator {
   }
 
   List<Counts> buckets() {
+    count();
     return buckets;
   }
 
   Counts totals() {
+    count();
     return totals;
   }
 
   /** Fixed issues that the analysis closed because they were gone from the code, rather than a person marking them fixed. */
   int fixedByAnalysis() {
+    count();
     return fixedByAnalysis;
+  }
+
+  /** The resolution changes of one issue within the period: how it started and how it ended. */
+  private static class IssueTrack {
+    private long firstAt = Long.MAX_VALUE;
+    private boolean resolvedAtStart;
+    private long lastAt = Long.MIN_VALUE;
+    private String resolutionAtEnd;
+    private String lastUserLogin;
   }
 
   static class Counts {
@@ -120,6 +195,14 @@ class ResolutionAggregator {
     private int accepted;
     private int falsePositive;
     private int reopened;
+
+    private void clearResolutions() {
+      fixed = 0;
+      removed = 0;
+      accepted = 0;
+      falsePositive = 0;
+      reopened = 0;
+    }
 
     private void add(Outcome outcome) {
       switch (outcome) {

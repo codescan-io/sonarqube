@@ -24,6 +24,7 @@ import {
   ButtonVariety,
   IconCalendar,
   IconFilter,
+  IconPeople,
   IconProject,
   IconWarning,
   IconX,
@@ -42,6 +43,7 @@ import {
   ISSUE_TYPES,
   NO_TASK,
   SEVERITIES,
+  UNTAGGED,
 } from '../utils';
 
 interface Props {
@@ -74,6 +76,19 @@ export default function AnalyticsFilters({
     [projects],
   );
 
+  const tagOptions = React.useMemo(() => {
+    const tags = [...new Set(projects.flatMap(({ tags: projectTags }) => projectTags))].sort(
+      (a, b) => a.localeCompare(b),
+    );
+    if (tags.length === 0) {
+      return [];
+    }
+    return [
+      ...tags.map((tag) => ({ value: tag, label: tag })),
+      { value: UNTAGGED, label: translate('analytics.teams.untagged') },
+    ];
+  }, [projects]);
+
   const chips: Array<{ key: string; label: string; remove: () => void }> = [];
   if (filters.datePreset !== DatePreset.AnyTime) {
     chips.push({
@@ -87,6 +102,15 @@ export default function AnalyticsFilters({
       key: 'project',
       label: projects.find(({ key }) => key === filters.projectKey)?.name ?? filters.projectKey,
       remove: () => onChange({ projectKey: null }),
+    });
+  }
+  if (filters.tag) {
+    chips.push({
+      key: 'tag',
+      label: `${translate('analytics.filter.team')}: ${
+        filters.tag === UNTAGGED ? translate('analytics.teams.untagged') : filters.tag
+      }`,
+      remove: () => onChange({ tag: undefined }),
     });
   }
   if (filters.type) {
@@ -178,6 +202,20 @@ export default function AnalyticsFilters({
           value={filters.projectKey}
           valueIcon={<IconProject />}
         />
+
+        {tagOptions.length > 0 && (
+          <Select
+            ariaLabel={translate('analytics.filter.team')}
+            className="sw-w-abs-200"
+            data={tagOptions}
+            isSearchable
+            onChange={(tag) => onChange({ tag: tag ?? undefined })}
+            placeholder={translate('analytics.filter.all_teams')}
+            size={InputSize.Medium}
+            value={filters.tag ?? null}
+            valueIcon={<IconPeople />}
+          />
+        )}
 
         <Select
           ariaLabel={translate('analytics.filter.issue_type')}

@@ -102,4 +102,9 @@ public interface IssueMapper {
 
   void scrollCreationDatesForOrganization(@Param("organizationUuid") String organizationUuid, @Param("fromDate") long fromDate,
     @Param("toDate") long toDate, ResultHandler<Long> handler);
+
+  void scrollFixedSecurityIssuesForOrganization(@Param("organizationUuid") String organizationUuid, @Param("fromDate") long fromDate,
+    @Param("toDate") long toDate, ResultHandler<SecurityIssueDatesDto> handler);
+
+  void scrollOpenSecurityIssuesForOrganization(@Param("organizationUuid") String organizationUuid, ResultHandler<SecurityIssueDatesDto> handler);
 }

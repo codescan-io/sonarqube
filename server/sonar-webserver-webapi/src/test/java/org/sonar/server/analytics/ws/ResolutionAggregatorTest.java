@@ -50,10 +50,10 @@ class ResolutionAggregatorTest {
     underTest.addCreation(at("2026-10-12"));
     underTest.addCreation(at("2026-10-12"));
     underTest.addCreation(at("2026-10-01"));
-    underTest.addChange(change("2026-10-13", "FIXED", null));
-    underTest.addChange(change("2026-10-13", "FIXED", "alice"));
-    underTest.addChange(change("2026-10-14", "WONTFIX", "bob"));
-    underTest.addChange(change("2026-10-01", "FIXED", null));
+    underTest.addChange(change("issue-1", "2026-10-13", null, "FIXED", null));
+    underTest.addChange(change("issue-2", "2026-10-13", null, "FIXED", "alice"));
+    underTest.addChange(change("issue-3", "2026-10-14", null, "WONTFIX", "bob"));
+    underTest.addChange(change("issue-4", "2026-10-01", null, "FIXED", null));
 
     assertThat(underTest.buckets().get(0).introduced()).isEqualTo(2);
     assertThat(underTest.buckets().get(1).fixed()).isEqualTo(2);
@@ -63,8 +63,43 @@ class ResolutionAggregatorTest {
     assertThat(underTest.fixedByAnalysis()).isOne();
   }
 
-  private static IssueResolutionChangeDto change(String day, String resolution, String user) {
-    return new IssueResolutionChangeDto().setChangeData(diff(null, resolution)).setChangedAt(at(day)).setUserLogin(user);
+  @Test
+  void an_issue_resolved_then_reopened_in_the_period_is_neither_resolved_nor_reopened() {
+    underTest.addChange(change("issue-1", "2026-10-12", "", "WONTFIX", "alice"));
+    underTest.addChange(change("issue-1", "2026-10-13", "WONTFIX", "", "alice"));
+
+    assertThat(underTest.totals().resolved()).isZero();
+    assertThat(underTest.totals().reopened()).isZero();
+  }
+
+  @Test
+  void an_issue_resolved_several_times_counts_once_with_its_last_resolution() {
+    // added in reverse order: the scroll is not sorted by date
+    underTest.addChange(change("issue-1", "2026-10-14", "", "FALSE-POSITIVE", "bob"));
+    underTest.addChange(change("issue-1", "2026-10-13", "WONTFIX", "", "bob"));
+    underTest.addChange(change("issue-1", "2026-10-12", "", "WONTFIX", "alice"));
+
+    assertThat(underTest.totals().resolved()).isOne();
+    assertThat(underTest.totals().falsePositive()).isOne();
+    assertThat(underTest.totals().accepted()).isZero();
+    assertThat(underTest.totals().reopened()).isZero();
+    assertThat(underTest.buckets().get(2).falsePositive()).isOne();
+  }
+
+  @Test
+  void an_issue_resolved_before_the_period_and_still_open_at_its_end_is_reopened() {
+    underTest.addChange(change("issue-1", "2026-10-13", "FALSE-POSITIVE", "", "alice"));
+    // reopened, then resolved again: open neither at the start nor at the end
+    underTest.addChange(change("issue-2", "2026-10-12", "WONTFIX", "", "alice"));
+    underTest.addChange(change("issue-2", "2026-10-14", "", "WONTFIX", "alice"));
+
+    assertThat(underTest.totals().reopened()).isOne();
+    assertThat(underTest.buckets().get(1).reopened()).isOne();
+    assertThat(underTest.totals().resolved()).isZero();
+  }
+
+  private static IssueResolutionChangeDto change(String issueKey, String day, String from, String to, String user) {
+    return new IssueResolutionChangeDto().setIssueKey(issueKey).setChangeData(diff(from, to)).setChangedAt(at(day)).setUserLogin(user);
   }
 
   private static String diff(String oldValue, String newValue) {

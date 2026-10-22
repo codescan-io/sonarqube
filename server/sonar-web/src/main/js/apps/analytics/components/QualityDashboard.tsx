@@ -44,12 +44,15 @@ import {
   ExpiringException,
   IssueResolutions,
   QualityTrendPoint,
+  SecurityRemediation,
   getExpiringExceptions,
   getIssueResolutions,
   getQualityTrend,
+  getSecurityRemediation,
 } from '../../../api/analytics';
 import { OrganizationHealth, getOrganizationHealth } from '../../../api/codescan-analytics';
 import { searchIssues } from '../../../api/issues';
+import ListFooter from '../../../components/controls/ListFooter';
 import DateFormatter from '../../../components/intl/DateFormatter';
 import { parseDate } from '../../../helpers/dates';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
@@ -70,6 +73,7 @@ import { MAGNITUDE_COLOR, RESOLUTION_COLORS, STATUS_COLORS, tint } from './chart
 import ColumnTimeline from './charts/ColumnTimeline';
 import { toDelta } from './charts/Delta';
 import LineTimeline from './charts/LineTimeline';
+import SecurityRemediationPanel from './SecurityRemediationPanel';
 import StatTile from './StatTile';
 
 interface Props {
@@ -78,7 +82,7 @@ interface Props {
 
 const OPEN = 'OPEN,CONFIRMED';
 // The issues the "Issues Resolved" tile opens: everything acted on, not only fixed issues.
-const RESOLVED_TILE_STATUSES = 'CONFIRMED,FALSE_POSITIVE,FIXED,ACCEPTED';
+const RESOLVED_TILE_STATUSES = 'FIXED,ACCEPTED,FALSE_POSITIVE';
 const TOP_RULES = 10;
 const EXPIRING_WITHIN_DAYS = 30;
 const EXPIRING_SHOWN = 10;
@@ -91,6 +95,7 @@ interface QualityData {
   languages: Array<{ count: number; key: string; name: string }>;
   resolutions: IssueResolutions;
   rules: Array<{ count: number; key: string; name: string }>;
+  security: SecurityRemediation;
   trend: QualityTrendPoint[];
 }
 
@@ -108,31 +113,33 @@ async function fetchQualityData(organization: string, days: QualityPeriod): Prom
   const buckets = getAgeBuckets(now);
 
   const interval = days > 31 ? 'week' : 'day';
-  const [trend, resolutions, rulesAndLanguages, statuses, expiring, ...ages] = await Promise.all([
-    getQualityTrend({ organization, from, timeZone, interval }),
-    getIssueResolutions({ organization, from, timeZone, interval }),
-    searchIssues({
-      organization,
-      issueStatuses: OPEN,
-      facets: 'rules,languages',
-      additionalFields: 'rules,languages',
-      ps: 1,
-    }),
-    // every status, fixed ones included while the platform keeps them
-    searchIssues({ organization, facets: 'issueStatuses', ps: 1 }),
-    getExpiringExceptions({ organization, withinDays: EXPIRING_WITHIN_DAYS, ps: EXPIRING_SHOWN }),
-    ...buckets.map((bucket) =>
+  const [trend, resolutions, security, rulesAndLanguages, statuses, expiring, ...ages] =
+    await Promise.all([
+      getQualityTrend({ organization, from, timeZone, interval }),
+      getIssueResolutions({ organization, from, timeZone, interval }),
+      getSecurityRemediation({ organization, from, timeZone, interval }),
       searchIssues({
         organization,
         issueStatuses: OPEN,
-        impactSoftwareQualities: 'SECURITY',
-        facets: 'impactSeverities',
-        createdAfter: bucket.createdAfter,
-        createdBefore: bucket.createdBefore,
+        facets: 'rules,languages',
+        additionalFields: 'rules,languages',
         ps: 1,
       }),
-    ),
-  ]);
+      // every status, fixed ones included while the platform keeps them
+      searchIssues({ organization, facets: 'issueStatuses', ps: 1 }),
+      getExpiringExceptions({ organization, withinDays: EXPIRING_WITHIN_DAYS, ps: EXPIRING_SHOWN }),
+      ...buckets.map((bucket) =>
+        searchIssues({
+          organization,
+          issueStatuses: OPEN,
+          impactSoftwareQualities: 'SECURITY',
+          facets: 'impactSeverities',
+          createdAfter: bucket.createdAfter,
+          createdBefore: bucket.createdBefore,
+          ps: 1,
+        }),
+      ),
+    ]);
 
   const ruleNames = new Map(
     ((rulesAndLanguages?.rules ?? []) as Array<{ key: string; name: string }>).map((r) => [
@@ -147,6 +154,7 @@ async function fetchQualityData(organization: string, days: QualityPeriod): Prom
   return {
     trend: trend.timeline,
     resolutions,
+    security,
     rules: facetOf(rulesAndLanguages, 'rules')
       .slice(0, TOP_RULES)
       .map(({ val, count }) => ({ key: val, count, name: ruleNames.get(val) ?? val })),
@@ -224,6 +232,11 @@ export default function QualityDashboard({ organization }: Readonly<Props>) {
       ) : (
         <div aria-busy={loading} className={loading ? 'sw-opacity-50' : undefined}>
           <QualityTiles data={data} organization={organization} />
+          <SecurityRemediationPanel
+            data={data.security}
+            organization={organization}
+            weekly={period > 31}
+          />
           <QualityCharts data={data} organization={organization} weekly={period > 31} />
           <RootCauses organization={organization} />
         </div>
@@ -513,7 +526,7 @@ function QualityCharts({
         )}
         title={translate('analytics.quality.expiring_exceptions')}
       >
-        <ExpiringTable expiring={data.expiring} />
+        <ExpiringTable expiring={data.expiring} organization={organization} />
       </ChartCard>
     </div>
   );
@@ -581,7 +594,39 @@ function SecurityAgeTable({
 
 const EXPIRING_COLUMNS = ['26%', '34%', '20%', '20%'];
 
-function ExpiringTable({ expiring }: Readonly<{ expiring: QualityData['expiring'] }>) {
+function ExpiringTable({
+  expiring: initial,
+  organization,
+}: Readonly<{ expiring: QualityData['expiring']; organization: string }>) {
+  const [expiring, setExpiring] = React.useState(initial);
+  const [page, setPage] = React.useState(1);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    setExpiring(initial);
+    setPage(1);
+  }, [initial]);
+
+  const loadMore = () => {
+    setLoading(true);
+    getExpiringExceptions({
+      organization,
+      p: page + 1,
+      ps: EXPIRING_SHOWN,
+      withinDays: EXPIRING_WITHIN_DAYS,
+    }).then(
+      (result) => {
+        setExpiring((current) => ({
+          exceptions: [...current.exceptions, ...result.exceptions],
+          total: result.paging.total,
+        }));
+        setPage(page + 1);
+        setLoading(false);
+      },
+      () => setLoading(false),
+    );
+  };
+
   if (expiring.exceptions.length === 0) {
     return <Text isSubdued>{translate('analytics.quality.no_expiring')}</Text>;
   }
@@ -630,11 +675,13 @@ function ExpiringTable({ expiring }: Readonly<{ expiring: QualityData['expiring'
           </TableRow>
         ))}
       </Table>
-      {expiring.total > expiring.exceptions.length && (
-        <Text as="p" className="sw-mt-3" isSubdued>
-          {translateWithParameters('x_of_y_shown', expiring.exceptions.length, expiring.total)}
-        </Text>
-      )}
+      <ListFooter
+        className="sw-mt-3"
+        count={expiring.exceptions.length}
+        loadMore={loadMore}
+        loading={loading}
+        total={expiring.total}
+      />
     </>
   );
 }

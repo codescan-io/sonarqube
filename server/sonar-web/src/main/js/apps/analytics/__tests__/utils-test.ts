@@ -18,24 +18,40 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { getProjectIssues, getProjectTaskStatuses } from '../../../api/analytics';
+import {
+  getProjectIssues,
+  getProjectQualityGates,
+  getProjectTaskStatuses,
+} from '../../../api/analytics';
+import { searchProjects } from '../../../api/components';
 import { TaskStatuses } from '../../../types/tasks';
-import { fetchBackgroundTaskStatuses, fetchIssueMatrices } from '../utils';
+import {
+  AnalysisStatus,
+  DEFAULT_FILTERS,
+  UNTAGGED,
+  fetchBackgroundTaskStatuses,
+  fetchIssueMatrices,
+  fetchOrganizationProjects,
+  filterProjects,
+} from '../utils';
 
 jest.mock('../../../api/analytics', () => ({
   getProjectIssues: jest.fn(),
+  getProjectQualityGates: jest.fn(),
   getProjectTaskStatuses: jest.fn(),
 }));
+
+jest.mock('../../../api/components', () => ({ searchProjects: jest.fn() }));
 
 it('builds every listed project matrix from a single call', async () => {
   jest.mocked(getProjectIssues).mockResolvedValue({
     projects: [
-      { key: 'a', issues: { BUG: { MAJOR: 2 }, VULNERABILITY: { BLOCKER: 1 } } },
-      { key: 'not-listed', issues: { BUG: { MAJOR: 5 } } },
+      { key: 'a', effortMinutes: 45, issues: { BUG: { MAJOR: 2 }, VULNERABILITY: { BLOCKER: 1 } } },
+      { key: 'not-listed', effortMinutes: 10, issues: { BUG: { MAJOR: 5 } } },
     ],
   });
 
-  const matrices = await fetchIssueMatrices('org', ['a', 'b']);
+  const { effortMinutes, matrices } = await fetchIssueMatrices('org', ['a', 'b']);
 
   expect(getProjectIssues).toHaveBeenCalledTimes(1);
   expect(getProjectIssues).toHaveBeenCalledWith('org');
@@ -45,6 +61,52 @@ it('builds every listed project matrix from a single call', async () => {
   expect(matrices.a.CODE_SMELL.MINOR).toBe(0);
   expect(matrices.b.BUG.MAJOR).toBe(0);
   expect(matrices).not.toHaveProperty('not-listed');
+  expect(effortMinutes).toEqual({ a: 45 });
+});
+
+it('reads projects with their tags, and every quality gate in one call', async () => {
+  jest.mocked(getProjectQualityGates).mockResolvedValue({
+    projects: [
+      { key: 'a', status: 'OK' },
+      { key: 'b', status: 'ERROR' },
+    ],
+  });
+  jest.mocked(searchProjects).mockResolvedValue({
+    components: [
+      { key: 'a', name: 'A', tags: ['payments'] },
+      { key: 'b', name: 'B', tags: [] },
+      { key: 'c', name: 'C', tags: [] },
+    ],
+    facets: [],
+    organizations: [],
+    paging: { pageIndex: 1, pageSize: 500, total: 3 },
+  } as unknown as Awaited<ReturnType<typeof searchProjects>>);
+
+  const { projects, total } = await fetchOrganizationProjects('org');
+
+  expect(getProjectQualityGates).toHaveBeenCalledTimes(1);
+  expect(searchProjects).toHaveBeenCalledTimes(1);
+  expect(total).toBe(3);
+  expect(projects.map(({ key, status, tags }) => ({ key, status, tags }))).toEqual([
+    { key: 'a', status: AnalysisStatus.Passed, tags: ['payments'] },
+    { key: 'b', status: AnalysisStatus.Failed, tags: [] },
+    { key: 'c', status: AnalysisStatus.NotAvailable, tags: [] },
+  ]);
+});
+
+it('filters projects by team tag, or by having none', () => {
+  const projects = [
+    { key: 'a', name: 'A', status: AnalysisStatus.Passed, tags: ['payments', 'web'] },
+    { key: 'b', name: 'B', status: AnalysisStatus.Passed, tags: ['web'] },
+    { key: 'c', name: 'C', status: AnalysisStatus.Passed, tags: [] },
+  ];
+  const context = { now: new Date(), taskStatuses: {} };
+  const keys = (tag: string) =>
+    filterProjects(projects, { ...DEFAULT_FILTERS, tag }, context).map(({ key }) => key);
+
+  expect(keys('web')).toEqual(['a', 'b']);
+  expect(keys('payments')).toEqual(['a']);
+  expect(keys(UNTAGGED)).toEqual(['c']);
 });
 
 it('reads every listed project background task status from a single call', async () => {

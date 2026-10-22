@@ -54,7 +54,8 @@ public class QualityTrendAction implements AnalyticsWsAction {
   public void define(WebService.NewController controller) {
     WebService.NewAction action = controller.createAction("quality_trend")
       .setDescription("State of the organization's main branches at the end of every day or week of a period: how many projects " +
-        "pass or fail their quality gate, and how many open issues, vulnerabilities and blocker issues they have. " +
+        "pass or fail their quality gate, how many open issues, vulnerabilities and blocker issues they have, and the " +
+        "estimated time to fix all of them. " +
         "A project counts from its first analysis in the year before the period.<br/>" +
         "Requires 'Administer' permission on the organization.")
       .setSince("10.8")
@@ -101,6 +102,7 @@ public class QualityTrendAction implements AnalyticsWsAction {
             .prop("openIssues", point.openIssues())
             .prop("vulnerabilities", point.vulnerabilities())
             .prop("blockerIssues", point.blockerIssues())
+            .prop("remediationEffortMinutes", point.remediationEffortMinutes())
             .endObject();
         }
         json.endArray().endObject();

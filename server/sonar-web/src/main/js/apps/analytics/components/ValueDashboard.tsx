@@ -36,6 +36,7 @@ import BarList from './charts/BarList';
 import ChartCard from './charts/ChartCard';
 import { MAGNITUDE_COLOR, STATUS_COLORS } from './charts/colors';
 import SegmentedMeter from './charts/SegmentedMeter';
+import EngineeringRoi from './EngineeringRoi';
 import StatTile from './StatTile';
 
 interface Props {
@@ -92,6 +93,8 @@ export default function ValueDashboard({ organization }: Readonly<Props>) {
           value={period}
         />
       </div>
+
+      <EngineeringRoi ai={ai} aiLoading={loading} days={period} organization={organization} />
 
       {error && (
         <FlagMessage className="sw-mb-4" variant="error">

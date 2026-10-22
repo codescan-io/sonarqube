@@ -25,9 +25,19 @@ import javax.annotation.Nullable;
 /** A changelog entry that touched an issue's resolution. */
 public class IssueResolutionChangeDto {
   // set by reflection by MyBatis
+  private String issueKey;
   private String changeData;
   private long changedAt;
   private String userLogin;
+
+  public String getIssueKey() {
+    return issueKey;
+  }
+
+  public IssueResolutionChangeDto setIssueKey(String issueKey) {
+    this.issueKey = issueKey;
+    return this;
+  }
 
   /** Encoded {@code FieldDiffs} */
   public String getChangeData() {

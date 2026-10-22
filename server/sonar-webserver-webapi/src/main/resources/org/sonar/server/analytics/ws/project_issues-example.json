@@ -2,6 +2,7 @@
   "projects": [
     {
       "key": "payments-api",
+      "effortMinutes": 1840,
       "issues": {
         "BUG": {"CRITICAL": 2, "MAJOR": 5},
         "CODE_SMELL": {"MAJOR": 41, "MINOR": 120},
@@ -10,6 +11,7 @@
     },
     {
       "key": "web-portal",
+      "effortMinutes": 15,
       "issues": {
         "CODE_SMELL": {"INFO": 3}
       }

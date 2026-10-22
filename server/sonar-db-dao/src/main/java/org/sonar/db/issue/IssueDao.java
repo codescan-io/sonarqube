@@ -219,6 +219,20 @@ public class IssueDao implements Dao {
     mapper(session).scrollCreationDatesForOrganization(organizationUuid, fromDate, toDate, handler);
   }
 
+  /**
+   * Streams the issues (not hotspots) with a security impact of the organization's main branches that were fixed, and closed,
+   * in the period. Closed issues are deleted after the closed issues retention period.
+   */
+  public void scrollFixedSecurityIssuesForOrganization(DbSession session, String organizationUuid, long fromDate, long toDate,
+    ResultHandler<SecurityIssueDatesDto> handler) {
+    mapper(session).scrollFixedSecurityIssuesForOrganization(organizationUuid, fromDate, toDate, handler);
+  }
+
+  /** Streams the unresolved issues (not hotspots) with a security impact of the organization's main branches. */
+  public void scrollOpenSecurityIssuesForOrganization(DbSession session, String organizationUuid, ResultHandler<SecurityIssueDatesDto> handler) {
+    mapper(session).scrollOpenSecurityIssuesForOrganization(organizationUuid, handler);
+  }
+
   private static IssueMapper mapper(DbSession session) {
     return session.getMapper(IssueMapper.class);
   }

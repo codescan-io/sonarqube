@@ -40,7 +40,7 @@ class QualityTrendAggregatorTest {
     underTest.add(number("p1", "2026-09-01", "violations", 10));
 
     assertThat(underTest.points()).hasSize(3)
-      .allSatisfy(point -> assertThat(point).isEqualTo(new Point(1, 1, 0, 10, 0, 0)));
+      .allSatisfy(point -> assertThat(point).isEqualTo(new Point(1, 1, 0, 10, 0, 0, 0)));
   }
 
   @Test
@@ -54,14 +54,25 @@ class QualityTrendAggregatorTest {
     underTest.add(number("p2", "2026-10-14", "blocker_violations", 2));
 
     assertThat(underTest.points()).containsExactly(
-      new Point(2, 1, 1, 10, 3, 0),
-      new Point(2, 0, 2, 4, 3, 0),
-      new Point(2, 0, 2, 4, 3, 2));
+      new Point(2, 1, 1, 10, 3, 0, 0),
+      new Point(2, 0, 2, 4, 3, 0, 0),
+      new Point(2, 0, 2, 4, 3, 2, 0));
+  }
+
+  @Test
+  void remediation_effort_adds_up_every_kind_of_issue_of_every_project() {
+    underTest.add(number("p1", "2026-10-01", "sqale_index", 120));
+    underTest.add(number("p1", "2026-10-01", "reliability_remediation_effort", 30));
+    underTest.add(number("p1", "2026-10-01", "security_remediation_effort", 15));
+    underTest.add(number("p2", "2026-10-12", "sqale_index", 60));
+    underTest.add(number("p1", "2026-10-13", "sqale_index", 20));
+
+    assertThat(underTest.points()).extracting(Point::remediationEffortMinutes).containsExactly(225L, 125L, 125L);
   }
 
   @Test
   void no_analysis_means_empty_points() {
-    assertThat(underTest.points()).containsOnly(new Point(0, 0, 0, 0, 0, 0)).hasSize(3);
+    assertThat(underTest.points()).containsOnly(new Point(0, 0, 0, 0, 0, 0, 0)).hasSize(3);
   }
 
   private static MainBranchMeasureHistoryDto gate(String project, String day, String status) {

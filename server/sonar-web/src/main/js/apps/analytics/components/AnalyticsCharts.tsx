@@ -56,7 +56,7 @@ import Donut from './charts/Donut';
 import Heatmap from './charts/Heatmap';
 import StackedBars from './charts/StackedBars';
 
-export type ProjectDimension = 'project' | 'qualityGate' | 'taskStatus' | 'recency';
+export type ProjectDimension = 'project' | 'qualityGate' | 'taskStatus' | 'recency' | 'tag';
 
 interface Props {
   filters: AnalyticsFilterState;

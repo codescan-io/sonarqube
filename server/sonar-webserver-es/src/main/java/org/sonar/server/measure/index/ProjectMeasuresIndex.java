@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -43,6 +44,10 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.composite.CompositeAggregationBuilder;
+import org.elasticsearch.search.aggregations.bucket.composite.CompositeValuesSourceBuilder;
+import org.elasticsearch.search.aggregations.bucket.composite.ParsedComposite;
+import org.elasticsearch.search.aggregations.bucket.composite.TermsValuesSourceBuilder;
 import org.elasticsearch.search.aggregations.BucketOrder;
 import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation.Bucket;
 import org.elasticsearch.search.aggregations.bucket.filter.FilterAggregationBuilder;
@@ -478,6 +483,45 @@ public class ProjectMeasuresIndex {
       default:
         throw new IllegalStateException("Metric criteria non supported: " + criterion.getOperator().name());
     }
+  }
+
+  private static final int QUALITY_GATE_STATUSES_PAGE_SIZE = 10_000;
+  private static final Map<String, String> QUALITY_GATE_STATUS_BY_INDEXED_VALUE = ProjectMeasuresDoc.QUALITY_GATE_STATUS.entrySet().stream()
+    .collect(Collectors.toMap(entry -> String.valueOf(entry.getValue()), Map.Entry::getKey));
+
+  /**
+   * Quality gate status of every project of the organization the user can browse, paged through a composite aggregation so
+   * that the number of projects is not bound by the search bucket limit. Projects with no status yet are left out.
+   *
+   * @param consumer called with the key and the status of every project
+   */
+  public void searchQualityGateStatuses(String organizationUuid, BiConsumer<String, String> consumer) {
+    BoolQueryBuilder query = boolQuery()
+      .filter(termQuery(FIELD_ORGANIZATION_UUID, organizationUuid))
+      .filter(termQuery(FIELD_QUALIFIER, ComponentQualifiers.PROJECT))
+      .filter(authorizationTypeSupport.createQueryFilter());
+
+    Map<String, Object> afterKey = null;
+    do {
+      CompositeAggregationBuilder statuses = AggregationBuilders.composite("statuses", List.<CompositeValuesSourceBuilder<?>>of(
+          new TermsValuesSourceBuilder("key").field(FIELD_KEY),
+          new TermsValuesSourceBuilder("status").field(FIELD_QUALITY_GATE_STATUS)))
+        .size(QUALITY_GATE_STATUSES_PAGE_SIZE);
+      if (afterKey != null) {
+        statuses.aggregateAfter(afterKey);
+      }
+      SearchRequest request = EsClient.prepareSearch(TYPE_PROJECT_MEASURES.getMainType())
+        .source(new SearchSourceBuilder().query(query).size(0).aggregation(statuses));
+      ParsedComposite result = client.search(request).getAggregations().get("statuses");
+      result.getBuckets().forEach(bucket -> {
+        // the status is indexed as a number, so that projects sort by it
+        String status = QUALITY_GATE_STATUS_BY_INDEXED_VALUE.get(String.valueOf(bucket.getKey().get("status")));
+        if (status != null) {
+          consumer.accept((String) bucket.getKey().get("key"), status);
+        }
+      });
+      afterKey = result.getBuckets().size() < QUALITY_GATE_STATUSES_PAGE_SIZE ? null : result.afterKey();
+    } while (afterKey != null);
   }
 
   public List<String> searchTags(@Nullable String textQuery, int page, int size) {

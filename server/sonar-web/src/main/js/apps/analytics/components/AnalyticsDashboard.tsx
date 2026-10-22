@@ -21,23 +21,15 @@
 import * as React from 'react';
 import { FlagMessage, Spinner } from '~design-system';
 import { translate } from '../../../helpers/l10n';
-import { TaskStatuses } from '../../../types/tasks';
-import {
-  AnalyticsFilterState,
-  AnalyticsProject,
-  DEFAULT_FILTERS,
-  IssueMatrix,
-  fetchBackgroundTaskStatuses,
-  fetchIssueMatrices,
-  fetchOrganizationProjects,
-  filterProjects,
-} from '../utils';
+import { useOverviewData } from '../useOverviewData';
+import { AnalyticsFilterState, AnalyticsProject, DEFAULT_FILTERS, filterProjects } from '../utils';
 import AnalyticsCharts, { ProjectDimension } from './AnalyticsCharts';
 import AnalyticsFilters from './AnalyticsFilters';
 import AnalyticsSummary from './AnalyticsSummary';
 import AnalyticsTable from './AnalyticsTable';
 import FocusList from './FocusList';
 import ProjectScorecard from './ProjectScorecard';
+import TeamLeaderboard from './TeamLeaderboard';
 
 interface Props {
   organization: string;
@@ -45,83 +37,19 @@ interface Props {
 
 export default function AnalyticsDashboard({ organization }: Readonly<Props>) {
   const [now] = React.useState(() => new Date());
-  const [projects, setProjects] = React.useState<AnalyticsProject[]>([]);
-  const [totalProjects, setTotalProjects] = React.useState(0);
-  const [loadingProjects, setLoadingProjects] = React.useState(true);
-  const [matrices, setMatrices] = React.useState<Record<string, IssueMatrix>>({});
-  const [loadingIssues, setLoadingIssues] = React.useState(false);
-  const [taskStatuses, setTaskStatuses] = React.useState<Record<string, TaskStatuses>>({});
-  const [loadingTasks, setLoadingTasks] = React.useState(false);
-  const [error, setError] = React.useState(false);
+  const {
+    effortMinutes,
+    error,
+    loadingIssues,
+    loadingProjects,
+    loadingTasks,
+    matrices,
+    projects,
+    taskStatuses,
+    totalProjects,
+  } = useOverviewData(organization);
   const [filters, setFilters] = React.useState<AnalyticsFilterState>(DEFAULT_FILTERS);
   const [scorecard, setScorecard] = React.useState<AnalyticsProject>();
-
-  React.useEffect(() => {
-    let active = true;
-    setLoadingProjects(true);
-    setError(false);
-    fetchOrganizationProjects(organization).then(
-      (result) => {
-        if (active) {
-          setProjects(result.projects);
-          setTotalProjects(result.total);
-          setLoadingProjects(false);
-        }
-      },
-      () => {
-        if (active) {
-          setError(true);
-          setLoadingProjects(false);
-        }
-      },
-    );
-    return () => {
-      active = false;
-    };
-  }, [organization]);
-
-  // Issues and background tasks are loaded once for every project; all filtering after
-  // that happens in the browser, so clicking around the charts is instant.
-  React.useEffect(() => {
-    if (projects.length === 0) {
-      return undefined;
-    }
-    let active = true;
-    const keys = projects.map((p) => p.key);
-    setLoadingIssues(true);
-    setLoadingTasks(true);
-    fetchIssueMatrices(organization, keys).then(
-      (result) => {
-        if (active) {
-          setMatrices(result);
-          setLoadingIssues(false);
-        }
-      },
-      () => {
-        if (active) {
-          setError(true);
-          setLoadingIssues(false);
-        }
-      },
-    );
-    fetchBackgroundTaskStatuses(organization, keys).then(
-      (statuses) => {
-        if (active) {
-          setTaskStatuses(statuses);
-          setLoadingTasks(false);
-        }
-      },
-      () => {
-        if (active) {
-          setError(true);
-          setLoadingTasks(false);
-        }
-      },
-    );
-    return () => {
-      active = false;
-    };
-  }, [organization, projects]);
 
   const changeFilters = React.useCallback(
     (changes: Partial<AnalyticsFilterState>) =>
@@ -178,6 +106,17 @@ export default function AnalyticsDashboard({ organization }: Readonly<Props>) {
         onChange={changeFilters}
         organization={organization}
         projectsIgnoring={projectsIgnoring}
+        taskStatuses={taskStatuses}
+      />
+
+      <TeamLeaderboard
+        effortMinutes={effortMinutes}
+        loading={loadingIssues || loadingTasks}
+        matrices={matrices}
+        now={now}
+        onSelect={(tag) => changeFilters({ tag: filters.tag === tag ? undefined : tag })}
+        projects={projectsIgnoring('tag')}
+        selectedTag={filters.tag}
         taskStatuses={taskStatuses}
       />
 

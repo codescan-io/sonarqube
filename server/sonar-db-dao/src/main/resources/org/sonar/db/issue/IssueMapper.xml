@@ -988,5 +988,34 @@
       and i.issue_creation_date &gt;= #{fromDate,jdbcType=BIGINT}
       and i.issue_creation_date &lt; #{toDate,jdbcType=BIGINT}
   </select>
+  <sql id="securityIssuesOfOrganization">
+    from issues i
+    inner join issues_impacts ii on ii.issue_key = i.kee and ii.software_quality = 'SECURITY'
+    inner join project_branches pb on pb.uuid = i.project_uuid and pb.is_main = ${_true}
+    inner join projects p on p.uuid = pb.project_uuid
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+      and i.issue_type &lt;&gt; 4
+      and i.issue_creation_date is not null
+  </sql>
+
+  <select id="scrollFixedSecurityIssuesForOrganization" parameterType="map" resultType="org.sonar.db.issue.SecurityIssueDatesDto"
+          fetchSize="${_scrollFetchSize}" resultSetType="FORWARD_ONLY">
+    select ii.severity as severity, i.issue_creation_date as createdAt, i.issue_close_date as closedAt
+    <include refid="securityIssuesOfOrganization"/>
+      and i.status = 'CLOSED'
+      and i.resolution = 'FIXED'
+      <!-- an issue is persisted after it is closed, so this indexed bound keeps every issue of the period -->
+      and i.updated_at &gt;= #{fromDate,jdbcType=BIGINT}
+      and i.issue_close_date &gt;= #{fromDate,jdbcType=BIGINT}
+      and i.issue_close_date &lt; #{toDate,jdbcType=BIGINT}
+  </select>
+
+  <select id="scrollOpenSecurityIssuesForOrganization" parameterType="map" resultType="org.sonar.db.issue.SecurityIssueDatesDto"
+          fetchSize="${_scrollFetchSize}" resultSetType="FORWARD_ONLY">
+    select ii.severity as severity, i.issue_creation_date as createdAt
+    <include refid="securityIssuesOfOrganization"/>
+      and i.resolution is null
+  </select>
 
 </mapper>

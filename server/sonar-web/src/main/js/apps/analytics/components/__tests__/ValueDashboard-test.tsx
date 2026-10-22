@@ -20,9 +20,12 @@
 
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { getQualityTrend } from '../../../../api/analytics';
 import { getAiValue, getIdeAdoption } from '../../../../api/codescan-analytics';
 import { renderComponent } from '../../../../helpers/testReactTestingUtils';
 import ValueDashboard from '../ValueDashboard';
+
+jest.mock('../../../../api/analytics', () => ({ getQualityTrend: jest.fn() }));
 
 jest.mock('../../../../api/codescan-analytics', () => ({
   getAiValue: jest.fn(),
@@ -41,6 +44,8 @@ beforeEach(() => {
       issuesResolved: 30,
       pullRequests: 4,
       merged: 3,
+      effortSavedMinutes: 600,
+      issuesWithoutKnownEffort: 0,
     },
     codefixJobs: {},
     credits: [
@@ -48,6 +53,31 @@ beforeEach(() => {
       { addon: 'ai-custom-rules', calls: 4, credits: 2 },
     ],
     totalCredits: 14.5,
+  });
+  jest.mocked(getQualityTrend).mockResolvedValue({
+    period: { from: '2026-07-17', to: '2026-10-14', timeZone: 'UTC', interval: 'week' },
+    timeline: [
+      {
+        date: '2026-09-28',
+        projects: 2,
+        passed: 1,
+        failed: 1,
+        openIssues: 10,
+        vulnerabilities: 1,
+        blockerIssues: 0,
+        remediationEffortMinutes: 12000,
+      },
+      {
+        date: '2026-10-05',
+        projects: 2,
+        passed: 2,
+        failed: 0,
+        openIssues: 8,
+        vulnerabilities: 0,
+        blockerIssues: 0,
+        remediationEffortMinutes: 9000,
+      },
+    ],
   });
   jest.mocked(getIdeAdoption).mockResolvedValue({
     days: 90,
@@ -96,4 +126,27 @@ it('says when usage data cannot be loaded', async () => {
   renderComponent(<ValueDashboard organization="my-org" />);
 
   expect(await screen.findByText('analytics.value.load_error')).toBeInTheDocument();
+});
+
+it('shows the remediation backlog and the engineering time AI saved', async () => {
+  renderComponent(<ValueDashboard organization="my-org" />);
+
+  const backlog = within(await screen.findByRole('group', { name: 'analytics.roi.backlog' }));
+  expect(await backlog.findByText('150 h')).toBeInTheDocument();
+  expect(backlog.getByText('analytics.roi.backlog_footnote.8')).toBeInTheDocument();
+  expect(backlog.getByText('-25%')).toBeInTheDocument();
+  expect(tile('analytics.roi.debt_paid_down').getByText('50 h')).toBeInTheDocument();
+  const ai = within(await screen.findByRole('group', { name: 'analytics.roi.ai_saved' }));
+  expect(await ai.findByText('10 h')).toBeInTheDocument();
+  expect(ai.getByText('analytics.roi.ai_footnote.30')).toBeInTheDocument();
+  expect(screen.queryByText(/\$/)).not.toBeInTheDocument();
+});
+
+it('still prices the backlog when AI usage cannot be loaded', async () => {
+  jest.mocked(getAiValue).mockRejectedValue(new Error('boom'));
+  renderComponent(<ValueDashboard organization="my-org" />);
+
+  const backlog = within(await screen.findByRole('group', { name: 'analytics.roi.backlog' }));
+  expect(await backlog.findByText('150 h')).toBeInTheDocument();
+  expect(await screen.findByText('analytics.roi.ai_unavailable')).toBeInTheDocument();
 });

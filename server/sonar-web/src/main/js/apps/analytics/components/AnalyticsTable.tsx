@@ -56,6 +56,7 @@ import {
   IssueMatrix,
   countIssues,
 } from '../utils';
+import Pagination, { PAGE_SIZES } from './Pagination';
 
 interface Props {
   filters: AnalyticsFilterState;
@@ -82,7 +83,6 @@ const STATUS_ORDER = {
 
 // Project | Analysis Status | Issue Type | Background Tasks | Last Analysis | Total Issues
 const COLUMN_WIDTHS = ['21%', '13%', '25%', '14%', '16%', '11%'];
-const PAGE_SIZE = 10;
 const NO_VALUE = '-';
 
 export default function AnalyticsTable(props: Readonly<Props>) {
@@ -92,7 +92,7 @@ export default function AnalyticsTable(props: Readonly<Props>) {
     key: 'issues',
     asc: false,
   });
-  const [visible, setVisible] = React.useState(PAGE_SIZE);
+  const [paging, setPaging] = React.useState({ page: 1, pageSize: PAGE_SIZES[0] as number });
 
   const issuesOf = (key: string) => countIssues(matrices[key], filters);
 
@@ -110,6 +110,13 @@ export default function AnalyticsTable(props: Readonly<Props>) {
     }[sort.key];
     return orderBy(matching, [sortValue, 'name'], [sort.asc ? 'asc' : 'desc', 'asc']);
   }, [projects, query, sort, matrices, filters]);
+
+  // Back to the first page whenever the rows change, so the page shown always exists.
+  React.useEffect(() => {
+    setPaging((current) => ({ ...current, page: 1 }));
+  }, [projects, query, sort, filters]);
+
+  const pageRows = rows.slice((paging.page - 1) * paging.pageSize, paging.page * paging.pageSize);
 
   const changeSort = (key: SortKey) =>
     setSort((current) => ({
@@ -159,13 +166,13 @@ export default function AnalyticsTable(props: Readonly<Props>) {
         <h3 className="sw-heading-sm">{translate('analytics.table.title')}</h3>
         <div className="sw-flex sw-items-center sw-gap-4">
           <Text isSubdued>
-            {translateWithParameters('x_of_y_shown', Math.min(visible, rows.length), rows.length)}
+            {translateWithParameters(
+              'analytics.table.count',
+              formatMeasure(rows.length, MetricType.Integer),
+            )}
           </Text>
           <InputSearch
-            onChange={(value) => {
-              setQuery(value);
-              setVisible(PAGE_SIZE);
-            }}
+            onChange={setQuery}
             placeholder={translate('analytics.table.search')}
             size="medium"
             value={query}
@@ -203,7 +210,7 @@ export default function AnalyticsTable(props: Readonly<Props>) {
               </TableRow>
             }
           >
-            {rows.slice(0, visible).map((project) => (
+            {pageRows.map((project) => (
               <TableRow key={project.key}>
                 <ContentCell>
                   <span className="sw-flex sw-items-center sw-gap-2 sw-min-w-0">
@@ -251,13 +258,12 @@ export default function AnalyticsTable(props: Readonly<Props>) {
         </div>
       )}
 
-      {visible < rows.length && (
-        <div className="sw-flex sw-justify-center sw-mt-4">
-          <Button onClick={() => setVisible(visible + PAGE_SIZE)}>
-            {translate('analytics.table.show_more')}
-          </Button>
-        </div>
-      )}
+      <Pagination
+        onChange={(page, pageSize) => setPaging({ page, pageSize })}
+        page={paging.page}
+        pageSize={paging.pageSize}
+        total={rows.length}
+      />
     </section>
   );
 }

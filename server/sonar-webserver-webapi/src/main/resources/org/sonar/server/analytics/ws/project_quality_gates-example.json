@@ -1,0 +1,6 @@
+{
+  "projects": [
+    {"key": "billing-service", "status": "OK"},
+    {"key": "payments-api", "status": "ERROR"}
+  ]
+}

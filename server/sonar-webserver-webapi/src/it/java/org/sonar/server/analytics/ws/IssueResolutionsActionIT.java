@@ -94,9 +94,14 @@ class IssueResolutionsActionIT {
     resolve(fixed, "2026-10-13", "FIXED", null);
     IssueDto accepted = issue(project.getMainBranchDto(), "2026-10-01");
     resolve(accepted, "2026-10-14", "WONTFIX", "alice-uuid");
-    IssueDto reopened = issue(project.getMainBranchDto(), "2026-10-01");
-    resolve(reopened, "2026-10-12", "FALSE-POSITIVE", "bob-uuid");
-    resolveFrom(reopened, "2026-10-13", "FALSE-POSITIVE", "");
+    // resolved then reopened within the period: open at both ends, so neither resolved nor reopened
+    IssueDto resolvedThenReopened = issue(project.getMainBranchDto(), "2026-10-01");
+    resolve(resolvedThenReopened, "2026-10-12", "FALSE-POSITIVE", "bob-uuid");
+    resolveFrom(resolvedThenReopened, "2026-10-13", "FALSE-POSITIVE", "");
+    // resolved before the period, reopened in it
+    IssueDto reopened = issue(project.getMainBranchDto(), "2026-08-01");
+    resolve(reopened, "2026-09-01", "WONTFIX", "alice-uuid");
+    resolveFrom(reopened, "2026-10-13", "WONTFIX", "");
     // ignored: not a main branch, another organization
     BranchDto branch = db.components().insertProjectBranch(project.getProjectDto(), b -> b.setBranchType(BranchType.BRANCH).setKey("feature"));
     resolve(issue(branch, "2026-10-12"), "2026-10-13", "FIXED", null);
@@ -111,11 +116,11 @@ class IssueResolutionsActionIT {
         "retentionDays": 60,
         "completeFrom": "2026-08-15",
         "totals": {
-          "introduced": 1, "fixed": 1, "accepted": 1, "falsePositive": 1, "removed": 0, "reopened": 1,
-          "resolved": 3, "fixedByAnalysis": 1, "netChange": -1
+          "introduced": 1, "fixed": 1, "accepted": 1, "falsePositive": 0, "removed": 0, "reopened": 1,
+          "resolved": 2, "fixedByAnalysis": 1, "netChange": 0
         },
         "timeline": [
-          {"date": "2026-10-12", "introduced": 1, "falsePositive": 1},
+          {"date": "2026-10-12", "introduced": 1, "falsePositive": 0},
           {"date": "2026-10-13", "fixed": 1, "reopened": 1},
           {"date": "2026-10-14", "accepted": 1}
         ]

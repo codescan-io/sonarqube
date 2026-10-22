@@ -87,7 +87,7 @@ export default function FocusList(props: Readonly<Props>) {
                     >
                       {count === undefined
                         ? translate('analytics.focus.reason', reason)
-                        : translateWithParameters('analytics.focus.reason', reason, count)}
+                        : translateWithParameters(`analytics.focus.reason.${reason}`, count)}
                     </Chip>
                   ))}
                 </span>

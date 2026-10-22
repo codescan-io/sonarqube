@@ -86,6 +86,7 @@ describe('getFocusList', () => {
     name: key,
     analysisDate: '2026-10-13T10:00:00+0000',
     status: AnalysisStatus.Passed,
+    tags: [],
     ...overrides,
   });
   const matrix = (vulnerabilities: number, blockers: number): IssueMatrix => {

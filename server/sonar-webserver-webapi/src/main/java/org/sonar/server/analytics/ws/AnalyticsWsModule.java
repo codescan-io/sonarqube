@@ -35,6 +35,8 @@ public class AnalyticsWsModule extends Module {
       ProjectsAction.class,
       ProjectTaskStatusesAction.class,
       ProjectIssuesAction.class,
+      ProjectQualityGatesAction.class,
+      SecurityRemediationAction.class,
       QualityTrendAction.class,
       ExceptionsAction.class,
       IssueResolutionsAction.class);

@@ -19,11 +19,13 @@
  */
 
 import { differenceInCalendarDays, endOfDay, startOfDay, subDays } from 'date-fns';
-import { chunk, range } from 'lodash';
-import { MetricKey } from '~sonar-aligned/types/metrics';
-import { getProjectIssues, getProjectTaskStatuses } from '../../api/analytics';
+import { range } from 'lodash';
+import {
+  getProjectIssues,
+  getProjectQualityGates,
+  getProjectTaskStatuses,
+} from '../../api/analytics';
 import { searchProjects } from '../../api/components';
-import { getMeasuresForProjects } from '../../api/measures';
 import { parseDate } from '../../helpers/dates';
 import { TaskStatuses } from '../../types/tasks';
 import { Organization } from '../../types/types';
@@ -53,7 +55,12 @@ export interface AnalyticsProject {
   key: string;
   name: string;
   status: AnalysisStatus;
+  /** Project tags, which organizations use for teams, business units or products. */
+  tags: string[];
 }
+
+/** The team of projects that have no tag. */
+export const UNTAGGED = '__untagged';
 
 export type IssueCounts = Record<AnalyticsIssueType, number>;
 export type SeverityCounts = Record<AnalyticsSeverity, number>;
@@ -80,52 +87,47 @@ export interface DateRange {
 
 // api/components/search_projects accepts up to 500 projects per page.
 const PROJECTS_PAGE_SIZE = 500;
-// api/measures/search is capped at 100 projects.
-const PROJECTS_BATCH_SIZE = 100;
+// Pages of api/components/search_projects requested at the same time.
+const PROJECTS_PAGE_CONCURRENCY = 4;
 
 export async function fetchOrganizationProjects(organization: string) {
   const fetchPage = (page: number) =>
     searchProjects({ organization, f: 'analysisDate', p: page, ps: PROJECTS_PAGE_SIZE });
 
-  const firstPage = await fetchPage(1);
+  // The quality gates come in one call, next to the first page of projects.
+  const [firstPage, qualityGates] = await Promise.all([
+    fetchPage(1),
+    getProjectQualityGates(organization),
+  ]);
   const total = firstPage.paging.total;
-  const otherPages = await Promise.all(
-    range(2, Math.ceil(total / PROJECTS_PAGE_SIZE) + 1).map(fetchPage),
+  // The other pages a few at a time, so a large organization does not flood the server.
+  const pages = await chunkPages(range(2, Math.ceil(total / PROJECTS_PAGE_SIZE) + 1)).reduce(
+    async (previous, batch) => [...(await previous), ...(await Promise.all(batch.map(fetchPage)))],
+    Promise.resolve([firstPage]),
   );
-  const projects: AnalyticsProject[] = [firstPage, ...otherPages]
+
+  const statuses: Record<string, AnalysisStatus> = {};
+  qualityGates.projects.forEach(({ key, status }) => {
+    statuses[key] = status === 'OK' ? AnalysisStatus.Passed : AnalysisStatus.Failed;
+  });
+  const projects: AnalyticsProject[] = pages
     .flatMap(({ components }) => components)
-    .map(({ analysisDate, key, name }) => ({
+    .map(({ analysisDate, key, name, tags }) => ({
       analysisDate,
       key,
       name,
-      status: AnalysisStatus.NotAvailable,
+      status: statuses[key] ?? AnalysisStatus.NotAvailable,
+      tags: tags ?? [],
     }));
-
-  const statuses = await fetchQualityGateStatuses(projects.map((p) => p.key));
-  return {
-    projects: projects.map((p) => ({
-      ...p,
-      status: statuses[p.key] ?? AnalysisStatus.NotAvailable,
-    })),
-    total,
-  };
+  return { projects, total };
 }
 
-async function fetchQualityGateStatuses(projectKeys: string[]) {
-  const statuses: Record<string, AnalysisStatus> = {};
-  const batches = await Promise.all(
-    chunk(projectKeys, PROJECTS_BATCH_SIZE).map((keys) =>
-      getMeasuresForProjects(keys, [MetricKey.alert_status]),
-    ),
-  );
-  batches.flat().forEach(({ component, value }) => {
-    if (value === 'OK') {
-      statuses[component] = AnalysisStatus.Passed;
-    } else if (value === 'ERROR') {
-      statuses[component] = AnalysisStatus.Failed;
-    }
-  });
-  return statuses;
+function chunkPages(pages: number[]) {
+  const batches: number[][] = [];
+  for (let i = 0; i < pages.length; i += PROJECTS_PAGE_CONCURRENCY) {
+    batches.push(pages.slice(i, i + PROJECTS_PAGE_CONCURRENCY));
+  }
+  return batches;
 }
 
 function emptyMatrix(): IssueMatrix {
@@ -134,28 +136,31 @@ function emptyMatrix(): IssueMatrix {
 }
 
 /**
- * Open issues of every project, split by type and severity, from one server call. The type and
- * severity filters are then applied in the browser without asking the server again.
+ * Open issues of every project, split by type and severity, and the estimated time to fix them, from
+ * one server call. The type and severity filters are then applied in the browser without asking the
+ * server again.
  */
 export async function fetchIssueMatrices(organization: string, projectKeys: string[]) {
   const matrices: Record<string, IssueMatrix> = {};
+  const effortMinutes: Record<string, number> = {};
   projectKeys.forEach((key) => {
     matrices[key] = emptyMatrix();
   });
 
   const { projects } = await getProjectIssues(organization);
-  projects.forEach(({ issues, key }) => {
+  projects.forEach(({ effortMinutes: effort, issues, key }) => {
     const matrix = matrices[key];
     if (!matrix) {
       return;
     }
+    effortMinutes[key] = effort;
     ISSUE_TYPES.forEach((type) => {
       SEVERITIES.forEach((severity) => {
         matrix[type][severity] = issues[type]?.[severity] ?? 0;
       });
     });
   });
-  return matrices;
+  return { effortMinutes, matrices };
 }
 
 /** Open issues in a matrix that match the type and severity filters. */
@@ -244,6 +249,8 @@ export interface AnalyticsFilterState {
   qualityGate?: AnalysisStatus;
   recency?: RecencyBucket;
   severity?: AnalyticsSeverity;
+  /** A project tag, or {@link UNTAGGED}. */
+  tag?: string;
   taskStatus?: TaskFilter;
   type?: AnalyticsIssueType;
 }
@@ -255,7 +262,7 @@ export const DEFAULT_FILTERS: AnalyticsFilterState = {
 };
 
 /** Filters that pick projects; type and severity only change which issues are counted. */
-type ProjectDimension = 'project' | 'date' | 'qualityGate' | 'taskStatus' | 'recency';
+type ProjectDimension = 'project' | 'date' | 'qualityGate' | 'taskStatus' | 'recency' | 'tag';
 
 /**
  * Projects matching every project filter except the ignored one. A chart passes its own dimension
@@ -276,6 +283,9 @@ export function filterProjects(
       return false;
     }
     if (ignore !== 'qualityGate' && filters.qualityGate && project.status !== filters.qualityGate) {
+      return false;
+    }
+    if (ignore !== 'tag' && filters.tag && !hasTag(project, filters.tag)) {
       return false;
     }
     if (
@@ -303,4 +313,9 @@ export function filterProjects(
     }
     return true;
   });
+}
+
+/** Whether a project carries the tag, or has none when the tag is {@link UNTAGGED}. */
+export function hasTag(project: AnalyticsProject, tag: string) {
+  return tag === UNTAGGED ? project.tags.length === 0 : project.tags.includes(tag);
 }
