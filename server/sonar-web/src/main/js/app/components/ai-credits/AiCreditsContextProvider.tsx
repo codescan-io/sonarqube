@@ -19,8 +19,9 @@
  */
 import * as React from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { AiCreditsSummary, fetchCredits } from '../../../api/ai-codefix';
+import { AiCreditsSummary, fetchCredits, fetchUserAiCredits } from '../../../api/ai-codefix';
 import { useCurrentOrg } from '../nav/organization/CurrentOrgContext';
+import { useCurrentUser } from '../current-user/CurrentUserContext';
 import { AiCreditsContext } from './AiCreditsContext';
 
 interface Props {
@@ -31,8 +32,11 @@ export function AiCreditsContextProvider({ children }: Props) {
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const { orgKee: contextOrgKee } = useCurrentOrg();
+  const { userOrganizations } = useCurrentUser();
 
   const [creditsData, setCreditsData] = React.useState<AiCreditsSummary | null>(null);
+  const [userCreditsData, setUserCreditsData] = React.useState<AiCreditsSummary | null>(null);
+  const [showCredits, setShowCredits] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
 
   const orgKee = React.useMemo(() => {
@@ -53,24 +57,75 @@ export function AiCreditsContextProvider({ children }: Props) {
     return contextOrgKee;
   }, [pathname, searchParams, contextOrgKee]);
 
+  const isOrgAdmin = React.useMemo(
+    () => userOrganizations?.find((o) => o.kee === orgKee)?.actions?.admin === true,
+    [userOrganizations, orgKee]
+  );
+
+  const isOrgMember = React.useMemo(
+    () => userOrganizations?.some((o) => o.kee === orgKee) === true,
+    [userOrganizations, orgKee]
+  );
+
   React.useEffect(() => {
-    if (!orgKee) {
+    if (!orgKee || !isOrgMember) {
       setCreditsData(null);
+      setUserCreditsData(null);
+      setShowCredits(false);
       setIsLoading(false);
-      return;
+      return undefined;
     }
 
+    // Ignore stale responses when orgKee changes before a request resolves.
+    let cancelled = false;
     setIsLoading(true);
-    fetchCredits(orgKee)
-      .then(setCreditsData)
-      .catch(() => setCreditsData(null))
-      .finally(() => setIsLoading(false));
-  }, [orgKee]);
+
+    // Top-nav pie indicator always shows the CURRENT user's own credits.
+    const userPromise = fetchUserAiCredits(orgKee)
+      .then((user) => {
+        if (cancelled) return;
+        setUserCreditsData({
+          allocatedCredits: user.creditLimit,
+          consumedCredits: user.creditsUsed,
+          remainingCredits: user.creditsRemaining,
+          resetDate: '',
+        });
+        // show the pie only when the user has access AND a positive allocation,
+        setShowCredits(user.hasAiAccess && user.creditLimit > 0);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setUserCreditsData(null);
+        setShowCredits(false);
+      });
+
+    let orgPromise: Promise<unknown> = Promise.resolve();
+    if (isOrgAdmin) {
+      orgPromise = fetchCredits(orgKee)
+        .then((data) => {
+          if (!cancelled) setCreditsData(data);
+        })
+        .catch(() => {
+          if (!cancelled) setCreditsData(null);
+        });
+    } else {
+      setCreditsData(null);
+    }
+    Promise.all([userPromise, orgPromise]).finally(() => {
+      if (!cancelled) setIsLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orgKee, isOrgAdmin, isOrgMember]);
 
   const value = React.useMemo(() => ({
     creditsData,
+    userCreditsData,
     isLoading,
-  }), [creditsData, isLoading]);
+    showCredits,
+  }), [creditsData, userCreditsData, isLoading, showCredits]);
 
   return (
     <AiCreditsContext.Provider value={value}>

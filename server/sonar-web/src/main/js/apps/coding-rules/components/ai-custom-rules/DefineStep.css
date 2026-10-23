@@ -1,0 +1,432 @@
+/*
+ * SonarQube
+ * Copyright (C) 2009-2024 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+.define-step {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Info banner */
+.define-step-banner {
+  display: inline-flex;
+  width: 100%;
+  padding: 12px 20px;
+  align-items: flex-start;
+  gap: 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.00);
+  background: #E8EBFF;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.define-step-banner-icon {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+}
+
+/* AI Rule Generation bold text */
+.define-step-banner-text {
+  color: #5C6BD1;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.define-step-banner-text strong {
+  color: #5C6BD1;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+/* Scrollable content area */
+.define-step-scrollable {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 24px 8px 24px;
+  box-sizing: border-box;
+}
+
+/* Push content to top, no extra space at bottom */
+.define-step-form {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+/* Row layout */
+.define-step-row {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+/* Field */
+.define-step-field {
+  flex: 1;
+}
+
+.define-step-field--wide {
+  flex: 1;
+}
+
+.define-step-field--narrow {
+  flex: 1;
+}
+
+.define-step-field-full {
+  width: 100%;
+}
+
+/* Labels - Rule Name*, Rule Key*, Rule Type, Severity, Message, Rule Description* */
+.define-step-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.define-step-label-text {
+  color: #2A2F40;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+/* * symbol */
+.define-step-label-required {
+  color: #D92E21;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 18px;
+  margin-left: 1px;
+}
+
+/* "Auto-generated from name", "Shown in violation reports", "0 characters" */
+.define-step-label-help {
+  color: #637192;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+/* Inputs - placeholders inside boxes */
+.define-step-input {
+  display: flex;
+  padding: 8px 12px;
+  align-items: center;
+  flex: 1 0 0;
+  border-radius: 4px;
+  border: 1px solid #EBEBEB;
+  background: #FFF;
+  color: #2A2F40;
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.define-step-input:focus {
+  border-color: #5C6BD1;
+  box-shadow: 0 0 0 2px rgba(92, 107, 209, 0.1);
+}
+
+/* Placeholder text inside input boxes */
+.define-step-input::placeholder {
+  color: rgba(42, 47, 64, 0.50);
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.define-step-input--error {
+  border-color: #D92E21;
+}
+
+.define-step-input--error:focus {
+  border-color: #D92E21;
+  box-shadow: 0 0 0 2px rgba(217, 46, 33, 0.1);
+}
+
+.define-step-input--disabled {
+  background: #F5F5F5;
+  color: #637192;
+  cursor: not-allowed;
+}
+
+/* Select */
+.define-step-select {
+  display: flex;
+  padding: 8px 12px;
+  align-items: center;
+  flex: 1 0 0;
+  border-radius: 4px;
+  border: 1px solid #EBEBEB;
+  background: #FFF;
+  color: #2A2F40;
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  appearance: auto;
+  cursor: pointer;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.define-step-select:focus {
+  border-color: #5C6BD1;
+  box-shadow: 0 0 0 2px rgba(92, 107, 209, 0.1);
+}
+
+/* Textarea */
+.define-step-textarea {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #EBEBEB;
+  background: #FFF;
+  color: #2A2F40;
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  resize: none;
+  height: 120px;
+  overflow-y: auto;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.define-step-textarea:focus {
+  border-color: #5C6BD1;
+  box-shadow: 0 0 0 2px rgba(92, 107, 209, 0.1);
+}
+
+/* Placeholder text inside textarea */
+.define-step-textarea::placeholder {
+  color: rgba(42, 47, 64, 0.50);
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.define-step-textarea--error {
+  border-color: #D92E21;
+}
+
+.define-step-textarea--error:focus {
+  border-color: #D92E21;
+  box-shadow: 0 0 0 2px rgba(217, 46, 33, 0.1);
+}
+
+/* Error messages */
+.define-step-error {
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  color: #D92E21;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.define-step-error-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* "Try an example:" text */
+.define-step-examples {
+  width: 100%;
+}
+
+.define-step-examples-label {
+  color: #637192;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+  margin-bottom: 8px;
+}
+
+.define-step-examples-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Example chips below Rule Description */
+.define-step-example-chip {
+  padding: 8px 12px;
+  background: #F0F2FA;
+  border: none;
+  border-radius: 4px;
+  color: #2A2F40;
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 18px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.define-step-example-chip:hover {
+  background: #E8EBFF;
+}
+
+/* Fixed footer area */
+.define-step-footer-wrapper {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Divider line - full width like topbar border */
+.define-step-divider {
+  width: 100%;
+  height: 1px;
+  background: #EBEBEB;
+}
+
+/* Footer */
+.define-step-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 14px 24px;
+  box-sizing: border-box;
+}
+
+/* Back button */
+.define-step-btn-back {
+  display: flex;
+  padding: 9px 16.703px 9px 17px;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  border: 1px solid #EBEBEB;
+  background: none;
+  color: #2A2F40;
+  text-align: center;
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 21px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.define-step-btn-back-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.define-step-btn-back:hover {
+  background: #F0F2FA;
+  border-color: #5C6BD1;
+  color: #2A2F40;
+}
+
+/* Generate Rule button */
+.define-step-btn-generate {
+  display: flex;
+  padding: 8px 19.344px 8px 20px;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border-radius: 4px;
+  background: #5C6BD1;
+  border: none;
+  color: #FFF;
+  text-align: center;
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 21px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.define-step-btn-generate:hover:not(:disabled) {
+  background: #4A5ABF;
+}
+
+.define-step-btn-generate:disabled {
+  background: #A0A8C2;
+  cursor: not-allowed;
+}
+
+.define-step-btn-generate-icon {
+  width: 15px;
+  height: 15px;
+  filter: brightness(0) invert(1);
+}
