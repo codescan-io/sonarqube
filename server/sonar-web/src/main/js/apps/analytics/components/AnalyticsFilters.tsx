@@ -34,6 +34,7 @@ import {
 import * as React from 'react';
 import { DateRangePicker, PopupZLevel, themeBorder, themeColor } from '~design-system';
 import { translate } from '../../../helpers/l10n';
+import { useIsReport } from '../report';
 import {
   AnalyticsFilterState,
   AnalyticsIssueType,
@@ -71,6 +72,7 @@ export default function AnalyticsFilters({
   onReset,
   projects,
 }: Readonly<Props>) {
+  const isReport = useIsReport();
   const projectOptions = React.useMemo(
     () => projects.map(({ key, name }) => ({ value: key, label: name })),
     [projects],
@@ -151,6 +153,10 @@ export default function AnalyticsFilters({
       label: `${translate('analytics.chart.analysis_age')}: ${translate('analytics.recency', filters.recency)}`,
       remove: () => onChange({ recency: undefined }),
     });
+  }
+
+  if (isReport) {
+    return null;
   }
 
   return (

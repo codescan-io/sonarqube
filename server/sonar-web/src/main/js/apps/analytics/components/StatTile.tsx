@@ -23,6 +23,7 @@ import { Text, TextSize } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
 import * as React from 'react';
 import { Spinner, themeBorder, themeColor } from '~design-system';
+import { useIsReport } from '../report';
 import { tint } from './charts/colors';
 import Delta, { DeltaProps } from './charts/Delta';
 import Sparkline from './charts/Sparkline';
@@ -47,6 +48,7 @@ interface Props {
  * and a footnote. Clickable tiles toggle a filter or open the items behind the number.
  */
 export default function StatTile(props: Readonly<Props>) {
+  const isReport = useIsReport();
   const {
     children,
     color,
@@ -83,7 +85,7 @@ export default function StatTile(props: Readonly<Props>) {
     </>
   );
 
-  return onClick ? (
+  return onClick && !isReport ? (
     <TileButton
       aria-pressed={selected}
       className={classNames('sw-cursor-pointer', { selected })}

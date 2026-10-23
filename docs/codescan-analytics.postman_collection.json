@@ -1,0 +1,1352 @@
+{
+  "info": {
+    "name": "CodeScan Organization Analytics",
+    "description": "Every API behind the organization Analytics page.\n\n- **SonarQube (api/analytics)**: analyses, issues, quality gates and security remediation.\n- **CodeScan services (/_codescan/analytics)**: AI debt health, AI add-ons, IDE plugins, pull requests.\n\nAll requests are GET and read-only. Authentication: a user token as the Basic auth username with an empty password (set the `token` variable). The user must administer the organization.\n\nSet the variables `baseUrl`, `token`, `organization`, `from`, `to` and `timeZone` before sending.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "{{token}}",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('responds 200', () => pm.response.to.have.status(200));",
+          "pm.test('returns JSON', () => pm.response.to.be.json);"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://app.codescan.io",
+      "description": "Server URL, without a trailing slash."
+    },
+    {
+      "key": "token",
+      "value": "",
+      "description": "User token of an organization administrator."
+    },
+    {
+      "key": "organization",
+      "value": "my-org",
+      "description": "Organization key."
+    },
+    {
+      "key": "from",
+      "value": "2026-09-23",
+      "description": "First day of the period (yyyy-MM-dd)."
+    },
+    {
+      "key": "to",
+      "value": "2026-10-22",
+      "description": "Last day of the period (yyyy-MM-dd)."
+    },
+    {
+      "key": "timeZone",
+      "value": "UTC",
+      "description": "Time zone of the days, e.g. Europe/Paris."
+    }
+  ],
+  "item": [
+    {
+      "name": "SonarQube · api/analytics",
+      "description": "Served by the SonarQube web server.",
+      "item": [
+        {
+          "name": "Activity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/activity?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&interval=day",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "from",
+                  "value": "{{from}}",
+                  "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                },
+                {
+                  "key": "to",
+                  "value": "{{to}}",
+                  "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                },
+                {
+                  "key": "timeZone",
+                  "value": "{{timeZone}}",
+                  "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                },
+                {
+                  "key": "interval",
+                  "value": "day",
+                  "description": "Size of the timeline buckets: day or week. Default day."
+                }
+              ]
+            },
+            "description": "Background task activity of the organization over a period: analyses run, how they ended and how long they took, compared with the previous period of the same length.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/activity?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&interval=day",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "activity"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    },
+                    {
+                      "key": "from",
+                      "value": "{{from}}",
+                      "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                    },
+                    {
+                      "key": "to",
+                      "value": "{{to}}",
+                      "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                    },
+                    {
+                      "key": "timeZone",
+                      "value": "{{timeZone}}",
+                      "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                    },
+                    {
+                      "key": "interval",
+                      "value": "day",
+                      "description": "Size of the timeline buckets: day or week. Default day."
+                    }
+                  ]
+                },
+                "description": "Background task activity of the organization over a period: analyses run, how they ended and how long they took, compared with the previous period of the same length.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"period\": {\n    \"from\": \"2026-10-06\",\n    \"to\": \"2026-10-08\",\n    \"timeZone\": \"Europe/Paris\",\n    \"interval\": \"day\"\n  },\n  \"totalProjects\": 530,\n  \"analyses\": {\n    \"total\": 640,\n    \"success\": 626,\n    \"failed\": 12,\n    \"canceled\": 2,\n    \"projects\": 412,\n    \"avgExecutionTimeMs\": 61200,\n    \"medianExecutionTimeMs\": 48000,\n    \"p90ExecutionTimeMs\": 182000,\n    \"avgQueueTimeMs\": 4100,\n    \"medianQueueTimeMs\": 900\n  },\n  \"previous\": {\n    \"from\": \"2026-10-03\",\n    \"to\": \"2026-10-05\",\n    \"analyses\": {\n      \"total\": 571,\n      \"success\": 560,\n      \"failed\": 11,\n      \"canceled\": 0,\n      \"projects\": 398,\n      \"avgExecutionTimeMs\": 58800,\n      \"medianExecutionTimeMs\": 46000,\n      \"p90ExecutionTimeMs\": 175000,\n      \"avgQueueTimeMs\": 3900,\n      \"medianQueueTimeMs\": 800\n    }\n  },\n  \"taskTypes\": [\n    {\"type\": \"ISSUE_SYNC\", \"total\": 4, \"success\": 4, \"failed\": 0, \"canceled\": 0},\n    {\"type\": \"REPORT\", \"total\": 640, \"success\": 626, \"failed\": 12, \"canceled\": 2}\n  ],\n  \"targets\": [\n    {\"target\": \"MAIN\", \"total\": 210, \"success\": 205, \"failed\": 5, \"canceled\": 0, \"projects\": 380},\n    {\"target\": \"BRANCH\", \"total\": 130, \"success\": 127, \"failed\": 2, \"canceled\": 1, \"projects\": 95},\n    {\"target\": \"PULL_REQUEST\", \"total\": 300, \"success\": 294, \"failed\": 5, \"canceled\": 1, \"projects\": 140}\n  ],\n  \"timeline\": [\n    {\"date\": \"2026-10-06\", \"total\": 220, \"success\": 216, \"failed\": 4, \"canceled\": 0, \"medianExecutionTimeMs\": 47000, \"p90ExecutionTimeMs\": 179000},\n    {\"date\": \"2026-10-07\", \"total\": 205, \"success\": 200, \"failed\": 4, \"canceled\": 1, \"medianExecutionTimeMs\": 49000, \"p90ExecutionTimeMs\": 185000},\n    {\"date\": \"2026-10-08\", \"total\": 215, \"success\": 210, \"failed\": 4, \"canceled\": 1, \"medianExecutionTimeMs\": 48000, \"p90ExecutionTimeMs\": 181000}\n  ]\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/queue?organization={{organization}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "queue"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                }
+              ]
+            },
+            "description": "Background tasks waiting or running right now, with the age of the oldest pending one.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/queue?organization={{organization}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "queue"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    }
+                  ]
+                },
+                "description": "Background tasks waiting or running right now, with the age of the oldest pending one.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"pending\": 3,\n  \"inProgress\": 1,\n  \"oldestPendingAt\": \"2026-10-12T09:41:07+0000\",\n  \"oldestPendingAgeMs\": 74000\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/tasks?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&type=REPORT&s=submittedAt&p=1&ps=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "tasks"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "from",
+                  "value": "{{from}}",
+                  "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                },
+                {
+                  "key": "to",
+                  "value": "{{to}}",
+                  "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                },
+                {
+                  "key": "timeZone",
+                  "value": "{{timeZone}}",
+                  "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                },
+                {
+                  "key": "statuses",
+                  "value": "FAILED",
+                  "description": "Comma-separated statuses: SUCCESS, FAILED, CANCELED. All when omitted.",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "REPORT",
+                  "description": "Task type. Default REPORT."
+                },
+                {
+                  "key": "s",
+                  "value": "submittedAt",
+                  "description": "Sort: submittedAt (most recent first), executionTime (slowest first) or queueTime (longest wait first)."
+                },
+                {
+                  "key": "p",
+                  "value": "1",
+                  "description": "1-based page number."
+                },
+                {
+                  "key": "ps",
+                  "value": "20",
+                  "description": "Page size. Default 20, maximum 100."
+                }
+              ]
+            },
+            "description": "Finished background tasks submitted in the period (the analyses behind the Activity figures).\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/tasks?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&type=REPORT&s=submittedAt&p=1&ps=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "tasks"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    },
+                    {
+                      "key": "from",
+                      "value": "{{from}}",
+                      "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                    },
+                    {
+                      "key": "to",
+                      "value": "{{to}}",
+                      "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                    },
+                    {
+                      "key": "timeZone",
+                      "value": "{{timeZone}}",
+                      "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                    },
+                    {
+                      "key": "statuses",
+                      "value": "FAILED",
+                      "description": "Comma-separated statuses: SUCCESS, FAILED, CANCELED. All when omitted.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "type",
+                      "value": "REPORT",
+                      "description": "Task type. Default REPORT."
+                    },
+                    {
+                      "key": "s",
+                      "value": "submittedAt",
+                      "description": "Sort: submittedAt (most recent first), executionTime (slowest first) or queueTime (longest wait first)."
+                    },
+                    {
+                      "key": "p",
+                      "value": "1",
+                      "description": "1-based page number."
+                    },
+                    {
+                      "key": "ps",
+                      "value": "20",
+                      "description": "Page size. Default 20, maximum 100."
+                    }
+                  ]
+                },
+                "description": "Finished background tasks submitted in the period (the analyses behind the Activity figures).\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"paging\": {\"pageIndex\": 1, \"pageSize\": 20, \"total\": 12},\n  \"tasks\": [\n    {\n      \"id\": \"AZK3ug2bRZFKXwkiXzZ9\",\n      \"type\": \"REPORT\",\n      \"status\": \"FAILED\",\n      \"projectKey\": \"my-org_force-app\",\n      \"projectName\": \"Force App\",\n      \"branch\": \"feature/login\",\n      \"target\": \"BRANCH\",\n      \"submittedAt\": \"2026-10-12T09:41:07+0000\",\n      \"startedAt\": \"2026-10-12T09:41:09+0000\",\n      \"executedAt\": \"2026-10-12T09:42:51+0000\",\n      \"executionTimeMs\": 102000,\n      \"queueTimeMs\": 2000,\n      \"errorMessage\": \"Analysis report is corrupted\"\n    }\n  ]\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Queued tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/queued_tasks?organization={{organization}}&p=1&ps=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "queued_tasks"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "p",
+                  "value": "1",
+                  "description": "1-based page number."
+                },
+                {
+                  "key": "ps",
+                  "value": "20",
+                  "description": "Page size. Default 20, maximum 100."
+                }
+              ]
+            },
+            "description": "Tasks running or waiting right now: running first, then pending, oldest first.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/queued_tasks?organization={{organization}}&p=1&ps=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "queued_tasks"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    },
+                    {
+                      "key": "p",
+                      "value": "1",
+                      "description": "1-based page number."
+                    },
+                    {
+                      "key": "ps",
+                      "value": "20",
+                      "description": "Page size. Default 20, maximum 100."
+                    }
+                  ]
+                },
+                "description": "Tasks running or waiting right now: running first, then pending, oldest first.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"paging\": {\"pageIndex\": 1, \"pageSize\": 20, \"total\": 2},\n  \"tasks\": [\n    {\n      \"id\": \"AZK3ug2bRZFKXwkiXzZa\",\n      \"type\": \"REPORT\",\n      \"status\": \"IN_PROGRESS\",\n      \"projectKey\": \"my-org_force-app\",\n      \"projectName\": \"Force App\",\n      \"branch\": \"main\",\n      \"target\": \"MAIN\",\n      \"submittedAt\": \"2026-10-12T09:41:07+0000\",\n      \"startedAt\": \"2026-10-12T09:41:09+0000\",\n      \"queueTimeMs\": 2000\n    },\n    {\n      \"id\": \"AZK3ug2bRZFKXwkiXzZb\",\n      \"type\": \"REPORT\",\n      \"status\": \"PENDING\",\n      \"projectKey\": \"my-org_billing\",\n      \"projectName\": \"Billing\",\n      \"branch\": \"42\",\n      \"target\": \"PULL_REQUEST\",\n      \"submittedAt\": \"2026-10-12T09:42:00+0000\",\n      \"queueTimeMs\": 74000\n    }\n  ]\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Projects analyzed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/projects?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&analyzed=true&p=1&ps=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "projects"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "from",
+                  "value": "{{from}}",
+                  "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                },
+                {
+                  "key": "to",
+                  "value": "{{to}}",
+                  "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                },
+                {
+                  "key": "timeZone",
+                  "value": "{{timeZone}}",
+                  "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                },
+                {
+                  "key": "analyzed",
+                  "value": "true",
+                  "description": "true: projects analyzed in the period; false: the ones that were not. Default true."
+                },
+                {
+                  "key": "p",
+                  "value": "1",
+                  "description": "1-based page number."
+                },
+                {
+                  "key": "ps",
+                  "value": "20",
+                  "description": "Page size. Default 20, maximum 100."
+                }
+              ]
+            },
+            "description": "Projects with their analyses in the period, most analyzed first. With analyzed=false, the projects with no analysis in the period instead.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/projects?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&analyzed=true&p=1&ps=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "projects"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    },
+                    {
+                      "key": "from",
+                      "value": "{{from}}",
+                      "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                    },
+                    {
+                      "key": "to",
+                      "value": "{{to}}",
+                      "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                    },
+                    {
+                      "key": "timeZone",
+                      "value": "{{timeZone}}",
+                      "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                    },
+                    {
+                      "key": "analyzed",
+                      "value": "true",
+                      "description": "true: projects analyzed in the period; false: the ones that were not. Default true."
+                    },
+                    {
+                      "key": "p",
+                      "value": "1",
+                      "description": "1-based page number."
+                    },
+                    {
+                      "key": "ps",
+                      "value": "20",
+                      "description": "Page size. Default 20, maximum 100."
+                    }
+                  ]
+                },
+                "description": "Projects with their analyses in the period, most analyzed first. With analyzed=false, the projects with no analysis in the period instead.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"paging\": {\"pageIndex\": 1, \"pageSize\": 20, \"total\": 412},\n  \"projects\": [\n    {\n      \"key\": \"my-org_force-app\",\n      \"name\": \"Force App\",\n      \"analyses\": 58,\n      \"success\": 55,\n      \"failed\": 3,\n      \"canceled\": 0,\n      \"avgExecutionTimeMs\": 61200,\n      \"lastAnalysisAt\": \"2026-10-12T09:41:07+0000\"\n    }\n  ]\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Quality trend",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/quality_trend?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&interval=week",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "quality_trend"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "from",
+                  "value": "{{from}}",
+                  "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                },
+                {
+                  "key": "to",
+                  "value": "{{to}}",
+                  "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                },
+                {
+                  "key": "timeZone",
+                  "value": "{{timeZone}}",
+                  "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                },
+                {
+                  "key": "interval",
+                  "value": "week",
+                  "description": "Size of the timeline buckets: day or week. Default week."
+                }
+              ]
+            },
+            "description": "State of the main branches at the end of every day or week: projects passing/failing their quality gate, open issues, vulnerabilities, blocker issues and remediation effort (minutes).\n\n**Status:** Part of the original Analytics feature. Changed: adds remediationEffortMinutes to every point.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/quality_trend?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&interval=week",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "quality_trend"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    },
+                    {
+                      "key": "from",
+                      "value": "{{from}}",
+                      "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                    },
+                    {
+                      "key": "to",
+                      "value": "{{to}}",
+                      "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                    },
+                    {
+                      "key": "timeZone",
+                      "value": "{{timeZone}}",
+                      "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                    },
+                    {
+                      "key": "interval",
+                      "value": "week",
+                      "description": "Size of the timeline buckets: day or week. Default week."
+                    }
+                  ]
+                },
+                "description": "State of the main branches at the end of every day or week: projects passing/failing their quality gate, open issues, vulnerabilities, blocker issues and remediation effort (minutes).\n\n**Status:** Part of the original Analytics feature. Changed: adds remediationEffortMinutes to every point.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"period\": {\"from\": \"2026-09-14\", \"to\": \"2026-10-11\", \"timeZone\": \"Europe/Paris\", \"interval\": \"week\"},\n  \"timeline\": [\n    {\"date\": \"2026-09-14\", \"projects\": 410, \"passed\": 330, \"failed\": 80, \"openIssues\": 52310, \"vulnerabilities\": 412, \"blockerIssues\": 96, \"remediationEffortMinutes\": 1254000},\n    {\"date\": \"2026-09-21\", \"projects\": 412, \"passed\": 336, \"failed\": 76, \"openIssues\": 51980, \"vulnerabilities\": 398, \"blockerIssues\": 90, \"remediationEffortMinutes\": 1240500},\n    {\"date\": \"2026-09-28\", \"projects\": 415, \"passed\": 341, \"failed\": 74, \"openIssues\": 51022, \"vulnerabilities\": 371, \"blockerIssues\": 84, \"remediationEffortMinutes\": 1221300},\n    {\"date\": \"2026-10-05\", \"projects\": 418, \"passed\": 350, \"failed\": 68, \"openIssues\": 50510, \"vulnerabilities\": 360, \"blockerIssues\": 81, \"remediationEffortMinutes\": 1203900}\n  ]\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Issue resolutions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/issue_resolutions?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&interval=day",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "issue_resolutions"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "from",
+                  "value": "{{from}}",
+                  "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                },
+                {
+                  "key": "to",
+                  "value": "{{to}}",
+                  "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                },
+                {
+                  "key": "timeZone",
+                  "value": "{{timeZone}}",
+                  "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                },
+                {
+                  "key": "interval",
+                  "value": "day",
+                  "description": "Size of the timeline buckets: day or week. Default day."
+                }
+              ]
+            },
+            "description": "Issues introduced and resolved on main branches over the period: fixed, removed, accepted, false positive, reopened. Each issue counts once, for its net change over the period.\n\n**Status:** Part of the original Analytics feature. Changed: counts each issue once by its net change (resolved then reopened counts as neither); reads the changelog through an index.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/issue_resolutions?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&interval=day",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "issue_resolutions"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    },
+                    {
+                      "key": "from",
+                      "value": "{{from}}",
+                      "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                    },
+                    {
+                      "key": "to",
+                      "value": "{{to}}",
+                      "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                    },
+                    {
+                      "key": "timeZone",
+                      "value": "{{timeZone}}",
+                      "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                    },
+                    {
+                      "key": "interval",
+                      "value": "day",
+                      "description": "Size of the timeline buckets: day or week. Default day."
+                    }
+                  ]
+                },
+                "description": "Issues introduced and resolved on main branches over the period: fixed, removed, accepted, false positive, reopened. Each issue counts once, for its net change over the period.\n\n**Status:** Part of the original Analytics feature. Changed: counts each issue once by its net change (resolved then reopened counts as neither); reads the changelog through an index.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"period\": {\"from\": \"2026-10-06\", \"to\": \"2026-10-08\", \"timeZone\": \"Europe/Paris\", \"interval\": \"day\"},\n  \"retentionDays\": 30,\n  \"completeFrom\": \"2026-09-08\",\n  \"totals\": {\n    \"introduced\": 210, \"fixed\": 340, \"removed\": 12, \"accepted\": 25, \"falsePositive\": 9, \"reopened\": 4,\n    \"resolved\": 386, \"fixedByAnalysis\": 331, \"netChange\": -172\n  },\n  \"timeline\": [\n    {\"date\": \"2026-10-06\", \"introduced\": 80, \"fixed\": 120, \"removed\": 0, \"accepted\": 10, \"falsePositive\": 3, \"reopened\": 1},\n    {\"date\": \"2026-10-07\", \"introduced\": 70, \"fixed\": 105, \"removed\": 12, \"accepted\": 8, \"falsePositive\": 4, \"reopened\": 2},\n    {\"date\": \"2026-10-08\", \"introduced\": 60, \"fixed\": 115, \"removed\": 0, \"accepted\": 7, \"falsePositive\": 2, \"reopened\": 1}\n  ]\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Expiring exceptions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/expiring_exceptions?organization={{organization}}&withinDays=30&p=1&ps=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "expiring_exceptions"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "withinDays",
+                  "value": "30",
+                  "description": "Number of days ahead. Default 30, maximum 365."
+                },
+                {
+                  "key": "p",
+                  "value": "1",
+                  "description": "1-based page number."
+                },
+                {
+                  "key": "ps",
+                  "value": "20",
+                  "description": "Page size. Default 20, maximum 100."
+                }
+              ]
+            },
+            "description": "Accepted and false-positive issues of main branches whose exception expires within the given number of days, soonest first.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/expiring_exceptions?organization={{organization}}&withinDays=30&p=1&ps=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "expiring_exceptions"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    },
+                    {
+                      "key": "withinDays",
+                      "value": "30",
+                      "description": "Number of days ahead. Default 30, maximum 365."
+                    },
+                    {
+                      "key": "p",
+                      "value": "1",
+                      "description": "1-based page number."
+                    },
+                    {
+                      "key": "ps",
+                      "value": "20",
+                      "description": "Page size. Default 20, maximum 100."
+                    }
+                  ]
+                },
+                "description": "Accepted and false-positive issues of main branches whose exception expires within the given number of days, soonest first.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"paging\": {\"pageIndex\": 1, \"pageSize\": 20, \"total\": 1},\n  \"exceptions\": [\n    {\n      \"issueKey\": \"AZK3ug2bRZFKXwkiXzZ9\",\n      \"issueStatus\": \"ACCEPTED\",\n      \"expiresAt\": \"2026-10-20T00:00:00+0000\",\n      \"expired\": false,\n      \"rule\": \"apex:AvoidSoqlInLoops\",\n      \"ruleName\": \"SOQL queries should not be in loops\",\n      \"projectKey\": \"my-org_force-app\",\n      \"projectName\": \"Force App\",\n      \"filePath\": \"force-app/main/default/classes/AccountService.cls\"\n    }\n  ]\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Project task statuses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/project_task_statuses?organization={{organization}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "project_task_statuses"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                }
+              ]
+            },
+            "description": "Background task status of every project in one call: running, else pending, else latest finished. Replaces one api/ce/component call per project.\n\n**Status:** New in the performance and enhancement work.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/project_task_statuses?organization={{organization}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "project_task_statuses"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    }
+                  ]
+                },
+                "description": "Background task status of every project in one call: running, else pending, else latest finished. Replaces one api/ce/component call per project.\n\n**Status:** New in the performance and enhancement work.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"projects\": [\n    {\"key\": \"billing-service\", \"status\": \"IN_PROGRESS\"},\n    {\"key\": \"payments-api\", \"status\": \"SUCCESS\"},\n    {\"key\": \"web-portal\", \"status\": \"FAILED\"}\n  ]\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Project issues",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/project_issues?organization={{organization}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "project_issues"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                }
+              ]
+            },
+            "description": "Unresolved issues on the main branch of every project, by type and severity, with the remediation effort in minutes, in one call. Only projects the user can browse.\n\n**Status:** New in the performance and enhancement work.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/project_issues?organization={{organization}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "project_issues"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    }
+                  ]
+                },
+                "description": "Unresolved issues on the main branch of every project, by type and severity, with the remediation effort in minutes, in one call. Only projects the user can browse.\n\n**Status:** New in the performance and enhancement work.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"projects\": [\n    {\n      \"key\": \"payments-api\",\n      \"effortMinutes\": 1840,\n      \"issues\": {\n        \"BUG\": {\"CRITICAL\": 2, \"MAJOR\": 5},\n        \"CODE_SMELL\": {\"MAJOR\": 41, \"MINOR\": 120},\n        \"VULNERABILITY\": {\"BLOCKER\": 1}\n      }\n    },\n    {\n      \"key\": \"web-portal\",\n      \"effortMinutes\": 15,\n      \"issues\": {\n        \"CODE_SMELL\": {\"INFO\": 3}\n      }\n    }\n  ]\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Project quality gates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/project_quality_gates?organization={{organization}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "project_quality_gates"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                }
+              ]
+            },
+            "description": "Quality gate status (OK or ERROR) of every project in one call. Only projects the user can browse; projects with no status are left out.\n\n**Status:** New in the performance and enhancement work.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/project_quality_gates?organization={{organization}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "project_quality_gates"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    }
+                  ]
+                },
+                "description": "Quality gate status (OK or ERROR) of every project in one call. Only projects the user can browse; projects with no status are left out.\n\n**Status:** New in the performance and enhancement work.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"projects\": [\n    {\"key\": \"billing-service\", \"status\": \"OK\"},\n    {\"key\": \"payments-api\", \"status\": \"ERROR\"}\n  ]\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "Security remediation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/security_remediation?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&interval=week",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "security_remediation"
+              ],
+              "query": [
+                {
+                  "key": "organization",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "from",
+                  "value": "{{from}}",
+                  "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                },
+                {
+                  "key": "to",
+                  "value": "{{to}}",
+                  "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                },
+                {
+                  "key": "timeZone",
+                  "value": "{{timeZone}}",
+                  "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                },
+                {
+                  "key": "interval",
+                  "value": "week",
+                  "description": "Size of the timeline buckets: day or week. Default week."
+                },
+                {
+                  "key": "slaDays",
+                  "value": "BLOCKER:7,HIGH:30",
+                  "description": "Days to fix per severity, overriding the defaults (BLOCKER 30, HIGH 30, MEDIUM 90, LOW 180, INFO 365).",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "How fast issues with a security impact get fixed on main branches: median time to fix and share fixed within the SLA of their severity, against the previous period, and the open issues past their SLA.\n\n**Status:** New in the performance and enhancement work.\n\nRequires the *Administer* permission on the organization."
+          },
+          "response": [
+            {
+              "name": "Example",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/analytics/security_remediation?organization={{organization}}&from={{from}}&to={{to}}&timeZone={{timeZone}}&interval=week",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "security_remediation"
+                  ],
+                  "query": [
+                    {
+                      "key": "organization",
+                      "value": "{{organization}}",
+                      "description": "Organization key. Required."
+                    },
+                    {
+                      "key": "from",
+                      "value": "{{from}}",
+                      "description": "First day of the period, included (yyyy-MM-dd). Required. Periods are limited to 180 days."
+                    },
+                    {
+                      "key": "to",
+                      "value": "{{to}}",
+                      "description": "Last day of the period, included (yyyy-MM-dd). Defaults to today."
+                    },
+                    {
+                      "key": "timeZone",
+                      "value": "{{timeZone}}",
+                      "description": "Time zone in which days are read, e.g. Europe/Paris. Defaults to the server time zone."
+                    },
+                    {
+                      "key": "interval",
+                      "value": "week",
+                      "description": "Size of the timeline buckets: day or week. Default week."
+                    },
+                    {
+                      "key": "slaDays",
+                      "value": "BLOCKER:7,HIGH:30",
+                      "description": "Days to fix per severity, overriding the defaults (BLOCKER 30, HIGH 30, MEDIUM 90, LOW 180, INFO 365).",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "How fast issues with a security impact get fixed on main branches: median time to fix and share fixed within the SLA of their severity, against the previous period, and the open issues past their SLA.\n\n**Status:** New in the performance and enhancement work.\n\nRequires the *Administer* permission on the organization."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"period\": {\"from\": \"2026-09-14\", \"to\": \"2026-10-11\", \"timeZone\": \"Europe/Paris\", \"interval\": \"week\"},\n  \"retentionDays\": 30,\n  \"completeFrom\": \"2026-09-12\",\n  \"totals\": {\n    \"fixed\": 42, \"fixedWithinSla\": 35, \"medianTimeToFixMs\": 950400000, \"averageTimeToFixMs\": 1468800000,\n    \"open\": 118, \"openPastSla\": 21\n  },\n  \"previous\": {\n    \"from\": \"2026-08-17\", \"to\": \"2026-09-13\", \"complete\": false,\n    \"fixed\": 30, \"fixedWithinSla\": 22, \"medianTimeToFixMs\": 1728000000\n  },\n  \"severities\": [\n    {\"severity\": \"BLOCKER\", \"slaDays\": 30, \"fixed\": 4, \"fixedWithinSla\": 4, \"medianTimeToFixMs\": 432000000, \"open\": 2, \"openPastSla\": 0, \"oldestOpenAgeMs\": 864000000},\n    {\"severity\": \"HIGH\", \"slaDays\": 30, \"fixed\": 12, \"fixedWithinSla\": 10, \"medianTimeToFixMs\": 1036800000, \"open\": 19, \"openPastSla\": 6, \"oldestOpenAgeMs\": 9504000000},\n    {\"severity\": \"MEDIUM\", \"slaDays\": 90, \"fixed\": 20, \"fixedWithinSla\": 17, \"medianTimeToFixMs\": 1209600000, \"open\": 61, \"openPastSla\": 11, \"oldestOpenAgeMs\": 15552000000},\n    {\"severity\": \"LOW\", \"slaDays\": 180, \"fixed\": 6, \"fixedWithinSla\": 4, \"medianTimeToFixMs\": 2592000000, \"open\": 36, \"openPastSla\": 4, \"oldestOpenAgeMs\": 31104000000},\n    {\"severity\": \"INFO\", \"slaDays\": 365, \"fixed\": 0, \"fixedWithinSla\": 0, \"open\": 0, \"openPastSla\": 0}\n  ],\n  \"timeline\": [\n    {\"date\": \"2026-09-14\", \"fixed\": 9, \"fixedWithinSla\": 7, \"medianTimeToFixMs\": 1123200000},\n    {\"date\": \"2026-09-21\", \"fixed\": 12, \"fixedWithinSla\": 10, \"medianTimeToFixMs\": 1036800000},\n    {\"date\": \"2026-09-28\", \"fixed\": 8, \"fixedWithinSla\": 7, \"medianTimeToFixMs\": 864000000},\n    {\"date\": \"2026-10-05\", \"fixed\": 13, \"fixedWithinSla\": 11, \"medianTimeToFixMs\": 777600000}\n  ]\n}\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CodeScan services · /_codescan/analytics",
+      "description": "Served by codescanng-services, behind the /_codescan path.",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/_codescan/analytics/health?organizationKey={{organization}}&weeks=12",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_codescan",
+                "analytics",
+                "health"
+              ],
+              "query": [
+                {
+                  "key": "organizationKey",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "weeks",
+                  "value": "12",
+                  "description": "Weeks of trend. Default 12, maximum 52."
+                }
+              ]
+            },
+            "description": "Debt health score of the organization (from AI debt analysis): average score, weekly trend, biggest movers, lowest projects, quality gate changes of the last 7 days, top root causes.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *admin* role on the organization."
+          }
+        },
+        {
+          "name": "AI value",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/_codescan/analytics/ai-value?organizationKey={{organization}}&days=90",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_codescan",
+                "analytics",
+                "ai-value"
+              ],
+              "query": [
+                {
+                  "key": "organizationKey",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "days",
+                  "value": "90",
+                  "description": "Period in days. Default 90, maximum 365."
+                }
+              ]
+            },
+            "description": "What the AI add-ons did over the period: AI fix jobs by outcome, issues resolved, pull requests opened and merged, engineering time saved, inline codefix jobs, credits by add-on.\n\n**Status:** Part of the original Analytics feature. Changed: fixJobs adds effortSavedMinutes (remediation effort of the issues AI resolved) and issuesWithoutKnownEffort.\n\nRequires the *admin* role on the organization."
+          }
+        },
+        {
+          "name": "IDE adoption",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/_codescan/analytics/ide-adoption?organizationKey={{organization}}&days=30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_codescan",
+                "analytics",
+                "ide-adoption"
+              ],
+              "query": [
+                {
+                  "key": "organizationKey",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "days",
+                  "value": "30",
+                  "description": "Period in days. Default 30, maximum 365."
+                }
+              ]
+            },
+            "description": "Members who used the CodeScan IDE plugins over the period, by IDE.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *admin* role on the organization."
+          }
+        },
+        {
+          "name": "Pull requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/_codescan/analytics/pull-requests?organizationKey={{organization}}&days=30&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_codescan",
+                "analytics",
+                "pull-requests"
+              ],
+              "query": [
+                {
+                  "key": "organizationKey",
+                  "value": "{{organization}}",
+                  "description": "Organization key. Required."
+                },
+                {
+                  "key": "days",
+                  "value": "30",
+                  "description": "Period in days. Default 30, maximum 365."
+                },
+                {
+                  "key": "type",
+                  "value": "github",
+                  "description": "Only projects of this type. All types when omitted.",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "1-based page."
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "Page size. Default 20, maximum 100."
+                }
+              ]
+            },
+            "description": "Pull request analysis by project type (Salesforce, GitHub, GitLab, Bitbucket, customer CI), then one page of projects.\n\n**Status:** Part of the original Analytics feature.\n\nRequires the *admin* role on the organization."
+          }
+        }
+      ]
+    }
+  ]
+}

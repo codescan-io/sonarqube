@@ -19,13 +19,7 @@
  */
 
 import { QualityTrendPoint, SecurityRemediation } from '../../../api/analytics';
-import {
-  BriefData,
-  briefAsText,
-  buildInsights,
-  computeOrganizationHealth,
-  formatDays,
-} from '../brief';
+import { BriefData, buildInsights, computeOrganizationHealth, formatDays } from '../brief';
 import { AnalysisStatus } from '../utils';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -230,24 +224,6 @@ describe('buildInsights', () => {
         text: 'analytics.brief.insight.remediation_up.100 h',
       }),
     ]);
-  });
-});
-
-describe('briefAsText', () => {
-  it('prints the grade and the insights, with their direction', () => {
-    expect(
-      briefAsText({
-        health: { components: [], grade: 'B', score: 78 },
-        insights: [
-          { key: 'a', text: 'Good news', tone: 'good', weight: 2 },
-          { key: 'b', text: 'Bad news', tone: 'bad', weight: 1 },
-        ],
-        organizationName: 'Acme',
-        periodLabel: 'Last 30 days',
-      }),
-    ).toBe(
-      'analytics.brief.text.title.Acme.Last 30 days\nanalytics.brief.text.health.B.78\n\n▲ Good news\n▼ Bad news',
-    );
   });
 });
 

@@ -52,6 +52,7 @@ import {
   getChange,
   getSuccessRate,
 } from '../activity';
+import { useIsReport } from '../report';
 import ActivityDrilldown from './ActivityDrilldown';
 import BarList from './charts/BarList';
 import ChartCard from './charts/ChartCard';
@@ -63,6 +64,8 @@ import PullRequestsPanel from './PullRequestsPanel';
 import StatTile from './StatTile';
 
 interface Props {
+  /** Period shown first; the report sets it for every tab. */
+  defaultPeriod?: ActivityPeriod;
   organization: string;
 }
 
@@ -91,8 +94,12 @@ const TIME_SERIES = [
  * How much the organization analyses and how long it takes, over the last 7, 30 or 90 days,
  * compared with the period just before.
  */
-export default function ActivityDashboard({ organization }: Readonly<Props>) {
-  const [period, setPeriod] = React.useState<ActivityPeriod>(DEFAULT_ACTIVITY_PERIOD);
+export default function ActivityDashboard({
+  defaultPeriod = DEFAULT_ACTIVITY_PERIOD,
+  organization,
+}: Readonly<Props>) {
+  const isReport = useIsReport();
+  const [period, setPeriod] = React.useState<ActivityPeriod>(defaultPeriod);
   const [activity, setActivity] = React.useState<OrganizationActivity>();
   const [queue, setQueue] = React.useState<OrganizationQueue>();
   const [loading, setLoading] = React.useState(true);
@@ -155,9 +162,11 @@ export default function ActivityDashboard({ organization }: Readonly<Props>) {
         <Spinner loading={loading} />
       ) : (
         <div aria-busy={loading} className={loading ? 'sw-opacity-50' : undefined}>
-          <Text as="p" className="sw-mb-3" isSubdued>
-            {translate('analytics.activity.click_hint')}
-          </Text>
+          {!isReport && (
+            <Text as="p" className="sw-mb-3" isSubdued>
+              {translate('analytics.activity.click_hint')}
+            </Text>
+          )}
           <ActivityTiles
             activity={activity}
             onSelect={toggleDrilldown}

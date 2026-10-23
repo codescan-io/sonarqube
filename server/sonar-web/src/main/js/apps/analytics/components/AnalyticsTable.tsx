@@ -48,6 +48,7 @@ import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { getProjectUrl } from '../../../helpers/urls';
 import { TaskStatuses } from '../../../types/tasks';
 import TaskStatus from '../../background-tasks/components/TaskStatus';
+import { useIsReport } from '../report';
 import {
   AnalysisStatus,
   AnalyticsFilterState,
@@ -84,8 +85,11 @@ const STATUS_ORDER = {
 // Project | Analysis Status | Issue Type | Background Tasks | Last Analysis | Total Issues
 const COLUMN_WIDTHS = ['21%', '13%', '25%', '14%', '16%', '11%'];
 const NO_VALUE = '-';
+// The report lists the projects with the most open issues, not every project of a large organization.
+const REPORT_ROWS = 100;
 
 export default function AnalyticsTable(props: Readonly<Props>) {
+  const isReport = useIsReport();
   const { filters, loading, matrices, onOpenScorecard, projects, taskStatuses } = props;
   const [query, setQuery] = React.useState('');
   const [sort, setSort] = React.useState<{ asc: boolean; key: SortKey }>({
@@ -116,7 +120,9 @@ export default function AnalyticsTable(props: Readonly<Props>) {
     setPaging((current) => ({ ...current, page: 1 }));
   }, [projects, query, sort, filters]);
 
-  const pageRows = rows.slice((paging.page - 1) * paging.pageSize, paging.page * paging.pageSize);
+  const pageRows = isReport
+    ? rows.slice(0, REPORT_ROWS)
+    : rows.slice((paging.page - 1) * paging.pageSize, paging.page * paging.pageSize);
 
   const changeSort = (key: SortKey) =>
     setSort((current) => ({
@@ -166,17 +172,25 @@ export default function AnalyticsTable(props: Readonly<Props>) {
         <h3 className="sw-heading-sm">{translate('analytics.table.title')}</h3>
         <div className="sw-flex sw-items-center sw-gap-4">
           <Text isSubdued>
-            {translateWithParameters(
-              'analytics.table.count',
-              formatMeasure(rows.length, MetricType.Integer),
-            )}
+            {isReport && rows.length > REPORT_ROWS
+              ? translateWithParameters(
+                  'analytics.report.top_projects',
+                  REPORT_ROWS,
+                  formatMeasure(rows.length, MetricType.Integer),
+                )
+              : translateWithParameters(
+                  'analytics.table.count',
+                  formatMeasure(rows.length, MetricType.Integer),
+                )}
           </Text>
-          <InputSearch
-            onChange={setQuery}
-            placeholder={translate('analytics.table.search')}
-            size="medium"
-            value={query}
-          />
+          {!isReport && (
+            <InputSearch
+              onChange={setQuery}
+              placeholder={translate('analytics.table.search')}
+              size="medium"
+              value={query}
+            />
+          )}
         </div>
       </div>
 
@@ -217,13 +231,15 @@ export default function AnalyticsTable(props: Readonly<Props>) {
                     <Link className="sw-truncate" to={getProjectUrl(project.key)}>
                       {project.name}
                     </Link>
-                    <Button
-                      onClick={() => onOpenScorecard(project)}
-                      size={ButtonSize.Medium}
-                      variety={ButtonVariety.DefaultGhost}
-                    >
-                      {translate('analytics.scorecard.button')}
-                    </Button>
+                    {!isReport && (
+                      <Button
+                        onClick={() => onOpenScorecard(project)}
+                        size={ButtonSize.Medium}
+                        variety={ButtonVariety.DefaultGhost}
+                      >
+                        {translate('analytics.scorecard.button')}
+                      </Button>
+                    )}
                   </span>
                 </ContentCell>
                 <ContentCell className="sw-whitespace-nowrap">

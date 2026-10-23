@@ -178,7 +178,7 @@ beforeEach(() => {
 });
 
 it('grades the organization and writes what changed', async () => {
-  renderComponent(<ExecutiveBrief organization="acme" organizationName="Acme" />);
+  renderComponent(<ExecutiveBrief organization="acme" />);
 
   expect(await screen.findByText('analytics.health.title')).toBeInTheDocument();
   // gates 100, security 67, velocity 100, reliability 95, freshness 100
@@ -201,7 +201,7 @@ it('grades the organization and writes what changed', async () => {
 });
 
 it('lists where to act and the leading and lagging teams', async () => {
-  renderComponent(<ExecutiveBrief organization="acme" organizationName="Acme" />);
+  renderComponent(<ExecutiveBrief organization="acme" />);
 
   // failing quality gate and 2 critical vulnerabilities
   expect(await screen.findByText('Web Portal')).toBeInTheDocument();
@@ -217,34 +217,16 @@ it('lists where to act and the leading and lagging teams', async () => {
 it('still writes the brief when CodeScan services do not answer', async () => {
   jest.mocked(getAiValue).mockRejectedValue(new Error('not deployed'));
   jest.mocked(getOrganizationHealth).mockRejectedValue(new Error('not deployed'));
-  renderComponent(<ExecutiveBrief organization="acme" organizationName="Acme" />);
+  renderComponent(<ExecutiveBrief organization="acme" />);
 
   expect(await screen.findByText('analytics.brief.insight.past_sla.2.6')).toBeInTheDocument();
   expect(screen.getByText('analytics.roi.ai_unavailable')).toBeInTheDocument();
   expect(screen.queryByText(/gate_failures/)).not.toBeInTheDocument();
 });
 
-it('copies the brief as text and prints it', async () => {
-  const user = userEvent.setup();
-  const writeText = jest.fn().mockResolvedValue(undefined);
-  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
-  const print = jest.spyOn(window, 'print').mockImplementation(() => undefined);
-  renderComponent(<ExecutiveBrief organization="acme" organizationName="Acme" />);
-  await screen.findByText('analytics.health.title');
-
-  await user.click(screen.getByRole('button', { name: 'analytics.brief.copy' }));
-  expect(writeText).toHaveBeenCalledWith(
-    expect.stringContaining('analytics.brief.text.title.Acme'),
-  );
-  expect(await screen.findByRole('button', { name: 'analytics.brief.copied' })).toBeInTheDocument();
-
-  await user.click(screen.getByRole('button', { name: 'analytics.brief.pdf' }));
-  expect(print).toHaveBeenCalled();
-});
-
 it('reloads for another period', async () => {
   const user = userEvent.setup();
-  renderComponent(<ExecutiveBrief organization="acme" organizationName="Acme" />);
+  renderComponent(<ExecutiveBrief organization="acme" />);
   await screen.findByText('analytics.health.title');
 
   await user.click(screen.getByRole('radio', { name: 'analytics.quality.period.90' }));

@@ -67,6 +67,7 @@ import {
   SLA_SEVERITIES,
   getAgeBuckets,
 } from '../quality';
+import { useIsReport } from '../report';
 import BarList from './charts/BarList';
 import ChartCard from './charts/ChartCard';
 import { MAGNITUDE_COLOR, RESOLUTION_COLORS, STATUS_COLORS, tint } from './charts/colors';
@@ -77,6 +78,8 @@ import SecurityRemediationPanel from './SecurityRemediationPanel';
 import StatTile from './StatTile';
 
 interface Props {
+  /** Period shown first; the report sets it for every tab. */
+  defaultPeriod?: QualityPeriod;
   organization: string;
 }
 
@@ -177,8 +180,11 @@ async function fetchQualityData(organization: string, days: QualityPeriod): Prom
 /**
  * Is quality getting better, where is the security risk, and which accepted risks need a second look.
  */
-export default function QualityDashboard({ organization }: Readonly<Props>) {
-  const [period, setPeriod] = React.useState<QualityPeriod>(DEFAULT_QUALITY_PERIOD);
+export default function QualityDashboard({
+  defaultPeriod = DEFAULT_QUALITY_PERIOD,
+  organization,
+}: Readonly<Props>) {
+  const [period, setPeriod] = React.useState<QualityPeriod>(defaultPeriod);
   const [data, setData] = React.useState<QualityData>();
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
@@ -598,6 +604,7 @@ function ExpiringTable({
   expiring: initial,
   organization,
 }: Readonly<{ expiring: QualityData['expiring']; organization: string }>) {
+  const isReport = useIsReport();
   const [expiring, setExpiring] = React.useState(initial);
   const [page, setPage] = React.useState(1);
   const [loading, setLoading] = React.useState(false);
@@ -677,8 +684,8 @@ function ExpiringTable({
       </Table>
       <ListFooter
         className="sw-mt-3"
+        loadMore={isReport ? undefined : loadMore}
         count={expiring.exceptions.length}
-        loadMore={loadMore}
         loading={loading}
         total={expiring.total}
       />

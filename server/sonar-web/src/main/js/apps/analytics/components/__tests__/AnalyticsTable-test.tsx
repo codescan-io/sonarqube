@@ -21,6 +21,7 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderComponent } from '../../../../helpers/testReactTestingUtils';
+import { ReportContext } from '../../report';
 import { AnalysisStatus, AnalyticsProject, DEFAULT_FILTERS } from '../../utils';
 import AnalyticsTable from '../AnalyticsTable';
 
@@ -81,5 +82,29 @@ it('goes back to the first page when searching', async () => {
   expect(shownProjects()).toHaveLength(9);
   expect(
     screen.queryByRole('navigation', { name: 'analytics.pagination.label' }),
+  ).not.toBeInTheDocument();
+});
+
+it('lists the projects without controls in the report', () => {
+  renderComponent(
+    <ReportContext.Provider value>
+      <AnalyticsTable
+        filters={DEFAULT_FILTERS}
+        loading={false}
+        matrices={{}}
+        onOpenScorecard={jest.fn()}
+        projects={projects}
+        taskStatuses={{}}
+      />
+    </ReportContext.Provider>,
+  );
+
+  expect(shownProjects()).toHaveLength(30);
+  expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('navigation', { name: 'analytics.pagination.label' }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'analytics.scorecard.button' }),
   ).not.toBeInTheDocument();
 });

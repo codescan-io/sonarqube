@@ -302,9 +302,7 @@ it('shows how many issues were introduced and resolved, and how', async () => {
     .click(screen.getByRole('button', { name: /^analytics\.quality\.resolved/ }));
   expect(mockNavigate).toHaveBeenCalledWith(
     expect.objectContaining({
-      search: expect.stringMatching(
-        /issueStatuses=FIXED(,|%2C)ACCEPTED(,|%2C)FALSE_POSITIVE$/,
-      ),
+      search: expect.stringMatching(/issueStatuses=FIXED(,|%2C)ACCEPTED(,|%2C)FALSE_POSITIVE$/),
     }),
   );
   expect(screen.getByText('analytics.quality.net_down.40')).toBeInTheDocument();

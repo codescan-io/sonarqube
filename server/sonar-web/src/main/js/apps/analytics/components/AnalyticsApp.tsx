@@ -18,6 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import { Button, DropdownMenu, DropdownMenuAlign, IconDownload } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
@@ -33,9 +34,11 @@ import handleRequiredAuthorization from '../../../app/utils/handleRequiredAuthor
 import { translate } from '../../../helpers/l10n';
 import { Organization } from '../../../types/types';
 import { withOrganizationContext } from '../../organizations/OrganizationContext';
+import { REPORT_PERIODS, ReportPeriod } from '../report';
 import { canViewAnalytics } from '../utils';
 import ActivityDashboard from './ActivityDashboard';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import AnalyticsReport from './AnalyticsReport';
 import ExecutiveBrief from './ExecutiveBrief';
 import QualityDashboard from './QualityDashboard';
 import ValueDashboard from './ValueDashboard';
@@ -75,6 +78,9 @@ export function AnalyticsApp({ organization }: Readonly<Props>) {
       { replace: true },
     );
 
+  const [reportPeriod, setReportPeriod] = React.useState<ReportPeriod>();
+  const closeReport = React.useCallback(() => setReportPeriod(undefined), []);
+
   React.useEffect(() => {
     if (!allowed) {
       handleRequiredAuthorization();
@@ -91,28 +97,52 @@ export function AnalyticsApp({ organization }: Readonly<Props>) {
         <Helmet defer={false} title={translate('analytics.page')} />
         <header className="sw-mb-6 sw-flex sw-items-center sw-justify-between sw-gap-4">
           <Title className="sw-mb-0">{translate('analytics.page')}</Title>
-          <ToggleButton
-            onChange={changeTab}
-            options={[
-              { label: translate('analytics.tab.brief'), value: AnalyticsTab.Brief },
-              { label: translate('analytics.tab.overview'), value: AnalyticsTab.Overview },
-              { label: translate('analytics.tab.quality'), value: AnalyticsTab.Quality },
-              { label: translate('analytics.tab.activity'), value: AnalyticsTab.Activity },
-              { label: translate('analytics.tab.value'), value: AnalyticsTab.Value },
-            ]}
-            role="tablist"
-            value={tab}
-          />
-        </header>
-        <div aria-labelledby={getTabId(tab)} id={getTabPanelId(tab)} role="tabpanel">
-          {tab === AnalyticsTab.Brief && (
-            <ExecutiveBrief organization={organization.kee} organizationName={organization.name} />
+          {reportPeriod === undefined && (
+            <span className="sw-flex sw-items-center sw-gap-4">
+              <ToggleButton
+                onChange={changeTab}
+                options={[
+                  { label: translate('analytics.tab.brief'), value: AnalyticsTab.Brief },
+                  { label: translate('analytics.tab.overview'), value: AnalyticsTab.Overview },
+                  { label: translate('analytics.tab.quality'), value: AnalyticsTab.Quality },
+                  { label: translate('analytics.tab.activity'), value: AnalyticsTab.Activity },
+                  { label: translate('analytics.tab.value'), value: AnalyticsTab.Value },
+                ]}
+                role="tablist"
+                value={tab}
+              />
+              <DropdownMenu.Root
+                align={DropdownMenuAlign.End}
+                header={{ label: translate('analytics.report.download_period') }}
+                items={REPORT_PERIODS.map((days) => (
+                  <DropdownMenu.ItemButton key={days} onClick={() => setReportPeriod(days)}>
+                    {translate('analytics.quality.period', String(days))}
+                  </DropdownMenu.ItemButton>
+                ))}
+              >
+                <Button prefix={<IconDownload />}>{translate('analytics.report.download')}</Button>
+              </DropdownMenu.Root>
+            </span>
           )}
-          {tab === AnalyticsTab.Overview && <AnalyticsDashboard organization={organization.kee} />}
-          {tab === AnalyticsTab.Quality && <QualityDashboard organization={organization.kee} />}
-          {tab === AnalyticsTab.Activity && <ActivityDashboard organization={organization.kee} />}
-          {tab === AnalyticsTab.Value && <ValueDashboard organization={organization.kee} />}
-        </div>
+        </header>
+        {reportPeriod !== undefined ? (
+          <AnalyticsReport
+            onDone={closeReport}
+            organization={organization.kee}
+            organizationName={organization.name}
+            period={reportPeriod}
+          />
+        ) : (
+          <div aria-labelledby={getTabId(tab)} id={getTabPanelId(tab)} role="tabpanel">
+            {tab === AnalyticsTab.Brief && <ExecutiveBrief organization={organization.kee} />}
+            {tab === AnalyticsTab.Overview && (
+              <AnalyticsDashboard organization={organization.kee} />
+            )}
+            {tab === AnalyticsTab.Quality && <QualityDashboard organization={organization.kee} />}
+            {tab === AnalyticsTab.Activity && <ActivityDashboard organization={organization.kee} />}
+            {tab === AnalyticsTab.Value && <ValueDashboard organization={organization.kee} />}
+          </div>
+        )}
       </PageContentFontWrapper>
     </LargeCenteredLayout>
   );

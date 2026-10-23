@@ -327,22 +327,3 @@ export function formatDays(ms: number) {
     rounded,
   );
 }
-
-/** Plain text of the brief, to paste in an email or a chat. */
-export function briefAsText(params: {
-  health: Health;
-  insights: Insight[];
-  organizationName: string;
-  periodLabel: string;
-}) {
-  const { health, insights, organizationName, periodLabel } = params;
-  const lines = [
-    translateWithParameters('analytics.brief.text.title', organizationName, periodLabel),
-    health.score === undefined
-      ? ''
-      : translateWithParameters('analytics.brief.text.health', health.grade ?? '', health.score),
-    '',
-    ...insights.map(({ text, tone }) => `${{ good: '▲', bad: '▼', neutral: '•' }[tone]} ${text}`),
-  ];
-  return lines.filter((line, i) => line !== '' || i === 2).join('\n');
-}

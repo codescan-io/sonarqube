@@ -33,6 +33,7 @@ import { MetricType } from '~sonar-aligned/types/metrics';
 import { translate } from '../../../helpers/l10n';
 import { getOrgIssuesUrl } from '../../../helpers/urls';
 import { TaskStatuses } from '../../../types/tasks';
+import { useIsReport } from '../report';
 import {
   AnalysisStatus,
   AnalyticsFilterState,
@@ -88,6 +89,7 @@ const TASK_STATUSES: Array<{ color: string; icon: React.ReactNode; status: TaskS
 ];
 
 export default function AnalyticsCharts(props: Readonly<Props>) {
+  const isReport = useIsReport();
   const { filters, loadingIssues, loadingTasks, matrices, now, onChange, organization } = props;
   const { projectsIgnoring, taskStatuses } = props;
 
@@ -162,9 +164,11 @@ export default function AnalyticsCharts(props: Readonly<Props>) {
 
   return (
     <>
-      <Text as="p" className="sw-mb-3" isSubdued>
-        {translate('analytics.chart.click_hint')}
-      </Text>
+      {!isReport && (
+        <Text as="p" className="sw-mb-3" isSubdued>
+          {translate('analytics.chart.click_hint')}
+        </Text>
+      )}
       <div className="sw-grid sw-grid-cols-12 sw-gap-6 sw-mb-8">
         <ChartCard className="sw-col-span-4" title={translate('analytics.chart.quality_gate')}>
           <Donut

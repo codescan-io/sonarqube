@@ -32,6 +32,7 @@ import {
 } from '../../../api/codescan-analytics';
 import DateTimeFormatter from '../../../components/intl/DateTimeFormatter';
 import { hasMessage, translate, translateWithParameters } from '../../../helpers/l10n';
+import { useIsReport } from '../report';
 import ChartCard from './charts/ChartCard';
 import { MAGNITUDE_COLOR } from './charts/colors';
 import InlineBar from './charts/InlineBar';
@@ -59,6 +60,7 @@ function pullRequestsUrl(projectKey: string) {
  * so it stays hidden when CodeScan's services do not answer.
  */
 export default function PullRequestsPanel({ days, organization }: Readonly<Props>) {
+  const isReport = useIsReport();
   const [type, setType] = React.useState<string>();
   const [data, setData] = React.useState<PullRequestAnalytics>();
   const [rows, setRows] = React.useState<PullRequestProjectStats[]>([]);
@@ -251,7 +253,7 @@ export default function PullRequestsPanel({ days, organization }: Readonly<Props
               <Text isSubdued>
                 {translateWithParameters('x_of_y_shown', rows.length, data.total)}
               </Text>
-              {rows.length < data.total && (
+              {!isReport && rows.length < data.total && (
                 <Button isDisabled={loading} onClick={loadMore}>
                   {translate('analytics.table.show_more')}
                 </Button>

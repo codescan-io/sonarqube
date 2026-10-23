@@ -26,6 +26,7 @@ import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricType } from '~sonar-aligned/types/metrics';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { TaskStatuses } from '../../../types/tasks';
+import { useIsReport } from '../report';
 import { formatHours } from '../roi';
 import { Team, computeTeams, hasTeams } from '../teams';
 import { AnalyticsProject, IssueMatrix, UNTAGGED } from '../utils';
@@ -53,6 +54,7 @@ const COLUMNS = ['24%', '8%', '9%', '17%', '10%', '12%', '20%'];
  * security exposure and remediation cost, healthiest first. Clicking a team scopes the whole page to it.
  */
 export default function TeamLeaderboard(props: Readonly<Props>) {
+  const isReport = useIsReport();
   const { effortMinutes, loading, matrices, now, onSelect, projects, selectedTag, taskStatuses } =
     props;
   const [expanded, setExpanded] = React.useState(false);
@@ -70,7 +72,7 @@ export default function TeamLeaderboard(props: Readonly<Props>) {
     );
   }
 
-  const shown = expanded ? teams : teams.slice(0, SHOWN);
+  const shown = expanded || isReport ? teams : teams.slice(0, SHOWN);
   const name = (tag: string) => (tag === UNTAGGED ? translate('analytics.teams.untagged') : tag);
 
   return (
@@ -105,7 +107,7 @@ export default function TeamLeaderboard(props: Readonly<Props>) {
           />
         ))}
       </Table>
-      {teams.length > SHOWN && (
+      {!isReport && teams.length > SHOWN && (
         <div className="sw-flex sw-justify-center sw-mt-3">
           <Button onClick={() => setExpanded(!expanded)} variety={ButtonVariety.DefaultGhost}>
             {expanded

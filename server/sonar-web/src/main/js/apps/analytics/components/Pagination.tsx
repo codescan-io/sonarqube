@@ -28,6 +28,7 @@ import {
 } from '@sonarsource/echoes-react';
 import { ToggleButton } from '~design-system';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
+import { useIsReport } from '../report';
 
 export const PAGE_SIZES = [10, 25, 50] as const;
 
@@ -44,8 +45,9 @@ interface Props {
  * Only one page of rows is rendered at a time, however many projects the organization has.
  */
 export default function Pagination({ onChange, page, pageSize, total }: Readonly<Props>) {
+  const isReport = useIsReport();
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  if (total <= PAGE_SIZES[0]) {
+  if (isReport || total <= PAGE_SIZES[0]) {
     return null;
   }
   const first = (page - 1) * pageSize + 1;

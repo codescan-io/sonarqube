@@ -18,18 +18,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { Global, css } from '@emotion/react';
 import styled from '@emotion/styled';
 import {
-  Button,
-  ButtonVariety,
   IconArrowDownRight,
   IconArrowRight,
   IconArrowUpRight,
   IconCheckCircle,
   IconClock,
-  IconCopy,
-  IconDownload,
   IconSecurityFinding,
   IconSparkle,
   Text,
@@ -45,17 +40,9 @@ import {
   getSecurityRemediation,
 } from '../../../api/analytics';
 import { getAiValue, getOrganizationHealth } from '../../../api/codescan-analytics';
-import DateFormatter from '../../../components/intl/DateFormatter';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { formatChange, getActivityRequest, getChange } from '../activity';
-import {
-  BriefData,
-  Insight,
-  briefAsText,
-  buildInsights,
-  computeOrganizationHealth,
-  formatDays,
-} from '../brief';
+import { BriefData, Insight, buildInsights, computeOrganizationHealth, formatDays } from '../brief';
 import { Health, share } from '../health';
 import { QUALITY_PERIODS, QualityPeriod, getFocusList } from '../quality';
 import { formatHours } from '../roi';
@@ -70,14 +57,14 @@ import HealthGrade, { GRADE_COLORS } from './HealthGrade';
 import StatTile from './StatTile';
 
 interface Props {
+  /** Period shown first; the report sets it for every tab. */
+  defaultPeriod?: QualityPeriod;
   organization: string;
-  organizationName: string;
 }
 
 const DEFAULT_BRIEF_PERIOD: QualityPeriod = 30;
 const TOP_RISKS = 3;
 const TEAMS_SHOWN = 3;
-const PRINT_ROOT_ID = 'analytics-brief';
 
 /** Every part but the quality trend is optional: a part that fails is left out of the brief. */
 async function fetchBrief(organization: string, days: number): Promise<BriefData> {
@@ -105,13 +92,15 @@ async function fetchBrief(organization: string, days: number): Promise<BriefData
  * One page for leadership: an organization health grade and what it is made of, the headline numbers with how they
  * moved, a written summary of what changed, and where to act. It prints to a clean PDF and copies as plain text.
  */
-export default function ExecutiveBrief({ organization, organizationName }: Readonly<Props>) {
+export default function ExecutiveBrief({
+  defaultPeriod = DEFAULT_BRIEF_PERIOD,
+  organization,
+}: Readonly<Props>) {
   const [now] = React.useState(() => new Date());
-  const [period, setPeriod] = React.useState<QualityPeriod>(DEFAULT_BRIEF_PERIOD);
+  const [period, setPeriod] = React.useState<QualityPeriod>(defaultPeriod);
   const [data, setData] = React.useState<BriefData>();
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
   const overview = useOverviewData(organization);
 
   React.useEffect(() => {
@@ -142,28 +131,10 @@ export default function ExecutiveBrief({ organization, organizationName }: Reado
     [data, overview.projects, now],
   );
   const insights = React.useMemo(() => (data ? buildInsights(data) : []), [data]);
-  const periodLabel = translate('analytics.quality.period', String(period));
-
-  const copy = () => {
-    if (!health) {
-      return;
-    }
-    navigator.clipboard
-      ?.writeText(briefAsText({ health, insights, organizationName, periodLabel }))
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(() => undefined);
-  };
 
   return (
-    <div id={PRINT_ROOT_ID}>
-      <Global styles={printStyles} />
-      <div
-        className="sw-flex sw-flex-wrap sw-items-center sw-justify-between sw-gap-4 sw-mb-6"
-        data-print="hide"
-      >
+    <div>
+      <div className="sw-mb-6">
         <ToggleButton
           label={translate('analytics.activity.period')}
           onChange={(value) => setPeriod(value as QualityPeriod)}
@@ -173,29 +144,7 @@ export default function ExecutiveBrief({ organization, organizationName }: Reado
           }))}
           value={period}
         />
-        <span className="sw-flex sw-flex-wrap sw-items-center sw-gap-3">
-          <Button isDisabled={!health} onClick={copy} prefix={<IconCopy />}>
-            {translate(copied ? 'analytics.brief.copied' : 'analytics.brief.copy')}
-          </Button>
-          <Button
-            isDisabled={!health}
-            onClick={() => window.print()}
-            prefix={<IconDownload />}
-            variety={ButtonVariety.Primary}
-          >
-            {translate('analytics.brief.pdf')}
-          </Button>
-        </span>
       </div>
-
-      <PrintOnly className="sw-mb-4">
-        <h2 className="sw-heading-lg">
-          {translateWithParameters('analytics.brief.text.title', organizationName, periodLabel)}
-        </h2>
-        <Text isSubdued>
-          <DateFormatter date={now} long />
-        </Text>
-      </PrintOnly>
 
       {error && (
         <FlagMessage className="sw-mb-4" variant="error">
@@ -548,35 +497,6 @@ function TeamsAtAGlance({
     </ChartCard>
   );
 }
-
-// Printing the brief keeps only the brief, without the page chrome or the controls, so it saves as a clean PDF.
-const printStyles = css`
-  @media print {
-    body * {
-      visibility: hidden;
-    }
-    #${PRINT_ROOT_ID}, #${PRINT_ROOT_ID} * {
-      visibility: visible;
-    }
-    #${PRINT_ROOT_ID} {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-    }
-    #${PRINT_ROOT_ID} [data-print='hide'] {
-      display: none;
-    }
-  }
-`;
-
-const PrintOnly = styled.div`
-  display: none;
-
-  @media print {
-    display: block;
-  }
-`;
 
 const Score = styled.span`
   font-size: 2.5rem;

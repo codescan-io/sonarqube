@@ -40,6 +40,8 @@ import EngineeringRoi from './EngineeringRoi';
 import StatTile from './StatTile';
 
 interface Props {
+  /** Period shown first; the report sets it for every tab. */
+  defaultPeriod?: QualityPeriod;
   organization: string;
 }
 
@@ -47,8 +49,11 @@ interface Props {
  * What CodeScan delivered beyond analysis: AI fixes, the credits they used, and how many members bring
  * analysis into their IDE.
  */
-export default function ValueDashboard({ organization }: Readonly<Props>) {
-  const [period, setPeriod] = React.useState<QualityPeriod>(DEFAULT_QUALITY_PERIOD);
+export default function ValueDashboard({
+  defaultPeriod = DEFAULT_QUALITY_PERIOD,
+  organization,
+}: Readonly<Props>) {
+  const [period, setPeriod] = React.useState<QualityPeriod>(defaultPeriod);
   const [ai, setAi] = React.useState<AiValue>();
   const [ide, setIde] = React.useState<IdeAdoption>();
   const [loading, setLoading] = React.useState(true);
