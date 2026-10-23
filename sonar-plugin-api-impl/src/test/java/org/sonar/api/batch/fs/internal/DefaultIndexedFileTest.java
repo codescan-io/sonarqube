@@ -28,12 +28,12 @@ import org.junit.Test;
 public class DefaultIndexedFileTest {
   @Test
   public void fail_to_index_if_file_key_too_long() {
-    String path = StringUtils.repeat("a", 395);
+    String path = StringUtils.repeat("a", 994);
     String projectKey = "12345";
     Path baseDir = Paths.get("");
     Assertions.assertThatThrownBy(() -> new DefaultIndexedFile(projectKey, baseDir, path, null))
       .isInstanceOf(IllegalStateException.class)
-      .hasMessageEndingWith("length (401) is longer than the maximum authorized (400)");
+      .hasMessageEndingWith("length (1000) is longer than the maximum authorized (999)");
   }
 
   @Test
