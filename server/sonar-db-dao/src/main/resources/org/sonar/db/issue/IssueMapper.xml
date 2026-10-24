@@ -219,6 +219,36 @@
   <!--
     IMPORTANT - invariant columns can't be updated. See IssueDto#toDtoForUpdate()
   -->
+  <!--
+    CodeScan: the two halves of a bulk transition. `selectTransitionable` is run first, in the same transaction and
+    under the same predicate as the update, so the rows it returns are exactly the rows the update will move - which
+    is what lets the caller write the changelog without reading anything back afterwards.
+
+    The predicate mirrors IssueWorkflow's resolve transitions: they run from OPEN, REOPENED or CONFIRMED, and
+    IsNotHotspot excludes security hotspots (issue_type 4).
+  -->
+  <select id="selectTransitionable" parameterType="map" resultType="org.sonar.db.issue.IssueKeyStatusDto">
+    select i.kee as kee, i.status as status, i.component_uuid as componentUuid
+    from issues i
+    where i.status in ('OPEN', 'REOPENED', 'CONFIRMED')
+      and i.issue_type &lt;&gt; 4
+      and i.kee in
+      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+  </select>
+
+  <update id="bulkTransition" parameterType="map">
+    update issues
+    set status = 'RESOLVED',
+      resolution = #{resolution,jdbcType=VARCHAR},
+      assignee = null,
+      issue_update_date = #{now,jdbcType=BIGINT},
+      updated_at = #{now,jdbcType=BIGINT}
+    where status in ('OPEN', 'REOPENED', 'CONFIRMED')
+      and issue_type &lt;&gt; 4
+      and kee in
+      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+  </update>
+
   <update id="update" parameterType="Issue">
     update issues set
     severity=#{severity,jdbcType=VARCHAR},

@@ -79,6 +79,7 @@ public class IssueWsModule extends Module {
       AuthorsAction.class,
       ChangelogAction.class,
       BulkChangeAction.class,
+      BulkTransitionAction.class,
       QGChangeEventListenersImpl.class,
       TaintChecker.class,
       PullAction.class,
