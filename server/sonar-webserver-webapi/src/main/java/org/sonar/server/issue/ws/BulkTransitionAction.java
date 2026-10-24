@@ -179,26 +179,36 @@ public class BulkTransitionAction implements IssuesWsAction {
     // runs first, under the same predicate the update uses, so it is exactly the set the update will move - which
     // is what makes a read-back afterwards unnecessary.
     long selectMs;
-    long updateMs;
-    long changelogMs;
-    long commitMs;
+    long updateMs = 0;
+    long changelogMs = 0;
+    long commitMs = 0;
+    boolean nothingToMove = false;
     try (DbSession dbSession = dbClient.openSession(true)) {
       long t0 = system2.now();
       movable = dbClient.issueDao().selectTransitionable(dbSession, issueKeys);
       selectMs = system2.now() - t0;
-      if (movable.isEmpty()) {
-        return new Result(List.of(), issueKeys);
+      nothingToMove = movable.isEmpty();
+      if (!nothingToMove) {
+        t0 = system2.now();
+        dbClient.issueDao().bulkTransition(dbSession, movable.stream().map(IssueKeyStatusDto::getKee).toList(),
+          resolution, now);
+        updateMs = system2.now() - t0;
+        t0 = system2.now();
+        writeChangelog(dbSession, movable, resolution, branchUuid, changeAuthor, comment, now);
+        changelogMs = system2.now() - t0;
+        t0 = system2.now();
+        dbSession.commit();
+        commitMs = system2.now() - t0;
       }
-      t0 = system2.now();
-      dbClient.issueDao().bulkTransition(dbSession, movable.stream().map(IssueKeyStatusDto::getKee).toList(),
-        resolution, now);
-      updateMs = system2.now() - t0;
-      t0 = system2.now();
-      writeChangelog(dbSession, movable, resolution, branchUuid, changeAuthor, comment, now);
-      changelogMs = system2.now() - t0;
-      t0 = system2.now();
-      dbSession.commit();
-      commitMs = system2.now() - t0;
+    }
+
+    if (nothingToMove) {
+      // The caller may still be asking for the recomputation its run owes: a run that was stopped or failed asks
+      // this way, naming keys it has already resolved. Which components its earlier chunks touched is not known
+      // here and it cannot send them all, so the branch is recomputed whole.
+      long onlyMeasuresMs = refreshMeasures ? refreshMeasuresOfBranch(branchUuid) : 0;
+      LOG.info("bulk_transition 0 issues: select={}ms measures={}ms", selectMs, onlyMeasuresMs);
+      return new Result(List.of(), issueKeys);
     }
 
     List<String> transitioned = movable.stream().map(IssueKeyStatusDto::getKee).toList();
@@ -214,6 +224,24 @@ public class BulkTransitionAction implements IssuesWsAction {
     Set<String> moved = new HashSet<>(transitioned);
     List<String> notTransitioned = issueKeys.stream().filter(key -> !moved.contains(key)).toList();
     return new Result(transitioned, notTransitioned);
+  }
+
+  /**
+   * Recomputes the whole branch, for a run that is settling after a stop or a failure. It costs no more than a
+   * chunk-sized refresh of a project this size, because the recomputation saturates once most of the tree is
+   * touched, and unlike a chunk-sized one it leaves nothing stale.
+   */
+  private long refreshMeasuresOfBranch(String branchUuid) {
+    long startedAt = system2.now();
+    try (DbSession dbSession = dbClient.openSession(false)) {
+      List<ComponentDto> components = dbClient.componentDao().selectByBranchUuid(branchUuid, dbSession);
+      if (components.isEmpty()) {
+        return 0;
+      }
+      issueChangePostProcessor.process(dbSession, List.of(), components, false);
+      dbSession.commit();
+    }
+    return system2.now() - startedAt;
   }
 
   /**
