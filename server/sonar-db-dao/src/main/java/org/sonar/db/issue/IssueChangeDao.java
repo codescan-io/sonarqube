@@ -23,8 +23,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import javax.annotation.Nullable;
 import org.apache.ibatis.session.ResultHandler;
 import org.sonar.core.issue.FieldDiffs;
+import org.sonar.core.util.UuidFactory;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
 
@@ -34,6 +36,36 @@ import static org.sonar.db.DatabaseUtils.executeLargeInputsWithoutOutput;
 import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
 
 public class IssueChangeDao implements Dao {
+
+  /** Leaves room in the 40-character uuid column for the row number the SQL appends. */
+  private static final int PREFIX_LENGTH = 30;
+
+  /**
+   * Writes the diff rows of a bulk transition, one statement per partition instead of one per issue. Must run
+   * before the issues are updated: the diff records the status they are moving away from.
+   */
+  public void insertTransitionDiffs(DbSession session, Collection<String> keys, String resolution,
+    String issueStatus, String branchUuid, @Nullable String changeAuthor, long now, UuidFactory uuidFactory) {
+    executeLargeInputsWithoutOutput(keys, partition -> mapper(session).insertTransitionDiffs(partition, resolution,
+      issueStatus, branchUuid, changeAuthor, now, rowKeyPrefix(uuidFactory)));
+  }
+
+  /** Writes one comment row per transitioned issue, under the same predicate and partitioning as the diffs. */
+  public void insertTransitionComments(DbSession session, Collection<String> keys, String comment,
+    String branchUuid, @Nullable String changeAuthor, long now, UuidFactory uuidFactory) {
+    executeLargeInputsWithoutOutput(keys, partition -> mapper(session).insertTransitionComments(partition, comment,
+      branchUuid, changeAuthor, now, rowKeyPrefix(uuidFactory), rowKeyPrefix(uuidFactory)));
+  }
+
+  /**
+   * A per-statement prefix the SQL completes with a row number, because no uuid function is available on every
+   * supported dialect. Hyphens are dropped and the tail is kept so the result fits the 40-character uuid column
+   * and still varies under {@link org.sonar.core.util.SequenceUuidFactory}, whose uuids differ only at the end.
+   */
+  private static String rowKeyPrefix(UuidFactory uuidFactory) {
+    String compact = uuidFactory.create().replace("-", "");
+    return compact.length() <= PREFIX_LENGTH ? compact : compact.substring(compact.length() - PREFIX_LENGTH);
+  }
 
   public List<FieldDiffs> selectChangelogByIssue(DbSession session, String issueKey) {
     return selectByTypeAndIssueKeys(session, singletonList(issueKey), IssueChangeDto.TYPE_FIELD_CHANGE)

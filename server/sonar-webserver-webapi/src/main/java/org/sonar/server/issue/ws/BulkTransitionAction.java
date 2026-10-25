@@ -80,6 +80,7 @@ public class BulkTransitionAction implements IssuesWsAction {
   private static final String PARAM_COMMENT = "comment";
   private static final String PARAM_REFRESH_MEASURES = "refreshMeasures";
   private static final String PARAM_BRANCH_UUID = "branchUuid";
+  private static final String PARAM_SET_BASED_CHANGELOG = "setBasedChangelog";
 
   /** Keeps one request's key list, its changelog rows and its index batch to a size the heap does not notice. */
   static final int MAX_ISSUES = 50_000;
@@ -137,6 +138,12 @@ public class BulkTransitionAction implements IssuesWsAction {
       .setDescription("Uuid of the user the change is attributed to. Defaults to the caller.");
     action.createParam(PARAM_COMMENT)
       .setDescription("Comment to add to every resolved issue. Omitted means no comment is written.");
+    action.createParam(PARAM_SET_BASED_CHANGELOG)
+      .setDescription("Write the changelog with one statement per partition instead of one insert per row. "
+        + "Both paths produce the same rows; this selects which one, so the two can be compared on the same "
+        + "build.")
+      .setBooleanPossibleValues()
+      .setDefaultValue("false");
     action.createParam(PARAM_REFRESH_MEASURES)
       .setDescription("Recompute the branch's live measures and quality gate once this chunk is written. The "
         + "caller sets it on its last chunk only: doing it per chunk is the per-call cost this action exists to "
@@ -158,8 +165,10 @@ public class BulkTransitionAction implements IssuesWsAction {
     String changeAuthor = request.param(PARAM_CHANGE_AUTHOR);
     String comment = request.param(PARAM_COMMENT);
     boolean refreshMeasures = request.mandatoryParamAsBoolean(PARAM_REFRESH_MEASURES);
+    boolean setBasedChangelog = request.mandatoryParamAsBoolean(PARAM_SET_BASED_CHANGELOG);
 
-    Result result = apply(issueKeys, resolution, branchUuid, changeAuthor, comment, refreshMeasures);
+    Result result = apply(issueKeys, resolution, branchUuid, changeAuthor, comment, refreshMeasures,
+      setBasedChangelog);
 
     try (JsonWriter json = response.newJsonWriter()) {
       json.beginObject()
@@ -172,7 +181,8 @@ public class BulkTransitionAction implements IssuesWsAction {
   }
 
   private Result apply(List<String> issueKeys, String resolution, String branchUuid,
-    @Nullable String changeAuthor, @Nullable String comment, boolean refreshMeasures) {
+    @Nullable String changeAuthor, @Nullable String comment, boolean refreshMeasures,
+    boolean setBasedChangelog) {
     long now = system2.now();
     List<IssueKeyStatusDto> movable;
     // One session for the whole chunk: the issues and their changelog are written together or not at all. The read
@@ -189,13 +199,26 @@ public class BulkTransitionAction implements IssuesWsAction {
       selectMs = system2.now() - t0;
       nothingToMove = movable.isEmpty();
       if (!nothingToMove) {
+        List<String> movableKeys = movable.stream().map(IssueKeyStatusDto::getKee).toList();
+        // Each phase flushes its own statements. In a batch session they would otherwise all execute at the first
+        // flush that follows, which would charge one phase for another's work and make the two changelog paths
+        // incomparable. Flushing is not committing, so the chunk stays atomic either way.
+        if (setBasedChangelog) {
+          t0 = system2.now();
+          writeChangelogSetBased(dbSession, movableKeys, resolution, branchUuid, changeAuthor, comment, now);
+          dbSession.flushStatements();
+          changelogMs = system2.now() - t0;
+        }
         t0 = system2.now();
-        dbClient.issueDao().bulkTransition(dbSession, movable.stream().map(IssueKeyStatusDto::getKee).toList(),
-          resolution, now);
+        dbClient.issueDao().bulkTransition(dbSession, movableKeys, resolution, now);
+        dbSession.flushStatements();
         updateMs = system2.now() - t0;
-        t0 = system2.now();
-        writeChangelog(dbSession, movable, resolution, branchUuid, changeAuthor, comment, now);
-        changelogMs = system2.now() - t0;
+        if (!setBasedChangelog) {
+          t0 = system2.now();
+          writeChangelog(dbSession, movable, resolution, branchUuid, changeAuthor, comment, now);
+          dbSession.flushStatements();
+          changelogMs = system2.now() - t0;
+        }
         t0 = system2.now();
         dbSession.commit();
         commitMs = system2.now() - t0;
@@ -218,8 +241,10 @@ public class BulkTransitionAction implements IssuesWsAction {
     long measuresMs = refreshMeasures
       ? refreshMeasures(movable.stream().map(IssueKeyStatusDto::getComponentUuid).collect(Collectors.toSet()))
       : 0;
-    LOG.info("bulk_transition {} issues: select={}ms update={}ms changelog={}ms commit={}ms index={}ms measures={}ms",
-      transitioned.size(), selectMs, updateMs, changelogMs, commitMs, indexMs, measuresMs);
+    LOG.info("bulk_transition {} issues: select={}ms update={}ms changelog={}ms commit={}ms index={}ms "
+        + "measures={}ms changelogMode={}",
+      transitioned.size(), selectMs, updateMs, changelogMs, commitMs, indexMs, measuresMs,
+      setBasedChangelog ? "set" : "row");
 
     Set<String> moved = new HashSet<>(transitioned);
     List<String> notTransitioned = issueKeys.stream().filter(key -> !moved.contains(key)).toList();
@@ -227,9 +252,10 @@ public class BulkTransitionAction implements IssuesWsAction {
   }
 
   /**
-   * Recomputes the whole branch, for a run that is settling after a stop or a failure. It costs no more than a
-   * chunk-sized refresh of a project this size, because the recomputation saturates once most of the tree is
-   * touched, and unlike a chunk-sized one it leaves nothing stale.
+   * Recomputes the whole branch, for a run that is settling after a stop or a failure. It costs more than the
+   * chunk-sized refresh a completed run pays - around half as much again on a project of 6,000 files - but which
+   * components the abandoned run's earlier chunks touched is not known here, so a chunk-sized refresh would leave
+   * part of the tree stale. A run settles once, so the difference is paid once.
    */
   private long refreshMeasuresOfBranch(String branchUuid) {
     long startedAt = system2.now();
@@ -261,6 +287,20 @@ public class BulkTransitionAction implements IssuesWsAction {
       dbSession.commit();
     }
     return system2.now() - startedAt;
+  }
+
+  /**
+   * The same rows as {@link #writeChangelog}, but built by the database from the issues themselves rather than
+   * sent a row at a time. Runs before the update, because the diff row records the status the update overwrites.
+   */
+  private void writeChangelogSetBased(DbSession dbSession, List<String> movableKeys, String resolution,
+    String branchUuid, @Nullable String changeAuthor, @Nullable String comment, long now) {
+    dbClient.issueChangeDao().insertTransitionDiffs(dbSession, movableKeys, resolution,
+      RESOLUTION_TO_ISSUE_STATUS.get(resolution), branchUuid, changeAuthor, now, uuidFactory);
+    if (comment != null) {
+      dbClient.issueChangeDao().insertTransitionComments(dbSession, movableKeys, comment, branchUuid, changeAuthor,
+        now, uuidFactory);
+    }
   }
 
   /**
