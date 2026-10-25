@@ -1,0 +1,234 @@
+/*
+ * SonarQube
+ * Copyright (C) 2009-2024 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+.review-activate-body {
+  max-width: 1400px;
+}
+
+.review-success-alert {
+  margin-bottom: 24px;
+}
+
+.review-content {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.details-panel {
+  flex: 0 0 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.xpath-panel {
+  flex: 1;
+}
+
+.details-card,
+.description-card,
+.summary-card,
+.xpath-card {
+  background: #f5f5f5;
+  border: 1px solid #e6e6e6;
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.details-card h3,
+.description-card h3,
+.summary-card h3,
+.xpath-card h3 {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: #8c8c8c;
+  flex-shrink: 0;
+  width: 100px;
+}
+
+.detail-value {
+  font-size: 13px;
+  color: #262626;
+  text-align: right;
+  word-break: break-word;
+}
+
+.rule-key-code {
+  background: #fff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #d9d9d9;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.rule-type-badge,
+.severity-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.rule-type-badge {
+  background: #e6f4ff;
+  color: #1677ff;
+}
+
+.severity-info {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.severity-minor {
+  background: #e6fffb;
+  color: #13c2c2;
+}
+
+.severity-major {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+
+.severity-critical {
+  background: #fff1f0;
+  color: #f5222d;
+}
+
+.severity-blocker {
+  background: #fff1f0;
+  color: #cf1322;
+  font-weight: 600;
+}
+
+.description-text,
+.summary-text {
+  margin: 0;
+  font-size: 13px;
+  color: #595959;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.xpath-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.xpath-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.button-small {
+  padding: 4px 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.button-active {
+  background: #4b9fd5;
+  color: #fff;
+  border-color: #4b9fd5;
+}
+
+.xpath-editor-wrapper {
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.xpath-textarea {
+  width: 100%;
+  padding: 12px;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  border: none;
+  outline: none;
+  resize: vertical;
+  background: #fff;
+}
+
+.xpath-textarea.read-only {
+  background: #fafafa;
+  color: #262626;
+}
+
+.xpath-textarea.editing {
+  background: #fff;
+  border: 2px solid #4b9fd5;
+}
+
+.edit-info-alert {
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.xpath-warning-alert {
+  margin-top: 12px;
+}
+
+.review-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .review-content {
+    flex-direction: column;
+  }
+
+  .details-panel {
+    flex: 1;
+  }
+}

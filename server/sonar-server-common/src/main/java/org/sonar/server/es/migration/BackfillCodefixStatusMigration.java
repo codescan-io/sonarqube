@@ -33,35 +33,34 @@ import org.sonar.server.issue.index.IssueIndexDefinition;
 import org.sonar.server.issue.index.IssueIndexer;
 
 /**
- * Backfills {@code issues.codefixStatus} for issues whose rule has {@code ai_code_fix_enabled=true} by reindexing
- * those issues from the DB.
+ * Fills in {@code issues.codefixStatus} in Elasticsearch for issues whose rule has {@code ai_code_fix_enabled=true}, by
+ * rewriting those issue documents from the database. A one-off, run by hand.
  *
- * <p>The obvious implementation would be an ES-side {@code update_by_query}, but the {@code issues} index is created
- * with {@code _source} disabled (see {@link org.sonar.server.issue.index.IssueIndexDefinition}), and
- * {@code update_by_query} rebuilds every matched doc from its {@code _source} — so it fails on every document with
- * {@code "didn't store _source"}. The DB is the source of truth for the index, so we reindex the affected issues
- * straight from it instead. This is a one-off BLANKET backfill: the by-rule scroll writes
- * {@code codefixStatus = COALESCE(codefix_status, 'AVAILABLE')}, marking every in-scope issue AVAILABLE and defaulting
- * only the NULLs (any already-persisted value is preserved). It deliberately SKIPS the {@code variableType} narrowing
- * that normal analysis indexing applies to variable-naming rules: old issues predate {@code issue_ai_metadata}, so
- * that narrowing would leave those rules' issues NULL, whereas the backfill intent is to mark them all. As a result the
- * backfilled value for an old INSTANCE-variable issue can differ from what its next analysis would write (which would
- * set it back to NULL) — accepted, as these are historical issues.
+ * <p>Elasticsearch's {@code update_by_query} rebuilds each matched document from its stored {@code _source}, and the
+ * {@code issues} index does not store one (see {@link org.sonar.server.issue.index.IssueIndexDefinition}) — it fails on
+ * every document with {@code "didn't store _source"}. So we read the affected issues from the database, which is the
+ * source of truth for this index, and write their documents again.
  *
- * <p>Scope is limited to issues of non-REMOVED {@code ai_code_fix_enabled} rules; issues of other rules already hold
- * the correct (absent/NULL) value in the index and are left untouched. The reindex streams the whole in-scope set in a
- * single server-side scroll under one {@link org.sonar.server.es.BulkIndexer.Size#LARGE} bulk
- * (see {@link IssueIndexer#reindexByRuleUuids}) — the fast bulk-load path. It is idempotent: each doc is simply
- * rewritten with its current canonical value, so a re-run (e.g. after a partial failure) is safe.
+ * <p>Only issues of {@code ai_code_fix_enabled} rules that have not been removed are touched; every other issue already
+ * holds the right value (none). For those in scope,
+ * {@code IssueMapper#scrollIssuesForIndexationForMigration} uses {@code COALESCE(codefix_status, 'AVAILABLE')}:
+ * everything ends up AVAILABLE, except issues that already have a real value stored, which is kept. That is
+ * deliberately blunter than what a normal analysis writes. Analysis also checks {@code issue_ai_metadata} and skips the
+ * variable-naming rules for instance variables, but issues created before that metadata existed have none, so the same
+ * check would leave them NULL and defeat the point. The trade-off: an old instance-variable issue gets AVAILABLE here,
+ * and its next analysis may set it back to NULL. Fine — these are historical issues.
  *
- * <p><b>Run this only inside a maintenance/downtime window, with issue search and analyses of the
- * {@code ai_code_fix_enabled} projects stopped.</b> The LARGE bulk disables the index's replicas and periodic refresh
- * for the whole run (search is degraded until it completes) and the single scroll holds one DB read cursor open
- * throughout. Because no analyses run concurrently, there are no competing writers, so the doc-vs-analysis race the
- * resilient indexing paths guard against cannot happen and the plain last-write-wins index requests are safe. If the
- * run is interrupted (e.g. the server is restarted mid-migration) the LARGE settings can be left stranded on the index
- * — see {@link IssueIndexer#reindexByRuleUuids}; because the migration is idempotent, simply re-running it to
- * completion restores the settings and finishes the backfill.
+ * <p>It works branch by branch, several branches at a time, all writing through one shared
+ * {@link org.sonar.server.es.BulkIndexer.Size#MIGRATION} indexer — see {@link IssueIndexer#reindexByRuleUuids} for why
+ * that shape is much faster than one query over the whole table.
+ *
+ * <p><b>Run it when the system is quiet</b>, with analyses of the {@code ai_code_fix_enabled} projects stopped.
+ * Searches are not degraded, but the run holds a database connection and an open query per worker for its whole
+ * duration, and its writes are plain last-write-wins ones outside the usual retry path — so an analysis touching the
+ * same issues could clash with it. With those analyses stopped, nobody else is writing and that cannot happen. If any
+ * branch fails the whole run fails rather than claiming success on a half-done job, and running it again is the entire
+ * recovery procedure: each document is simply written again with the value it should have, and a run that is cut short
+ * leaves nothing behind to clean up.
  */
 @ServerSide
 public class BackfillCodefixStatusMigration implements EsDataMigration {
@@ -90,10 +89,8 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
 
   @Override
   public long estimate(DbSession dbSession) {
-    // The backfill only applies to an EXISTING index. If the issues index is absent (e.g. it was deleted), the normal
-    // startup flow recreates it and fully repopulates it from the DB — writing codefixStatus itself — so there is
-    // nothing here to backfill. Return 0 rather than letting the ES search below throw index_not_found_exception, which
-    // would fail the dry-run (estimate) API call.
+    // If the index is gone, normal startup rebuilds it and writes codefixStatus anyway, so there is nothing to do.
+    // Return 0 rather than letting the search below break the dry-run call with index_not_found_exception.
     if (!issuesIndexExists()) {
       return 0;
     }
@@ -101,7 +98,7 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
     if (ruleUuids.isEmpty()) {
       return 0;
     }
-    // Fast dry-run count: ask Elasticsearch how many issue docs belong to these rules. It can differ from DB count
+    // Counted in Elasticsearch rather than the database, so it may be slightly off.
     SearchRequest request = EsClient.prepareSearch(IssueIndexDefinition.TYPE_ISSUE.getMainType())
       .source(new SearchSourceBuilder().query(estimateQuery(ruleUuids)).size(0).trackTotalHits(true));
     return esClient.search(request).getHits().getTotalHits().value;
@@ -109,14 +106,12 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
 
   @Override
   public EsDataMigrationExecution execute(DbSession dbSession) {
-    // The migration can only run against an EXISTING index. If the issues index is absent it will be recreated and
-    // fully repopulated (codefixStatus included) by the normal startup reindex flow, so there is nothing to backfill —
-    // and the LARGE bulk below would in any case fail while reading settings off a missing index. Step aside cleanly.
+    // Same as in estimate(), plus a worse failure mode: writing into a missing index makes Elasticsearch create it with
+    // a guessed mapping instead of the one in IssueIndexDefinition. Step aside cleanly.
     if (!issuesIndexExists()) {
       return EsDataMigrationExecution.completed("nothing to do: issues index absent; the full reindex will repopulate codefixStatus");
     }
-    // Resolve the (typically handful of) eligible rule uuids once, then stream-reindex every issue of those rules in a
-    // single scroll under a LARGE bulk (IssueIndexer.reindexByRuleUuids). Meant to run inside a downtime window.
+    // Look up the eligible rules once — usually a handful — then rewrite their issues branch by branch.
     List<String> ruleUuids = dbClient.ruleDao().selectAiCodeFixBackfillRuleUuids(dbSession);
     if (ruleUuids.isEmpty()) {
       return EsDataMigrationExecution.completed("nothing to do: no ai_code_fix_enabled rules");
@@ -129,18 +124,18 @@ public class BackfillCodefixStatusMigration implements EsDataMigration {
   }
 
   /**
-   * True if the {@code issues} index currently exists on the cluster. The backfill only applies to an existing index:
-   * a deleted index is recreated and repopulated (codefixStatus included) by the normal startup reindex flow, which
-   * this migration must not interfere with. Both {@link #estimate} and {@link #execute} step aside when this is false.
+   * Whether the {@code issues} index exists right now. A missing one gets rebuilt and repopulated (codefixStatus
+   * included) by normal startup, and this migration must not get in the way of that, so both {@link #estimate} and
+   * {@link #execute} bow out when this is false.
    */
   private boolean issuesIndexExists() {
     return esClient.indexExists(new GetIndexRequest(IssueIndexDefinition.TYPE_ISSUE.getMainType().getIndex().getName()));
   }
 
   /**
-   * Matches issue docs of the given (enabled, non-removed) rules. The terms clause on ruleUuid also excludes
-   * authorization parent docs, which carry no ruleUuid. No codefixStatus narrowing: execute() reindexes every
-   * in-scope issue, so the estimate counts the same coarse set.
+   * Matches the issue documents of the given rules. Filtering on ruleUuid also skips the permission documents that share
+   * this index, since those have no ruleUuid. Nothing filters on codefixStatus: execute() rewrites every in-scope issue,
+   * so the estimate has to count the same set.
    */
   private static BoolQueryBuilder estimateQuery(List<String> ruleUuids) {
     return QueryBuilders.boolQuery()

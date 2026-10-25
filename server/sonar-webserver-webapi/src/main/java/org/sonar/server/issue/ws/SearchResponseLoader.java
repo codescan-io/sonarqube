@@ -251,6 +251,14 @@ public class SearchResponseLoader {
       comments.stream()
         .filter(c -> c.getUserUuid() != null)
         .forEach(comment -> loadComment(collector, result, comment));
+      List<IssueChangeDto> exceptionReasons = changes.stream()
+        .filter(c -> IssueChangeDto.TYPE_EXCEPTION_REASON.equals(c.getChangeType()))
+        .toList();
+      result.setComments(exceptionReasons);
+      exceptionReasons.stream()
+        .map(IssueChangeDto::getUserUuid)
+        .filter(Objects::nonNull)
+        .forEach(uuid -> collector.addUserUuids(singletonList(uuid)));
     }
   }
 

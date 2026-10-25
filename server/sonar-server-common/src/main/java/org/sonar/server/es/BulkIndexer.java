@@ -100,7 +100,7 @@ public class BulkIndexer {
       client::bulkAsync,
       bulkProcessorListener)
       .setBackoffPolicy(BackoffPolicy.exponentialBackoff())
-      .setBulkSize(FLUSH_BYTE_SIZE)
+      .setBulkSize(sizeHandler.getFlushByteSize())
       .setBulkActions(FLUSH_ACTIONS)
       .setConcurrentRequests(sizeHandler.getConcurrentRequests())
       .build();
@@ -344,6 +344,21 @@ public class BulkIndexer {
       SizeHandler createHandler(Runtime2 runtime2) {
         return new LargeSizeHandler(runtime2);
       }
+    },
+
+    /**
+     * Rewrites a large PART of an existing index, with several threads sharing one indexer — that is, a one-off data
+     * migration. Like {@link #REGULAR} it leaves index settings alone and does not force-merge: those {@link #LARGE}
+     * costs are proportional to the whole index, not to the part being rewritten, so they can easily dwarf the rewrite
+     * itself. Unlike REGULAR it sends bigger batches and allows a few to be in flight at once — with
+     * {@code concurrentRequests == 0}, whichever thread happens to fill a batch has to send it itself while all the
+     * other threads wait behind it.
+     */
+    MIGRATION {
+      @Override
+      SizeHandler createHandler(Runtime2 runtime2) {
+        return new MigrationSizeHandler(runtime2);
+      }
     };
 
     abstract SizeHandler createHandler(Runtime2 runtime2);
@@ -367,12 +382,48 @@ public class BulkIndexer {
       return 0;
     }
 
+    /**
+     * Payload size at which a bulk request is sent on the wire.
+     *
+     * @see BulkProcessor.Builder#setBulkSize(ByteSizeValue)
+     */
+    ByteSizeValue getFlushByteSize() {
+      return FLUSH_BYTE_SIZE;
+    }
+
     void beforeStart(BulkIndexer bulkIndexer) {
       // nothing to do, to be overridden if needed
     }
 
     void afterStop(BulkIndexer bulkIndexer) {
       // nothing to do, to be overridden if needed
+    }
+  }
+
+  /**
+   * Leaves index settings alone like {@link SizeHandler}, but tuned for several threads feeding one shared indexer
+   * during a one-off migration: bigger batches, and enough of them in flight that sending one never stalls a thread.
+   */
+  static class MigrationSizeHandler extends SizeHandler {
+    private static final ByteSizeValue MIGRATION_FLUSH_BYTE_SIZE = new ByteSizeValue(5, ByteSizeUnit.MB);
+    private static final int MAX_CONCURRENT_REQUESTS = 4;
+
+    private final Runtime2 runtime2;
+
+    MigrationSizeHandler(Runtime2 runtime2) {
+      this.runtime2 = runtime2;
+    }
+
+    @Override
+    int getConcurrentRequests() {
+      // At least 1, so sending is never done on a thread that is busy reading. Capped so that a migration cannot hog
+      // Elasticsearch's write threads.
+      return Math.max(1, Math.min(MAX_CONCURRENT_REQUESTS, runtime2.getCores() / 2));
+    }
+
+    @Override
+    ByteSizeValue getFlushByteSize() {
+      return MIGRATION_FLUSH_BYTE_SIZE;
     }
   }
 

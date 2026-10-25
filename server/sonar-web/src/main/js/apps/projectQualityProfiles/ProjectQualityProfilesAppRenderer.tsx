@@ -22,6 +22,7 @@ import { groupBy, orderBy } from 'lodash';
 import { Helmet } from 'react-helmet-async';
 import {
   ActionCell,
+  Badge,
   ButtonPrimary,
   ContentCell,
   HelperHintIcon,
@@ -129,15 +130,14 @@ export default function ProjectQualityProfilesAppRenderer(
                         </ContentCell>
                         <ContentCell>
                           <span>
-                            {!selected && profile.isDefault ? (
-                              <em>{translate('project_quality_profile.instance_default')}</em>
-                            ) : (
-                              <>
-                                {profile.name}
-                                {profile.isBuiltIn && (
-                                  <BuiltInQualityProfileBadge className="sw-ml-2" />
-                                )}
-                              </>
+                            {profile.name}
+                            {profile.isBuiltIn && (
+                              <BuiltInQualityProfileBadge className="sw-ml-2" />
+                            )}
+                            {!selected && profile.isDefault && (
+                              <Badge className="sw-ml-2" variant="default">
+                                {translate('project_quality_profile.instance_default')}
+                              </Badge>
                             )}
                           </span>
                         </ContentCell>

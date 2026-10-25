@@ -56,6 +56,16 @@ public interface Dialect {
   }
 
   /**
+   * Rows fetched per round trip for one-off data-migration queries, which stream a whole table's worth of rows in one
+   * pass and spend most of their time on round trips at {@link #getScrollDefaultFetchSize()}. Higher means fewer round
+   * trips but a bigger buffer per open cursor — and a migration running N cursors at once holds N of them, so keep this
+   * within an order of magnitude of the default rather than as high as it will go.
+   */
+  default int getMigrationScrollFetchSize() {
+    return 4000;
+  }
+
+  /**
    * Indicates whether DB migration can be perform on the DB vendor implementation associated with the current dialect.
    */
   boolean supportsMigration();

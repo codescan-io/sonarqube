@@ -123,7 +123,7 @@ export function EmbedDocsPopup({ setAboutCodescanOpen }) {
       <DropdownMenu.GroupLabel>{translate('docs.stay_connected')}</DropdownMenu.GroupLabel>
 
       <DropdownMenu.ItemLink to="https://www.codescan.io/blog">
-        CodeScan Blog
+        AutoRABIT CodeScan Blog
       </DropdownMenu.ItemLink>
 
       <DropdownMenu.ItemLink to="https://twitter.com/CodeScanforSFDC">
