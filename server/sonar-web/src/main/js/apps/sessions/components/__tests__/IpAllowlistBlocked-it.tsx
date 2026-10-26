@@ -20,7 +20,7 @@
 
 import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Navigate, Route } from 'react-router-dom';
+import { Link, Navigate, Route, useNavigate } from 'react-router-dom';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { HttpStatus } from '../../../../helpers/request';
 import { mockCurrentUser, mockLoggedInUser } from '../../../../helpers/testMocks';
@@ -140,11 +140,86 @@ it('tries the blocked page again', async () => {
   expect(await screen.findByText('/organizations/acme/projects?sort=name')).toBeInTheDocument();
 });
 
+it('does not send Back into the blocked page after a retry', async () => {
+  function Target() {
+    const navigate = useNavigate();
+    return (
+      <button onClick={() => navigate(-1)} type="button">
+        back
+      </button>
+    );
+  }
+
+  renderAppRoutes('/', () => (
+    <>
+      <Route
+        path="/"
+        element={
+          <Link state={{ message: MSG, from: '/target' }} to="/sessions/ip-blocked">
+            start
+          </Link>
+        }
+      />
+      <Route path="/sessions/ip-blocked" element={<IpAllowlistBlocked />} />
+      <Route path="/target" element={<Target />} />
+    </>
+  ));
+
+  await userEvent.click(await screen.findByText('start'));
+  await userEvent.click(await screen.findByRole('button', { name: 'ip_allowlist.blocked.retry' }));
+  await userEvent.click(await screen.findByRole('button', { name: 'back' }));
+
+  expect(await screen.findByText('start')).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+});
+
+describe('keyboard', () => {
+  it('reaches and activates each button with Enter', async () => {
+    const user = userEvent.setup();
+    renderBlockedPage({ message: MSG, from: '/organizations/acme' }, SIGNED_IN);
+    await screen.findByRole('heading', { level: 1 });
+
+    await user.tab();
+    expect(
+      screen.getByRole('button', { name: 'ip_allowlist.blocked.go_to_organizations' }),
+    ).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'ip_allowlist.blocked.retry' })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'ip_allowlist.blocked.sign_out' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('/sessions/logout')).toBeInTheDocument();
+  });
+
+  it('activates Go to my organizations with Enter', async () => {
+    const user = userEvent.setup();
+    renderBlockedPage({ message: MSG }, SIGNED_IN);
+    await screen.findByRole('heading', { level: 1 });
+
+    await user.tab();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('/account/organizations')).toBeInTheDocument();
+  });
+
+  it('activates Retry with Space', async () => {
+    const user = userEvent.setup();
+    renderBlockedPage({ message: MSG, from: '/organizations/acme' }, SIGNED_IN);
+    await screen.findByRole('heading', { level: 1 });
+
+    await user.tab();
+    await user.tab();
+    await user.keyboard(' ');
+    expect(await screen.findByText('/organizations/acme')).toBeInTheDocument();
+  });
+});
+
 it.each([
   ['no address', undefined],
   ['an address on another site', '//evil.example/path'],
+  ['a backslash that the browser reads as another site', '/\\evil.example'],
   ['a full URL', 'https://evil.example/path'],
   ['the blocked page itself', '/sessions/ip-blocked'],
+  ['the blocked page itself in other letter case', '/SESSIONS/IP-BLOCKED'],
 ])('offers no retry with %s', async (_, from) => {
   renderBlockedPage({ message: MSG, from }, SIGNED_IN);
   await screen.findByRole('heading', { level: 1 });
@@ -158,8 +233,12 @@ it('shows a message it cannot read as it is', async () => {
   renderBlockedPage({ message: 'Your request was refused by the organization.' });
   await screen.findByRole('heading', { level: 1 });
 
-  expect(screen.getByText('Your request was refused by the organization.')).toBeInTheDocument();
+  const raw = screen.getByText('Your request was refused by the organization.');
+  expect(raw).toBeInTheDocument();
   expect(screen.queryByText('ip_allowlist.blocked.organization')).not.toBeInTheDocument();
+  // The list still holds only complete term and description pairs.
+  expect(screen.getAllByRole('term')).toHaveLength(1);
+  expect(screen.getAllByRole('definition')).toHaveLength(1);
 });
 
 it('still explains the block without a message', async () => {
