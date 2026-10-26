@@ -21,6 +21,7 @@ package org.sonar.server.rule.ws;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import org.sonar.api.rule.RuleStatus;
 import org.sonar.api.rules.RuleType;
 import org.sonar.api.server.ServerSide;
@@ -149,8 +150,8 @@ public class RuleQueryFactory {
   }
 
   private void setOrganization(DbSession dbSession, RuleQuery query, Request request) {
-    String organizationKey = request.param(PARAM_ORGANIZATION);
     QProfileDto profile = query.getQProfile();
+    String organizationKey = Objects.nonNull(profile) ? request.param(PARAM_ORGANIZATION) : request.mandatoryParam(PARAM_ORGANIZATION);
     if (profile == null) {
       query.setOrganization(wsSupport.getOrganizationByKey(dbSession, organizationKey));
       return;

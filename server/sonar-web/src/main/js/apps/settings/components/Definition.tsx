@@ -77,15 +77,17 @@ export default function Definition(props: Readonly<Props>) {
     definition.key === SettingsKey.CodescanStaticResourceCustomSeverityEnabled;
   const isStaticResourceCustomSeverityDropdown =
     definition.key === SettingsKey.CodescanStaticResourceCustomSeverity;
-  // Project extraction toggle + custom-severity controls require the instance extraction gate.
+  // Custom-severity controls require the instance extraction gate (grayed when off).
+  // Project extraction is hidden when the instance gate is off.
   const needsStaticResourceExtractionGate =
-    isStaticResourceProjectExtraction ||
-    isStaticResourceCustomSeverityToggle ||
-    isStaticResourceCustomSeverityDropdown;
+    isStaticResourceCustomSeverityToggle || isStaticResourceCustomSeverityDropdown;
 
   const { data: staticResourceExtractionGate } = useGetValueQuery(
     { key: SettingsKey.CodescanStaticResourceExtractionEnabled },
-    { enabled: needsStaticResourceExtractionGate },
+    {
+      enabled:
+        isStaticResourceProjectExtraction || needsStaticResourceExtractionGate,
+    },
   );
   const { data: customSeverityGate } = useGetValueQuery(
     { key: SettingsKey.CodescanStaticResourceCustomSeverityEnabled },
@@ -243,6 +245,14 @@ export default function Definition(props: Readonly<Props>) {
   const isDefault = isDefaultOrInherited(settingValue);
 
   const settingDefinitionAndValue = combineDefinitionAndSettingValue(definition, settingValue);
+
+  // Project-level extraction must not appear when the instance gate is off.
+  if (
+    isStaticResourceProjectExtraction &&
+    staticResourceExtractionGate?.value !== 'true'
+  ) {
+    return null;
+  }
 
   return (
     <div

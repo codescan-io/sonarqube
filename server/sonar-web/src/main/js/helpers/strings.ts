@@ -416,6 +416,13 @@ export function decodeJwt(token: string) {
   return JSON.parse(window.atob(base64));
 }
 
+export function encodeBase64Url(value: string) {
+  const binary = Array.from(new TextEncoder().encode(value), (byte) =>
+    String.fromCharCode(byte),
+  ).join('');
+  return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/[=]+$/, '');
+}
+
 const VERSION_BUILD = 'build ';
 export function getInstanceVersionNumber(version: string) {
   // e.g. "10.5 (build 12345)" => "10.5 (12345)"

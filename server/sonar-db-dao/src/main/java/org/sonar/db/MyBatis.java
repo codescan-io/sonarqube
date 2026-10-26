@@ -33,6 +33,7 @@ import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 import org.apache.ibatis.session.TransactionIsolationLevel;
+import org.sonar.db.aiuserallocation.AiUserAllocationMapper;
 import org.sonar.db.alm.pat.AlmPatMapper;
 import org.sonar.db.alm.setting.AlmSettingMapper;
 import org.sonar.db.alm.setting.ProjectAlmKeyAndProject;
@@ -345,6 +346,7 @@ public class MyBatis {
       ProjectQgateAssociationMapper.class,
       PropertiesMapper.class,
       IdeUsageMapper.class,
+      AiUserAllocationMapper.class,
       PurgeMapper.class,
       PushEventMapper.class,
       QProfileChangeMapper.class,
