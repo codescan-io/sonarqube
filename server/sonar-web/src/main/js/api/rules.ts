@@ -22,6 +22,7 @@ import { HttpStatusCode } from 'axios';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import { axiosToCatch, post, postJSON } from '../helpers/request';
+import { encodeBase64Url } from '../helpers/strings';
 import { CleanCodeAttribute, SoftwareImpact } from '../types/clean-code-taxonomy';
 import { GetRulesAppResponse, SearchRulesResponse } from '../types/coding-rules';
 import { SearchRulesQuery } from '../types/rules';
@@ -84,8 +85,24 @@ export function getRuleTags(parameters: { organization: string; ps?: number; q: 
   return getJSON('/api/rules/tags', parameters).then((r) => r.tags, throwGlobalError);
 }
 
-export function createRule(data: CreateRuleData): Promise<RestRuleDetails> {
-  return axiosToCatch.post<RuleDetails>(RULES_ENDPOINT, data).catch(({ response }) => {
+// Rule parameter values such as XPath expressions can match the SQL injection and path traversal
+// signatures of a WAF body inspection, so createRule and updateRule send them base64url-encoded.
+function encodeParameterValues(parameters: Partial<RestRuleParameter>[]) {
+  return parameters.map((parameter) => ({
+    ...parameter,
+    defaultValue:
+      parameter.defaultValue == null
+        ? parameter.defaultValue
+        : encodeBase64Url(parameter.defaultValue),
+  }));
+}
+
+export function createRule({ parameters, ...data }: CreateRuleData): Promise<RestRuleDetails> {
+  const body = parameters?.length
+    ? { ...data, encodedParameters: encodeParameterValues(parameters) }
+    : { ...data, parameters };
+
+  return axiosToCatch.post<RuleDetails>(RULES_ENDPOINT, body).catch(({ response }) => {
     // do not show global error if the status code is 409
     // this case should be handled inside a component
     if (response && response.status === HttpStatusCode.Conflict) {
@@ -106,5 +123,9 @@ export function updateRule(data: RulesUpdateRequest): Promise<RuleDetails> {
       .map((impact) => `${impact.softwareQuality}=${impact.severity}`)
       .join(';');
 
-  return postJSON('/api/rules/update', { ...data, impacts }).then((r) => r.rule, throwGlobalError);
+  return postJSON('/api/rules/update', {
+    ...data,
+    ...(data.params ? { params: undefined, encodedParams: encodeBase64Url(data.params) } : {}),
+    impacts,
+  }).then((r) => r.rule, throwGlobalError);
 }
