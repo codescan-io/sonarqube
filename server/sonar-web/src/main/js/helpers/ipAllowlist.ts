@@ -21,6 +21,7 @@
 import { NavigateFunction } from 'react-router-dom';
 import { dismissGlobalMessage } from '~design-system';
 import { HttpStatus } from './request';
+import { getBaseUrl } from './system';
 
 export const IP_ALLOWLIST_BLOCKED_PATH = '/sessions/ip-blocked';
 
@@ -54,6 +55,36 @@ export async function getIpAllowlistBlockedMessage(e: unknown): Promise<string |
   }
 }
 
+// Matches IpAllowlistBlockedException on the server: the organization key, then the caller's IP or "unknown".
+const MESSAGE_PATTERN =
+  /^Access to organization '(.*)' is blocked by its IP allowlist\. Your IP address is (.+)\.$/;
+
+export interface IpAllowlistBlockedDetails {
+  /** Undefined when the server could not tell the caller's IP. */
+  ip?: string;
+  organization: string;
+}
+
+/** Read the organization key and the caller's IP out of the blocked message, or undefined for other wording. */
+export function parseIpAllowlistBlockedMessage(
+  message: string,
+): IpAllowlistBlockedDetails | undefined {
+  const match = MESSAGE_PATTERN.exec(message);
+  if (!match) {
+    return undefined;
+  }
+  return { organization: match[1], ip: match[2] === 'unknown' ? undefined : match[2] };
+}
+
+// The address of the page being shown, as the router knows it: without the context path the app is served under.
+function currentAppPath(): string {
+  const { pathname, search, hash } = window.location;
+  const baseUrl = getBaseUrl();
+  const path =
+    baseUrl !== '' && pathname.startsWith(baseUrl) ? pathname.slice(baseUrl.length) : pathname;
+  return `${path === '' ? '/' : path}${search}${hash}`;
+}
+
 /**
  * Show the blocked page in place of the page that was loading. It replaces the current history entry:
  * going back would only load the blocked page again.
@@ -65,7 +96,11 @@ export async function getIpAllowlistBlockedMessage(e: unknown): Promise<string |
 export function showIpAllowlistBlockedPage(navigate: NavigateFunction, message: string) {
   redirectingUntil = Date.now() + REDIRECT_GRACE_MS;
   dismissGlobalMessage(IP_ALLOWLIST_TOAST_ID);
-  navigate(IP_ALLOWLIST_BLOCKED_PATH, { replace: true, state: { message } });
+  // `from` lets the blocked page offer to try the same address again.
+  navigate(IP_ALLOWLIST_BLOCKED_PATH, {
+    replace: true,
+    state: { message, from: currentAppPath() },
+  });
 }
 
 /**

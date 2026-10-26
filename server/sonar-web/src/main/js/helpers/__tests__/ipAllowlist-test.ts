@@ -24,6 +24,7 @@ import {
   getIpAllowlistBlockedMessage,
   isIpAllowlistToastSuppressed,
   markIpAllowlistBlockedPageMounted,
+  parseIpAllowlistBlockedMessage,
   showIpAllowlistBlockedPage,
 } from '../ipAllowlist';
 import { HttpStatus } from '../request';
@@ -81,6 +82,33 @@ it('ignores non-403 and non-Response values', async () => {
   expect(await getIpAllowlistBlockedMessage(undefined)).toBeUndefined();
 });
 
+describe('reading the blocked message', () => {
+  it('finds the organization key and the caller IP', () => {
+    expect(parseIpAllowlistBlockedMessage(MSG)).toEqual({ organization: 'acme', ip: '192.0.2.1' });
+  });
+
+  it('reads an IPv6 address', () => {
+    expect(
+      parseIpAllowlistBlockedMessage(
+        "Access to organization 'acme' is blocked by its IP allowlist. Your IP address is 2001:db8::1.",
+      ),
+    ).toEqual({ organization: 'acme', ip: '2001:db8::1' });
+  });
+
+  it('gives no IP when the server could not tell it', () => {
+    expect(
+      parseIpAllowlistBlockedMessage(
+        "Access to organization 'acme' is blocked by its IP allowlist. Your IP address is unknown.",
+      ),
+    ).toEqual({ organization: 'acme', ip: undefined });
+  });
+
+  it('gives nothing for other wording', () => {
+    expect(parseIpAllowlistBlockedMessage('Access denied')).toBeUndefined();
+    expect(parseIpAllowlistBlockedMessage('')).toBeUndefined();
+  });
+});
+
 describe('suppressing the allowlist toast', () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -121,6 +149,7 @@ describe('suppressing the allowlist toast', () => {
 
   it('removes only the allowlist toast when redirecting', () => {
     const navigate = jest.fn();
+    window.history.pushState({}, '', '/');
 
     showIpAllowlistBlockedPage(navigate, MSG);
 
@@ -128,7 +157,41 @@ describe('suppressing the allowlist toast', () => {
     expect(dismissGlobalMessage).toHaveBeenCalledWith(IP_ALLOWLIST_TOAST_ID);
     expect(navigate).toHaveBeenCalledWith('/sessions/ip-blocked', {
       replace: true,
-      state: { message: MSG },
+      state: { message: MSG, from: '/' },
+    });
+  });
+});
+
+describe('remembering the blocked page', () => {
+  const originalBaseUrl = (window as unknown as { baseUrl: string }).baseUrl;
+
+  afterEach(() => {
+    (window as unknown as { baseUrl: string }).baseUrl = originalBaseUrl;
+    window.history.pushState({}, '', '/');
+  });
+
+  it('passes the address that was blocked, so the user can try it again', () => {
+    const navigate = jest.fn();
+    window.history.pushState({}, '', '/organizations/acme/projects?sort=name#top');
+
+    showIpAllowlistBlockedPage(navigate, MSG);
+
+    expect(navigate).toHaveBeenCalledWith('/sessions/ip-blocked', {
+      replace: true,
+      state: { message: MSG, from: '/organizations/acme/projects?sort=name#top' },
+    });
+  });
+
+  it('passes the address without the context path the app is served under', () => {
+    const navigate = jest.fn();
+    (window as unknown as { baseUrl: string }).baseUrl = '/codescan';
+    window.history.pushState({}, '', '/codescan/organizations/acme');
+
+    showIpAllowlistBlockedPage(navigate, MSG);
+
+    expect(navigate).toHaveBeenCalledWith('/sessions/ip-blocked', {
+      replace: true,
+      state: { message: MSG, from: '/organizations/acme' },
     });
   });
 });
