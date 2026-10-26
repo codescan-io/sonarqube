@@ -19,7 +19,6 @@
  */
 package org.sonar.server.v2.api.analysis.controller;
 
-import java.io.FileNotFoundException;
 import java.util.List;
 import org.sonar.server.v2.api.analysis.response.JreInfoRestResponse;
 import org.sonar.server.v2.api.analysis.service.JresHandler;

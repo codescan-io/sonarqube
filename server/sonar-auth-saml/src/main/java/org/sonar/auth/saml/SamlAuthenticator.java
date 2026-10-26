@@ -33,8 +33,6 @@ import java.util.Optional;
 import java.util.Set;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.server.authentication.OAuth2IdentityProvider;
@@ -42,8 +40,8 @@ import org.sonar.api.server.authentication.UnauthorizedException;
 import org.sonar.api.server.authentication.UserIdentity;
 import org.sonar.api.server.http.HttpRequest;
 import org.sonar.api.server.http.HttpResponse;
-import org.sonar.server.http.JavaxHttpRequest;
-import org.sonar.server.http.JavaxHttpResponse;
+import org.sonar.server.http.JakartaHttpRequest;
+import org.sonar.server.http.JakartaHttpResponse;
 
 import static java.util.Collections.emptySet;
 import static java.util.Objects.requireNonNull;
@@ -98,9 +96,9 @@ public class SamlAuthenticator {
 
   private Auth initSamlAuth(@Nullable String callbackUrl, HttpRequest request, HttpResponse response) {
     try {
-      //no way around this as onelogin requires javax request/response
-      HttpServletRequest httpServletRequest = ((JavaxHttpRequest) request).getDelegate();
-      HttpServletResponse httpServletResponse = ((JavaxHttpResponse) response).getDelegate();
+      // no way around this as onelogin requires javax request/response
+      JakartaToJavaxRequestWrapper httpServletRequest = new JakartaToJavaxRequestWrapper(((JakartaHttpRequest) request).getDelegate());
+      JakartaToJavaxResponseWrapper httpServletResponse = new JakartaToJavaxResponseWrapper(((JakartaHttpResponse) response).getDelegate());
 
       return new Auth(initSettings(callbackUrl), httpServletRequest, httpServletResponse);
     } catch (Exception e) {

@@ -24,7 +24,7 @@ import org.apache.tomcat.JarScanType;
 import org.apache.tomcat.JarScanner;
 import org.apache.tomcat.JarScannerCallback;
 
-import javax.servlet.ServletContext;
+import jakarta.servlet.ServletContext;
 
 /**
  * Disable taglib and web-fragment.xml scanning of Tomcat. Should speed up startup.
@@ -34,7 +34,7 @@ class NullJarScanner implements JarScanner {
 
   @Override
   public void scan(JarScanType jarScanType, ServletContext servletContext, JarScannerCallback jarScannerCallback) {
-    // doing nothing is fast!
+
   }
 
   @Override

@@ -19,19 +19,11 @@
  */
 package org.sonar.server.notification.email;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.time.Duration;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.Set;
-import java.util.regex.Pattern;
-import javax.annotation.CheckForNull;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.mail.Email;
-import org.apache.commons.mail.EmailException;
-import org.apache.commons.mail.HtmlEmail;
-import org.apache.commons.mail.SimpleEmail;
+import org.apache.commons.mail2.core.EmailException;
+import org.apache.commons.mail2.jakarta.Email;
+import org.apache.commons.mail2.jakarta.HtmlEmail;
+import org.apache.commons.mail2.jakarta.SimpleEmail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.notifications.Notification;
@@ -46,6 +38,15 @@ import org.sonar.server.issue.notification.EmailMessage;
 import org.sonar.server.issue.notification.EmailTemplate;
 import org.sonar.server.notification.NotificationChannel;
 import org.sonar.server.oauth.OAuthMicrosoftRestClient;
+
+import javax.annotation.CheckForNull;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.time.Duration;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 import static java.time.temporal.ChronoUnit.SECONDS;
 import static java.util.Objects.requireNonNull;
@@ -66,8 +67,8 @@ public class EmailNotificationChannel extends NotificationChannel {
   private static final Logger LOG = LoggerFactory.getLogger(EmailNotificationChannel.class);
 
   /**
-   * @see org.apache.commons.mail.Email#setSocketConnectionTimeout(Duration)
-   * @see org.apache.commons.mail.Email#setSocketTimeout(Duration)
+   * @see org.apache.commons.mail2.jakarta.Email#setSocketConnectionTimeout(Duration)
+   * @see org.apache.commons.mail2.jakarta.Email#setSocketTimeout(Duration)
    */
   private static final Duration SOCKET_TIMEOUT = Duration.of(30, SECONDS);
 

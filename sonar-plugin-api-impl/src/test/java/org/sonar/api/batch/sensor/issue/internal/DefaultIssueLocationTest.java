@@ -61,22 +61,22 @@ public class DefaultIssueLocationTest {
   public void prevent_too_long_messages() {
     assertThat(new DefaultIssueLocation()
       .on(inputFile)
-      .message(StringUtils.repeat("a", 1333)).message()).hasSize(1333);
+      .message(StringUtils.repeat("a", 2700)).message()).hasSize(2700);
 
     assertThat(new DefaultIssueLocation()
       .on(inputFile)
-      .message(StringUtils.repeat("a", 1334)).message()).hasSize(1333);
+      .message(StringUtils.repeat("a", 2701)).message()).hasSize(2700);
   }
 
   @Test
   public void should_ignore_messageFormatting_if_message_is_trimmed() {
     DefaultMessageFormatting messageFormatting = new DefaultMessageFormatting()
-      .start(1500)
-      .end(1501)
+      .start(2800)
+      .end(2801)
       .type(MessageFormatting.Type.CODE);
 
     DefaultIssueLocation location = new DefaultIssueLocation()
-      .message(StringUtils.repeat("a", 2000), List.of(messageFormatting));
+      .message(StringUtils.repeat("a", 3000), List.of(messageFormatting));
 
     assertThat(location.messageFormattings()).isEmpty();
   }
@@ -84,16 +84,16 @@ public class DefaultIssueLocationTest {
   @Test
   public void should_truncate_messageFormatting_if_necessary() {
     DefaultMessageFormatting messageFormatting = new DefaultMessageFormatting()
-      .start(1300)
-      .end(1501)
+      .start(2600)
+      .end(2801)
       .type(MessageFormatting.Type.CODE);
 
     DefaultIssueLocation location = new DefaultIssueLocation()
-      .message(StringUtils.repeat("a", 2000), List.of(messageFormatting));
+      .message(StringUtils.repeat("a", 3000), List.of(messageFormatting));
 
     assertThat(location.messageFormattings())
       .extracting(MessageFormatting::start, MessageFormatting::end)
-      .containsOnly(tuple(1300, 1333));
+      .containsOnly(tuple(2600, 2700));
   }
 
   @Test
