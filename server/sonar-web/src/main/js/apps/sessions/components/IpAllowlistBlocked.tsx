@@ -60,12 +60,19 @@ interface BlockedState {
 
 // Only an address inside this app can be retried; anything else in the history state is ignored.
 function retryPath(from: unknown): string | undefined {
-  if (
-    typeof from !== 'string' ||
-    !from.startsWith('/') ||
-    from.startsWith('//') ||
-    from.startsWith(IP_ALLOWLIST_BLOCKED_PATH)
-  ) {
+  if (typeof from !== 'string') {
+    return undefined;
+  }
+  try {
+    const url = new URL(from, window.location.origin);
+    // The router matches paths ignoring case, so compare in lower case.
+    if (
+      url.origin !== window.location.origin ||
+      url.pathname.toLowerCase().startsWith(IP_ALLOWLIST_BLOCKED_PATH.toLowerCase())
+    ) {
+      return undefined;
+    }
+  } catch {
     return undefined;
   }
   return from;
@@ -133,7 +140,13 @@ export default function IpAllowlistBlocked() {
             </Panel>
           )}
 
-          <Panel as="dl" className={user ? 'sw-mt-4' : 'sw-mt-8'}>
+          {details === undefined && message !== '' && (
+            <Text as="p" className={user ? 'sw-mt-4' : 'sw-mt-8'}>
+              {message}
+            </Text>
+          )}
+
+          <Panel as="dl" className={user || message !== '' ? 'sw-mt-4' : 'sw-mt-8'}>
             {details && (
               <>
                 <DetailRow>
@@ -151,11 +164,6 @@ export default function IpAllowlistBlocked() {
                   </dd>
                 </DetailRow>
               </>
-            )}
-            {details === undefined && message !== '' && (
-              <DetailRow>
-                <dd className="sw-text-left">{message}</dd>
-              </DetailRow>
             )}
             <DetailRow>
               <dt>{translate('ip_allowlist.blocked.reason')}</dt>
