@@ -21,6 +21,7 @@ package org.sonar.db.issue;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Optional;
 import java.util.Set;
 import javax.annotation.Nullable;
@@ -33,6 +34,7 @@ import org.sonar.db.RowNotFoundException;
 import org.sonar.db.component.ComponentDto;
 
 import static org.sonar.db.DatabaseUtils.executeLargeInputs;
+import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
 
 public class IssueDao implements Dao {
   public static final int DEFAULT_PAGE_SIZE = 1000;
@@ -173,6 +175,27 @@ public class IssueDao implements Dao {
   public void update(DbSession session, IssueDto dto) {
     mapper(session).update(dto);
     updateIssueImpacts(session, dto);
+  }
+
+  /**
+   * CodeScan: the issues a bulk transition would move, with the status each moves from. Read in the same
+   * transaction as {@link #bulkTransition} and under the same predicate, so the caller can write the changelog
+   * from this result instead of reading the issues back afterwards.
+   */
+  public List<IssueKeyStatusDto> selectTransitionable(DbSession session, Collection<String> keys) {
+    return executeLargeInputs(keys, mapper(session)::selectTransitionable);
+  }
+
+  /**
+   * CodeScan: resolves a whole chunk of issues in one statement per partition rather than one per issue. Only
+   * issues the workflow would actually move are touched, so the count matches {@link #selectTransitionable}.
+   *
+   * @return how many issues were resolved
+   */
+  public int bulkTransition(DbSession session, Collection<String> keys, String resolution, long now) {
+    AtomicInteger updated = new AtomicInteger();
+    executeLargeUpdates(keys, partition -> updated.addAndGet(mapper(session).bulkTransition(partition, resolution, now)));
+    return updated.get();
   }
 
   /**
