@@ -20,7 +20,8 @@
 
 import styled from '@emotion/styled';
 import { themeBorder } from '~design-system';
-import { SettingDefinitionAndValue } from '../../../types/settings';
+import { useGetValueQuery } from '../../../queries/settings';
+import { SettingDefinitionAndValue, SettingsKey } from '../../../types/settings';
 import { Component } from '../../../types/types';
 import Definition from './Definition';
 
@@ -30,23 +31,56 @@ interface Props {
   settings: SettingDefinitionAndValue[];
 }
 
+function DefinitionListItem(
+  props: Readonly<{
+    component?: Component;
+    scrollToDefinition: (element: HTMLLIElement) => void;
+    setting: SettingDefinitionAndValue;
+  }>,
+) {
+  const { component, setting, scrollToDefinition } = props;
+  const isProjectExtraction =
+    setting.definition.key === SettingsKey.CodescanStaticResourceExtraction;
+
+  const { data: extractionGate, isLoading: extractionGateLoading } = useGetValueQuery(
+    { key: SettingsKey.CodescanStaticResourceExtractionEnabled },
+    { enabled: isProjectExtraction },
+  );
+
+  // Hide project extraction (and its list row) when the instance gate is off.
+  if (
+    isProjectExtraction &&
+    (extractionGateLoading || extractionGate?.value !== 'true')
+  ) {
+    return null;
+  }
+
+  return (
+    <StyledListItem
+      className="sw-p-6"
+      data-scroll-key={setting.definition.key}
+      ref={scrollToDefinition}
+    >
+      <Definition
+        component={component}
+        definition={setting.definition}
+        initialSettingValue={setting.settingValue}
+      />
+    </StyledListItem>
+  );
+}
+
 export default function DefinitionsList(props: Readonly<Props>) {
   const { component, settings } = props;
   return (
     <ul>
       {settings.map((setting) => (
-        <StyledListItem
-          className="sw-p-6"
+        <DefinitionListItem
           key={setting.definition.key}
-          data-scroll-key={setting.definition.key}
-          ref={props.scrollToDefinition}
-        >
-          <Definition
-            component={component}
-            definition={setting.definition}
-            initialSettingValue={setting.settingValue}
-          />
-        </StyledListItem>
+          component={component}
+          scrollToDefinition={props.scrollToDefinition}
+          setting={setting}
+        />
       ))}
     </ul>
   );

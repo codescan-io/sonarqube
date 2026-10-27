@@ -43,8 +43,8 @@ export interface GlobalNavProps {
 
 export function GlobalNav(props: GlobalNavProps) {
   const { currentUser, userOrganizations, location } = props;
-  const { creditsData, isLoading } = useAiCreditsContext();
   const showTrialPill = isLoggedIn(currentUser) && !isNonStandardUser(currentUser);
+  const { userCreditsData, isLoading, showCredits } = useAiCreditsContext();
   const { canAdmin, canCustomerAdmin, settings } = useContext(AppStateContext);
   const isAdmin = Boolean(canAdmin || canCustomerAdmin);
   const anyoneCanCreate = settings[GlobalSettingKeys.OrganizationsAnyoneCanCreate] === 'true';
@@ -64,7 +64,7 @@ export function GlobalNav(props: GlobalNavProps) {
         <div className="sw-flex sw-items-center sw-ml-2">
           {showTrialPill && <TrialStatusPill />}
           <div className="sw-flex sw-items-center sw-mr-1">
-            {!isLoading && creditsData && creditsData.allocatedCredits > 0 && <AiCreditsIndicator data={creditsData} />}
+            {!isLoading && showCredits && userCreditsData && <AiCreditsIndicator data={userCreditsData} />}
           </div>
           <EmbedDocsPopupHelper />
           {isLoggedIn(currentUser) && !(isNonStandardUser(currentUser) && (currentUser?.platformOrgs?.length ?? 0) > 0) && (canCreateProject || canCreateOrganization) && (
