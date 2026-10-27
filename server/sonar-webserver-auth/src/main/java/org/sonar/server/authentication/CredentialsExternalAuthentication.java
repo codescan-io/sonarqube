@@ -23,7 +23,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Optional;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.Startable;
@@ -41,7 +41,7 @@ import org.sonar.db.user.UserDto;
 import org.sonar.server.authentication.event.AuthenticationEvent;
 import org.sonar.server.authentication.event.AuthenticationEvent.Source;
 import org.sonar.server.authentication.event.AuthenticationException;
-import org.sonar.server.http.JavaxHttpRequest;
+import org.sonar.server.http.JakartaHttpRequest;
 import org.sonar.server.user.SecurityRealmFactory;
 
 import static java.util.Objects.requireNonNull;
@@ -93,7 +93,7 @@ public class CredentialsExternalAuthentication implements Startable {
 
   private UserDto doAuthenticate(Credentials credentials, HttpRequest request, AuthenticationEvent.Method method) {
     try {
-      HttpServletRequest httpServletRequest = ((JavaxHttpRequest) request).getDelegate();
+      HttpServletRequest httpServletRequest = ((JakartaHttpRequest) request).getDelegate();
       ExternalUsersProvider.Context externalUsersProviderContext = new ExternalUsersProvider.Context(credentials.getLogin(), request, httpServletRequest);
       UserDetails details = externalUsersProvider.doGetUserDetails(externalUsersProviderContext);
       if (details == null) {
@@ -140,7 +140,7 @@ public class CredentialsExternalAuthentication implements Startable {
       .setEmail(trimToNull(details.getEmail()))
       .setProviderLogin(userLogin);
     if (externalGroupsProvider != null) {
-      HttpServletRequest httpServletRequest = ((JavaxHttpRequest) request).getDelegate();
+      HttpServletRequest httpServletRequest = ((JakartaHttpRequest) request).getDelegate();
       ExternalGroupsProvider.Context context = new ExternalGroupsProvider.Context(userLogin, request, httpServletRequest);
       Collection<String> groups = externalGroupsProvider.doGetGroups(context);
       userIdentityBuilder.setGroups(new HashSet<>(groups));

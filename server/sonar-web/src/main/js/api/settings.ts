@@ -132,6 +132,36 @@ export async function getChatBotFlag(): Promise<{ message: boolean }> {
 const aiAssistantEnabledCache: Record<string, Promise<boolean>> = {};
 let globalAiAssistantEnabledCache: Promise<boolean> | undefined;
 
+let staticResourceCustomSeverityEnabledCache: Promise<boolean> | undefined;
+let staticResourceCustomSeverityCache: Promise<string | undefined> | undefined;
+
+/** Instance-level gate for Static Resource custom severity + Issues filter. */
+export async function isStaticResourceCustomSeverityEnabled(): Promise<boolean> {
+  if (staticResourceCustomSeverityEnabledCache === undefined) {
+    staticResourceCustomSeverityEnabledCache = (async () => {
+      const res = await getValues({
+        keys: ['codescan.cloud.staticResourceCustomSeverity.enabled'],
+      });
+      return res?.[0]?.value === 'true';
+    })();
+  }
+  return staticResourceCustomSeverityEnabledCache;
+}
+
+/** Configured severity applied to Static Resource findings when the feature is on. */
+export async function getStaticResourceCustomSeverity(): Promise<string | undefined> {
+  if (staticResourceCustomSeverityCache === undefined) {
+    staticResourceCustomSeverityCache = (async () => {
+      const res = await getValues({
+        keys: ['codescan.cloud.staticResourceCustomSeverity'],
+      });
+      const value = res?.[0]?.value?.trim();
+      return value || undefined;
+    })();
+  }
+  return staticResourceCustomSeverityCache;
+}
+
 export async function isAiAssistantEnabled(projectKey: string): Promise<boolean> {
   if (globalAiAssistantEnabledCache === undefined) {
     globalAiAssistantEnabledCache = (async () => {
