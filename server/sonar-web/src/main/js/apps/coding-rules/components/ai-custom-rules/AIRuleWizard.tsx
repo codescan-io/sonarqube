@@ -21,7 +21,7 @@
 import * as React from 'react';
 import { addGlobalErrorMessage } from '~design-system';
 import { createRule } from '../../../../api/rules';
-import { translate, translateWithParameters } from '../../../../helpers/l10n';
+import { translate } from '../../../../helpers/l10n';
 import { RuleDetails } from '../../../../types/types';
 import { generateAIXPath, getAiRuleQuota, parseCodescanErrorMessage } from './aiRuleService';
 import './AIRuleWizard.css';
@@ -105,10 +105,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
         return;
       }
       if (quota.remainingCredits < quota.costPerGenerate) {
-        addGlobalErrorMessage(translateWithParameters(
-          'ai_custom_rules.insufficient_credits',
-          String(quota.costPerGenerate),
-          String(quota.remainingCredits)));
+        addGlobalErrorMessage(translate('ai_custom_rules.insufficient_credits'));
         return;
       }
 
@@ -184,10 +181,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
         return;
       }
       if (quota.remainingCredits < quota.costPerRegenerate) {
-        addGlobalErrorMessage(translateWithParameters(
-          'ai_custom_rules.insufficient_credits',
-          String(quota.costPerRegenerate),
-          String(quota.remainingCredits)));
+        addGlobalErrorMessage(translate('ai_custom_rules.insufficient_credits'));
         return;
       }
 
