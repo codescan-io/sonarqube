@@ -19,6 +19,9 @@
  */
 package org.sonar.server.issue.ws;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -47,6 +50,8 @@ import org.sonar.server.issue.index.IssueIndexer;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.MediaTypes;
 
+import static org.apache.commons.lang3.StringUtils.trimToNull;
+import static org.sonar.server.issue.CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE;
 import static org.sonar.server.issue.IssueFieldsSetter.ISSUE_STATUS;
 import static org.sonar.server.issue.IssueFieldsSetter.RESOLUTION;
 import static org.sonar.server.issue.IssueFieldsSetter.STATUS;
@@ -65,8 +70,9 @@ import static com.google.common.base.Preconditions.checkArgument;
  *
  * <p><b>What it deliberately does not do.</b> No notifications, no quality-gate event per call, and no per-issue
  * permission check: it requires a system administrator, because the only caller is a server-side job acting on a
- * whole project. It supports only the two resolving transitions, which are the ones whose workflow reduces
- * cleanly to a predicate.
+ * whole project. It supports only the resolving transitions whose workflow reduces cleanly to a predicate: false
+ * positive, accept and exception. An exception carries one reason and one expiry date for the whole chunk, and
+ * both are required: the per-severity auto-expiry {@code do_transition} falls back to is a per-issue decision.
  */
 public class BulkTransitionAction implements IssuesWsAction {
 
@@ -81,6 +87,7 @@ public class BulkTransitionAction implements IssuesWsAction {
   private static final String PARAM_REFRESH_MEASURES = "refreshMeasures";
   private static final String PARAM_BRANCH_UUID = "branchUuid";
   private static final String PARAM_SET_BASED_CHANGELOG = "setBasedChangelog";
+  private static final String PARAM_EXCEPTION_REASON = "exceptionReason";
 
   /** Keeps one request's key list, its changelog rows and its index batch to a size the heap does not notice. */
   static final int MAX_ISSUES = 50_000;
@@ -90,12 +97,14 @@ public class BulkTransitionAction implements IssuesWsAction {
 
   private static final Map<String, String> TRANSITION_TO_RESOLUTION = Map.of(
     DefaultTransitions.FALSE_POSITIVE, Issue.RESOLUTION_FALSE_POSITIVE,
-    DefaultTransitions.ACCEPT, Issue.RESOLUTION_WONT_FIX);
+    DefaultTransitions.ACCEPT, Issue.RESOLUTION_WONT_FIX,
+    DefaultTransitions.EXCEPTION, Issue.RESOLUTION_EXCEPTION);
 
   /** The issue status each resolution presents as, so the changelog reads the same as a manual bulk change. */
   private static final Map<String, String> RESOLUTION_TO_ISSUE_STATUS = Map.of(
     Issue.RESOLUTION_FALSE_POSITIVE, "FALSE_POSITIVE",
-    Issue.RESOLUTION_WONT_FIX, "ACCEPTED");
+    Issue.RESOLUTION_WONT_FIX, "ACCEPTED",
+    Issue.RESOLUTION_EXCEPTION, "EXCEPTION");
 
   private final DbClient dbClient;
   private final UserSession userSession;
@@ -138,6 +147,13 @@ public class BulkTransitionAction implements IssuesWsAction {
       .setDescription("Uuid of the user the change is attributed to. Defaults to the caller.");
     action.createParam(PARAM_COMMENT)
       .setDescription("Comment to add to every resolved issue. Omitted means no comment is written.");
+    action.createParam(PARAM_EXCEPTION_REASON)
+      .setDescription("Reason recorded on every issue moved by the '" + DefaultTransitions.EXCEPTION + "' transition. "
+        + "Required with that transition and rejected with any other.");
+    action.createParam(PARAM_ISSUE_RESOLUTION_EXPIRY_DATE)
+      .setDescription("Expiry date (yyyy-MM-dd, UTC) of every exception this request records. Required with the '"
+        + DefaultTransitions.EXCEPTION + "' transition and rejected with any other; send it empty for an exception "
+        + "that never expires.");
     action.createParam(PARAM_SET_BASED_CHANGELOG)
       .setDescription("Write the changelog with one statement per partition instead of one insert per row. "
         + "Both paths produce the same rows, and the set-based one is around nine times faster, so it is the "
@@ -166,8 +182,9 @@ public class BulkTransitionAction implements IssuesWsAction {
     String comment = request.param(PARAM_COMMENT);
     boolean refreshMeasures = request.mandatoryParamAsBoolean(PARAM_REFRESH_MEASURES);
     boolean setBasedChangelog = request.mandatoryParamAsBoolean(PARAM_SET_BASED_CHANGELOG);
+    ExceptionFields exception = exceptionFields(request, transition, resolution);
 
-    Result result = apply(issueKeys, resolution, branchUuid, changeAuthor, comment, refreshMeasures,
+    Result result = apply(issueKeys, resolution, exception, branchUuid, changeAuthor, comment, refreshMeasures,
       setBasedChangelog);
 
     try (JsonWriter json = response.newJsonWriter()) {
@@ -180,8 +197,34 @@ public class BulkTransitionAction implements IssuesWsAction {
     response.stream().setMediaType(MediaTypes.JSON);
   }
 
-  private Result apply(List<String> issueKeys, String resolution, String branchUuid,
-    @Nullable String changeAuthor, @Nullable String comment, boolean refreshMeasures,
+  /** Null for the transitions that are not an exception, which must not carry the exception parameters. */
+  @Nullable
+  private static ExceptionFields exceptionFields(Request request, String transition, String resolution) {
+    String reason = trimToNull(request.param(PARAM_EXCEPTION_REASON));
+    String expiryDate = request.param(PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
+    if (!Issue.RESOLUTION_EXCEPTION.equals(resolution)) {
+      checkArgument(reason == null && expiryDate == null, "'%s' and '%s' apply only to the '%s' transition",
+        PARAM_EXCEPTION_REASON, PARAM_ISSUE_RESOLUTION_EXPIRY_DATE, DefaultTransitions.EXCEPTION);
+      return null;
+    }
+    checkArgument(reason != null, "'%s' is required with the '%s' transition", PARAM_EXCEPTION_REASON, transition);
+    checkArgument(expiryDate != null, "'%s' is required with the '%s' transition; send it empty for an exception "
+      + "that never expires", PARAM_ISSUE_RESOLUTION_EXPIRY_DATE, transition);
+    return new ExceptionFields(reason, expiryDate.isBlank() ? null : utcStartOfDay(expiryDate.trim()));
+  }
+
+  /** The same instant {@code do_transition} stores for a manual expiry date. */
+  private static long utcStartOfDay(String ymd) {
+    try {
+      return LocalDate.parse(ymd).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+    } catch (DateTimeParseException e) {
+      throw new IllegalArgumentException(
+        String.format("'%s' must be a date in the yyyy-MM-dd format: %s", PARAM_ISSUE_RESOLUTION_EXPIRY_DATE, ymd), e);
+    }
+  }
+
+  private Result apply(List<String> issueKeys, String resolution, @Nullable ExceptionFields exception,
+    String branchUuid, @Nullable String changeAuthor, @Nullable String comment, boolean refreshMeasures,
     boolean setBasedChangelog) {
     long now = system2.now();
     List<IssueKeyStatusDto> movable;
@@ -205,17 +248,19 @@ public class BulkTransitionAction implements IssuesWsAction {
         // incomparable. Flushing is not committing, so the chunk stays atomic either way.
         if (setBasedChangelog) {
           t0 = system2.now();
-          writeChangelogSetBased(dbSession, movableKeys, resolution, branchUuid, changeAuthor, comment, now);
+          writeChangelogSetBased(dbSession, movableKeys, resolution, exception, branchUuid, changeAuthor, comment,
+            now);
           dbSession.flushStatements();
           changelogMs = system2.now() - t0;
         }
         t0 = system2.now();
-        dbClient.issueDao().bulkTransition(dbSession, movableKeys, resolution, now);
+        dbClient.issueDao().bulkTransition(dbSession, movableKeys, resolution,
+          exception == null ? null : exception.expiresAt(), now);
         dbSession.flushStatements();
         updateMs = system2.now() - t0;
         if (!setBasedChangelog) {
           t0 = system2.now();
-          writeChangelog(dbSession, movable, resolution, branchUuid, changeAuthor, comment, now);
+          writeChangelog(dbSession, movable, resolution, exception, branchUuid, changeAuthor, comment, now);
           dbSession.flushStatements();
           changelogMs = system2.now() - t0;
         }
@@ -294,9 +339,14 @@ public class BulkTransitionAction implements IssuesWsAction {
    * sent a row at a time. Runs before the update, because the diff row records the status the update overwrites.
    */
   private void writeChangelogSetBased(DbSession dbSession, List<String> movableKeys, String resolution,
-    String branchUuid, @Nullable String changeAuthor, @Nullable String comment, long now) {
+    @Nullable ExceptionFields exception, String branchUuid, @Nullable String changeAuthor, @Nullable String comment,
+    long now) {
     dbClient.issueChangeDao().insertTransitionDiffs(dbSession, movableKeys, resolution,
       RESOLUTION_TO_ISSUE_STATUS.get(resolution), branchUuid, changeAuthor, now, uuidFactory);
+    if (exception != null) {
+      dbClient.issueChangeDao().insertTransitionExceptionReasons(dbSession, movableKeys, exception.reason(),
+        branchUuid, changeAuthor, now, uuidFactory);
+    }
     if (comment != null) {
       dbClient.issueChangeDao().insertTransitionComments(dbSession, movableKeys, comment, branchUuid, changeAuthor,
         now, uuidFactory);
@@ -309,7 +359,8 @@ public class BulkTransitionAction implements IssuesWsAction {
    * caller does, so the uuid is assigned here.
    */
   private void writeChangelog(DbSession dbSession, List<IssueKeyStatusDto> movable, String resolution,
-    String branchUuid, @Nullable String changeAuthor, @Nullable String comment, long now) {
+    @Nullable ExceptionFields exception, String branchUuid, @Nullable String changeAuthor, @Nullable String comment,
+    long now) {
     String issueStatus = RESOLUTION_TO_ISSUE_STATUS.get(resolution);
     Date changeDate = new Date(now);
     int sinceFlush = 0;
@@ -324,8 +375,13 @@ public class BulkTransitionAction implements IssuesWsAction {
       IssueChangeDto diffRow = IssueChangeDto.of(issue.getKee(), diffs, branchUuid);
       diffRow.setUuid(uuidFactory.create());
       dbClient.issueChangeDao().insert(dbSession, diffRow);
+      if (exception != null) {
+        dbClient.issueChangeDao().insert(dbSession, commentRow(issue.getKee(), IssueChangeDto.TYPE_EXCEPTION_REASON,
+          branchUuid, changeAuthor, exception.reason(), now));
+      }
       if (comment != null) {
-        dbClient.issueChangeDao().insert(dbSession, commentRow(issue.getKee(), branchUuid, changeAuthor, comment, now));
+        dbClient.issueChangeDao().insert(dbSession, commentRow(issue.getKee(), IssueChangeDto.TYPE_COMMENT,
+          branchUuid, changeAuthor, comment, now));
       }
       // Send the accumulated batch to the driver periodically. Without this a 25,000-issue chunk holds 50,000
       // pending inserts in the web JVM before the commit. Flushing is not committing, so the chunk stays atomic.
@@ -336,14 +392,15 @@ public class BulkTransitionAction implements IssuesWsAction {
     }
   }
 
-  private IssueChangeDto commentRow(String issueKey, String projectUuid, @Nullable String userUuid, String comment,
-    long now) {
+  /** A comment or an exception reason: both are keyed text rows. */
+  private IssueChangeDto commentRow(String issueKey, String changeType, String projectUuid, @Nullable String userUuid,
+    String text, long now) {
     return new IssueChangeDto()
       .setUuid(uuidFactory.create())
       .setKey(uuidFactory.create())
       .setIssueKey(issueKey)
-      .setChangeType(IssueChangeDto.TYPE_COMMENT)
-      .setChangeData(comment)
+      .setChangeType(changeType)
+      .setChangeData(text)
       .setUserUuid(userUuid)
       .setProjectUuid(projectUuid)
       .setIssueChangeCreationDate(now)
@@ -357,5 +414,9 @@ public class BulkTransitionAction implements IssuesWsAction {
   }
 
   private record Result(List<String> transitioned, List<String> notTransitioned) {
+  }
+
+  /** {@code expiresAt} is null for an exception that never expires. */
+  private record ExceptionFields(String reason, @Nullable Long expiresAt) {
   }
 }

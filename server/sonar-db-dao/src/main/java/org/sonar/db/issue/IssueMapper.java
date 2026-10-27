@@ -66,7 +66,7 @@ public interface IssueMapper {
 
   /** CodeScan: one statement for a whole chunk, in place of one update per issue. */
   int bulkTransition(@Param("keys") List<String> keys, @Param("resolution") String resolution,
-    @Param("now") long now);
+    @Nullable @Param("expiresAt") Long expiresAt, @Param("now") long now);
 
   void insertAsNewCodeOnReferenceBranch(NewCodeReferenceIssueDto issue);
 

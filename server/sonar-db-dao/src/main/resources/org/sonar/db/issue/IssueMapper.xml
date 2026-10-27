@@ -246,6 +246,7 @@
     update issues
     set status = 'RESOLVED',
       resolution = #{resolution,jdbcType=VARCHAR},
+      issue_resolution_expires_at = #{expiresAt,jdbcType=BIGINT},
       assignee = null,
       issue_update_date = #{now,jdbcType=BIGINT},
       updated_at = #{now,jdbcType=BIGINT}

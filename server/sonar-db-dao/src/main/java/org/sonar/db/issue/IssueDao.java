@@ -189,12 +189,16 @@ public class IssueDao implements Dao {
   /**
    * CodeScan: resolves a whole chunk of issues in one statement per partition rather than one per issue. Only
    * issues the workflow would actually move are touched, so the count matches {@link #selectTransitionable}.
+   * {@code expiresAt} is written as the exception expiry; null clears it, as the workflow does for any other
+   * resolution.
    *
    * @return how many issues were resolved
    */
-  public int bulkTransition(DbSession session, Collection<String> keys, String resolution, long now) {
+  public int bulkTransition(DbSession session, Collection<String> keys, String resolution, @Nullable Long expiresAt,
+    long now) {
     AtomicInteger updated = new AtomicInteger();
-    executeLargeUpdates(keys, partition -> updated.addAndGet(mapper(session).bulkTransition(partition, resolution, now)));
+    executeLargeUpdates(keys,
+      partition -> updated.addAndGet(mapper(session).bulkTransition(partition, resolution, expiresAt, now)));
     return updated.get();
   }
 
