@@ -20,7 +20,7 @@
 package org.sonarqube.ws.client.issues;
 
 import java.util.List;
-import javax.annotation.Generated;
+import jakarta.annotation.Generated;
 
 /**
  * This is part of the internal API.
@@ -41,6 +41,8 @@ public class BulkChangeRequest {
   private List<String> setSeverity;
   private List<String> setType;
   private String changeAuthor;
+  private String exceptionReason;
+  private String issueResolutionExpiryDate;
 
   /**
    * Example value: "security,java8"
@@ -193,5 +195,31 @@ public class BulkChangeRequest {
 
   public String getChangeAuthor() {
     return changeAuthor;
+  }
+
+  /**
+   * Codescan customization: reason recorded with the {@code exception} transition. When set, {@link #setComment}
+   * is posted as a comment as well instead of being used as the reason.
+   */
+  public BulkChangeRequest setExceptionReason(String exceptionReason) {
+    this.exceptionReason = exceptionReason;
+    return this;
+  }
+
+  public String getExceptionReason() {
+    return exceptionReason;
+  }
+
+  /**
+   * Codescan customization: expiry (YYYY-MM-DD) for the {@code exception} transition on code issues. An empty value
+   * means no expiry; leaving it unset lets the server apply its auto-expiry.
+   */
+  public BulkChangeRequest setIssueResolutionExpiryDate(String issueResolutionExpiryDate) {
+    this.issueResolutionExpiryDate = issueResolutionExpiryDate;
+    return this;
+  }
+
+  public String getIssueResolutionExpiryDate() {
+    return issueResolutionExpiryDate;
   }
 }
