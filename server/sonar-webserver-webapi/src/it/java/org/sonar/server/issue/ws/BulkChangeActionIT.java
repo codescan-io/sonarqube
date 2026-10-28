@@ -765,6 +765,63 @@ public class BulkChangeActionIT {
       .isInstanceOf(UnauthorizedException.class);
   }
 
+  // Codescan customization (CSN-82): with an explicit reason, the comment is posted too, as do_transition does.
+  @Test
+  public void exception_with_reason_and_comment_records_both_and_the_expiry() {
+    IssueDto issue = insertOpenIssueForIssueAdmin();
+
+    BulkChangeWsResponse response = tester.newRequest()
+      .setParam("issues", issue.getKey())
+      .setParam("do_transition", "exception")
+      .setParam("exceptionReason", "Approved by security board")
+      .setParam("issueResolutionExpiryDate", "2026-12-31")
+      .setParam("comment", "Resolution transferred from src")
+      .executeProtobuf(BulkChangeWsResponse.class);
+
+    checkResponse(response, 1, 1, 0, 0);
+    IssueDto reloaded = getIssueByKeys(issue.getKey()).get(0);
+    assertThat(reloaded.getResolution()).isEqualTo("EXCEPTION");
+    assertThat(reloaded.getIssueResolutionExpiresAt())
+      .isEqualTo(java.time.LocalDate.parse("2026-12-31").atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli());
+    assertThat(issueChanges(issue.getKey()))
+      .containsExactlyInAnyOrder(
+        tuple(IssueChangeDto.TYPE_EXCEPTION_REASON, "Approved by security board"),
+        tuple(TYPE_COMMENT, "Resolution transferred from src"));
+  }
+
+  @Test
+  public void exception_with_comment_only_uses_the_comment_as_the_reason() {
+    IssueDto issue = insertOpenIssueForIssueAdmin();
+
+    BulkChangeWsResponse response = tester.newRequest()
+      .setParam("issues", issue.getKey())
+      .setParam("do_transition", "exception")
+      .setParam("comment", "Accepted risk")
+      .executeProtobuf(BulkChangeWsResponse.class);
+
+    checkResponse(response, 1, 1, 0, 0);
+    assertThat(issueChanges(issue.getKey()))
+      .containsExactly(tuple(IssueChangeDto.TYPE_EXCEPTION_REASON, "Accepted risk"));
+  }
+
+  private IssueDto insertOpenIssueForIssueAdmin() {
+    UserDto user = db.users().insertUser();
+    userSession.logIn(user);
+    ProjectData projectData = db.components().insertPrivateProject();
+    ComponentDto project = projectData.getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    addUserProjectPermissions(user, projectData, USER, ISSUE_ADMIN);
+    RuleDto rule = db.rules().insertIssueRule();
+    return db.issues().insertIssue(rule, project, file, i -> i.setType(CODE_SMELL).setStatus(STATUS_OPEN).setResolution(null));
+  }
+
+  private List<org.assertj.core.groups.Tuple> issueChanges(String issueKey) {
+    return dbClient.issueChangeDao().selectByIssueKeys(db.getSession(), singletonList(issueKey)).stream()
+      .filter(c -> !IssueChangeDto.TYPE_FIELD_CHANGE.equals(c.getChangeType()))
+      .map(c -> tuple(c.getChangeType(), c.getChangeData()))
+      .toList();
+  }
+
   @Test
   public void test_definition() {
     WebService.Action action = tester.getDef();
