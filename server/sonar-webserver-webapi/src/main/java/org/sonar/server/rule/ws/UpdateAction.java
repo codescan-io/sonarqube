@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.CheckForNull;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.sonar.api.issue.impact.SoftwareQuality;
@@ -45,6 +46,7 @@ import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.db.rule.RuleParamDto;
+import org.sonar.server.common.rule.EncodedRuleParameters;
 import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.rule.RuleUpdate;
@@ -76,6 +78,7 @@ public class UpdateAction implements RulesWsAction {
   public static final String PARAM_IMPACTS = "impacts";
   public static final String PARAM_STATUS = "status";
   public static final String PARAMS = "params";
+  public static final String PARAM_ENCODED_PARAMS = "encodedParams";
   public static final String PARAM_ORGANIZATION = "organization";
 
   private final DbClient dbClient;
@@ -101,6 +104,7 @@ public class UpdateAction implements RulesWsAction {
       .setDescription("Update an existing rule.<br>" +
         "Requires the 'Administer Quality Profiles' permission")
       .setChangelog(
+        new Change("24.12", String.format("Parameter %s was added.", PARAM_ENCODED_PARAMS)),
         new Change("10.8", String.format("Parameter %s was added.", PARAM_IMPACTS)),
         new Change("10.8", String.format("The parameter '%s' is not deprecated anymore.", PARAM_SEVERITY)),
         new Change("10.8", "The field 'severity' and 'type' in the response are not deprecated anymore."),
@@ -176,6 +180,14 @@ public class UpdateAction implements RulesWsAction {
 
     action.createParam(PARAMS)
       .setDescription("Parameters as semi-colon list of <key>=<value>, for example 'params=key1=v1;key2=v2' (Only when updating a custom rule)");
+
+    // Rule parameter values such as XPath expressions can match the SQL injection signatures of a WAF body inspection;
+    // the web UI sends them base64url-encoded in this parameter so that the request body carries only [A-Za-z0-9_-].
+    action.createParam(PARAM_ENCODED_PARAMS)
+      .setDescription(format("Same content as '%s', base64url-encoded (RFC 4648 §5, padding optional) from UTF-8. " +
+        "When set, it is used instead of '%s' (Only when updating a custom rule)", PARAMS, PARAMS))
+      .setExampleValue("a2V5MT12MTtrZXkyPXYy")
+      .setSince("24.12");
   }
 
   @Override
@@ -223,11 +235,20 @@ public class UpdateAction implements RulesWsAction {
     if (status != null) {
       update.setStatus(RuleStatus.valueOf(status));
     }
-    String params = request.param(PARAMS);
+    String params = readParams(request);
     if (params != null) {
       update.setParameters(KeyValueFormat.parse(params));
     }
     return update;
+  }
+
+  @CheckForNull
+  private static String readParams(Request request) {
+    String encodedParams = request.param(PARAM_ENCODED_PARAMS);
+    if (encodedParams == null || encodedParams.isEmpty()) {
+      return request.param(PARAMS);
+    }
+    return EncodedRuleParameters.decode(encodedParams, PARAM_ENCODED_PARAMS);
   }
 
   private RuleUpdate createRuleUpdate(DbSession dbSession, RuleKey key, OrganizationDto organization) {
