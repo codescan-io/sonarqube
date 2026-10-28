@@ -33,6 +33,8 @@ export const enum SettingsKey {
   CodeSuggestion = 'sonar.ai.suggestions.enabled',
   CodescanStaticResourceExtractionEnabled = 'codescan.cloud.staticResourceExtraction.enabled',
   CodescanStaticResourceExtraction = 'codescan.cloud.staticResourceExtraction',
+  CodescanStaticResourceCustomSeverityEnabled = 'codescan.cloud.staticResourceCustomSeverity.enabled',
+  CodescanStaticResourceCustomSeverity = 'codescan.cloud.staticResourceCustomSeverity',
 }
 
 export enum GlobalSettingKeys {
@@ -52,6 +54,7 @@ export enum GlobalSettingKeys {
   CodescanSupport = 'codescan.cloud.support',
   CodescanMsaConsentDisplayMessage = 'codescan.cloud.msaConsent.displayMessage',
   CodescanMsaConsentDisplayMessageForTrialUser = 'codescan.cloud.msaConsent.trial.displayMessage',
+  CodescanResolutionTransferEnabled = 'codescan.cloud.resolutionTransfer.enabled',
 }
 
 export type SettingDefinitionAndValue = {
