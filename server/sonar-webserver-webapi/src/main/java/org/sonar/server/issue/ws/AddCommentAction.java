@@ -32,6 +32,7 @@ import org.sonar.core.issue.IssueChangeContext;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.issue.IssueDto;
+import org.sonar.server.common.text.EncodedParameters;
 import org.sonar.server.issue.IssueFieldsSetter;
 import org.sonar.server.issue.IssueFinder;
 import org.sonar.server.user.UserSession;
@@ -44,6 +45,7 @@ import static java.util.Objects.requireNonNull;
 import static org.sonar.core.issue.IssueChangeContext.issueChangeContextByUserBuilder;
 import static org.sonar.core.util.Uuids.UUID_EXAMPLE_01;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ISSUE;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ENCODED_TEXT;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_TEXT;
 
 public class AddCommentAction implements IssuesWsAction {
@@ -74,6 +76,7 @@ public class AddCommentAction implements IssuesWsAction {
         "Requires authentication and the following permission: 'Browse' on the project of the specified issue.")
       .setSince("3.6")
       .setChangelog(
+        new Change("24.12", format("Add parameter '%s'. Parameter '%s' is no longer required when '%s' is set.", PARAM_ENCODED_TEXT, PARAM_TEXT, PARAM_ENCODED_TEXT)),
         new Change("10.8", "The response fields 'severity' and 'type' are not deprecated anymore."),
         new Change("10.8", format("Possible values '%s' and '%s' for response field 'severity' of 'impacts' have been added.", Severity.INFO.name(), Severity.BLOCKER.name())),
         new Change("10.4", "The response fields 'severity' and 'type' are deprecated. Please use 'impacts' instead."),
@@ -94,9 +97,15 @@ public class AddCommentAction implements IssuesWsAction {
       .setRequired(true)
       .setExampleValue(UUID_EXAMPLE_01);
     action.createParam(PARAM_TEXT)
-      .setDescription("Comment text")
-      .setRequired(true)
+      .setDescription(format("Comment text. Required unless '%s' is set.", PARAM_ENCODED_TEXT))
       .setExampleValue("Won't fix because it doesn't apply to the context");
+    // Comment text can match the path traversal and SQL injection signatures of a WAF body inspection; the web UI
+    // sends it base64url-encoded in this parameter so that the request body carries only [A-Za-z0-9_-].
+    action.createParam(PARAM_ENCODED_TEXT)
+      .setDescription(format("Same content as '%s', base64url-encoded (RFC 4648 §5, padding optional) from UTF-8. " +
+        "When set, it is used instead of '%s'.", PARAM_TEXT, PARAM_TEXT))
+      .setExampleValue("V29uJ3QgZml4")
+      .setSince("24.12");
   }
 
   @Override
@@ -114,9 +123,17 @@ public class AddCommentAction implements IssuesWsAction {
   }
 
   private static AddCommentRequest toWsRequest(Request request) {
-    AddCommentRequest wsRequest = new AddCommentRequest(request.mandatoryParam(PARAM_ISSUE), request.mandatoryParam(PARAM_TEXT));
+    AddCommentRequest wsRequest = new AddCommentRequest(request.mandatoryParam(PARAM_ISSUE), readText(request));
     checkArgument(!isNullOrEmpty(wsRequest.getText()), "Cannot add empty comment to an issue");
     return wsRequest;
+  }
+
+  private static String readText(Request request) {
+    String encodedText = request.param(PARAM_ENCODED_TEXT);
+    if (encodedText == null || encodedText.isEmpty()) {
+      return request.mandatoryParam(PARAM_TEXT);
+    }
+    return EncodedParameters.decode(encodedText, PARAM_ENCODED_TEXT);
   }
 
   private static class AddCommentRequest {

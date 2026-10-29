@@ -22,6 +22,7 @@ import { HttpStatusCode } from 'axios';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import { axiosToCatch, post, postJSON } from '../helpers/request';
+import { encodeBase64Url } from '../helpers/strings';
 import { CleanCodeAttribute, SoftwareImpact } from '../types/clean-code-taxonomy';
 import { GetRulesAppResponse, SearchRulesResponse } from '../types/coding-rules';
 import { SearchRulesQuery } from '../types/rules';
@@ -84,8 +85,17 @@ export function getRuleTags(parameters: { organization: string; ps?: number; q: 
   return getJSON('/api/rules/tags', parameters).then((r) => r.tags, throwGlobalError);
 }
 
-export function createRule(data: CreateRuleData): Promise<RestRuleDetails> {
-  return axiosToCatch.post<RuleDetails>(RULES_ENDPOINT, data).catch(({ response }) => {
+// A rule description can match the SQL injection and path traversal signatures of a WAF body
+// inspection, so createRule and updateRule send it base64url-encoded.
+export function createRule({
+  markdownDescription,
+  ...data
+}: CreateRuleData): Promise<RestRuleDetails> {
+  const body = markdownDescription
+    ? { ...data, encodedMarkdownDescription: encodeBase64Url(markdownDescription) }
+    : { ...data, markdownDescription };
+
+  return axiosToCatch.post<RuleDetails>(RULES_ENDPOINT, body).catch(({ response }) => {
     // do not show global error if the status code is 409
     // this case should be handled inside a component
     if (response && response.status === HttpStatusCode.Conflict) {
@@ -106,5 +116,14 @@ export function updateRule(data: RulesUpdateRequest): Promise<RuleDetails> {
       .map((impact) => `${impact.softwareQuality}=${impact.severity}`)
       .join(';');
 
-  return postJSON('/api/rules/update', { ...data, impacts }).then((r) => r.rule, throwGlobalError);
+  return postJSON('/api/rules/update', {
+    ...data,
+    ...(data.markdownDescription
+      ? {
+          markdownDescription: undefined,
+          encodedMarkdownDescription: encodeBase64Url(data.markdownDescription),
+        }
+      : {}),
+    impacts,
+  }).then((r) => r.rule, throwGlobalError);
 }

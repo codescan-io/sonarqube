@@ -19,6 +19,8 @@
  */
 package org.sonar.server.issue.ws;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import javax.annotation.Nullable;
 import org.junit.Before;
 import org.junit.Rule;
@@ -34,6 +36,7 @@ import org.sonar.db.issue.IssueChangeDto;
 import org.sonar.db.issue.IssueDbTester;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.user.UserDto;
+import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.ForbiddenException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.exceptions.UnauthorizedException;
@@ -57,6 +60,7 @@ import static org.sonar.api.web.UserRole.USER;
 public class EditCommentActionIT {
 
   private static final long NOW = 10_000_000_000L;
+  private static final String WAF_SENSITIVE_TEXT = "See ../../classes/AccountService.cls where Name = 'a' OR 1=1 -- é";
 
   @Rule
   public DbTester dbTester = DbTester.create();
@@ -92,6 +96,37 @@ public class EditCommentActionIT {
     IssueChangeDto issueComment = dbClient.issueChangeDao().selectCommentByKey(dbTester.getSession(), commentDto.getKey()).get();
     assertThat(issueComment.getChangeData()).isEqualTo("please have a look");
     assertThat(issueComment.getUpdatedAt()).isEqualTo(NOW);
+  }
+
+  @Test
+  public void edit_comment_from_encoded_text() {
+    IssueDto issueDto = newIssue();
+    UserDto user = dbTester.users().insertUser();
+    IssueChangeDto commentDto = issueDbTester.insertComment(issueDto, user, "please fix it");
+    loginWithBrowsePermission(user, USER, issueDto);
+
+    tester.newRequest()
+      .setParam("comment", commentDto.getKey())
+      .setParam("encodedText", encode(WAF_SENSITIVE_TEXT))
+      .execute();
+
+    IssueChangeDto issueComment = dbClient.issueChangeDao().selectCommentByKey(dbTester.getSession(), commentDto.getKey()).get();
+    assertThat(issueComment.getChangeData()).isEqualTo(WAF_SENSITIVE_TEXT);
+  }
+
+  @Test
+  public void fail_when_encoded_text_is_not_base64url() {
+    IssueDto issueDto = newIssue();
+    UserDto user = dbTester.users().insertUser();
+    IssueChangeDto commentDto = issueDbTester.insertComment(issueDto, user, "please fix it");
+    loginWithBrowsePermission(user, USER, issueDto);
+
+    TestRequest request = tester.newRequest()
+      .setParam("comment", commentDto.getKey())
+      .setParam("encodedText", "not+base64/");
+    assertThatThrownBy(request::execute)
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(\"Parameter 'encodedText' is not valid base64url");
   }
 
   @Test
@@ -203,7 +238,8 @@ public class EditCommentActionIT {
     assertThat(action.key()).isEqualTo("edit_comment");
     assertThat(action.isPost()).isTrue();
     assertThat(action.isInternal()).isFalse();
-    assertThat(action.params()).hasSize(2);
+    assertThat(action.params()).extracting(WebService.Param::key).containsExactlyInAnyOrder("comment", "text", "encodedText");
+    assertThat(action.param("text").isRequired()).isFalse();
     assertThat(action.responseExample()).isNotNull();
   }
 
@@ -212,6 +248,10 @@ public class EditCommentActionIT {
     ofNullable(commentKey).ifPresent(comment1 -> request.setParam("comment", comment1));
     ofNullable(commentText).ifPresent(comment -> request.setParam("text", comment));
     return request.execute();
+  }
+
+  private static String encode(String value) {
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8));
   }
 
   private IssueDto newIssue() {
