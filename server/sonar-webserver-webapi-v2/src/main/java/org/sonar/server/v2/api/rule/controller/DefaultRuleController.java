@@ -21,12 +21,15 @@ package org.sonar.server.v2.api.rule.controller;
 
 import java.util.HashMap;
 import java.util.Map;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.server.common.organization.OrganizationService;
 import org.sonar.server.common.rule.ReactivationException;
 import org.sonar.server.common.rule.service.NewCustomRule;
 import org.sonar.server.common.rule.service.RuleInformation;
 import org.sonar.server.common.rule.service.RuleService;
+import org.sonar.server.common.text.EncodedParameters;
 import org.sonar.server.exceptions.ServerException;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.v2.api.rule.converter.RuleRestResponseGenerator;
@@ -40,6 +43,8 @@ import static java.util.Optional.ofNullable;
 import static org.sonar.db.permission.OrganizationPermission.ADMINISTER_QUALITY_PROFILES;
 
 public class DefaultRuleController implements RuleController {
+  private static final String ENCODED_PARAMETERS_FIELD = "encodedParameters";
+
   private final UserSession userSession;
   private final RuleService ruleService;
   private final RuleRestResponseGenerator ruleRestResponseGenerator;
@@ -77,12 +82,22 @@ public class DefaultRuleController implements RuleController {
       .setSeverity(request.severity())
       .setAiGenerated(request.aiGenerated() != null && request.aiGenerated())
       .setPreventReactivation(true);
-    if (request.parameters() != null) {
+    if (request.encodedParameters() != null && !request.encodedParameters().isEmpty()) {
+        Map<String, String> params = new HashMap<>();
+        request.encodedParameters().forEach(p -> params.put(p.key(), decodeParameterValue(p.defaultValue())));
+        newCustomRule.setParameters(params);
+    }
+    else if (request.parameters() != null) {
       Map<String, String> params = new HashMap<>();
       request.parameters().forEach(p -> params.put(p.key(), p.defaultValue()));
       newCustomRule.setParameters(params);
     }
     return newCustomRule;
+  }
+
+  @CheckForNull
+  private static String decodeParameterValue(@Nullable String encodedValue) {
+    return encodedValue == null ? null : EncodedParameters.decode(encodedValue, ENCODED_PARAMETERS_FIELD);
   }
 
   private static NewCustomRule.Impact toNewCustomRuleImpact(Impact impact) {
