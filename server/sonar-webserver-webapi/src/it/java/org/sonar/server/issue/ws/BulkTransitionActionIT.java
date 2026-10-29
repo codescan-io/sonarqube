@@ -19,314 +19,219 @@
  */
 package org.sonar.server.issue.ws;
 
-import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.List;
-import java.util.UUID;
-import javax.annotation.Nullable;
+import java.util.stream.IntStream;
 import org.junit.Rule;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.sonar.api.impl.utils.TestSystem2;
+import org.sonar.api.utils.System2;
 import org.sonar.core.util.SequenceUuidFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbTester;
 import org.sonar.db.component.ComponentDto;
-import org.sonar.db.issue.IssueChangeDto;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.rule.RuleDto;
-import org.sonar.server.es.EsTester;
+import org.sonar.server.exceptions.ForbiddenException;
 import org.sonar.server.issue.TestIssueChangePostProcessor;
 import org.sonar.server.issue.index.IssueIndexer;
-import org.sonar.server.issue.index.IssueIteratorFactory;
 import org.sonar.server.tester.UserSessionRule;
-import org.sonar.server.ws.TestRequest;
 import org.sonar.server.ws.WsActionTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.sonar.api.issue.Issue.RESOLUTION_EXCEPTION;
-import static org.sonar.api.issue.Issue.RESOLUTION_FALSE_POSITIVE;
-import static org.sonar.api.issue.Issue.RESOLUTION_WONT_FIX;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.sonar.api.issue.Issue.STATUS_OPEN;
-import static org.sonar.api.issue.Issue.STATUS_RESOLVED;
+import static org.sonar.api.rules.RuleType.CODE_SMELL;
 import static org.sonar.db.component.ComponentTesting.newFileDto;
-import static org.sonar.db.issue.IssueChangeDto.TYPE_COMMENT;
-import static org.sonar.db.issue.IssueChangeDto.TYPE_EXCEPTION_REASON;
-import static org.sonar.db.issue.IssueChangeDto.TYPE_FIELD_CHANGE;
 
-/** CSN-82: the exception transition of {@code api/issues/bulk_transition}, copied from the source each issue's transfer paired it with. */
 public class BulkTransitionActionIT {
 
-  private static final long NOW = 2_000_000_000_000L;
-  private static final String REASON = "Approved until the vendor patch";
-  private static final String OTHER_REASON = "Accepted risk for the legacy module";
-  private static final String COMMENT = "Resolution transferred from src (branch- main)";
+  private static final long NOW = 1_700_000_000_000L;
+
+  private final System2 system2 = new TestSystem2().setNow(NOW);
 
   @Rule
-  public DbTester db = DbTester.create();
-  @Rule
-  public EsTester es = EsTester.create();
+  public DbTester db = DbTester.create(system2);
   @Rule
   public UserSessionRule userSession = UserSessionRule.standalone();
 
   private final DbClient dbClient = db.getDbClient();
-  private final IssueIndexer issueIndexer = new IssueIndexer(es.client(), dbClient, new IssueIteratorFactory(dbClient),
-    null);
-  private final WsActionTester ws = new WsActionTester(new BulkTransitionAction(dbClient, userSession, issueIndexer,
-    new SequenceUuidFactory(), new TestSystem2().setNow(NOW), new TestIssueChangePostProcessor()));
+  private final IssueIndexer issueIndexer = mock(IssueIndexer.class);
+  private final TestIssueChangePostProcessor postProcessor = new TestIssueChangePostProcessor();
 
-  private final String transferUuid = UUID.randomUUID().toString();
-  private ComponentDto project;
-  private ComponentDto file;
-  private RuleDto rule;
+  private final WsActionTester tester = new WsActionTester(new BulkTransitionAction(dbClient, userSession,
+    issueIndexer, new SequenceUuidFactory(), system2, postProcessor));
 
   @Test
-  public void eachIssueTakesTheExpiryAndReasonOfItsOwnSource() {
-    givenAProject();
-    IssueDto firstSource = insertException(utcMidnight("2026-12-31"), REASON);
-    IssueDto secondSource = insertException(utcMidnight("2027-03-31"), OTHER_REASON);
-    IssueDto first = insertOpenIssue();
-    IssueDto second = insertOpenIssue();
+  public void requires_system_administrator() {
+    userSession.logIn();
 
-    String json = exceptionRequest(List.of(first, second), List.of(firstSource, secondSource)).execute().getInput();
-
-    assertThat(json).contains("\"transitioned\":2");
-    assertException(first, utcMidnight("2026-12-31"), REASON);
-    assertException(second, utcMidnight("2027-03-31"), OTHER_REASON);
-    for (IssueDto issue : List.of(first, second)) {
-      assertThat(changeData(issue, TYPE_COMMENT)).containsExactly(COMMENT);
-      assertThat(changeData(issue, TYPE_FIELD_CHANGE))
-        .containsExactly("resolution=EXCEPTION,status=OPEN|RESOLVED,issueStatus=OPEN|EXCEPTION");
-    }
+    assertThatThrownBy(() -> tester.newRequest()
+      .setParam("issues", "any")
+      .setParam("transition", "falsepositive")
+      .setParam("branchUuid", "any")
+      .setParam("refreshMeasures", "false")
+      .execute())
+      .isInstanceOf(ForbiddenException.class);
   }
 
   @Test
-  public void issuesSharingASourceValueAreWrittenTogether() {
-    givenAProject();
-    IssueDto firstSource = insertException(utcMidnight("2026-12-31"), REASON);
-    IssueDto secondSource = insertException(utcMidnight("2026-12-31"), REASON);
-    IssueDto first = insertOpenIssue();
-    IssueDto second = insertOpenIssue();
-
-    exceptionRequest(List.of(first, second), List.of(firstSource, secondSource)).execute();
-
-    assertException(first, utcMidnight("2026-12-31"), REASON);
-    assertException(second, utcMidnight("2026-12-31"), REASON);
-  }
-
-  @Test
-  public void theSourcesLatestReasonIsTheOneCopied() {
-    givenAProject();
-    IssueDto source = insertException(null, OTHER_REASON);
-    insertReason(source, REASON, NOW - 1_000);
-    IssueDto issue = insertOpenIssue();
-
-    exceptionRequest(List.of(issue), List.of(source)).execute();
-
-    assertException(issue, null, REASON);
-  }
-
-  @Test
-  public void aSourceThatNeverExpiresGivesAnExceptionThatNeverExpires() {
-    givenAProject();
-    IssueDto source = insertException(null, REASON);
-    IssueDto issue = insertOpenIssue();
-
-    exceptionRequest(List.of(issue), List.of(source)).execute();
-
-    assertException(issue, null, REASON);
-  }
-
-  @Test
-  public void aSourceWithoutAReasonGivesAnExceptionWithoutOneButKeepsTheComment() {
-    givenAProject();
-    IssueDto source = insertException(utcMidnight("2026-12-31"));
-    IssueDto blankSource = insertException(utcMidnight("2026-12-31"), "  ");
-    IssueDto issue = insertOpenIssue();
-    IssueDto other = insertOpenIssue();
-
-    exceptionRequest(List.of(issue, other), List.of(source, blankSource)).execute();
-
-    for (IssueDto moved : List.of(issue, other)) {
-      assertException(moved, utcMidnight("2026-12-31"), null);
-      assertThat(changeData(moved, TYPE_COMMENT)).containsExactly(COMMENT);
-    }
-  }
-
-  @Test
-  public void aSourceThatIsNoLongerAnExceptionGivesNeitherExpiryNorReason() {
-    givenAProject();
-    IssueDto source = insertException(utcMidnight("2026-12-31"), REASON);
-    dbClient.issueDao().update(db.getSession(), source.setStatus(STATUS_OPEN).setResolution(null));
-    db.commit();
-    IssueDto issue = insertOpenIssue();
-
-    exceptionRequest(List.of(issue), List.of(source)).execute();
-
-    assertException(issue, null, null);
-  }
-
-  @Test
-  public void perRowChangelogWritesTheSameExceptionRows() {
-    givenAProject();
-    IssueDto withReason = insertException(utcMidnight("2027-03-31"), REASON);
-    IssueDto withoutReason = insertException(null);
-    IssueDto first = insertOpenIssue();
-    IssueDto second = insertOpenIssue();
-
-    exceptionRequest(List.of(first, second), List.of(withReason, withoutReason))
-      .setParam("setBasedChangelog", "false").execute();
-
-    assertException(first, utcMidnight("2027-03-31"), REASON);
-    assertException(second, null, null);
-    for (IssueDto issue : List.of(first, second)) {
-      assertThat(changeData(issue, TYPE_COMMENT)).containsExactly(COMMENT);
-      assertThat(changeData(issue, TYPE_FIELD_CHANGE))
-        .containsExactly("resolution=EXCEPTION,status=OPEN|RESOLVED,issueStatus=OPEN|EXCEPTION");
-    }
-  }
-
-  @Test
-  public void anIssuePairedWithSeveralSourcesTakesTheSourceWithTheLowestKey() {
-    givenAProject();
-    IssueDto first = insertException(utcMidnight("2026-12-31"), REASON);
-    IssueDto second = insertException(utcMidnight("2027-03-31"), OTHER_REASON);
-    IssueDto issue = insertOpenIssue();
-    pair(transferUuid, second, issue);
-
-    exceptionRequest(List.of(issue), List.of(first)).execute();
-
-    IssueDto lowest = first.getKey().compareTo(second.getKey()) < 0 ? first : second;
-    assertException(issue, lowest.getIssueResolutionExpiresAt(), lowest == first ? REASON : OTHER_REASON);
-  }
-
-  @Test
-  public void onlyTheNamedTransfersPairingIsRead() {
-    givenAProject();
-    IssueDto source = insertException(utcMidnight("2026-12-31"), REASON);
-    IssueDto issue = insertOpenIssue();
-    pair(UUID.randomUUID().toString(), source, issue);
-
-    baseRequest(List.of(issue), "exception").setParam("transferUuid", transferUuid).execute();
-
-    assertException(issue, null, null);
-  }
-
-  @Test
-  public void exceptionWithoutATransferIsRejected() {
-    givenAProject();
-    IssueDto issue = insertOpenIssue();
-    TestRequest request = baseRequest(List.of(issue), "exception");
-
-    assertThatThrownBy(request::execute)
-      .isInstanceOf(IllegalArgumentException.class)
-      .hasMessage("'transferUuid' is required with the 'exception' transition");
-    assertThat(reload(issue).getStatus()).isEqualTo(STATUS_OPEN);
-  }
-
-  @Test
-  public void aTransferIsRejectedWithAnotherTransition() {
-    givenAProject();
-    TestRequest request = baseRequest(List.of(insertOpenIssue()), "falsepositive")
-      .setParam("transferUuid", transferUuid);
-
-    assertThatThrownBy(request::execute)
-      .isInstanceOf(IllegalArgumentException.class)
-      .hasMessage("'transferUuid' applies only to the 'exception' transition");
-  }
-
-  @Test
-  public void falsePositiveAndAcceptLeaveNoExpiryAndNoReason() {
-    givenAProject();
-    IssueDto falsePositive = insertOpenIssue();
-    IssueDto accepted = insertOpenIssue();
-
-    baseRequest(List.of(falsePositive), "falsepositive").execute();
-    baseRequest(List.of(accepted), "accept").execute();
-
-    assertThat(reload(falsePositive).getResolution()).isEqualTo(RESOLUTION_FALSE_POSITIVE);
-    assertThat(reload(accepted).getResolution()).isEqualTo(RESOLUTION_WONT_FIX);
-    for (IssueDto issue : List.of(falsePositive, accepted)) {
-      assertThat(reload(issue).getIssueResolutionExpiresAt()).isNull();
-      assertThat(changeData(issue, TYPE_EXCEPTION_REASON)).isEmpty();
-    }
-  }
-
-  private void givenAProject() {
-    // The resolution transfer report lives in CodeScan's schema, so the test database only gets the columns read.
-    db.executeDdl("create table if not exists cs_resolution_transfer_issue (uuid varchar(40) not null primary key, "
-      + "transfer_uuid varchar(40) not null, issue_key varchar(50) not null, destination_issue_key varchar(50))");
+  public void rejects_more_than_the_maximum_number_of_issues() {
     userSession.logIn().setSystemAdministrator();
-    project = db.components().insertPrivateProject().getMainBranchComponent();
-    file = db.components().insertComponent(newFileDto(project));
-    rule = db.rules().insertIssueRule();
+    String tooMany = String.join(",",
+      IntStream.rangeClosed(0, BulkTransitionAction.MAX_ISSUES).mapToObj(i -> "issue-" + i).toList());
+
+    assertThatThrownBy(() -> tester.newRequest()
+      .setParam("issues", tooMany)
+      .setParam("transition", "falsepositive")
+      .setParam("branchUuid", "any")
+      .setParam("refreshMeasures", "false")
+      .execute())
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessageContaining("Number of issues is limited to " + BulkTransitionAction.MAX_ISSUES);
   }
 
-  private IssueDto insertOpenIssue() {
-    return db.issues().insertIssue(rule, project, file, i -> i.setStatus(STATUS_OPEN).setResolution(null));
+  @Test
+  public void rejects_a_transition_that_does_not_resolve() {
+    userSession.logIn().setSystemAdministrator();
+
+    assertThatThrownBy(() -> tester.newRequest()
+      .setParam("issues", "any")
+      .setParam("transition", "reopen")
+      .setParam("branchUuid", "any")
+      .setParam("refreshMeasures", "false")
+      .execute())
+      .isInstanceOf(IllegalArgumentException.class);
   }
 
-  /** A resolved exception with the given expiry and, when one is given, a reason recorded before {@link #NOW}. */
-  private IssueDto insertException(@Nullable Long expiresAt, String... reasons) {
-    IssueDto source = db.issues().insertIssue(rule, project, file, i -> i.setStatus(STATUS_RESOLVED)
-      .setResolution(RESOLUTION_EXCEPTION).setIssueResolutionExpiresAt(expiresAt));
-    for (String reason : reasons) {
-      insertReason(source, reason, NOW - 10_000);
-    }
-    return source;
+  @Test
+  public void resolves_the_issues_and_reports_what_it_moved() {
+    userSession.logIn().setSystemAdministrator();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto rule = db.rules().insertIssueRule();
+    IssueDto open = insertOpenIssue(rule, project, file);
+    IssueDto alreadyResolved = db.issues().insertIssue(rule, project, file,
+      i -> i.setStatus("RESOLVED").setResolution("FIXED").setType(CODE_SMELL));
+
+    String response = callOn(project, List.of(open.getKey(), alreadyResolved.getKey()));
+
+    assertThat(response).contains("\"requested\":2", "\"transitioned\":1");
+    assertThat(response).contains(alreadyResolved.getKey());
+    assertThat(statusOf(open.getKey())).isEqualTo("RESOLVED");
+    assertThat(resolutionOf(open.getKey())).isEqualTo("FALSE-POSITIVE");
   }
 
-  private void insertReason(IssueDto issue, String reason, long createdAt) {
-    db.issues().insertChange(issue, c -> c.setChangeType(TYPE_EXCEPTION_REASON).setChangeData(reason)
-      .setIssueChangeCreationDate(createdAt).setCreatedAt(createdAt).setUpdatedAt(createdAt));
+  /**
+   * The keys are supplied by the caller, so nothing but the predicate stops a key from another branch being
+   * resolved here - and it would then be filed in the changelog under this branch and never reindexed.
+   */
+  @Test
+  public void never_touches_an_issue_from_another_branch() {
+    userSession.logIn().setSystemAdministrator();
+    ComponentDto mainBranch = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto mainFile = db.components().insertComponent(newFileDto(mainBranch));
+    ComponentDto otherBranch = db.components().insertProjectBranch(mainBranch);
+    ComponentDto otherFile = db.components().insertComponent(newFileDto(otherBranch));
+    RuleDto rule = db.rules().insertIssueRule();
+    IssueDto mine = insertOpenIssue(rule, mainBranch, mainFile);
+    IssueDto foreign = insertOpenIssue(rule, otherBranch, otherFile);
+
+    String response = callOn(mainBranch, List.of(mine.getKey(), foreign.getKey()));
+
+    assertThat(response).contains("\"requested\":2", "\"transitioned\":1");
+    assertThat(statusOf(mine.getKey())).isEqualTo("RESOLVED");
+    assertThat(statusOf(foreign.getKey())).isEqualTo(STATUS_OPEN);
+    assertThat(resolutionOf(foreign.getKey())).isNull();
+    assertThat(changelogRowsOf(foreign.getKey())).isZero();
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Collection<String>> reindexed = ArgumentCaptor.forClass(Collection.class);
+    verify(issueIndexer).indexOnAnalysis(eq(mainBranch.uuid()), reindexed.capture());
+    assertThat(reindexed.getValue()).containsExactly(mine.getKey());
   }
 
-  private void assertException(IssueDto issue, @Nullable Long expiresAt, @Nullable String reason) {
-    IssueDto reloaded = reload(issue);
-    assertThat(reloaded.getStatus()).isEqualTo(STATUS_RESOLVED);
-    assertThat(reloaded.getResolution()).isEqualTo(RESOLUTION_EXCEPTION);
-    assertThat(reloaded.getIssueResolutionExpiresAt()).isEqualTo(expiresAt);
-    if (reason == null) {
-      assertThat(changeData(issue, TYPE_EXCEPTION_REASON)).isEmpty();
-    } else {
-      assertThat(changeData(issue, TYPE_EXCEPTION_REASON)).containsExactly(reason);
-    }
+  @Test
+  public void writes_the_changelog_under_the_branch_it_was_given() {
+    userSession.logIn().setSystemAdministrator();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto rule = db.rules().insertIssueRule();
+    IssueDto issue = insertOpenIssue(rule, project, file);
+
+    callOn(project, List.of(issue.getKey()));
+
+    assertThat(db.select(db.getSession(),
+      "select project_uuid as \"p\" from issue_changes where issue_key = '" + issue.getKey() + "'"))
+      .isNotEmpty()
+      .allSatisfy(row -> assertThat(row).containsEntry("p", project.uuid()));
   }
 
-  /** Pairs each issue with the source in the same position, as the transfer's report would, and requests it. */
-  private TestRequest exceptionRequest(List<IssueDto> issues, List<IssueDto> sources) {
-    for (int i = 0; i < issues.size(); i++) {
-      pair(transferUuid, sources.get(i), issues.get(i));
-    }
-    return baseRequest(issues, "exception").setParam("transferUuid", transferUuid);
-  }
+  @Test
+  public void an_empty_key_list_is_only_allowed_as_a_refresh() {
+    userSession.logIn().setSystemAdministrator();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
 
-  private void pair(String transfer, IssueDto source, IssueDto issue) {
-    db.executeUpdateSql("insert into cs_resolution_transfer_issue (uuid, transfer_uuid, issue_key, "
-      + "destination_issue_key) values (?, ?, ?, ?)", UUID.randomUUID().toString(), transfer, source.getKey(),
-      issue.getKey());
-  }
-
-  private TestRequest baseRequest(List<IssueDto> issues, String transition) {
-    return ws.newRequest()
-      .setMethod("POST")
-      .setParam("issues", String.join(",", issues.stream().map(IssueDto::getKey).toList()))
-      .setParam("transition", transition)
+    assertThatThrownBy(() -> tester.newRequest()
       .setParam("branchUuid", project.uuid())
-      .setParam("comment", COMMENT)
-      .setParam("refreshMeasures", "false");
+      .setParam("refreshMeasures", "false")
+      .execute())
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessageContaining("issues is required unless refreshMeasures is true");
   }
 
-  private IssueDto reload(IssueDto issue) {
-    return dbClient.issueDao().selectOrFailByKey(db.getSession(), issue.getKey());
+  @Test
+  public void an_empty_key_list_with_refresh_moves_nothing_and_recomputes_the_branch() {
+    userSession.logIn().setSystemAdministrator();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto rule = db.rules().insertIssueRule();
+    IssueDto issue = insertOpenIssue(rule, project, file);
+
+    String response = tester.newRequest()
+      .setParam("branchUuid", project.uuid())
+      .setParam("refreshMeasures", "true")
+      .execute().getInput();
+
+    assertThat(response).contains("\"requested\":0", "\"transitioned\":0");
+    assertThat(statusOf(issue.getKey())).isEqualTo(STATUS_OPEN);
+    assertThat(postProcessor.wasCalled()).isTrue();
+    verifyNoInteractions(issueIndexer);
   }
 
-  private List<String> changeData(IssueDto issue, String changeType) {
-    return dbClient.issueChangeDao().selectByTypeAndIssueKeys(db.getSession(), List.of(issue.getKey()), changeType)
-      .stream().map(IssueChangeDto::getChangeData).toList();
+  private IssueDto insertOpenIssue(RuleDto rule, ComponentDto branch, ComponentDto file) {
+    return db.issues().insertIssue(rule, branch, file,
+      i -> i.setStatus(STATUS_OPEN).setResolution(null).setType(CODE_SMELL));
   }
 
-  private static long utcMidnight(String date) {
-    return LocalDate.parse(date).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+  private String callOn(ComponentDto branch, List<String> keys) {
+    return tester.newRequest()
+      .setParam("issues", String.join(",", keys))
+      .setParam("transition", "falsepositive")
+      .setParam("branchUuid", branch.uuid())
+      .setParam("comment", "transferred")
+      .setParam("refreshMeasures", "false")
+      .execute().getInput();
+  }
+
+  private IssueDto reload(String issueKey) {
+    return dbClient.issueDao().selectByKey(db.getSession(), issueKey).orElseThrow();
+  }
+
+  private String statusOf(String issueKey) {
+    return reload(issueKey).getStatus();
+  }
+
+  private String resolutionOf(String issueKey) {
+    return reload(issueKey).getResolution();
+  }
+
+  private int changelogRowsOf(String issueKey) {
+    return db.countSql(db.getSession(),
+      "select count(1) from issue_changes where issue_key = '" + issueKey + "'");
   }
 }
