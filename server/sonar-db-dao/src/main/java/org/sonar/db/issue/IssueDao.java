@@ -33,6 +33,7 @@ import org.sonar.db.RowNotFoundException;
 import org.sonar.db.component.ComponentDto;
 
 import static org.sonar.db.DatabaseUtils.executeLargeInputs;
+import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
 
 public class IssueDao implements Dao {
   public static final int DEFAULT_PAGE_SIZE = 1000;
@@ -173,6 +174,34 @@ public class IssueDao implements Dao {
   public void update(DbSession session, IssueDto dto) {
     mapper(session).update(dto);
     updateIssueImpacts(session, dto);
+  }
+
+  /**
+   * CodeScan: the issues a bulk transition would move, with the status each moves from. Read in the same
+   * transaction as {@link #bulkTransition} and under the same predicate, so the caller can write the changelog
+   * from this result instead of reading the issues back afterwards.
+   */
+  public List<IssueKeyStatusDto> selectTransitionable(DbSession session, Collection<String> keys,
+    String branchUuid) {
+    return executeLargeInputs(keys, partition -> mapper(session).selectTransitionable(partition, branchUuid));
+  }
+
+  /**
+   * CodeScan: resolves a whole chunk of issues in one statement per partition rather than one per issue, under the
+   * same predicate as {@link #selectTransitionable}.
+   *
+   * <p>No row count is returned, and none can be: the caller runs this in a batch session so the chunk and its
+   * changelog commit together, and a batched statement has not executed when the call returns - MyBatis answers
+   * with {@code Integer.MIN_VALUE}, its batch sentinel, not a count. Reading the rows back to count them is the
+   * round trip this whole path exists to avoid.
+   *
+   * <p>No row lock is held between the select and this update either, so a concurrent writer can leave the two
+   * disagreeing. See BulkTransitionAction for what that costs and why it is accepted.
+   */
+  public void bulkTransition(DbSession session, Collection<String> keys, String branchUuid, String resolution,
+    long now) {
+    executeLargeUpdates(keys,
+      partition -> mapper(session).bulkTransition(partition, branchUuid, resolution, now));
   }
 
   /**

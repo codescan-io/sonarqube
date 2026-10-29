@@ -25,6 +25,69 @@
     #{updatedAt,jdbcType=BIGINT}, #{issueChangeCreationDate,jdbcType=BIGINT}, #{projectUuid,jdbcType=VARCHAR})
   </insert>
 
+  <!--
+    CodeScan: the changelog of a bulk transition, written set-based.
+
+    Both statements run BEFORE the matching update, because the diff row records the status the issue is moving
+    away from and the update overwrites it. They repeat the predicate of IssueMapper.selectTransitionable so the
+    three statements agree on the set without reading anything back.
+
+    `uuid` and `kee` are built from a caller-supplied prefix plus a row number rather than a database uuid
+    function: SonarQube still supports PostgreSQL 11, where gen_random_uuid() does not exist, and the alternatives
+    differ across all four dialects. The prefix is a fresh uuid per statement, so the result is unique as long as
+    one statement never writes more rows than the prefix leaves digits for.
+  -->
+  <insert id="insertTransitionDiffs" parameterType="map">
+    INSERT INTO issue_changes (uuid, kee, issue_key, user_login, change_type, change_data, created_at, updated_at,
+    issue_change_creation_date, project_uuid)
+    SELECT #{uuidPrefix,jdbcType=VARCHAR} || row_number() over (order by i.kee),
+      null,
+      i.kee,
+      #{changeAuthor,jdbcType=VARCHAR},
+      'diff',
+      <include refid="transitionChangeData"/>,
+      #{now,jdbcType=BIGINT},
+      #{now,jdbcType=BIGINT},
+      #{now,jdbcType=BIGINT},
+      #{branchUuid,jdbcType=VARCHAR}
+    FROM issues i
+    WHERE <include refid="org.sonar.db.issue.IssueMapper.transitionablePredicate">
+            <property name="alias" value="i."/>
+          </include>
+  </insert>
+
+  <!--
+    Must encode exactly as FieldDiffs.toEncodedString() does, or the changelog renders differently from one a
+    manual bulk change wrote: fields comma-separated, old and new separated by a pipe, and a null old value
+    written as the new value alone. An unresolved issue's issue-status is its status, except REOPENED, which
+    presents as OPEN.
+  -->
+  <sql id="transitionChangeData">
+    'resolution=' || #{resolution,jdbcType=VARCHAR}
+      || ',status=' || i.status || '|RESOLVED'
+      || ',issueStatus=' || (case when i.status = 'REOPENED' then 'OPEN' else i.status end)
+      || '|' || #{issueStatus,jdbcType=VARCHAR}
+  </sql>
+
+  <insert id="insertTransitionComments" parameterType="map">
+    INSERT INTO issue_changes (uuid, kee, issue_key, user_login, change_type, change_data, created_at, updated_at,
+    issue_change_creation_date, project_uuid)
+    SELECT #{uuidPrefix,jdbcType=VARCHAR} || row_number() over (order by i.kee),
+      #{keePrefix,jdbcType=VARCHAR} || row_number() over (order by i.kee),
+      i.kee,
+      #{changeAuthor,jdbcType=VARCHAR},
+      'comment',
+      #{comment,jdbcType=VARCHAR},
+      #{now,jdbcType=BIGINT},
+      #{now,jdbcType=BIGINT},
+      #{now,jdbcType=BIGINT},
+      #{branchUuid,jdbcType=VARCHAR}
+    FROM issues i
+    WHERE <include refid="org.sonar.db.issue.IssueMapper.transitionablePredicate">
+            <property name="alias" value="i."/>
+          </include>
+  </insert>
+
   <delete id="delete" parameterType="string">
     delete from issue_changes where kee=#{id}
   </delete>
