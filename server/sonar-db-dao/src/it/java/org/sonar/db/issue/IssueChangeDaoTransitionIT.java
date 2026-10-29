@@ -38,6 +38,7 @@ import static org.sonar.api.issue.Issue.STATUS_REOPENED;
 import static org.sonar.api.issue.Issue.STATUS_RESOLVED;
 import static org.sonar.db.component.ComponentTesting.newFileDto;
 import static org.sonar.db.issue.IssueChangeDto.TYPE_COMMENT;
+import static org.sonar.db.issue.IssueChangeDto.TYPE_EXCEPTION_REASON;
 import static org.sonar.db.issue.IssueChangeDto.TYPE_FIELD_CHANGE;
 
 /**
@@ -149,6 +150,26 @@ public class IssueChangeDaoTransitionIT {
     assertThat(written.getUserUuid()).isEqualTo(AUTHOR);
     assertThat(written.getProjectUuid()).isEqualTo(project.uuid());
     assertThat(written.getIssueChangeCreationDate()).isEqualTo(NOW);
+  }
+
+  @Test
+  public void exceptionReasonRowIsKeyedLikeACommentAndSkipsIssuesThatCannotMove() {
+    givenAProject();
+    IssueDto open = insertIssue(STATUS_OPEN);
+    IssueDto alreadyResolved = insertIssue(STATUS_RESOLVED);
+
+    underTest.insertTransitionExceptionReasons(db.getSession(), List.of(open.getKey(), alreadyResolved.getKey()),
+      "Approved until the vendor patch", project.uuid(), AUTHOR, NOW, uuidFactory);
+    db.getSession().commit();
+
+    IssueChangeDto written = changeOf(open, TYPE_EXCEPTION_REASON);
+    assertThat(written.getChangeData()).isEqualTo("Approved until the vendor patch");
+    assertThat(written.getKey()).isNotNull();
+    assertThat(written.getUserUuid()).isEqualTo(AUTHOR);
+    assertThat(written.getProjectUuid()).isEqualTo(project.uuid());
+    assertThat(written.getIssueChangeCreationDate()).isEqualTo(NOW);
+    assertThat(underTest.selectByTypeAndIssueKeys(db.getSession(), List.of(alreadyResolved.getKey()),
+      TYPE_EXCEPTION_REASON)).isEmpty();
   }
 
   /** What the per-row writer builds for the same issue, which the set-based SQL has to reproduce byte for byte. */

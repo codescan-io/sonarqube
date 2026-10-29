@@ -82,7 +82,11 @@ public interface IssueMapper {
 
   /** CodeScan: one statement for a whole chunk, in place of one update per issue. */
   int bulkTransition(@Param("keys") List<String> keys, @Param("resolution") String resolution,
-    @Param("now") long now);
+    @Nullable @Param("expiresAt") Long expiresAt, @Param("now") long now);
+
+  /** CodeScan: the source exception a resolution transfer paired each of {@code keys} with. */
+  List<IssueExceptionSourceDto> selectExceptionSourcesOfTransfer(@Param("transferUuid") String transferUuid,
+    @Param("keys") List<String> keys);
 
   /**
    * CodeScan: as {@link #bulkTransition}, for proliferation - writes the expiry, leaves the assignee alone, and

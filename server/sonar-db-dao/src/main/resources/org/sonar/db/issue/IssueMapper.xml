@@ -242,7 +242,6 @@
       <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
   </select>
 
-
   <update id="bulkTransitionWithExpiry" parameterType="map">
     update issues
     set status = 'RESOLVED',
@@ -257,10 +256,22 @@
       <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
   </update>
 
+  <!-- cs_resolution_transfer_issue is CodeScan's resolution transfer report, in the same schema. -->
+  <select id="selectExceptionSourcesOfTransfer" parameterType="map" resultType="org.sonar.db.issue.IssueExceptionSourceDto">
+    select r.destination_issue_key as issueKey, s.kee as sourceKey, s.issue_resolution_expires_at as expiresAt
+    from cs_resolution_transfer_issue r
+    inner join issues s on s.kee = r.issue_key
+    where r.transfer_uuid = #{transferUuid,jdbcType=VARCHAR}
+      and s.resolution = 'EXCEPTION'
+      and r.destination_issue_key in
+      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+  </select>
+
   <update id="bulkTransition" parameterType="map">
     update issues
     set status = 'RESOLVED',
       resolution = #{resolution,jdbcType=VARCHAR},
+      issue_resolution_expires_at = #{expiresAt,jdbcType=BIGINT},
       assignee = null,
       issue_update_date = #{now,jdbcType=BIGINT},
       updated_at = #{now,jdbcType=BIGINT}
