@@ -60,6 +60,20 @@ public class IssueDao implements Dao {
     return executeLargeInputs(keys, mapper(session)::selectByKeys);
   }
 
+  /**
+   * Keys of the issues (security hotspots excluded) of a branch or pull request that were closed as fixed.
+   */
+  public List<String> selectFixedIssueKeysByBranchUuid(DbSession session, String branchUuid) {
+    return mapper(session).selectFixedIssueKeysByBranchUuid(branchUuid);
+  }
+
+  /**
+   * Keys of all issues (any status) located in the given file component.
+   */
+  public List<String> selectIssueKeysByFileUuid(DbSession session, String fileUuid) {
+    return mapper(session).selectIssueKeysByFileUuid(fileUuid);
+  }
+
   public Set<String> selectIssueKeysByComponentUuid(DbSession session, String componentUuid) {
     return mapper(session).selectIssueKeysByComponentUuid(componentUuid);
   }
