@@ -187,8 +187,20 @@ public class IssueDao implements Dao {
   }
 
   /**
+   * CodeScan: for each of {@code keys} that the resolution transfer {@code transferUuid} paired with a source issue
+   * that is still an exception, that source and its expiry. A key paired with several such sources appears once per
+   * source; a key with none is left out.
+   */
+  public List<IssueExceptionSourceDto> selectExceptionSourcesOfTransfer(DbSession session, String transferUuid,
+    Collection<String> keys) {
+    return executeLargeInputs(keys, partition -> mapper(session).selectExceptionSourcesOfTransfer(transferUuid,
+      partition));
+  }
+
+  /**
    * CodeScan: resolves a whole chunk of issues in one statement per partition rather than one per issue, under the
-   * same predicate as {@link #selectTransitionable}.
+   * same predicate as {@link #selectTransitionable}. {@code expiresAt} is written as the exception expiry; null
+   * clears it, as the workflow does for any other resolution.
    *
    * <p>No row count is returned, and none can be: the caller runs this in a batch session so the chunk and its
    * changelog commit together, and a batched statement has not executed when the call returns - MyBatis answers
@@ -199,9 +211,9 @@ public class IssueDao implements Dao {
    * disagreeing. See BulkTransitionAction for what that costs and why it is accepted.
    */
   public void bulkTransition(DbSession session, Collection<String> keys, String branchUuid, String resolution,
-    long now) {
+    @Nullable Long expiresAt, long now) {
     executeLargeUpdates(keys,
-      partition -> mapper(session).bulkTransition(partition, branchUuid, resolution, now));
+      partition -> mapper(session).bulkTransition(partition, branchUuid, resolution, expiresAt, now));
   }
 
   /**

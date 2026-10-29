@@ -76,7 +76,7 @@
       #{keePrefix,jdbcType=VARCHAR} || row_number() over (order by i.kee),
       i.kee,
       #{changeAuthor,jdbcType=VARCHAR},
-      'comment',
+      #{changeType,jdbcType=VARCHAR},
       #{comment,jdbcType=VARCHAR},
       #{now,jdbcType=BIGINT},
       #{now,jdbcType=BIGINT},
