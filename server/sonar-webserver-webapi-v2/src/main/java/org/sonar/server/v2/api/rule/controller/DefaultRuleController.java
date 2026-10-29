@@ -25,11 +25,11 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.server.common.organization.OrganizationService;
-import org.sonar.server.common.rule.EncodedRuleParameters;
 import org.sonar.server.common.rule.ReactivationException;
 import org.sonar.server.common.rule.service.NewCustomRule;
 import org.sonar.server.common.rule.service.RuleInformation;
 import org.sonar.server.common.rule.service.RuleService;
+import org.sonar.server.common.text.EncodedParameters;
 import org.sonar.server.exceptions.ServerException;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.v2.api.rule.converter.RuleRestResponseGenerator;
@@ -97,7 +97,7 @@ public class DefaultRuleController implements RuleController {
 
   @CheckForNull
   private static String decodeParameterValue(@Nullable String encodedValue) {
-    return encodedValue == null ? null : EncodedRuleParameters.decode(encodedValue, ENCODED_PARAMETERS_FIELD);
+    return encodedValue == null ? null : EncodedParameters.decode(encodedValue, ENCODED_PARAMETERS_FIELD);
   }
 
   private static NewCustomRule.Impact toNewCustomRuleImpact(Impact impact) {

@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.server.common.rule;
+package org.sonar.server.common.text;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -29,7 +29,7 @@ import org.sonar.server.exceptions.BadRequestException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class EncodedRuleParametersTest {
+class EncodedParametersTest {
 
   private static final String FIELD = "encodedParams";
 
@@ -48,7 +48,7 @@ class EncodedRuleParametersTest {
     String encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(original.getBytes(StandardCharsets.UTF_8));
 
     assertThat(encoded).matches("[A-Za-z0-9_-]*");
-    assertThat(EncodedRuleParameters.decode(encoded, FIELD)).isEqualTo(original);
+    assertThat(EncodedParameters.decode(encoded, FIELD)).isEqualTo(original);
   }
 
   @Test
@@ -56,12 +56,12 @@ class EncodedRuleParametersTest {
     String encoded = Base64.getUrlEncoder().encodeToString("ab".getBytes(StandardCharsets.UTF_8));
 
     assertThat(encoded).endsWith("=");
-    assertThat(EncodedRuleParameters.decode(encoded, FIELD)).isEqualTo("ab");
+    assertThat(EncodedParameters.decode(encoded, FIELD)).isEqualTo("ab");
   }
 
   @Test
   void decode_whenValueIsEmpty_returnsEmptyText() {
-    assertThat(EncodedRuleParameters.decode("", FIELD)).isEmpty();
+    assertThat(EncodedParameters.decode("", FIELD)).isEmpty();
   }
 
   @ParameterizedTest
@@ -79,7 +79,7 @@ class EncodedRuleParametersTest {
     "xpath=\"//A\""
   })
   void decode_whenValueIsNotBase64Url_shouldFail(String encoded) {
-    assertThatThrownBy(() -> EncodedRuleParameters.decode(encoded, FIELD))
+    assertThatThrownBy(() -> EncodedParameters.decode(encoded, FIELD))
       .isInstanceOf(BadRequestException.class)
       .hasMessage("Parameter 'encodedParams' is not valid base64url");
   }
@@ -88,14 +88,14 @@ class EncodedRuleParametersTest {
   void decode_whenBytesAreNotUtf8_shouldFail() {
     String encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(new byte[] {(byte) 0xC3, (byte) 0x28});
 
-    assertThatThrownBy(() -> EncodedRuleParameters.decode(encoded, FIELD))
+    assertThatThrownBy(() -> EncodedParameters.decode(encoded, FIELD))
       .isInstanceOf(BadRequestException.class)
       .hasMessage("Parameter 'encodedParams' is not valid base64url");
   }
 
   @Test
   void decode_whenItFails_namesTheGivenField() {
-    assertThatThrownBy(() -> EncodedRuleParameters.decode("Pz4/", "encodedParameters"))
+    assertThatThrownBy(() -> EncodedParameters.decode("Pz4/", "encodedParameters"))
       .hasMessage("Parameter 'encodedParameters' is not valid base64url");
   }
 }
