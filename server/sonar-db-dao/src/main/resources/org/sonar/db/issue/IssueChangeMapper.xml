@@ -51,10 +51,9 @@
       #{now,jdbcType=BIGINT},
       #{branchUuid,jdbcType=VARCHAR}
     FROM issues i
-    WHERE i.status in ('OPEN', 'REOPENED', 'CONFIRMED')
-      AND i.issue_type &lt;&gt; 4
-      AND i.kee in
-      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+    WHERE <include refid="org.sonar.db.issue.IssueMapper.transitionablePredicate">
+            <property name="alias" value="i."/>
+          </include>
   </insert>
 
   <!--
@@ -84,10 +83,9 @@
       #{now,jdbcType=BIGINT},
       #{branchUuid,jdbcType=VARCHAR}
     FROM issues i
-    WHERE i.status in ('OPEN', 'REOPENED', 'CONFIRMED')
-      AND i.issue_type &lt;&gt; 4
-      AND i.kee in
-      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+    WHERE <include refid="org.sonar.db.issue.IssueMapper.transitionablePredicate">
+            <property name="alias" value="i."/>
+          </include>
   </insert>
 
   <delete id="delete" parameterType="string">

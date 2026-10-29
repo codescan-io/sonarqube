@@ -37,7 +37,11 @@ import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
 
 public class IssueChangeDao implements Dao {
 
-  /** Leaves room in the 40-character uuid column for the row number the SQL appends. */
+  /**
+   * Leaves room in the 40-character uuid column for the row number the SQL appends. The row number restarts per
+   * statement and {@code executeLargeInputs} caps a partition at 1,000 keys, so it is at most 4 digits: 30 + 4
+   * of 40. Raising the partition size past 9,999 would need this lowered to match.
+   */
   private static final int PREFIX_LENGTH = 30;
 
   /**
