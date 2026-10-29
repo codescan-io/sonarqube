@@ -223,23 +223,29 @@
   </delete>
 
   <!--
-    IMPORTANT - invariant columns can't be updated. See IssueDto#toDtoForUpdate()
-  -->
-  <!--
-    CodeScan: the two halves of a bulk transition. `selectTransitionable` is run first, in the same transaction and
-    under the same predicate as the update, so the rows it returns are exactly the rows the update will move - which
-    is what lets the caller write the changelog without reading anything back afterwards.
+    CodeScan: the one predicate every statement of a bulk transition runs under - the select, the update and both
+    changelog inserts, which live in IssueChangeMapper and include this by its qualified id. Written once so that
+    "the same predicate" is enforced by the build rather than by four copies agreeing.
 
-    The predicate mirrors IssueWorkflow's resolve transitions: they run from OPEN, REOPENED or CONFIRMED, and
-    IsNotHotspot excludes security hotspots (issue_type 4).
+    It mirrors IssueWorkflow's resolve transitions: they run from OPEN, REOPENED or CONFIRMED, and IsNotHotspot
+    excludes security hotspots (issue_type 4). project_uuid confines a chunk to the branch the caller named: the
+    keys are supplied by the caller, and a key from another branch would otherwise be resolved here, filed in the
+    changelog under this branch, and never reindexed - the reindex is by branch.
+
+    ${alias} is the table alias plus its dot, or empty where the statement has no alias.
   -->
+  <sql id="transitionablePredicate">
+    ${alias}status in ('OPEN', 'REOPENED', 'CONFIRMED')
+      and ${alias}issue_type &lt;&gt; 4
+      and ${alias}project_uuid = #{branchUuid,jdbcType=VARCHAR}
+      and ${alias}kee in
+      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+  </sql>
+
   <select id="selectTransitionable" parameterType="map" resultType="org.sonar.db.issue.IssueKeyStatusDto">
     select i.kee as kee, i.status as status, i.component_uuid as componentUuid
     from issues i
-    where i.status in ('OPEN', 'REOPENED', 'CONFIRMED')
-      and i.issue_type &lt;&gt; 4
-      and i.kee in
-      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+    where <include refid="transitionablePredicate"><property name="alias" value="i."/></include>
   </select>
 
   <!-- cs_resolution_transfer_issue is CodeScan's resolution transfer report, in the same schema. -->
@@ -261,11 +267,12 @@
       assignee = null,
       issue_update_date = #{now,jdbcType=BIGINT},
       updated_at = #{now,jdbcType=BIGINT}
-    where status in ('OPEN', 'REOPENED', 'CONFIRMED')
-      and issue_type &lt;&gt; 4
-      and kee in
-      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+    where <include refid="transitionablePredicate"><property name="alias" value=""/></include>
   </update>
+
+  <!--
+    IMPORTANT - invariant columns can't be updated. See IssueDto#toDtoForUpdate()
+  -->
 
   <update id="update" parameterType="Issue">
     update issues set

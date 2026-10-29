@@ -45,17 +45,19 @@ public class IssueDaoBulkTransitionIT {
   public DbTester db = DbTester.create();
 
   private final IssueDao underTest = db.getDbClient().issueDao();
+  private ComponentDto project;
+  private ComponentDto file;
+  private RuleDto rule;
 
   @Test
   public void exceptionStoresItsExpiryOnEveryIssueItMoves() {
     IssueDto first = insertOpenIssue();
     IssueDto second = insertOpenIssue();
 
-    int moved = underTest.bulkTransition(db.getSession(), List.of(first.getKey(), second.getKey()),
+    underTest.bulkTransition(db.getSession(), List.of(first.getKey(), second.getKey()), project.uuid(),
       RESOLUTION_EXCEPTION, EXPIRES_AT, NOW);
     db.getSession().commit();
 
-    assertThat(moved).isEqualTo(2);
     assertThat(List.of(reload(first), reload(second))).allSatisfy(issue -> {
       assertThat(issue.getStatus()).isEqualTo(STATUS_RESOLVED);
       assertThat(issue.getResolution()).isEqualTo(RESOLUTION_EXCEPTION);
@@ -68,8 +70,10 @@ public class IssueDaoBulkTransitionIT {
     IssueDto neverExpires = insertOpenIssue();
     IssueDto falsePositive = insertOpenIssue();
 
-    underTest.bulkTransition(db.getSession(), List.of(neverExpires.getKey()), RESOLUTION_EXCEPTION, null, NOW);
-    underTest.bulkTransition(db.getSession(), List.of(falsePositive.getKey()), RESOLUTION_FALSE_POSITIVE, null, NOW);
+    underTest.bulkTransition(db.getSession(), List.of(neverExpires.getKey()), project.uuid(),
+      RESOLUTION_EXCEPTION, null, NOW);
+    underTest.bulkTransition(db.getSession(), List.of(falsePositive.getKey()), project.uuid(),
+      RESOLUTION_FALSE_POSITIVE, null, NOW);
     db.getSession().commit();
 
     assertThat(reload(neverExpires).getIssueResolutionExpiresAt()).isNull();
@@ -83,9 +87,12 @@ public class IssueDaoBulkTransitionIT {
     IssueDto expiring = insertOpenIssue();
     IssueDto neverExpires = insertOpenIssue();
     IssueDto falsePositive = insertOpenIssue();
-    underTest.bulkTransition(db.getSession(), List.of(expiring.getKey()), RESOLUTION_EXCEPTION, EXPIRES_AT, NOW);
-    underTest.bulkTransition(db.getSession(), List.of(neverExpires.getKey()), RESOLUTION_EXCEPTION, null, NOW);
-    underTest.bulkTransition(db.getSession(), List.of(falsePositive.getKey()), RESOLUTION_FALSE_POSITIVE, null, NOW);
+    underTest.bulkTransition(db.getSession(), List.of(expiring.getKey()), project.uuid(),
+      RESOLUTION_EXCEPTION, EXPIRES_AT, NOW);
+    underTest.bulkTransition(db.getSession(), List.of(neverExpires.getKey()), project.uuid(),
+      RESOLUTION_EXCEPTION, null, NOW);
+    underTest.bulkTransition(db.getSession(), List.of(falsePositive.getKey()), project.uuid(),
+      RESOLUTION_FALSE_POSITIVE, null, NOW);
     db.getSession().commit();
     String run = UUID.randomUUID().toString();
     pair(run, expiring, "D1");
@@ -119,9 +126,11 @@ public class IssueDaoBulkTransitionIT {
   }
 
   private IssueDto insertOpenIssue() {
-    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
-    ComponentDto file = db.components().insertComponent(newFileDto(project));
-    RuleDto rule = db.rules().insertIssueRule();
+    if (project == null) {
+      project = db.components().insertPrivateProject().getMainBranchComponent();
+      file = db.components().insertComponent(newFileDto(project));
+      rule = db.rules().insertIssueRule();
+    }
     return db.issues().insertIssue(rule, project, file, i -> i.setStatus(STATUS_OPEN).setResolution(null));
   }
 

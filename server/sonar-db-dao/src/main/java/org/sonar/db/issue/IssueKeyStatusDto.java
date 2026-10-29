@@ -20,8 +20,9 @@
 package org.sonar.db.issue;
 
 /**
- * CodeScan: an issue key paired with the status it is moving away from. A bulk transition needs both — the key to
- * write the changelog against, and the previous status to record in it.
+ * CodeScan: an issue key paired with the status it is moving away from and the component it sits on. A bulk
+ * transition needs all three — the key to write the changelog against, the previous status to record in it, and
+ * the component so the caller can recompute what the change affects.
  */
 public class IssueKeyStatusDto {
 
@@ -42,17 +43,17 @@ public class IssueKeyStatusDto {
     return status;
   }
 
+  public IssueKeyStatusDto setStatus(String status) {
+    this.status = status;
+    return this;
+  }
+
   public String getComponentUuid() {
     return componentUuid;
   }
 
   public IssueKeyStatusDto setComponentUuid(String componentUuid) {
     this.componentUuid = componentUuid;
-    return this;
-  }
-
-  public IssueKeyStatusDto setStatus(String status) {
-    this.status = status;
     return this;
   }
 }
