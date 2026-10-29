@@ -32,6 +32,7 @@ public class ProjectLinksWsParameters {
   public static final String PARAM_ID = "id";
   public static final String PARAM_NAME = "name";
   public static final String PARAM_URL = "url";
+  public static final String PARAM_ENCODED_URL = "encodedUrl";
 
   private ProjectLinksWsParameters() {
     // static utility class

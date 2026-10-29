@@ -22,6 +22,7 @@ import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import getCoverageStatus from '../components/SourceViewer/helpers/getCoverageStatus';
 import { get, HttpStatus, parseJSON, post, postJSON, RequestData } from '../helpers/request';
+import { encodeBase64Url } from '../helpers/strings';
 import {
   FacetName,
   IssueResponse,
@@ -106,8 +107,14 @@ export function getIssueFilters() {
   return getJSON('/api/issue_filters/search').then((r) => r.issueFilters);
 }
 
+// Comment text can match the path traversal and SQL injection signatures of a WAF body inspection
+// (for example "../"), so it is sent base64url-encoded.
+function encodeCommentText({ text, ...data }: { text: string }) {
+  return text ? { ...data, encodedText: encodeBase64Url(text) } : { ...data, text };
+}
+
 export function addIssueComment(data: { issue: string; text: string }): Promise<IssueResponse> {
-  return postJSON('/api/issues/add_comment', data);
+  return postJSON('/api/issues/add_comment', encodeCommentText(data));
 }
 
 export function deleteIssueComment(data: { comment: string }): Promise<IssueResponse> {
@@ -115,7 +122,7 @@ export function deleteIssueComment(data: { comment: string }): Promise<IssueResp
 }
 
 export function editIssueComment(data: { comment: string; text: string }): Promise<IssueResponse> {
-  return postJSON('/api/issues/edit_comment', data);
+  return postJSON('/api/issues/edit_comment', encodeCommentText(data));
 }
 
 export function setIssueAssignee(data: {

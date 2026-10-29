@@ -18,6 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import { get, parseJSON, postJSONBody } from '../../../../helpers/request';
+import { encodeBase64Url } from '../../../../helpers/strings';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 
 export interface GenerateXPathRequest {
@@ -95,8 +96,16 @@ export interface AiRuleQuota {
  * Generate XPath from natural language description using AI.
  * Does not create a rule — rule creation uses the standard v2 rules API.
  */
-export function generateAIXPath(request: GenerateXPathRequest): Promise<GenerateXPathResponse> {
-  return postJSONBody('/_codescan/ai-rules/generate-xpath', request);
+export function generateAIXPath({
+  description,
+  ...request
+}: GenerateXPathRequest): Promise<GenerateXPathResponse> {
+  // The description is free text that can match the SQL injection and path traversal signatures of
+  // a WAF body inspection, so it is sent base64url-encoded.
+  return postJSONBody('/_codescan/ai-rules/generate-xpath', {
+    ...request,
+    encodedDescription: encodeBase64Url(description),
+  });
 }
 
 /**

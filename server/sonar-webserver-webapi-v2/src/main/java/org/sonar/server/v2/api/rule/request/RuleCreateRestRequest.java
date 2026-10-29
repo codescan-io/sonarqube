@@ -53,8 +53,8 @@ public record RuleCreateRestRequest(
   @Schema(description = "Rule name")
   String name,
 
-  @NotNull
-  @Schema(description = "Rule description in markdown format")
+  @Nullable
+  @Schema(description = "Rule description in markdown format. Required unless encodedMarkdownDescription is set.")
   String markdownDescription,
 
   @Nullable
@@ -84,6 +84,13 @@ public record RuleCreateRestRequest(
 
   @Nullable
   @Schema(description = "Whether the rule's XPath was generated using AI", defaultValue = "false")
-  Boolean aiGenerated
+  Boolean aiGenerated,
+
+  // A rule description can match the SQL injection and path traversal signatures of a WAF body inspection; the web UI
+  // sends it base64url-encoded in this field so that the request body carries only [A-Za-z0-9_-].
+  @Nullable
+  @Schema(description = "Same content as markdownDescription, base64url-encoded (RFC 4648 §5, padding optional) from UTF-8. " +
+    "When set, it is used instead of markdownDescription.")
+  String encodedMarkdownDescription
 ) {
 }
