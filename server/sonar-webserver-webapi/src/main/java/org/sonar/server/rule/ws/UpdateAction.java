@@ -46,7 +46,7 @@ import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.db.rule.RuleParamDto;
-import org.sonar.server.common.rule.EncodedRuleParameters;
+import org.sonar.server.common.text.EncodedParameters;
 import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.rule.RuleUpdate;
@@ -248,7 +248,7 @@ public class UpdateAction implements RulesWsAction {
     if (encodedParams == null || encodedParams.isEmpty()) {
       return request.param(PARAMS);
     }
-    return EncodedRuleParameters.decode(encodedParams, PARAM_ENCODED_PARAMS);
+    return EncodedParameters.decode(encodedParams, PARAM_ENCODED_PARAMS);
   }
 
   private RuleUpdate createRuleUpdate(DbSession dbSession, RuleKey key, OrganizationDto organization) {

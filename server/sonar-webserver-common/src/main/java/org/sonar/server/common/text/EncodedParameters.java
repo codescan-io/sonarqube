@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.server.common.rule;
+package org.sonar.server.common.text;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -29,12 +29,13 @@ import org.sonar.server.exceptions.BadRequestException;
 import static java.lang.String.format;
 
 /**
- * Rule parameter values (regexes, XPath expressions) can match the SQL injection signatures of a WAF body
- * inspection, so the web UI sends them base64url-encoded, which leaves only [A-Za-z0-9_-] in the request body.
+ * Free-text request values (rule parameters such as regexes and XPath expressions, descriptions, comments, URLs) can
+ * match the SQL injection or path traversal signatures of a WAF body inspection, so the web UI sends them
+ * base64url-encoded, which leaves only [A-Za-z0-9_-] in the request body.
  */
-public final class EncodedRuleParameters {
+public final class EncodedParameters {
 
-  private EncodedRuleParameters() {
+  private EncodedParameters() {
     // only static methods
   }
 

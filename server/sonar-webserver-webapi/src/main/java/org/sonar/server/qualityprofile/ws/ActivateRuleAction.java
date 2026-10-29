@@ -40,7 +40,7 @@ import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.qualityprofile.QProfileDto;
 import org.sonar.db.rule.RuleDto;
-import org.sonar.server.common.rule.EncodedRuleParameters;
+import org.sonar.server.common.text.EncodedParameters;
 import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.qualityprofile.QProfileRules;
 import org.sonar.server.qualityprofile.RuleActivation;
@@ -188,7 +188,7 @@ public class ActivateRuleAction implements QProfileWsAction {
     if (encodedParams == null || encodedParams.isEmpty()) {
       return request.param(PARAM_PARAMS);
     }
-    return EncodedRuleParameters.decode(encodedParams, PARAM_ENCODED_PARAMS);
+    return EncodedParameters.decode(encodedParams, PARAM_ENCODED_PARAMS);
   }
 
   @NotNull
