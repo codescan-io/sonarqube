@@ -187,6 +187,17 @@ public class IssueDao implements Dao {
   }
 
   /**
+   * CodeScan: for each of {@code keys} that the resolution transfer {@code transferUuid} paired with a source issue
+   * that is still an exception, that source and its expiry. A key paired with several such sources appears once per
+   * source; a key with none is left out.
+   */
+  public List<IssueExceptionSourceDto> selectExceptionSourcesOfTransfer(DbSession session, String transferUuid,
+    Collection<String> keys) {
+    return executeLargeInputs(keys, partition -> mapper(session).selectExceptionSourcesOfTransfer(transferUuid,
+      partition));
+  }
+
+  /**
    * CodeScan: resolves a whole chunk of issues in one statement per partition rather than one per issue. Only
    * issues the workflow would actually move are touched, so the count matches {@link #selectTransitionable}.
    * {@code expiresAt} is written as the exception expiry; null clears it, as the workflow does for any other

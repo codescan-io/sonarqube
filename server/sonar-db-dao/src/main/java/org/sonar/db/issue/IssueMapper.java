@@ -68,6 +68,10 @@ public interface IssueMapper {
   int bulkTransition(@Param("keys") List<String> keys, @Param("resolution") String resolution,
     @Nullable @Param("expiresAt") Long expiresAt, @Param("now") long now);
 
+  /** CodeScan: the source exception a resolution transfer paired each of {@code keys} with. */
+  List<IssueExceptionSourceDto> selectExceptionSourcesOfTransfer(@Param("transferUuid") String transferUuid,
+    @Param("keys") List<String> keys);
+
   void insertAsNewCodeOnReferenceBranch(NewCodeReferenceIssueDto issue);
 
   void insertIssueImpact(@Param("issueKey") String issueKey, @Param("dto") ImpactDto issue);

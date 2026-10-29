@@ -19,11 +19,12 @@
  */
 package org.sonar.server.issue.ws;
 
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,14 +45,15 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueChangeDto;
+import org.sonar.db.issue.IssueExceptionSourceDto;
 import org.sonar.db.issue.IssueKeyStatusDto;
 import org.sonar.server.issue.IssueChangePostProcessor;
 import org.sonar.server.issue.index.IssueIndexer;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.MediaTypes;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.trimToNull;
-import static org.sonar.server.issue.CodeIssueExceptionExpiryService.PARAM_ISSUE_RESOLUTION_EXPIRY_DATE;
 import static org.sonar.server.issue.IssueFieldsSetter.ISSUE_STATUS;
 import static org.sonar.server.issue.IssueFieldsSetter.RESOLUTION;
 import static org.sonar.server.issue.IssueFieldsSetter.STATUS;
@@ -71,8 +73,10 @@ import static com.google.common.base.Preconditions.checkArgument;
  * <p><b>What it deliberately does not do.</b> No notifications, no quality-gate event per call, and no per-issue
  * permission check: it requires a system administrator, because the only caller is a server-side job acting on a
  * whole project. It supports only the resolving transitions whose workflow reduces cleanly to a predicate: false
- * positive, accept and exception. An exception carries one reason and one expiry date for the whole chunk, and
- * both are required: the per-severity auto-expiry {@code do_transition} falls back to is a per-issue decision.
+ * positive, accept and exception. An exception is copied from the source issue the caller's resolution transfer
+ * paired each issue with, which this action reads from the transfer's report rows: the source's expiry date and its
+ * latest reason. Neither is sent, so one request carries exceptions with any mix of them, and a source without a
+ * reason gives an exception without one.
  */
 public class BulkTransitionAction implements IssuesWsAction {
 
@@ -87,7 +91,7 @@ public class BulkTransitionAction implements IssuesWsAction {
   private static final String PARAM_REFRESH_MEASURES = "refreshMeasures";
   private static final String PARAM_BRANCH_UUID = "branchUuid";
   private static final String PARAM_SET_BASED_CHANGELOG = "setBasedChangelog";
-  private static final String PARAM_EXCEPTION_REASON = "exceptionReason";
+  private static final String PARAM_TRANSFER_UUID = "transferUuid";
 
   /** Keeps one request's key list, its changelog rows and its index batch to a size the heap does not notice. */
   static final int MAX_ISSUES = 50_000;
@@ -105,6 +109,11 @@ public class BulkTransitionAction implements IssuesWsAction {
     Issue.RESOLUTION_FALSE_POSITIVE, "FALSE_POSITIVE",
     Issue.RESOLUTION_WONT_FIX, "ACCEPTED",
     Issue.RESOLUTION_EXCEPTION, "EXCEPTION");
+
+  /** The order the issue page shows an issue's exception reasons in, so the latest is the one it displays. */
+  private static final Comparator<IssueChangeDto> LATEST_CHANGE = Comparator
+    .comparing(IssueChangeDto::getIssueChangeCreationDate, Comparator.nullsFirst(Comparator.naturalOrder()))
+    .thenComparing(IssueChangeDto::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder()));
 
   private final DbClient dbClient;
   private final UserSession userSession;
@@ -147,13 +156,10 @@ public class BulkTransitionAction implements IssuesWsAction {
       .setDescription("Uuid of the user the change is attributed to. Defaults to the caller.");
     action.createParam(PARAM_COMMENT)
       .setDescription("Comment to add to every resolved issue. Omitted means no comment is written.");
-    action.createParam(PARAM_EXCEPTION_REASON)
-      .setDescription("Reason recorded on every issue moved by the '" + DefaultTransitions.EXCEPTION + "' transition. "
-        + "Required with that transition and rejected with any other.");
-    action.createParam(PARAM_ISSUE_RESOLUTION_EXPIRY_DATE)
-      .setDescription("Expiry date (yyyy-MM-dd, UTC) of every exception this request records. Required with the '"
-        + DefaultTransitions.EXCEPTION + "' transition and rejected with any other; send it empty for an exception "
-        + "that never expires.");
+    action.createParam(PARAM_TRANSFER_UUID)
+      .setDescription("Resolution transfer the issues belong to. Each issue takes the expiry date and the latest "
+        + "reason of the source exception that transfer paired it with. Required with the '"
+        + DefaultTransitions.EXCEPTION + "' transition and rejected with any other.");
     action.createParam(PARAM_SET_BASED_CHANGELOG)
       .setDescription("Write the changelog with one statement per partition instead of one insert per row. "
         + "Both paths produce the same rows, and the set-based one is around nine times faster, so it is the "
@@ -182,9 +188,9 @@ public class BulkTransitionAction implements IssuesWsAction {
     String comment = request.param(PARAM_COMMENT);
     boolean refreshMeasures = request.mandatoryParamAsBoolean(PARAM_REFRESH_MEASURES);
     boolean setBasedChangelog = request.mandatoryParamAsBoolean(PARAM_SET_BASED_CHANGELOG);
-    ExceptionFields exception = exceptionFields(request, transition, resolution);
+    String transferUuid = transferUuid(request, resolution);
 
-    Result result = apply(issueKeys, resolution, exception, branchUuid, changeAuthor, comment, refreshMeasures,
+    Result result = apply(issueKeys, resolution, transferUuid, branchUuid, changeAuthor, comment, refreshMeasures,
       setBasedChangelog);
 
     try (JsonWriter json = response.newJsonWriter()) {
@@ -197,33 +203,63 @@ public class BulkTransitionAction implements IssuesWsAction {
     response.stream().setMediaType(MediaTypes.JSON);
   }
 
-  /** Null for the transitions that are not an exception, which must not carry the exception parameters. */
+  /** The transfer an exception is copied through; null for the other transitions, which must not name one. */
   @Nullable
-  private static ExceptionFields exceptionFields(Request request, String transition, String resolution) {
-    String reason = trimToNull(request.param(PARAM_EXCEPTION_REASON));
-    String expiryDate = request.param(PARAM_ISSUE_RESOLUTION_EXPIRY_DATE);
+  private static String transferUuid(Request request, String resolution) {
+    String transferUuid = trimToNull(request.param(PARAM_TRANSFER_UUID));
     if (!Issue.RESOLUTION_EXCEPTION.equals(resolution)) {
-      checkArgument(reason == null && expiryDate == null, "'%s' and '%s' apply only to the '%s' transition",
-        PARAM_EXCEPTION_REASON, PARAM_ISSUE_RESOLUTION_EXPIRY_DATE, DefaultTransitions.EXCEPTION);
+      checkArgument(transferUuid == null, "'%s' applies only to the '%s' transition", PARAM_TRANSFER_UUID,
+        DefaultTransitions.EXCEPTION);
       return null;
     }
-    checkArgument(reason != null, "'%s' is required with the '%s' transition", PARAM_EXCEPTION_REASON, transition);
-    checkArgument(expiryDate != null, "'%s' is required with the '%s' transition; send it empty for an exception "
-      + "that never expires", PARAM_ISSUE_RESOLUTION_EXPIRY_DATE, transition);
-    return new ExceptionFields(reason, expiryDate.isBlank() ? null : utcStartOfDay(expiryDate.trim()));
+    checkArgument(transferUuid != null, "'%s' is required with the '%s' transition", PARAM_TRANSFER_UUID,
+      DefaultTransitions.EXCEPTION);
+    return transferUuid;
   }
 
-  /** The same instant {@code do_transition} stores for a manual expiry date. */
-  private static long utcStartOfDay(String ymd) {
-    try {
-      return LocalDate.parse(ymd).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
-    } catch (DateTimeParseException e) {
-      throw new IllegalArgumentException(
-        String.format("'%s' must be a date in the yyyy-MM-dd format: %s", PARAM_ISSUE_RESOLUTION_EXPIRY_DATE, ymd), e);
+  /**
+   * The expiry and reason each movable issue takes from the source exception the transfer paired it with, read in
+   * the chunk's session. An issue paired with several sources takes the one with the lowest key, so the choice does
+   * not depend on row order. An issue whose source is no longer an exception gets neither, as does one whose source's
+   * latest reason is blank.
+   */
+  private ExceptionFields exceptionFields(DbSession dbSession, List<String> movableKeys, String transferUuid) {
+    Map<String, IssueExceptionSourceDto> sourceByIssue = new HashMap<>();
+    for (IssueExceptionSourceDto source : dbClient.issueDao().selectExceptionSourcesOfTransfer(dbSession,
+      transferUuid, movableKeys)) {
+      sourceByIssue.merge(source.getIssueKey(), source,
+        (kept, other) -> kept.getSourceKey().compareTo(other.getSourceKey()) <= 0 ? kept : other);
     }
+    Set<String> sourceKeys = sourceByIssue.values().stream().map(IssueExceptionSourceDto::getSourceKey)
+      .collect(Collectors.toSet());
+    Map<String, String> reasonBySource = dbClient.issueChangeDao()
+      .selectByTypeAndIssueKeys(dbSession, sourceKeys, IssueChangeDto.TYPE_EXCEPTION_REASON).stream()
+      .collect(Collectors.groupingBy(IssueChangeDto::getIssueKey, Collectors.collectingAndThen(
+        Collectors.maxBy(LATEST_CHANGE), latest -> latest.map(IssueChangeDto::getChangeData).orElse(null))));
+
+    Map<String, Long> expiresAt = new HashMap<>();
+    Map<String, String> reason = new HashMap<>();
+    for (String key : movableKeys) {
+      IssueExceptionSourceDto source = sourceByIssue.get(key);
+      expiresAt.put(key, source == null ? null : source.getExpiresAt());
+      String sourceReason = source == null ? null : reasonBySource.get(source.getSourceKey());
+      if (!isBlank(sourceReason)) {
+        reason.put(key, sourceReason);
+      }
+    }
+    return new ExceptionFields(expiresAt, reason);
   }
 
-  private Result apply(List<String> issueKeys, String resolution, @Nullable ExceptionFields exception,
+  /** Keys sharing a value, in the order they came, so one statement per distinct value writes them all. */
+  private static <V> Map<V, List<String>> keysByValue(Map<String, V> valueByKey, List<String> keys) {
+    Map<V, List<String>> grouped = new LinkedHashMap<>();
+    for (String key : keys) {
+      grouped.computeIfAbsent(valueByKey.get(key), v -> new ArrayList<>()).add(key);
+    }
+    return grouped;
+  }
+
+  private Result apply(List<String> issueKeys, String resolution, @Nullable String transferUuid,
     String branchUuid, @Nullable String changeAuthor, @Nullable String comment, boolean refreshMeasures,
     boolean setBasedChangelog) {
     long now = system2.now();
@@ -243,6 +279,8 @@ public class BulkTransitionAction implements IssuesWsAction {
       nothingToMove = movable.isEmpty();
       if (!nothingToMove) {
         List<String> movableKeys = movable.stream().map(IssueKeyStatusDto::getKee).toList();
+        ExceptionFields exception = transferUuid == null ? null
+          : exceptionFields(dbSession, movableKeys, transferUuid);
         // Each phase flushes its own statements. In a batch session they would otherwise all execute at the first
         // flush that follows, which would charge one phase for another's work and make the two changelog paths
         // incomparable. Flushing is not committing, so the chunk stays atomic either way.
@@ -254,8 +292,12 @@ public class BulkTransitionAction implements IssuesWsAction {
           changelogMs = system2.now() - t0;
         }
         t0 = system2.now();
-        dbClient.issueDao().bulkTransition(dbSession, movableKeys, resolution,
-          exception == null ? null : exception.expiresAt(), now);
+        if (exception == null) {
+          dbClient.issueDao().bulkTransition(dbSession, movableKeys, resolution, null, now);
+        } else {
+          keysByValue(exception.expiresAt(), movableKeys).forEach((expiresAt, keys) ->
+            dbClient.issueDao().bulkTransition(dbSession, keys, resolution, expiresAt, now));
+        }
         dbSession.flushStatements();
         updateMs = system2.now() - t0;
         if (!setBasedChangelog) {
@@ -344,8 +386,9 @@ public class BulkTransitionAction implements IssuesWsAction {
     dbClient.issueChangeDao().insertTransitionDiffs(dbSession, movableKeys, resolution,
       RESOLUTION_TO_ISSUE_STATUS.get(resolution), branchUuid, changeAuthor, now, uuidFactory);
     if (exception != null) {
-      dbClient.issueChangeDao().insertTransitionExceptionReasons(dbSession, movableKeys, exception.reason(),
-        branchUuid, changeAuthor, now, uuidFactory);
+      List<String> withReason = movableKeys.stream().filter(exception.reason()::containsKey).toList();
+      keysByValue(exception.reason(), withReason).forEach((reason, keys) -> dbClient.issueChangeDao()
+        .insertTransitionExceptionReasons(dbSession, keys, reason, branchUuid, changeAuthor, now, uuidFactory));
     }
     if (comment != null) {
       dbClient.issueChangeDao().insertTransitionComments(dbSession, movableKeys, comment, branchUuid, changeAuthor,
@@ -375,9 +418,10 @@ public class BulkTransitionAction implements IssuesWsAction {
       IssueChangeDto diffRow = IssueChangeDto.of(issue.getKee(), diffs, branchUuid);
       diffRow.setUuid(uuidFactory.create());
       dbClient.issueChangeDao().insert(dbSession, diffRow);
-      if (exception != null) {
+      String reason = exception == null ? null : exception.reason().get(issue.getKee());
+      if (reason != null) {
         dbClient.issueChangeDao().insert(dbSession, commentRow(issue.getKee(), IssueChangeDto.TYPE_EXCEPTION_REASON,
-          branchUuid, changeAuthor, exception.reason(), now));
+          branchUuid, changeAuthor, reason, now));
       }
       if (comment != null) {
         dbClient.issueChangeDao().insert(dbSession, commentRow(issue.getKee(), IssueChangeDto.TYPE_COMMENT,
@@ -416,7 +460,10 @@ public class BulkTransitionAction implements IssuesWsAction {
   private record Result(List<String> transitioned, List<String> notTransitioned) {
   }
 
-  /** {@code expiresAt} is null for an exception that never expires. */
-  private record ExceptionFields(String reason, @Nullable Long expiresAt) {
+  /**
+   * Per movable issue: {@code expiresAt} holds every issue, with a null value for an exception that never expires;
+   * {@code reason} holds only the issues whose source has one.
+   */
+  private record ExceptionFields(Map<String, Long> expiresAt, Map<String, String> reason) {
   }
 }
