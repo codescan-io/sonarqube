@@ -76,7 +76,7 @@ public class CspFilter implements Filter {
         List<String> cspPolicies = new ArrayList<>();
         cspPolicies.add("default-src 'self'");
         cspPolicies.add("base-uri 'none'");
-        cspPolicies.add("connect-src 'self' http: https:");
+        cspPolicies.add("connect-src 'self' http://localhost:* https:");
         cspPolicies.add("font-src 'self' data:");
         cspPolicies.add("img-src * data: blob:");
         cspPolicies.add("object-src 'none'");
@@ -106,7 +106,7 @@ public class CspFilter implements Filter {
     }
 
     private static String buildConnectSrc(boolean pendoDisabled) {
-        String src = "connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com http: https:";
+        String src = "connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com http://localhost:* https:";
         if (!pendoDisabled) {
             src += " app.pendo.io data.pendo.io pendo-static-6580644462460928.storage.googleapis.com";
         }

@@ -40,7 +40,7 @@ public class CspFilterTest {
   private static final String TEST_CONTEXT = "/sonarqube";
   private static final String EXPECTED = "default-src 'self'; " +
     "base-uri 'none'; " +
-    "connect-src 'self' http: https:; " +
+    "connect-src 'self' http://localhost:* https:; " +
     "font-src 'self' data:; " +
     "img-src * data: blob:; " +
     "object-src 'none'; " +
