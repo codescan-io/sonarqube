@@ -248,6 +248,21 @@
     where <include refid="transitionablePredicate"><property name="alias" value="i."/></include>
   </select>
 
+
+  <update id="bulkTransitionWithExpiry" parameterType="map">
+    update issues
+    set status = 'RESOLVED',
+      resolution = #{resolution,jdbcType=VARCHAR},
+      issue_resolution_expires_at = #{expiresAt,jdbcType=BIGINT},
+      issue_update_date = #{now,jdbcType=BIGINT},
+      updated_at = #{now,jdbcType=BIGINT}
+    where status in
+      <foreach collection="statuses" open="(" close=")" item="status" separator=",">#{status,jdbcType=VARCHAR}</foreach>
+      and issue_type &lt;&gt; 4
+      and kee in
+      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+  </update>
+
   <update id="bulkTransition" parameterType="map">
     update issues
     set status = 'RESOLVED',
@@ -587,6 +602,69 @@
     where i.kee in
     <foreach collection="list" open="(" close=")" item="key" separator=",">
       #{key,jdbcType=VARCHAR}
+    </foreach>
+  </select>
+
+
+  <select id="selectUnresolvedBySignatureInBranches" parameterType="map" resultMap="issueResultMap">
+    select
+    <include refid="issueColumns"/>,
+    u.login as assigneeLogin
+    from issues i
+    inner join rules r on r.uuid=i.rule_uuid
+    inner join components p on p.uuid=i.component_uuid
+    inner join components root on root.uuid=i.project_uuid
+    left join users u on i.assignee = u.uuid
+    left join new_code_reference_issues n on i.kee = n.issue_key
+    left outer join issues_impacts ii on i.kee = ii.issue_key
+    left outer join rules_default_impacts rdi on r.uuid = rdi.rule_uuid
+    left join issues_dependency dep on i.kee = dep.issue_uuid
+    left join cves cve on dep.cve_uuid = cve.uuid
+    where i.project_uuid in
+    <foreach collection="branchUuids" open="(" close=")" item="branchUuid" separator=",">
+      #{branchUuid,jdbcType=VARCHAR}
+    </foreach>
+    and i.rule_uuid = #{ruleUuid,jdbcType=VARCHAR}
+    and p.path = #{filePath,jdbcType=VARCHAR}
+    and i.message = #{message,jdbcType=VARCHAR}
+    <choose>
+      <when test="line == null">
+        and i.line is null
+      </when>
+      <otherwise>
+        and i.line = #{line,jdbcType=INTEGER}
+      </otherwise>
+    </choose>
+    and i.status in
+    <foreach collection="statuses" open="(" close=")" item="status" separator=",">
+      #{status,jdbcType=VARCHAR}
+    </foreach>
+  </select>
+
+
+  <select id="selectUnresolvedByRuleAndFileInBranches" parameterType="map" resultMap="issueResultMap">
+    select
+    <include refid="issueColumns"/>,
+    u.login as assigneeLogin
+    from issues i
+    inner join rules r on r.uuid=i.rule_uuid
+    inner join components p on p.uuid=i.component_uuid
+    inner join components root on root.uuid=i.project_uuid
+    left join users u on i.assignee = u.uuid
+    left join new_code_reference_issues n on i.kee = n.issue_key
+    left outer join issues_impacts ii on i.kee = ii.issue_key
+    left outer join rules_default_impacts rdi on r.uuid = rdi.rule_uuid
+    left join issues_dependency dep on i.kee = dep.issue_uuid
+    left join cves cve on dep.cve_uuid = cve.uuid
+    where i.project_uuid in
+    <foreach collection="branchUuids" open="(" close=")" item="branchUuid" separator=",">
+      #{branchUuid,jdbcType=VARCHAR}
+    </foreach>
+    and i.rule_uuid = #{ruleUuid,jdbcType=VARCHAR}
+    and p.path = #{filePath,jdbcType=VARCHAR}
+    and i.status in
+    <foreach collection="statuses" open="(" close=")" item="status" separator=",">
+      #{status,jdbcType=VARCHAR}
     </foreach>
   </select>
 

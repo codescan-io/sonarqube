@@ -88,6 +88,48 @@
           </include>
   </insert>
 
+  <insert id="insertProliferationDiffs" parameterType="org.sonar.db.issue.ProliferationChangeQuery">
+    INSERT INTO issue_changes (uuid, kee, issue_key, user_login, change_type, change_data, created_at, updated_at,
+    issue_change_creation_date, project_uuid)
+    SELECT #{uuidPrefix,jdbcType=VARCHAR} || row_number() over (order by i.kee),
+      null,
+      i.kee,
+      #{changeAuthor,jdbcType=VARCHAR},
+      'diff',
+      <include refid="transitionChangeData"/>,
+      #{now,jdbcType=BIGINT},
+      #{now,jdbcType=BIGINT},
+      #{markedAt,jdbcType=BIGINT},
+      #{branchUuid,jdbcType=VARCHAR}
+    FROM issues i
+    WHERE i.status in
+      <foreach collection="statuses" open="(" close=")" item="status" separator=",">#{status,jdbcType=VARCHAR}</foreach>
+      AND i.issue_type &lt;&gt; 4
+      AND i.kee in
+      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+  </insert>
+
+  <insert id="insertProliferationComments" parameterType="org.sonar.db.issue.ProliferationChangeQuery">
+    INSERT INTO issue_changes (uuid, kee, issue_key, user_login, change_type, change_data, created_at, updated_at,
+    issue_change_creation_date, project_uuid)
+    SELECT #{uuidPrefix,jdbcType=VARCHAR} || row_number() over (order by i.kee),
+      #{keePrefix,jdbcType=VARCHAR} || row_number() over (order by i.kee),
+      i.kee,
+      #{changeAuthor,jdbcType=VARCHAR},
+      #{changeType,jdbcType=VARCHAR},
+      #{comment,jdbcType=VARCHAR},
+      #{now,jdbcType=BIGINT},
+      #{now,jdbcType=BIGINT},
+      #{markedAt,jdbcType=BIGINT},
+      #{branchUuid,jdbcType=VARCHAR}
+    FROM issues i
+    WHERE i.status in
+      <foreach collection="statuses" open="(" close=")" item="status" separator=",">#{status,jdbcType=VARCHAR}</foreach>
+      AND i.issue_type &lt;&gt; 4
+      AND i.kee in
+      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+  </insert>
+
   <delete id="delete" parameterType="string">
     delete from issue_changes where kee=#{id}
   </delete>

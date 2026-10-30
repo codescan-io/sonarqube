@@ -139,6 +139,9 @@ import org.sonar.server.hotspot.ws.HotspotsWsModule;
 import org.sonar.server.issue.AddTagsAction;
 import org.sonar.server.issue.AssignAction;
 import org.sonar.server.issue.CodeIssueExceptionExpiryService;
+import org.sonar.server.issue.IssueMarkingProliferationService;
+import org.sonar.server.issue.IssueProliferationSubmitter;
+import org.sonar.server.issue.ProliferationIssueStorage;
 import org.sonar.server.issue.CommentAction;
 import org.sonar.server.issue.IssueChangePostProcessorImpl;
 import org.sonar.server.issue.PrioritizedRulesFeature;
@@ -532,6 +535,9 @@ public class PlatformLevel4 extends PlatformLevel {
       SetSeverityAction.class,
       CommentAction.class,
       CodeIssueExceptionExpiryService.class,
+      ProliferationIssueStorage.class,
+      IssueMarkingProliferationService.class,
+      IssueProliferationSubmitter.class,
       TransitionAction.class,
       AddTagsAction.class,
       RemoveTagsAction.class,

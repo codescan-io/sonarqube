@@ -175,8 +175,15 @@
       </if>
   </sql>
 
+  <!--
+    Oldest first, except that RESOLUTION_PROLIFERATION always goes last. A proliferation run queues one task per
+    batch of marked issues and can occupy a project for hours; without this, an analysis submitted while it runs
+    would sit behind the whole backlog, because a task is only eligible when nothing else is running for its
+    project. Every other task type evaluates to 0, so their order relative to each other is unchanged.
+  -->
   <sql id="orderBySelectEligibleForPeek">
     order by
+      case cq.task_type when 'RESOLUTION_PROLIFERATION' then 1 else 0 end asc,
       cq.created_at asc,
       cq.uuid asc
   </sql>

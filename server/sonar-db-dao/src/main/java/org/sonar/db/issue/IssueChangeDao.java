@@ -62,6 +62,29 @@ public class IssueChangeDao implements Dao {
   }
 
   /**
+   * CodeScan: the diff rows of a proliferated marking. As {@link #insertTransitionDiffs}, but the candidate
+   * statuses are the caller's and the rows are dated when the user made the marking, not when this ran.
+   * <p>
+   * The query's {@code resolution} and {@code issueStatus} carry the marking; its keys are replaced per partition.
+   */
+  public void insertProliferationDiffs(DbSession session, ProliferationChangeQuery query, UuidFactory uuidFactory) {
+    executeLargeInputsWithoutOutput(query.getKeys(), partition -> mapper(session)
+      .insertProliferationDiffs(query.forPartition(partition, rowKeyPrefix(uuidFactory), null)));
+  }
+
+  /**
+   * CodeScan: one comment - or Exception reason - row per proliferated issue, in one statement per partition.
+   * <p>
+   * The query's {@code comment} and {@code changeType} carry the row; its keys are replaced per partition.
+   */
+  public void insertProliferationComments(DbSession session, ProliferationChangeQuery query,
+    UuidFactory uuidFactory) {
+    executeLargeInputsWithoutOutput(query.getKeys(), partition -> mapper(session)
+      .insertProliferationComments(query.forPartition(partition, rowKeyPrefix(uuidFactory),
+        rowKeyPrefix(uuidFactory))));
+  }
+
+  /**
    * A per-statement prefix the SQL completes with a row number, because no uuid function is available on every
    * supported dialect. Hyphens are dropped and the tail is kept so the result fits the 40-character uuid column
    * and still varies under {@link org.sonar.core.util.SequenceUuidFactory}, whose uuids differ only at the end.
