@@ -912,6 +912,8 @@ export interface Organization extends OrganizationBase {
   projectVisibility?: Visibility;
   notifications?: CodeScanNotification[];
   sfAccountId?: String;
+  companyName?: string;
+  customerId?: string;
 }
 
 export interface OrganizationBase {

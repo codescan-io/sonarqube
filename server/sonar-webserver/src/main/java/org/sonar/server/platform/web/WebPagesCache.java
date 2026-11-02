@@ -72,8 +72,8 @@ public class WebPagesCache {
     + "}</script>";
 
   private static final String ANALYTICS_INIT_SCRIPT_CONTENT = "<script>if (" + PENDO_HOST_CHECK + ") {\n"
-    + "window.__initAnalytics = function(userId, accountId, host) {\n"
-    + "  pendo.initialize({ visitor: { id: userId }, account: { id: accountId, instance: host } });\n"
+    + "window.__initAnalytics = function(visitor, account) {\n"
+    + "  pendo.initialize({ visitor: visitor, account: account });\n"
     + "};\n"
     + "}</script>";
 

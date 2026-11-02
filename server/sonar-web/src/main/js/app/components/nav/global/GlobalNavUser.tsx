@@ -39,7 +39,7 @@ export interface GlobalNavUserProps {
 
 export function GlobalNavUser({ currentUser, userOrganizations }: GlobalNavUserProps) {
 
-  const { settings } = React.useContext(AppStateContext);
+  const { settings, version } = React.useContext(AppStateContext);
 
   const [analyticsInitialized, setAnalyticsInitialized] = React.useState<boolean>();
 
@@ -50,10 +50,25 @@ export function GlobalNavUser({ currentUser, userOrganizations }: GlobalNavUserP
   const initializeAnalytics = () => {
     const hasOrganizations = userOrganizations.length > 0;
     if (isLoggedIn(currentUser) && hasOrganizations && !analyticsInitialized && typeof (window as any).__initAnalytics === 'function') {
-      const sfAccountId = userOrganizations.find?.(o => o.sfAccountId != null)?.sfAccountId || null;
+      const organization = userOrganizations.find?.(o => o.sfAccountId != null);
       const userId = currentUser.email ?? currentUser.login;
-      const host = window.location.hostname;
-      (window as any).__initAnalytics(userId, sfAccountId, host);
+      (window as any).__initAnalytics(
+        {
+          id: userId,
+          email: currentUser.email ?? null,
+          full_name: currentUser.name ?? null,
+        },
+        {
+          id: organization?.sfAccountId || null,
+          name: organization?.companyName ?? null,
+          instance: window.location.hostname,
+          instanceUrl: window.location.origin,
+          productName: 'CodeScan',
+          productVersion: version ?? null,
+          customerId: organization?.customerId ?? null,
+          orgName: organization?.name ?? null,
+        },
+      );
       setAnalyticsInitialized(true);
     }
   }
