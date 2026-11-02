@@ -51,7 +51,8 @@ public class CspFilter implements Filter {
         boolean gaDisabled = "true".equalsIgnoreCase(System.getenv(GA_DISABLE_TOGGLE));
 
         this.defaultPolicies = String.join("; ", getDefaultCspPolicies(filterConfig)).trim();
-        this.codescanPolicies = String.join("; ", getCodescanCspPolicies(pendoDisabled, gaDisabled)).trim();
+        this.codescanPolicies = String.join("; ", getCodescanCspPolicies(pendoDisabled, gaDisabled,
+                filterConfig.getServletContext().getContextPath())).trim();
     }
 
     @Override
@@ -86,7 +87,10 @@ public class CspFilter implements Filter {
         return cspPolicies;
     }
 
-    private List<String> getCodescanCspPolicies(boolean pendoDisabled, boolean gaDisabled) {
+    private List<String> getCodescanCspPolicies(boolean pendoDisabled, boolean gaDisabled, String contextPath) {
+        // Both toggles set means no third-party telemetry runs in this deployment, so script-src
+        // needs neither 'unsafe-inline' nor 'unsafe-eval' and connect-src needs no scheme wildcard.
+        boolean telemetryDisabled = pendoDisabled && gaDisabled;
         List<String> cspPolicies = new ArrayList<>();
         cspPolicies.add("default-src 'self'");
         cspPolicies.add("base-uri 'none'");
@@ -94,8 +98,8 @@ public class CspFilter implements Filter {
         cspPolicies.add("object-src 'none'");
         cspPolicies.add("font-src 'self' data:");
         cspPolicies.add("worker-src 'none'");
-        cspPolicies.add(buildConnectSrc(pendoDisabled));
-        cspPolicies.add(buildScriptSrc(pendoDisabled, gaDisabled));
+        cspPolicies.add(buildConnectSrc(pendoDisabled, telemetryDisabled));
+        cspPolicies.add(buildScriptSrc(pendoDisabled, gaDisabled, telemetryDisabled, contextPath));
         cspPolicies.add(buildStyleSrc(pendoDisabled));
         if (!pendoDisabled) {
             cspPolicies.add("frame-ancestors 'self' app.pendo.io");
@@ -105,8 +109,11 @@ public class CspFilter implements Filter {
         return cspPolicies;
     }
 
-    private static String buildConnectSrc(boolean pendoDisabled) {
-        String src = "connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com http://localhost:* https:";
+    private static String buildConnectSrc(boolean pendoDisabled, boolean telemetryDisabled) {
+        String src = "connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com http://localhost:*";
+        if (!telemetryDisabled) {
+            src += " https:";
+        }
         if (!pendoDisabled) {
             src += " app.pendo.io data.pendo.io pendo-static-6580644462460928.storage.googleapis.com";
         }
@@ -121,10 +128,14 @@ public class CspFilter implements Filter {
         return src;
     }
 
-    private static String buildScriptSrc(boolean pendoDisabled, boolean gaDisabled) {
-        String src = "script-src 'self' https://edge.fullstory.com https://rs.fullstory.com "
-                + "https://static.zdassets.com https://connect.facebook.net https://snap.licdn.com "
-                + "'unsafe-inline' 'unsafe-eval'";
+    private static String buildScriptSrc(boolean pendoDisabled, boolean gaDisabled, boolean telemetryDisabled,
+            String contextPath) {
+        // Dropping 'unsafe-inline' requires the window.__assetsPath script in index.html to be
+        // hash-pinned, which is how the default policy already serves the same bundle.
+        String hosts = "https://edge.fullstory.com https://rs.fullstory.com https://static.zdassets.com";
+        String src = telemetryDisabled
+                ? "script-src 'self' " + getAssetsPathScriptCSPHash(contextPath) + " " + hosts
+                : "script-src 'self' " + hosts + " 'unsafe-inline' 'unsafe-eval'";
         if (!pendoDisabled) {
             src += " https://pendo-io-static.storage.googleapis.com"
                     + " pendo-static-6580644462460928.storage.googleapis.com"
