@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { DropdownMenu } from '@sonarsource/echoes-react';
 import { NavBarTabLink } from '~design-system';
 import * as React from 'react';
@@ -31,9 +32,13 @@ import { useAiCreditsContext } from '../../../app/components/ai-credits/AiCredit
 
 const SALESFORCE_CONNECTION_PAGE_KEY = 'developer/salesforce_connection';
 const RESOLUTION_TRANSFER_PAGE_KEY = 'developer/resolution_transfer';
+const IP_ALLOWLIST_PAGE_KEY = 'developer/ip_allowlist';
 
 // Module-level so the react-query key is a stable reference across renders.
-const RESOLUTION_TRANSFER_SETTING_KEYS = [GlobalSettingKeys.CodescanResolutionTransferEnabled];
+const FEATURE_FLAG_SETTING_KEYS = [
+  GlobalSettingKeys.CodescanResolutionTransferEnabled,
+  GlobalSettingKeys.CodescanIpAllowlistEnabled,
+];
 
 interface Props {
   billing?: OrganizationBillingDetails;
@@ -60,16 +65,16 @@ export default function OrganizationNavigationAdministration({ billing, location
   const { currentUser } = useCurrentUser();
 
 
-  // Resolution Transfer feature flag, read from the settings API rather than from appState: appState is a
-  // bootstrap snapshot that never changes for the life of the tab, so a flag toggled elsewhere stayed visible
-  // here until the page was reloaded. Every save on the global settings page invalidates ['settings', 'values']
-  // (useSaveValueMutation) and react-query refetches on window focus, so the entry hides/shows with no reload.
-  // Fail closed (hidden) until the value is in.
-  const { data: resolutionTransferSettings } = useGetValuesQuery(RESOLUTION_TRANSFER_SETTING_KEYS);
-  const resolutionTransferEnabled =
-    resolutionTransferSettings?.find(
-      (setting) => setting?.key === GlobalSettingKeys.CodescanResolutionTransferEnabled,
-    )?.value === 'true';
+  // Resolution Transfer and IP Allowlist feature flags, read from the settings API rather than from appState:
+  // appState is a bootstrap snapshot that never changes for the life of the tab, so it would not follow a flag
+  // toggled elsewhere until the page is reloaded. Every save on the global settings page invalidates
+  // ['settings', 'values'] (useSaveValueMutation) and react-query refetches on window focus, so the entries
+  // hide/show with no reload. Fail closed (hidden) until the values are in.
+  const { data: featureFlagSettings } = useGetValuesQuery(FEATURE_FLAG_SETTING_KEYS);
+  const isFeatureOn = (key: GlobalSettingKeys) =>
+    featureFlagSettings?.find((setting) => setting?.key === key)?.value === 'true';
+  const resolutionTransferEnabled = isFeatureOn(GlobalSettingKeys.CodescanResolutionTransferEnabled);
+  const ipAllowlistEnabled = isFeatureOn(GlobalSettingKeys.CodescanIpAllowlistEnabled);
 
 
   const canSeeAdministration =
@@ -111,6 +116,7 @@ export default function OrganizationNavigationAdministration({ billing, location
             )
             .filter((e) => !isTrialOrganization || e.key !== SALESFORCE_CONNECTION_PAGE_KEY)
             .filter((e) => resolutionTransferEnabled || e.key !== RESOLUTION_TRANSFER_PAGE_KEY)
+            .filter((e) => ipAllowlistEnabled || e.key !== IP_ALLOWLIST_PAGE_KEY)
             .map((extension) => (
             <DropdownMenu.ItemLink
               isMatchingFullPath
