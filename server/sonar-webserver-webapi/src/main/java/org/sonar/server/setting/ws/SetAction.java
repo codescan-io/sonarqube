@@ -80,7 +80,7 @@ public class SetAction implements SettingsWsAction {
   private static final String MSG_NO_EMPTY_VALUE = "A non empty value must be provided";
   private static final int VALUE_MAXIMUM_LENGTH = 4000;
   private static final String MSG_IP_ALLOWLIST_NEEDS_TRUSTED_PROXIES = "IP Allowlist cannot be turned on until the web server's trusted proxies are set ("
-    + OrganizationIpAccess.TRUSTED_PROXIES_PROPERTY + ").";
+    + OrganizationIpAccess.TRUSTED_PROXIES_ENV_VAR + ").";
   private static final String MSG_IP_ALLOWLIST_TRUE_OR_FALSE = "Use true or false for " + OrganizationIpAccess.FEATURE_FLAG_PROPERTY + ".";
   private static final TypeToken<Map<String, String>> MAP_TYPE_TOKEN = new TypeToken<>() {
   };

@@ -88,7 +88,7 @@ public class SetActionIT {
   private static final String IP_ALLOWLIST_FLAG = "codescan.cloud.ipAllowlist.enabled";
   private static final String IP_ALLOWLIST_TRUE_OR_FALSE = "Use true or false for codescan.cloud.ipAllowlist.enabled.";
   private static final String IP_ALLOWLIST_REFUSED = "IP Allowlist cannot be turned on until the web server's trusted proxies are set "
-    + "(sonar.web.trustedProxiesRegex).";
+    + "(CODESCAN_TRUSTED_PROXIES).";
 
   @Rule
   public UserSessionRule userSession = UserSessionRule.standalone().logIn();

@@ -63,7 +63,7 @@ public class OrganizationIpAccessTest {
   private static final String TRUSTED_PROXIES = "sonar.web.trustedProxiesRegex";
   private static final String FEATURE_FLAG = "codescan.cloud.ipAllowlist.enabled";
   private static final String LOAD_BALANCER = "10\\.0\\.0\\.2";
-  private static final String UNTRUSTED_ADDRESS_LOG = "IP allowlist cannot be enforced: sonar.web.trustedProxiesRegex is not set";
+  private static final String UNTRUSTED_ADDRESS_LOG = "IP allowlist cannot be enforced: CODESCAN_TRUSTED_PROXIES is not set";
   private static final String FLAG_READ_FAILED_LOG = "Cannot read codescan.cloud.ipAllowlist.enabled, so the IP allowlist stays off as it was when last read";
   private static final String RELOAD_FAILED_LOG = "Cannot reload the IP allowlist, using the last list read at most until it is 60 seconds old";
 

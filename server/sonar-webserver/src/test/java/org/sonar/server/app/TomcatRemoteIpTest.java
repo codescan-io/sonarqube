@@ -62,6 +62,7 @@ import static org.mockito.Mockito.verify;
 public class TomcatRemoteIpTest {
 
   private static final String PROPERTY = "sonar.web.trustedProxiesRegex";
+  private static final String ENV_VAR = "CODESCAN_TRUSTED_PROXIES";
 
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
@@ -100,14 +101,14 @@ public class TomcatRemoteIpTest {
     new TomcatRemoteIp().configure(mockTomcat, new Props(new Properties()));
     new TomcatRemoteIp().configure(mockTomcat, props("   "));
 
-    assertThat(logTester.logs(Level.WARN)).filteredOn(l -> l.startsWith(PROPERTY + " is not set")).hasSize(2);
+    assertThat(logTester.logs(Level.WARN)).filteredOn(l -> l.startsWith(ENV_VAR + " is not set")).hasSize(2);
   }
 
   @Test
   public void warning_says_the_ip_allowlist_cannot_be_turned_on_and_blocks_only_while_it_is_on() {
     new TomcatRemoteIp().configure(mockTomcat, new Props(new Properties()));
 
-    assertThat(logTester.logs(Level.WARN)).containsExactly(PROPERTY + " is not set: X-Forwarded-For is taken from any private address. "
+    assertThat(logTester.logs(Level.WARN)).containsExactly(ENV_VAR + " is not set: X-Forwarded-For is taken from any private address. "
       + "The IP allowlist cannot be turned on, and while codescan.cloud.ipAllowlist.enabled is true every organization with an IP allowlist "
       + "blocks every request it applies to, until it is set to the addresses of the load balancer");
   }
@@ -137,11 +138,12 @@ public class TomcatRemoteIpTest {
   }
 
   @Test
-  public void configure_fails_naming_the_property_when_regex_is_invalid() {
+  public void configure_fails_naming_the_environment_variable_and_the_property_when_regex_is_invalid() {
     Props invalid = props("10\\.(");
 
     assertThatThrownBy(() -> new TomcatRemoteIp().configure(mockTomcat, invalid))
       .isInstanceOf(IllegalArgumentException.class)
+      .hasMessageContaining(ENV_VAR)
       .hasMessageContaining(PROPERTY)
       .hasCauseInstanceOf(java.util.regex.PatternSyntaxException.class);
   }

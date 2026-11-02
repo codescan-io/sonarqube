@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import org.apache.commons.lang3.StringUtils;
@@ -40,6 +41,10 @@ import static org.sonar.application.config.SonarQubeVersionHelper.getSonarqubeVe
 import static org.sonar.process.ProcessProperties.Property.CLUSTER_NAME;
 
 public class App {
+
+    /** The one variable the deployment sets for both this server and the CodeScan API. */
+    static final String TRUSTED_PROXIES_ENV_VAR = "CODESCAN_TRUSTED_PROXIES";
+    private static final String TRUSTED_PROXIES_PROPERTY = "sonar.web.trustedProxiesRegex";
 
     private final SystemExit systemExit = new SystemExit();
     private StopRequestWatcher stopRequestWatcher = null;
@@ -89,33 +94,44 @@ public class App {
     private void createDefaultSonarPropertiesIfRequired() throws IOException {
         File out = new File("conf/sonar.properties");
         if (!out.exists()) {
-            Properties props = new Properties();
-            props.load(App.class.getResourceAsStream("/default.sonar.properties"));
-            for (Entry<String, String> e : System.getenv().entrySet()) {
-                if (e.getKey().startsWith("prop.")) {
-                    props.put(e.getKey().substring(5), e.getValue());
-                }
-            }
-            for (Entry<java.lang.Object, java.lang.Object> e : System.getProperties().entrySet()) {
-                if (((String) e.getKey()).startsWith("prop.")) {
-                    props.put(((String) e.getKey()).substring(5), e.getValue());
-                }
-            }
-            String sqProps = System.getenv("SONARQUBE_PROPERTIES");
-            if (sqProps != null) {
-                for (String prop : sqProps.split(";")) {
-                    if (prop.contains("=")) {
-                        String[] keyValue = StringUtils.split(prop, "=", 2);
-                        props.put(keyValue[0].trim(), keyValue[1].trim());
-                    }
-                }
-            }
+            Properties props = buildDefaultProperties(System.getenv(), System.getProperties());
 
             if (!out.getParentFile().exists()) {
                 Files.createDirectories(out.getParentFile().toPath());
             }
             props.store(new FileOutputStream(out), "#default and overwritten properties from environment");
         }
+    }
+
+    static Properties buildDefaultProperties(Map<String, String> env, Properties systemProperties) throws IOException {
+        Properties props = new Properties();
+        props.load(App.class.getResourceAsStream("/default.sonar.properties"));
+        // Applied before the prop.* and SONARQUBE_PROPERTIES entries below, so an explicit
+        // prop.sonar.web.trustedProxiesRegex or SONARQUBE_PROPERTIES entry overwrites it when both are present.
+        String trustedProxies = env.get(TRUSTED_PROXIES_ENV_VAR);
+        if (trustedProxies != null && !trustedProxies.isBlank()) {
+            props.put(TRUSTED_PROXIES_PROPERTY, trustedProxies.trim());
+        }
+        for (Entry<String, String> e : env.entrySet()) {
+            if (e.getKey().startsWith("prop.")) {
+                props.put(e.getKey().substring(5), e.getValue());
+            }
+        }
+        for (Entry<java.lang.Object, java.lang.Object> e : systemProperties.entrySet()) {
+            if (((String) e.getKey()).startsWith("prop.")) {
+                props.put(((String) e.getKey()).substring(5), e.getValue());
+            }
+        }
+        String sqProps = env.get("SONARQUBE_PROPERTIES");
+        if (sqProps != null) {
+            for (String prop : sqProps.split(";")) {
+                if (prop.contains("=")) {
+                    String[] keyValue = StringUtils.split(prop, "=", 2);
+                    props.put(keyValue[0].trim(), keyValue[1].trim());
+                }
+            }
+        }
+        return props;
     }
 
     public static void main(String[] args) throws Exception {

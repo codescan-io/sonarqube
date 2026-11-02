@@ -67,7 +67,7 @@ import static java.util.stream.Collectors.toSet;
  * backwards. A failed read is never kept. When no usable list can be had, the call throws
  * {@link OrganizationIpAccessUnavailableException}: callers must treat it as a failed request, never as allowed.
  *
- * <p>The client address can only be trusted when {@value #TRUSTED_PROXIES_PROPERTY} names the load balancers. Without
+ * <p>The client address can only be trusted when {@value #TRUSTED_PROXIES_ENV_VAR} names the load balancers. Without
  * it Tomcat takes X-Forwarded-For from any private address, so anyone inside the network can choose the address seen
  * here. Then every address is treated as unknown: each organization with an allowlist blocks every request it applies
  * to, and no address is internal.
@@ -77,6 +77,8 @@ public class OrganizationIpAccess {
 
   public static final String INTERNAL_CIDR_PROPERTY = "sonar.codescan.internalCidr";
   public static final String TRUSTED_PROXIES_PROPERTY = "sonar.web.trustedProxiesRegex";
+  /** The environment variable the deployment sets; the application launcher maps it to {@value #TRUSTED_PROXIES_PROPERTY}. */
+  public static final String TRUSTED_PROXIES_ENV_VAR = "CODESCAN_TRUSTED_PROXIES";
   public static final String FEATURE_FLAG_PROPERTY = "codescan.cloud.ipAllowlist.enabled";
   /** Read only from the web server's startup properties, so a value saved in the database would be ignored. */
   public static final Set<String> STARTUP_ONLY_PROPERTIES = Set.of(TRUSTED_PROXIES_PROPERTY, INTERNAL_CIDR_PROPERTY);
@@ -217,7 +219,7 @@ public class OrganizationIpAccess {
     if (now - last >= BLOCK_LOG_INTERVAL_MS && lastUntrustedAddressLogAt.compareAndSet(last, now)) {
       LOG.error("IP allowlist cannot be enforced: {} is not set, so the client address can be forged through X-Forwarded-For. "
         + "Every organization with an IP allowlist blocks every request it applies to until it is set to the addresses of the load balancer",
-        TRUSTED_PROXIES_PROPERTY);
+        TRUSTED_PROXIES_ENV_VAR);
     }
     return null;
   }
