@@ -36,6 +36,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 public class CspFilter implements Filter {
 
+    private static final String PENDO_DISABLE_TOGGLE = "PENDO_DISABLE";
+    private static final String GA_DISABLE_TOGGLE = "GA_DISABLE";
+
     private final List<String> cspHeaders = new ArrayList<>();
     private String defaultPolicies = null;
     private String codescanPolicies = null;
@@ -44,8 +47,12 @@ public class CspFilter implements Filter {
     public void init(FilterConfig filterConfig) throws ServletException {
         cspHeaders.add("Content-Security-Policy");
 
+        boolean pendoDisabled = "true".equalsIgnoreCase(System.getenv(PENDO_DISABLE_TOGGLE));
+        boolean gaDisabled = "true".equalsIgnoreCase(System.getenv(GA_DISABLE_TOGGLE));
+
         this.defaultPolicies = String.join("; ", getDefaultCspPolicies(filterConfig)).trim();
-        this.codescanPolicies = String.join("; ", getCodescanCspPolicies()).trim();
+        this.codescanPolicies = String.join("; ", getCodescanCspPolicies(pendoDisabled, gaDisabled,
+                filterConfig.getServletContext().getContextPath())).trim();
     }
 
     @Override
@@ -70,7 +77,7 @@ public class CspFilter implements Filter {
         List<String> cspPolicies = new ArrayList<>();
         cspPolicies.add("default-src 'self'");
         cspPolicies.add("base-uri 'none'");
-        cspPolicies.add("connect-src 'self' http: https:");
+        cspPolicies.add("connect-src 'self' http://localhost:* https:");
         cspPolicies.add("font-src 'self' data:");
         cspPolicies.add("img-src * data: blob:");
         cspPolicies.add("object-src 'none'");
@@ -80,33 +87,64 @@ public class CspFilter implements Filter {
         return cspPolicies;
     }
 
-    private List<String> getCodescanCspPolicies() {
+    private List<String> getCodescanCspPolicies(boolean pendoDisabled, boolean gaDisabled, String contextPath) {
+        // Both toggles set means no third-party telemetry runs in this deployment, so script-src
+        // needs neither 'unsafe-inline' nor 'unsafe-eval' and connect-src needs no scheme wildcard.
+        boolean telemetryDisabled = pendoDisabled && gaDisabled;
         List<String> cspPolicies = new ArrayList<>();
-
-        // Directives not specified default to this one.
         cspPolicies.add("default-src 'self'");
-
         cspPolicies.add("base-uri 'none'");
         cspPolicies.add("img-src * data: blob:");
         cspPolicies.add("object-src 'none'");
-
-        // Allow list for GoogleTagManager, Pendo, FullStory, Linkedin, GoogleAnalytics, Facebook, zdassets Scripts.
-        cspPolicies.add("connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com app.pendo.io "
-                + "data.pendo.io pendo-static-6580644462460928.storage.googleapis.com http: https:");
         cspPolicies.add("font-src 'self' data:");
-        cspPolicies.add(
-                "script-src 'self' https://www.googletagmanager.com https://pendo-io-static.storage.googleapis.com "
-                        + "pendo-static-6580644462460928.storage.googleapis.com "
-                        + "https://app.pendo.io https://cdn.pendo.io https://data.pendo.io https://edge.fullstory.com "
-                        + "https://rs.fullstory.com https://ssl.google-analytics.com https://static.zdassets.com "
-                        + "https://connect.facebook.net https://snap.licdn.com 'unsafe-inline' 'unsafe-eval'");
-        cspPolicies.add("style-src 'self' 'unsafe-inline' app.pendo.io cdn.pendo.io "
-                + "pendo-static-6580644462460928.storage.googleapis.com");
         cspPolicies.add("worker-src 'none'");
-        cspPolicies.add("frame-ancestors 'self' app.pendo.io");
-        cspPolicies.add("frame-src 'self' app.pendo.io");
-        cspPolicies.add("child-src 'self' app.pendo.io");
+        cspPolicies.add(buildConnectSrc(pendoDisabled, telemetryDisabled));
+        cspPolicies.add(buildScriptSrc(pendoDisabled, gaDisabled, telemetryDisabled, contextPath));
+        cspPolicies.add(buildStyleSrc(pendoDisabled));
+        if (!pendoDisabled) {
+            cspPolicies.add("frame-ancestors 'self' app.pendo.io");
+            cspPolicies.add("frame-src 'self' app.pendo.io");
+            cspPolicies.add("child-src 'self' app.pendo.io");
+        }
         return cspPolicies;
+    }
+
+    private static String buildConnectSrc(boolean pendoDisabled, boolean telemetryDisabled) {
+        String src = "connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com http://localhost:*";
+        if (!telemetryDisabled) {
+            src += " https:";
+        }
+        if (!pendoDisabled) {
+            src += " app.pendo.io data.pendo.io pendo-static-6580644462460928.storage.googleapis.com";
+        }
+        return src;
+    }
+
+    private static String buildStyleSrc(boolean pendoDisabled) {
+        String src = "style-src 'self' 'unsafe-inline'";
+        if (!pendoDisabled) {
+            src += " app.pendo.io cdn.pendo.io pendo-static-6580644462460928.storage.googleapis.com";
+        }
+        return src;
+    }
+
+    private static String buildScriptSrc(boolean pendoDisabled, boolean gaDisabled, boolean telemetryDisabled,
+            String contextPath) {
+        // Dropping 'unsafe-inline' requires the window.__assetsPath script in index.html to be
+        // hash-pinned, which is how the default policy already serves the same bundle.
+        String hosts = "https://edge.fullstory.com https://rs.fullstory.com https://static.zdassets.com";
+        String src = telemetryDisabled
+                ? "script-src 'self' " + getAssetsPathScriptCSPHash(contextPath) + " " + hosts
+                : "script-src 'self' " + hosts + " 'unsafe-inline' 'unsafe-eval'";
+        if (!pendoDisabled) {
+            src += " https://pendo-io-static.storage.googleapis.com"
+                    + " pendo-static-6580644462460928.storage.googleapis.com"
+                    + " https://app.pendo.io https://cdn.pendo.io https://data.pendo.io";
+        }
+        if (!gaDisabled) {
+            src += " https://www.googletagmanager.com https://ssl.google-analytics.com";
+        }
+        return src;
     }
 
   private static String getAssetsPathScriptCSPHash(String contextPath) {
