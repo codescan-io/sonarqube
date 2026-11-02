@@ -19,4 +19,12 @@
     where r.organization_uuid = #{organizationUuid, jdbcType=VARCHAR}
     order by r.cidr
   </select>
+
+  <select id="selectGlobalPropertyValues" parameterType="String" resultType="String" timeout="5">
+    select p.text_value
+    from properties p
+    where p.prop_key = #{key, jdbcType=VARCHAR}
+      and p.entity_uuid is null
+      and p.user_uuid is null
+  </select>
 </mapper>

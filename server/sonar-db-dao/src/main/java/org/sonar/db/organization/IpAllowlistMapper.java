@@ -27,4 +27,6 @@ public interface IpAllowlistMapper {
   List<IpAllowlistRangeDto> selectEnabledRanges();
 
   List<String> selectCidrsByOrganizationUuid(@Param("organizationUuid") String organizationUuid);
+
+  List<String> selectGlobalPropertyValues(@Param("key") String key);
 }

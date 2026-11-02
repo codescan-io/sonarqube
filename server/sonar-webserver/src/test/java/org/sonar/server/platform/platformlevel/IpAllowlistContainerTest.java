@@ -34,6 +34,10 @@ import org.sonar.server.platform.web.IpAllowlistActionInterceptor;
 import org.sonar.server.platform.web.IpAllowlistApiV2Filter;
 import org.sonar.server.platform.web.IpAllowlistRequestCheck;
 import org.sonar.server.pushapi.sonarlint.SonarLintClientPermissionsValidator;
+import org.sonar.server.setting.SettingsChangeNotifier;
+import org.sonar.server.setting.ws.SetAction;
+import org.sonar.server.setting.ws.SettingValidations;
+import org.sonar.server.setting.ws.SettingsUpdater;
 import org.sonar.server.user.ThreadLocalUserSession;
 import org.sonar.server.user.UserSessionFactory;
 
@@ -55,14 +59,16 @@ public class IpAllowlistContainerTest {
     IpAllowlistRequestCheck.class,
     IpAllowlistActionInterceptor.class,
     IpAllowlistApiV2Filter.class,
-    SonarLintClientPermissionsValidator.class);
+    SonarLintClientPermissionsValidator.class,
+    SetAction.class);
 
   @Test
   public void container_creates_every_ip_allowlist_component() {
     SpringComponentContainer container = new SpringComponentContainer();
     try {
       container.add(mock(DbClient.class), System2.INSTANCE, new MapSettings().asConfig(), new ThreadLocalUserSession(),
-        mock(UserSessionFactory.class), mock(AuthenticationEvent.class), mock(RequestAuthenticator.class));
+        mock(UserSessionFactory.class), mock(AuthenticationEvent.class), mock(RequestAuthenticator.class),
+        mock(SettingsUpdater.class), mock(SettingsChangeNotifier.class), mock(SettingValidations.class));
       COMPONENTS.forEach(container::add);
 
       container.startComponents();

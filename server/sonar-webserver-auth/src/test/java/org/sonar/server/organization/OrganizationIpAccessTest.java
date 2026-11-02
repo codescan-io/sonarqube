@@ -50,8 +50,10 @@ import org.sonar.db.organization.IpAllowlistRangeDto;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,6 +62,7 @@ public class OrganizationIpAccessTest {
 
   private static final long WALL_NOW = 1_700_000_000_000L;
   private static final String TRUSTED_PROXIES = "sonar.web.trustedProxiesRegex";
+  private static final String FEATURE_FLAG = "codescan.cloud.ipAllowlist.enabled";
   private static final String LOAD_BALANCER = "10\\.0\\.0\\.2";
   private static final String UNTRUSTED_ADDRESS_LOG = "IP allowlist cannot be enforced: sonar.web.trustedProxiesRegex is not set";
   private static final String RELOAD_FAILED_LOG = "Cannot reload the IP allowlist, using the last list read at most until it is 60 seconds old";
@@ -86,6 +89,7 @@ public class OrganizationIpAccessTest {
       range("org-a", false, "203.0.113.0/24"),
       range("org-admins", true, "198.51.100.7/32"),
       range("org-empty", false, null)));
+    setFeatureFlag("true");
     settings.setProperty("sonar.codescan.internalCidr", "10.0.0.0/16,10.1.0.0/16");
     settings.setProperty(TRUSTED_PROXIES, LOAD_BALANCER);
     underTest = access(settings.asConfig());
@@ -219,6 +223,98 @@ public class OrganizationIpAccessTest {
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
 
     verify(session).close();
+  }
+
+  // ---- global feature flag codescan.cloud.ipAllowlist.enabled ----
+
+  @Test
+  public void flag_off_blocks_no_organization() {
+    setFeatureFlag("false");
+
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isFalse();
+    assertThat(underTest.isBlocked("org-admins", "192.0.2.1", () -> true)).isFalse();
+    assertThat(underTest.isBlocked("org-empty", null, () -> false)).isFalse();
+  }
+
+  @Test
+  public void flag_off_lists_no_blocked_organization() {
+    setFeatureFlag("false");
+
+    assertThat(underTest.blockedOrganizationUuids("192.0.2.1")).isEmpty();
+    assertThat(underTest.blockedOrganizationUuids(null)).isEmpty();
+  }
+
+  @Test
+  public void flag_not_set_is_off() {
+    when(dao.selectGlobalPropertyValues(any(), eq(FEATURE_FLAG))).thenReturn(List.of());
+
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isFalse();
+    assertThat(underTest.blockedOrganizationUuids("192.0.2.1")).isEmpty();
+  }
+
+  @Test
+  public void flag_with_a_value_other_than_true_is_off() {
+    for (String value : new String[] {"TRUE", " true", "yes", "1", ""}) {
+      setFeatureFlag(value);
+      OrganizationIpAccess access = access(settings.asConfig());
+
+      assertThat(access.isBlocked("org-a", "192.0.2.1", () -> false)).as(value).isFalse();
+    }
+  }
+
+  @Test
+  public void flag_off_does_not_read_the_allowlist() {
+    setFeatureFlag("false");
+    when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
+
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isFalse();
+    verify(dao, never()).selectEnabledRanges(any());
+  }
+
+  @Test
+  public void flag_off_without_trusted_proxies_blocks_nothing_and_logs_no_error() {
+    setFeatureFlag("false");
+    OrganizationIpAccess access = untrustedAccess(null);
+    logTester.clear();
+
+    assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+    assertThat(access.isBlocked("org-admins", "198.51.100.7", () -> true)).isFalse();
+    assertThat(access.blockedOrganizationUuids("203.0.113.9")).isEmpty();
+    assertThat(logTester.logs(Level.ERROR)).isEmpty();
+  }
+
+  @Test
+  public void failed_flag_read_is_thrown_to_the_caller_and_never_lets_the_request_in() {
+    when(dao.selectGlobalPropertyValues(any(), eq(FEATURE_FLAG))).thenThrow(new IllegalStateException("db down"));
+
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "192.0.2.1", () -> false))
+      .isInstanceOf(OrganizationIpAccessUnavailableException.class)
+      .hasRootCauseMessage("db down");
+    assertThatThrownBy(() -> underTest.blockedOrganizationUuids("192.0.2.1")).isInstanceOf(OrganizationIpAccessUnavailableException.class);
+  }
+
+  @Test
+  public void takeover_waits_longer_than_the_flag_read_and_the_allowlist_read_can_both_take() {
+    long statementTimeoutMs = 5_000L;
+
+    assertThat(OrganizationIpAccess.TAKEOVER_AFTER_MS).isGreaterThan(2 * statementTimeoutMs);
+  }
+
+  @Test
+  public void flag_is_read_with_the_allowlist_and_kept_for_30_seconds() {
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
+
+    setFeatureFlag("false");
+    clock.set(1_000_000L + 29_999L);
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
+
+    clock.set(1_000_000L + 30_000L);
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isFalse();
+
+    setFeatureFlag("true");
+    clock.set(1_000_000L + 60_000L);
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
+    verify(dao, times(3)).selectGlobalPropertyValues(any(), eq(FEATURE_FLAG));
   }
 
   // ---- internal service address (same rules as codescanng's ServiceLoginDetector) ----
@@ -828,13 +924,13 @@ public class OrganizationIpAccessTest {
       assertThat(loadStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
       // well past the 3 second wait, so the load would already be taken over if both used one deadline
-      clock.set(1_000_000L + 7_999L);
+      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS - 1);
       assertThatThrownBy(() -> access.isBlocked("org-a", "203.0.113.9", () -> false))
         .isInstanceOf(OrganizationIpAccessUnavailableException.class)
         .hasMessageContaining("Timed out");
       verify(dao, times(1)).selectEnabledRanges(any());
 
-      clock.set(1_000_000L + 8_000L);
+      clock.set(1_000_000L + OrganizationIpAccess.TAKEOVER_AFTER_MS);
       assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
       verify(dao, times(2)).selectEnabledRanges(any());
     } finally {
@@ -1381,6 +1477,14 @@ public class OrganizationIpAccessTest {
   }
 
   @Test
+  public void trusted_proxies_count_as_set_only_when_not_blank() {
+    assertThat(underTest.isTrustedProxiesSet()).isTrue();
+    assertThat(untrustedAccess(null).isTrustedProxiesSet()).isFalse();
+    assertThat(untrustedAccess("").isTrustedProxiesSet()).isFalse();
+    assertThat(untrustedAccess("   ").isTrustedProxiesSet()).isFalse();
+  }
+
+  @Test
   public void without_trusted_proxies_no_address_is_internal() {
     OrganizationIpAccess access = untrustedAccess(null);
 
@@ -1437,6 +1541,10 @@ public class OrganizationIpAccessTest {
 
     assertThat(access.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
     verify(dao, times(3)).selectEnabledRanges(any());
+  }
+
+  private void setFeatureFlag(String value) {
+    when(dao.selectGlobalPropertyValues(any(), eq(FEATURE_FLAG))).thenReturn(List.of(value));
   }
 
   private OrganizationIpAccess untrustedAccess(@Nullable String trustedProxies) {

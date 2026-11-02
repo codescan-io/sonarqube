@@ -19,6 +19,8 @@
  */
 package org.sonar.db.organization;
 
+import java.util.UUID;
+import javax.annotation.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.api.utils.System2;
@@ -78,6 +80,31 @@ class IpAllowlistDaoIT {
   }
 
   @Test
+  void selectGlobalPropertyValues_returns_the_global_value_only() {
+    insertProperty("codescan.cloud.ipAllowlist.enabled", null, null, "true");
+    insertProperty("codescan.cloud.ipAllowlist.enabled", "project-1", null, "false");
+    insertProperty("codescan.cloud.ipAllowlist.enabled", null, "user-1", "false");
+    insertProperty("other.key", null, null, "false");
+
+    assertThat(underTest.selectGlobalPropertyValues(db.getSession(), "codescan.cloud.ipAllowlist.enabled")).containsExactly("true");
+  }
+
+  @Test
+  void selectGlobalPropertyValues_returns_nothing_when_the_property_is_not_set() {
+    insertProperty("codescan.cloud.ipAllowlist.enabled", "project-1", null, "true");
+
+    assertThat(underTest.selectGlobalPropertyValues(db.getSession(), "codescan.cloud.ipAllowlist.enabled")).isEmpty();
+  }
+
+  @Test
+  void selectGlobalPropertyValues_has_a_statement_timeout_so_a_stuck_read_gives_up() {
+    Integer timeoutSeconds = db.getSession().getConfiguration()
+      .getMappedStatement("org.sonar.db.organization.IpAllowlistMapper.selectGlobalPropertyValues").getTimeout();
+
+    assertThat(timeoutSeconds).isEqualTo(5);
+  }
+
+  @Test
   void selectCidrsByOrganizationUuid_returns_only_that_org() {
     insertOrg("org-a", true, false);
     insertOrg("org-b", true, false);
@@ -122,6 +149,12 @@ class IpAllowlistDaoIT {
       "uuid", uuid, "kee", uuid, "name", uuid, "default_quality_gate_uuid", "qg",
       "new_project_private", false, "subscription", "FREE", "created_at", 1L, "updated_at", 1L,
       "ip_allowlist_enabled", enabled, "ip_allowlist_applies_to_admins", appliesToAdmins);
+  }
+
+  private void insertProperty(String key, @Nullable String entityUuid, @Nullable String userUuid, String value) {
+    db.executeInsert("properties",
+      "uuid", UUID.randomUUID().toString(), "prop_key", key, "entity_uuid", entityUuid, "user_uuid", userUuid,
+      "is_empty", false, "text_value", value, "created_at", 1L);
   }
 
   private void insertRange(String orgUuid, String cidr) {

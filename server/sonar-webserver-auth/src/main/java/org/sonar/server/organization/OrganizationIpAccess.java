@@ -53,6 +53,10 @@ import static java.util.stream.Collectors.toSet;
  * as codescanng's {@code OrgIpAccessService}: only addresses inside the ranges get in, a missing or unparseable
  * address is blocked, and a range that cannot be parsed is skipped, which can only narrow access.
  *
+ * <p>While the global setting {@value #FEATURE_FLAG_PROPERTY} is not {@code true}, the feature is off: no organization is
+ * blocked and the stored ranges are not read. The setting is read in the same load as the allowlists, so a change takes
+ * effect on the next reload.
+ *
  * <p>All enabled allowlists are read in one query and kept for {@link #SNAPSHOT_TTL_MS}. One caller reloads an
  * expired snapshot while the others keep using it until it is {@link #MAX_STALE_MS} old, also when the reload
  * fails. With no usable snapshot, callers wait up to {@link #LOAD_WAIT_TIMEOUT_MS} for the running load. A load
@@ -71,12 +75,13 @@ public class OrganizationIpAccess {
 
   public static final String INTERNAL_CIDR_PROPERTY = "sonar.codescan.internalCidr";
   public static final String TRUSTED_PROXIES_PROPERTY = "sonar.web.trustedProxiesRegex";
+  public static final String FEATURE_FLAG_PROPERTY = "codescan.cloud.ipAllowlist.enabled";
   static final long SNAPSHOT_TTL_MS = 30_000L;
   /** Oldest a snapshot may be and still answer while a reload is running or after a reload failed. */
   static final long MAX_STALE_MS = 2 * SNAPSHOT_TTL_MS;
   static final long LOAD_WAIT_TIMEOUT_MS = 3_000L;
-  /** Longer than the 5 second statement timeout of the read, so a load that the database will still end is left to end. */
-  static final long TAKEOVER_AFTER_MS = 8_000L;
+  /** Longer than the two 5 second statement timeouts of a load, so a load that the database will still end is left to end. */
+  static final long TAKEOVER_AFTER_MS = 11_000L;
   /** Loads that hang in the database each hold a request thread, so their number is capped. */
   static final int MAX_LOADS_IN_FLIGHT = 2;
   static final long BLOCK_LOG_INTERVAL_MS = 60_000L;
@@ -121,11 +126,21 @@ public class OrganizationIpAccess {
     this.loadWaitTimeoutMs = loadWaitTimeoutMs;
     this.takeoverAfterMs = takeoverAfterMs;
     this.internalRanges = parseInternalRanges(config.getStringArray(INTERNAL_CIDR_PROPERTY));
-    this.clientAddressTrusted = config.get(TRUSTED_PROXIES_PROPERTY).filter(v -> !v.isBlank()).isPresent();
+    this.clientAddressTrusted = isTrustedProxiesSet(config.get(TRUSTED_PROXIES_PROPERTY).orElse(null));
     long now = clock.getAsLong();
     this.lastBlockLogCleanupAt = new AtomicLong(now - BLOCK_LOG_CLEANUP_INTERVAL_MS);
     this.lastLoadFailureLogAt = new AtomicLong(now - BLOCK_LOG_INTERVAL_MS);
     this.lastUntrustedAddressLogAt = new AtomicLong(now - BLOCK_LOG_INTERVAL_MS);
+  }
+
+  /** Whether {@value #TRUSTED_PROXIES_PROPERTY} was set when the web server started, so the client address can be trusted. */
+  public boolean isTrustedProxiesSet() {
+    return clientAddressTrusted;
+  }
+
+  /** The rule both this class and the web server's X-Forwarded-For handling apply to {@value #TRUSTED_PROXIES_PROPERTY}. */
+  public static boolean isTrustedProxiesSet(@Nullable String trustedProxiesRegex) {
+    return trustedProxiesRegex != null && !trustedProxiesRegex.isBlank();
   }
 
   /**
@@ -348,6 +363,9 @@ public class OrganizationIpAccess {
   private Map<String, Policy> load() {
     List<IpAllowlistRangeDto> rows;
     try (DbSession dbSession = dbClient.openSession(false)) {
+      if (dbClient.ipAllowlistDao().selectGlobalPropertyValues(dbSession, FEATURE_FLAG_PROPERTY).stream().noneMatch(OrganizationIpAccess::isFeatureOn)) {
+        return Map.of();
+      }
       rows = dbClient.ipAllowlistDao().selectEnabledRanges(dbSession);
     }
     Map<String, Boolean> appliesToAdmins = new HashMap<>();
@@ -375,6 +393,11 @@ public class OrganizationIpAccess {
     if (reportedBadRanges.size() < MAX_REPORTED_BAD_RANGES && reportedBadRanges.add(organizationUuid + '|' + cidr)) {
       LOG.warn("Ignoring unparseable IP allowlist range '{}' of organization {}", printable(cidr), printable(organizationUuid));
     }
+  }
+
+  /** True only for the exact value {@code true}: an absent or any other value leaves the feature off. */
+  public static boolean isFeatureOn(@Nullable String featureFlagValue) {
+    return "true".equals(featureFlagValue);
   }
 
   /**

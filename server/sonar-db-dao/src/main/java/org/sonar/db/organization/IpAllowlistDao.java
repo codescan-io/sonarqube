@@ -36,6 +36,14 @@ public class IpAllowlistDao implements Dao {
     return mapper(dbSession).selectCidrsByOrganizationUuid(organizationUuid);
   }
 
+  /**
+   * Values of the global (not project, not user) setting {@code key}. Unlike {@code PropertiesDao}, the read gives up
+   * after 5 seconds, so it can run in the same load as {@link #selectEnabledRanges(DbSession)}.
+   */
+  public List<String> selectGlobalPropertyValues(DbSession dbSession, String key) {
+    return mapper(dbSession).selectGlobalPropertyValues(key);
+  }
+
   private static IpAllowlistMapper mapper(DbSession dbSession) {
     return dbSession.getMapper(IpAllowlistMapper.class);
   }

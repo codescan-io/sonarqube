@@ -59,6 +59,7 @@ import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.ForbiddenException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.l18n.I18nRule;
+import org.sonar.server.organization.OrganizationIpAccess;
 import org.sonar.server.setting.SettingsChangeNotifier;
 import org.sonar.server.tester.UserSessionRule;
 import org.sonar.server.ws.TestRequest;
@@ -77,11 +78,16 @@ import static org.sonar.core.config.MQRModeConstants.MULTI_QUALITY_MODE_ENABLED;
 import static org.sonar.db.property.PropertyTesting.newComponentPropertyDto;
 import static org.sonar.db.property.PropertyTesting.newGlobalPropertyDto;
 import static org.sonar.db.user.UserTesting.newUserDto;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @RunWith(DataProviderRunner.class)
 public class SetActionIT {
 
   private static final Gson GSON = GsonHelper.create();
+  private static final String IP_ALLOWLIST_FLAG = "codescan.cloud.ipAllowlist.enabled";
+  private static final String IP_ALLOWLIST_REFUSED = "IP Allowlist cannot be turned on until the web server's trusted proxies are set "
+    + "(sonar.web.trustedProxiesRegex).";
 
   @Rule
   public UserSessionRule userSession = UserSessionRule.standalone().logIn();
@@ -96,7 +102,8 @@ public class SetActionIT {
   private final FakeSettingsNotifier settingsChangeNotifier = new FakeSettingsNotifier(dbClient);
   private final SettingsUpdater settingsUpdater = new SettingsUpdater(dbClient, definitions);
   private final SettingValidations validations = new SettingValidations(definitions, dbClient, i18n);
-  private final SetAction underTest = new SetAction(definitions, dbClient, userSession, settingsUpdater, settingsChangeNotifier, validations);
+  private final OrganizationIpAccess ipAccess = mock(OrganizationIpAccess.class);
+  private final SetAction underTest = new SetAction(definitions, dbClient, userSession, settingsUpdater, settingsChangeNotifier, validations, ipAccess);
 
   private final WsActionTester ws = new WsActionTester(underTest);
 
@@ -636,6 +643,76 @@ public class SetActionIT {
     assertThatThrownBy(() -> callForGlobalSetting("  ", "my value"))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("The 'key' parameter is missing");
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_is_refused_while_trusted_proxies_are_not_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "true"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_REFUSED);
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+    assertThat(settingsChangeNotifier.wasCalled).isFalse();
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_through_the_values_parameter_is_refused_while_trusted_proxies_are_not_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting(IP_ALLOWLIST_FLAG, List.of("true")))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_REFUSED);
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_is_refused_while_trusted_proxies_are_not_set_when_the_setting_is_defined() {
+    definitions.addComponent(PropertyDefinition.builder(IP_ALLOWLIST_FLAG).type(PropertyType.BOOLEAN).defaultValue("false").build());
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "true"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_REFUSED);
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_for_a_project_is_refused_while_trusted_proxies_are_not_set() {
+    ProjectDto project = db.components().insertPrivateProject().getProjectDto();
+    logInAsProjectAdministrator(project);
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForProjectSettingByKey(IP_ALLOWLIST_FLAG, "true", project.getKey()))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_REFUSED);
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_is_allowed_once_trusted_proxies_are_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+
+    callForGlobalSetting(IP_ALLOWLIST_FLAG, "true");
+
+    assertGlobalSetting(IP_ALLOWLIST_FLAG, "true");
+  }
+
+  @Test
+  public void turning_ip_allowlist_off_is_always_allowed() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+    propertyDb.insertProperty(newGlobalPropertyDto(IP_ALLOWLIST_FLAG, "true"), null, null, null, null);
+
+    callForGlobalSetting(IP_ALLOWLIST_FLAG, "false");
+
+    assertGlobalSetting(IP_ALLOWLIST_FLAG, "false");
+  }
+
+  @Test
+  public void other_settings_set_to_true_do_not_need_trusted_proxies() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    callForGlobalSetting("codescan.cloud.resolutionTransfer.enabled", "true");
+
+    assertGlobalSetting("codescan.cloud.resolutionTransfer.enabled", "true");
   }
 
   @Test

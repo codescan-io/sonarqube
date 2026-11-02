@@ -61,15 +61,16 @@ class TomcatRemoteIp {
     // Tomcat's default is X-Forwarded-Proto, which would rewrite scheme/secure on proxied requests
     valve.setProtocolHeader(null);
     String trustedProxies = props.value(TRUSTED_PROXIES_PROPERTY);
-    if (trustedProxies != null && !trustedProxies.isBlank()) {
+    if (OrganizationIpAccess.isTrustedProxiesSet(trustedProxies)) {
       try {
         valve.setInternalProxies(trustedProxies.trim());
       } catch (PatternSyntaxException e) {
         throw new IllegalArgumentException("Invalid regular expression in property " + TRUSTED_PROXIES_PROPERTY + ": " + e.getMessage(), e);
       }
     } else {
-      LOGGER.warn("{} is not set: X-Forwarded-For is taken from any private address, and every organization with an IP allowlist "
-        + "blocks every request it applies to until it is set to the addresses of the load balancer", TRUSTED_PROXIES_PROPERTY);
+      LOGGER.warn("{} is not set: X-Forwarded-For is taken from any private address. The IP allowlist cannot be turned on, and while {} is true "
+        + "every organization with an IP allowlist blocks every request it applies to, until it is set to the addresses of the load balancer",
+        TRUSTED_PROXIES_PROPERTY, OrganizationIpAccess.FEATURE_FLAG_PROPERTY);
     }
     tomcat.getEngine().getPipeline().addValve(valve);
     tomcat.getEngine().getPipeline().addValve(new ForwardedForRestoringValve());
