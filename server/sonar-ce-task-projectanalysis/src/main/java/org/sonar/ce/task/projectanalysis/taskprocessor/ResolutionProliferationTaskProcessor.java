@@ -26,6 +26,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -50,10 +52,12 @@ import org.sonar.db.DbInputStream;
 import org.sonar.db.DbSession;
 import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.component.BranchDto;
+import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.server.issue.IssueMarkingProliferationService;
 import org.sonar.server.issue.IssueMarkingProliferationService.ProliferatedMarking;
 import org.sonar.server.issue.IssueMarkingProliferationService.Signature;
+import org.sonar.server.measure.live.LiveMeasureComputer;
 
 import static org.sonar.core.issue.IssueChangeContext.issueChangeContextByUserBuilder;
 
@@ -76,14 +80,17 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
   private final DbClient dbClient;
   private final IssueMarkingProliferationService proliferationService;
   private final System2 system2;
+  private final LiveMeasureComputer liveMeasureComputer;
 
   private ExecutorService executor;
 
   public ResolutionProliferationTaskProcessor(DbClient dbClient,
-    IssueMarkingProliferationService proliferationService, System2 system2) {
+    IssueMarkingProliferationService proliferationService, System2 system2,
+    LiveMeasureComputer liveMeasureComputer) {
     this.dbClient = dbClient;
     this.proliferationService = proliferationService;
     this.system2 = system2;
+    this.liveMeasureComputer = liveMeasureComputer;
   }
 
   @Override
@@ -169,7 +176,7 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
       characteristics.get(CHARACTERISTIC_EXCEPTION_REASON),
       characteristics.getOrDefault(CHARACTERISTIC_SOURCE_BRANCH_LABEL, sourceBranchUuid));
 
-    runAcrossBranches(sourceIssues, targetBranchUuids, targetsByBranch, marking);
+    refreshMeasures(runAcrossBranches(sourceIssues, targetBranchUuids, targetsByBranch, marking));
   }
 
   private Map<String, Map<Signature, List<IssueDto>>> readTargets(List<IssueDto> sourceIssues,
@@ -223,15 +230,19 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
   }
 
 
-  private void runAcrossBranches(Collection<IssueDto> sourceIssues, List<String> targetBranchUuids,
+  private Map<String, Set<String>> runAcrossBranches(Collection<IssueDto> sourceIssues, List<String> targetBranchUuids,
     Map<String, Map<Signature, List<IssueDto>>> targetsByBranch, ProliferatedMarking marking) {
 
+    Map<String, Set<String>> touchedComponentsByBranch = new HashMap<>(targetBranchUuids.size());
     List<Callable<Void>> jobs = new ArrayList<>(targetBranchUuids.size());
     for (String targetBranchUuid : targetBranchUuids) {
       Map<Signature, List<IssueDto>> targets = targetsByBranch.getOrDefault(targetBranchUuid, Map.of());
       if (targets.isEmpty()) {
         continue;
       }
+      Set<String> touchedComponentUuids = new HashSet<>();
+      targets.values().forEach(issues -> issues.forEach(issue -> touchedComponentUuids.add(issue.getComponentUuid())));
+      touchedComponentsByBranch.put(targetBranchUuid, touchedComponentUuids);
       jobs.add(() -> {
         try (DbSession own = dbClient.openSession(false)) {
           proliferationService.proliferateToBranch(own, sourceIssues, targets, targetBranchUuid, marking);
@@ -241,7 +252,7 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
       });
     }
     if (jobs.isEmpty()) {
-      return;
+      return Map.of();
     }
 
     try {
@@ -251,6 +262,32 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOG.warn("Proliferation interrupted", e);
+    }
+    return touchedComponentsByBranch;
+  }
+
+
+  private void refreshMeasures(Map<String, Set<String>> touchedComponentsByBranch) {
+    if (touchedComponentsByBranch.isEmpty()) {
+      return;
+    }
+    try (DbSession dbSession = dbClient.openSession(false)) {
+      touchedComponentsByBranch.forEach((branchUuid, componentUuids) ->
+        refreshBranchMeasures(dbSession, branchUuid, componentUuids));
+    }
+  }
+
+  private void refreshBranchMeasures(DbSession dbSession, String branchUuid, Set<String> touchedComponentUuids) {
+    if (touchedComponentUuids.isEmpty()) {
+      return;
+    }
+    try {
+      List<ComponentDto> touchedComponents = dbClient.componentDao().selectByUuids(dbSession, touchedComponentUuids);
+      if (!touchedComponents.isEmpty()) {
+        liveMeasureComputer.refresh(dbSession, touchedComponents);
+      }
+    } catch (RuntimeException e) {
+      LOG.error("Could not refresh measures of branch " + branchUuid + " after proliferation", e);
     }
   }
 

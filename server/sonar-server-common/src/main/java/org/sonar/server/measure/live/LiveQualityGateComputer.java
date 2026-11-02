@@ -19,25 +19,26 @@
  */
 package org.sonar.server.measure.live;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.Set;
+import org.sonar.api.ce.ComputeEngineSide;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.server.ServerSide;
 import org.sonar.db.DbSession;
+import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
-import org.sonar.server.qualitygate.changeevent.QGChangeEvent;
+import org.sonar.db.organization.OrganizationDto;
+import org.sonar.db.project.ProjectDto;
+import org.sonar.server.qualitygate.EvaluatedQualityGate;
+import org.sonar.server.qualitygate.QualityGate;
 
-/**
- * Refresh and persist the measures of some files, directories, modules
- * or projects. Measures include status of quality gate.
- *
- * Touching a file updates the related directory, module and project.
- * Status of Quality gate is refreshed but webhooks are not triggered.
- *
- * Branches are supported.
- */
 @ServerSide
-public interface LiveMeasureComputer {
+@ComputeEngineSide
+public interface LiveQualityGateComputer {
 
-  List<QGChangeEvent> refresh(DbSession dbSession, Collection<ComponentDto> components);
+  QualityGate loadQualityGate(DbSession dbSession, OrganizationDto organization, ProjectDto project, BranchDto branch);
+
+  EvaluatedQualityGate refreshGateStatus(ComponentDto project, QualityGate gate, MeasureMatrix measureMatrix, Configuration configuration);
+
+  Set<String> getMetricsRelatedTo(QualityGate gate);
 
 }
