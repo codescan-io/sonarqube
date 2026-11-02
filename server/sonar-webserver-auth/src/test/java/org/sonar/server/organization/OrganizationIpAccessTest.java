@@ -22,6 +22,7 @@ package org.sonar.server.organization;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -1340,6 +1341,32 @@ public class OrganizationIpAccessTest {
       calls.incrementAndGet();
       return isAdmin;
     };
+  }
+
+  @Test
+  public void load_count_is_released_when_ending_the_waits_throws_an_error() {
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, settings.asConfig(), clock::get, 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS) {
+      @Override
+      <T> CompletableFuture<T> newLoadResult() {
+        return new CompletableFuture<>() {
+          @Override
+          public boolean completeExceptionally(Throwable ex) {
+            throw new StackOverflowError("ending the waits");
+          }
+        };
+      }
+    };
+    when(dao.selectEnabledRanges(any()))
+      .thenThrow(new OutOfMemoryError("load"))
+      .thenThrow(new OutOfMemoryError("load"))
+      .thenReturn(List.of(range("org-a", false, "203.0.113.0/24")));
+
+    for (int i = 0; i < OrganizationIpAccess.MAX_LOADS_IN_FLIGHT; i++) {
+      assertThatThrownBy(() -> access.isBlocked("org-a", "192.0.2.1", () -> false)).isInstanceOf(StackOverflowError.class);
+    }
+
+    assertThat(access.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
+    verify(dao, times(3)).selectEnabledRanges(any());
   }
 
   private OrganizationIpAccess accessWithInternal(String cidrs) {

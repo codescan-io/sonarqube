@@ -224,7 +224,7 @@ public class OrganizationIpAccess {
       Loads state = loads.get();
       Load running = state.current();
       if (running == null || (running.isStuck(now, takeoverAfterMs) && state.inFlight() < MAX_LOADS_IN_FLIGHT)) {
-        Load mine = new Load(new CompletableFuture<>(), loadNumbers.incrementAndGet(), now);
+        Load mine = new Load(newLoadResult(), loadNumbers.incrementAndGet(), now);
         if (loads.compareAndSet(state, new Loads(mine, state.inFlight() + 1))) {
           return reload(mine);
         }
@@ -260,13 +260,22 @@ public class OrganizationIpAccess {
       }
       throw new OrganizationIpAccessUnavailableException("Cannot read the IP allowlist", e);
     } finally {
-      if (!mine.result().isDone()) {
-        // an Error, not an exception: do not leave the waiting threads until their deadline
-        mine.result().completeExceptionally(new IllegalStateException("The IP allowlist load was aborted"));
+      // the count is released even when ending the waits throws an Error: each leak lowers MAX_LOADS_IN_FLIGHT until restart
+      try {
+        if (!mine.result().isDone()) {
+          // an Error, not an exception: do not leave the waiting threads until their deadline
+          mine.result().completeExceptionally(new IllegalStateException("The IP allowlist load was aborted"));
+        }
+      } finally {
+        // another thread may have taken over from this load while it was stuck: that one stays current
+        loads.updateAndGet(s -> new Loads(s.current() == mine ? null : s.current(), s.inFlight() - 1));
       }
-      // another thread may have taken over from this load while it was stuck: that one stays current
-      loads.updateAndGet(s -> new Loads(s.current() == mine ? null : s.current(), s.inFlight() - 1));
     }
+  }
+
+  /** The future that threads waiting on a load block on; tests replace it to make ending the waits fail. */
+  <T> CompletableFuture<T> newLoadResult() {
+    return new CompletableFuture<>();
   }
 
   /** A load that was taken over can finish after the one that took over from it: the load started last wins. */
