@@ -72,7 +72,9 @@ import static com.google.common.base.Preconditions.checkArgument;
  * positive, accept and exception. An exception is copied from the source issue the caller's resolution transfer
  * paired each issue with, which this action reads from the transfer's report rows: the source's expiry date and its
  * latest reason. Neither is sent, so one request carries exceptions with any mix of them, and a source without a
- * reason gives an exception without one.
+ * reason gives an exception without one. An issue whose paired source is no longer an exception, or has expired, is
+ * returned in {@code notTransitioned}: there is no expiry to copy, and moving it anyway would make an exception that
+ * never expires.
  *
  * <p><b>{@code changeAuthor} is taken on trust.</b> It is written to the changelog as the author of every row in
  * the chunk and is never checked against the caller, so a system administrator can attribute changes to any user.
@@ -214,13 +216,14 @@ public class BulkTransitionAction implements IssuesWsAction {
   /**
    * The expiry and reason each movable issue takes from the source exception the transfer paired it with, read in
    * the chunk's session. An issue paired with several sources takes the one with the lowest key, so the choice does
-   * not depend on row order. An issue whose source is no longer an exception gets neither, as does one whose source's
-   * latest reason is blank.
+   * not depend on row order. An issue with no source that is still an unexpired exception is left out of both maps,
+   * and one whose source's latest reason is blank gets no reason.
    */
-  private ExceptionFields exceptionFields(DbSession dbSession, List<String> movableKeys, String transferUuid) {
+  private ExceptionFields exceptionFields(DbSession dbSession, List<String> movableKeys, String transferUuid,
+    long now) {
     Map<String, IssueExceptionSourceDto> sourceByIssue = new HashMap<>();
     for (IssueExceptionSourceDto source : dbClient.issueDao().selectExceptionSourcesOfTransfer(dbSession,
-      transferUuid, movableKeys)) {
+      transferUuid, movableKeys, now)) {
       sourceByIssue.merge(source.getIssueKey(), source,
         (kept, other) -> kept.getSourceKey().compareTo(other.getSourceKey()) <= 0 ? kept : other);
     }
@@ -235,8 +238,11 @@ public class BulkTransitionAction implements IssuesWsAction {
     Map<String, String> reason = new HashMap<>();
     for (String key : movableKeys) {
       IssueExceptionSourceDto source = sourceByIssue.get(key);
-      expiresAt.put(key, source == null ? null : source.getExpiresAt());
-      String sourceReason = source == null ? null : reasonBySource.get(source.getSourceKey());
+      if (source == null) {
+        continue;
+      }
+      expiresAt.put(key, source.getExpiresAt());
+      String sourceReason = reasonBySource.get(source.getSourceKey());
       if (!isBlank(sourceReason)) {
         reason.put(key, sourceReason);
       }
@@ -263,7 +269,7 @@ public class BulkTransitionAction implements IssuesWsAction {
     }
     long startedAt = system2.now();
     long now = startedAt;
-    List<IssueKeyStatusDto> movable;
+    List<String> transitioned = List.of();
     // One session for the whole chunk: the issues and their changelog are written together or not at all. The read
     // runs first, under the same predicate the update uses, so the changelog can be written from what it returned
     // without reading anything back.
@@ -274,11 +280,14 @@ public class BulkTransitionAction implements IssuesWsAction {
     // commit, on up to MAX_ISSUES rows, and the one writer it would block is the analysis that is trying to close
     // those very issues. The window is one statement wide and the loser is a changelog line, so it is left open.
     try (DbSession dbSession = dbClient.openSession(true)) {
-      movable = dbClient.issueDao().selectTransitionable(dbSession, issueKeys, branchUuid);
-      if (!movable.isEmpty()) {
-        List<String> movableKeys = movable.stream().map(IssueKeyStatusDto::getKee).toList();
-        ExceptionFields exception = transferUuid == null ? null
-          : exceptionFields(dbSession, movableKeys, transferUuid);
+      List<String> movableKeys = dbClient.issueDao().selectTransitionable(dbSession, issueKeys, branchUuid).stream()
+        .map(IssueKeyStatusDto::getKee).toList();
+      ExceptionFields exception = transferUuid == null || movableKeys.isEmpty() ? null
+        : exceptionFields(dbSession, movableKeys, transferUuid, now);
+      if (exception != null) {
+        movableKeys = movableKeys.stream().filter(exception.expiresAt()::containsKey).toList();
+      }
+      if (!movableKeys.isEmpty()) {
         // Runs before the update, because the diff row records the status the update overwrites.
         writeChangelog(dbSession, movableKeys, resolution, exception, branchUuid, changeAuthor, comment, now);
         dbSession.flushStatements();
@@ -289,10 +298,11 @@ public class BulkTransitionAction implements IssuesWsAction {
             dbClient.issueDao().bulkTransition(dbSession, keys, branchUuid, resolution, expiresAt, now));
         }
         dbSession.commit();
+        transitioned = movableKeys;
       }
     }
 
-    if (movable.isEmpty()) {
+    if (transitioned.isEmpty()) {
       // The caller may still be asking for the recomputation its run owes: a run that was stopped or failed asks
       // this way, naming keys it has already resolved.
       long onlyMeasuresMs = refreshMeasures ? refreshMeasuresOfBranch(branchUuid) : 0;
@@ -300,7 +310,6 @@ public class BulkTransitionAction implements IssuesWsAction {
       return new Result(List.of(), issueKeys);
     }
 
-    List<String> transitioned = movable.stream().map(IssueKeyStatusDto::getKee).toList();
     issueIndexer.indexOnAnalysis(branchUuid, transitioned);
     long measuresMs = refreshMeasures ? refreshMeasuresOfBranch(branchUuid) : 0;
     LOG.info("bulk_transition {} issue(s) on branch {}: total={}ms measures={}ms",
@@ -354,8 +363,8 @@ public class BulkTransitionAction implements IssuesWsAction {
   }
 
   /**
-   * Per movable issue: {@code expiresAt} holds every issue, with a null value for an exception that never expires;
-   * {@code reason} holds only the issues whose source has one.
+   * Per movable issue with a source to copy from: {@code expiresAt} holds each of them, with a null value for an
+   * exception that never expires; {@code reason} holds only the issues whose source has one.
    */
   private record ExceptionFields(Map<String, Long> expiresAt, Map<String, String> reason) {
   }
