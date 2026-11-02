@@ -29,7 +29,7 @@ import { SUB_CATEGORY_EXCLUSIONS } from '../constants';
 import { getSubCategoryDescription, getSubCategoryName } from '../utils';
 import DefinitionsList from './DefinitionsList';
 
-/** Keep instance gate and project toggle adjacent; instance first, then project. */
+/** Keep Static Resource settings adjacent: instance gate, project toggle, custom severity. */
 function sortSettingsInSubCategory(settings: SettingDefinitionAndValue[]) {
   return sortBy(settings, (setting) => {
     const { key, name } = setting.definition;
@@ -38,6 +38,12 @@ function sortSettingsInSubCategory(settings: SettingDefinitionAndValue[]) {
     }
     if (key === SettingsKey.CodescanStaticResourceExtraction) {
       return '0-b';
+    }
+    if (key === SettingsKey.CodescanStaticResourceCustomSeverityEnabled) {
+      return '0-c';
+    }
+    if (key === SettingsKey.CodescanStaticResourceCustomSeverity) {
+      return '0-d';
     }
     return `1-${(name ?? key).toLowerCase()}`;
   });

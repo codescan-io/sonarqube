@@ -37,7 +37,7 @@ import org.sonar.db.user.SessionTokenDto;
 import org.sonar.db.user.SessionTokensDao;
 import org.sonar.db.user.UserDao;
 import org.sonar.db.user.UserDto;
-import org.sonar.server.http.JavaxHttpRequest;
+import org.sonar.server.http.JakartaHttpRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -75,7 +75,7 @@ public class JwtHttpHandlerServiceLoginTest {
     when(sessionTokensDao.selectByUuid(any(), eq(SESSION_UUID)))
       .thenReturn(Optional.of(new SessionTokenDto().setUserUuid(USER_UUID).setExpirationDate(NOW + 60_000L)));
     when(userDao.selectByUuid(any(), eq(USER_UUID))).thenReturn(user);
-    Cookie cookie = new JavaxHttpRequest.JavaxCookie(new javax.servlet.http.Cookie("JWT-SESSION", JWT));
+    Cookie cookie = new JakartaHttpRequest.JakartaCookie(new jakarta.servlet.http.Cookie("JWT-SESSION", JWT));
     when(request.getCookies()).thenReturn(new Cookie[] {cookie});
   }
 

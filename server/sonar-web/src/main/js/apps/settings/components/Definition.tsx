@@ -28,7 +28,12 @@ import {
   useResetSettingsMutation,
   useSaveValueMutation,
 } from '../../../queries/settings';
-import { ExtendedSettingDefinition, SettingsKey, SettingType, SettingValue } from '../../../types/settings';
+import {
+  ExtendedSettingDefinition,
+  SettingsKey,
+  SettingType,
+  SettingValue,
+} from '../../../types/settings';
 import { Component } from '../../../types/types';
 import {
   combineDefinitionAndSettingValue,
@@ -66,17 +71,33 @@ export default function Definition(props: Readonly<Props>) {
 
   const isValidSeverityInput = (value) => /^[a-zA-Z0-9]+$/.test(value);
 
-  const isStaticResourceProjectSetting =
+  const isStaticResourceProjectExtraction =
     definition.key === SettingsKey.CodescanStaticResourceExtraction;
+  const isStaticResourceCustomSeverityToggle =
+    definition.key === SettingsKey.CodescanStaticResourceCustomSeverityEnabled;
+  const isStaticResourceCustomSeverityDropdown =
+    definition.key === SettingsKey.CodescanStaticResourceCustomSeverity;
+  // Custom-severity controls require the instance extraction gate (grayed when off).
+  // Project extraction is hidden when the instance gate is off.
+  const needsStaticResourceExtractionGate =
+    isStaticResourceCustomSeverityToggle || isStaticResourceCustomSeverityDropdown;
 
-  const { data: instanceGateValue } = useGetValueQuery(
+  const { data: staticResourceExtractionGate } = useGetValueQuery(
     { key: SettingsKey.CodescanStaticResourceExtractionEnabled },
-    { enabled: isStaticResourceProjectSetting },
+    {
+      enabled:
+        isStaticResourceProjectExtraction || needsStaticResourceExtractionGate,
+    },
+  );
+  const { data: customSeverityGate } = useGetValueQuery(
+    { key: SettingsKey.CodescanStaticResourceCustomSeverityEnabled },
+    { enabled: isStaticResourceCustomSeverityDropdown },
   );
 
-  // Gray out / block the project toggle whenever the instance gate is off (admin or project UI).
   const isSettingDisabled =
-    isStaticResourceProjectSetting && instanceGateValue?.value !== 'true';
+    (needsStaticResourceExtractionGate &&
+      staticResourceExtractionGate?.value !== 'true') ||
+    (isStaticResourceCustomSeverityDropdown && customSeverityGate?.value !== 'true');
 
   const { data: loadedSettingValue, isLoading } = useGetValueQuery({
     key: definition.key,
@@ -225,8 +246,20 @@ export default function Definition(props: Readonly<Props>) {
 
   const settingDefinitionAndValue = combineDefinitionAndSettingValue(definition, settingValue);
 
+  // Project-level extraction must not appear when the instance gate is off.
+  if (
+    isStaticResourceProjectExtraction &&
+    staticResourceExtractionGate?.value !== 'true'
+  ) {
+    return null;
+  }
+
   return (
-    <div data-key={definition.key} data-testid={definition.key} className="sw-flex sw-gap-12">
+    <div
+      data-key={definition.key}
+      data-testid={definition.key}
+      className={`sw-flex sw-gap-12${isSettingDisabled ? ' sw-opacity-50' : ''}`}
+    >
       <DefinitionDescription definition={definition} />
       <div className="sw-flex-1">
         <form onSubmit={formNoop}>

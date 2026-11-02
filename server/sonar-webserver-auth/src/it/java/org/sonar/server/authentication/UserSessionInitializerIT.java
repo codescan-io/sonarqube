@@ -41,7 +41,7 @@ import org.sonar.server.authentication.event.AuthenticationEvent;
 import org.sonar.server.authentication.event.AuthenticationEvent.Method;
 import org.sonar.server.authentication.event.AuthenticationEvent.Source;
 import org.sonar.server.authentication.event.AuthenticationException;
-import org.sonar.server.http.JavaxHttpRequest;
+import org.sonar.server.http.JakartaHttpRequest;
 import org.sonar.server.organization.IpAllowlistUnavailableException;
 import org.sonar.server.organization.OrganizationIpAccess;
 import org.sonar.server.organization.OrganizationIpAccessUnavailableException;
@@ -264,10 +264,10 @@ public class UserSessionInitializerIT {
 
   @Test
   public void server_session_gets_the_client_address_and_the_service_login_organization() {
-    JavaxHttpRequest javaxRequest = javaxRequest("/api/issues/search", "10.0.0.5", true, "org-key");
-    ServerUserSession session = loggedInServerSession(javaxRequest);
+    JakartaHttpRequest jakartaRequest = jakartaRequest("/api/issues/search", "10.0.0.5", true, "org-key");
+    ServerUserSession session = loggedInServerSession(jakartaRequest);
 
-    assertThat(underTest.initUserSession(javaxRequest, response)).isTrue();
+    assertThat(underTest.initUserSession(jakartaRequest, response)).isTrue();
 
     verify(session).withIpAllowlist(ipAccess, "10.0.0.5", "org-key");
     verify(threadLocalSession).set(session);
@@ -275,32 +275,32 @@ public class UserSessionInitializerIT {
 
   @Test
   public void service_flag_without_an_organization_gives_no_service_organization() {
-    JavaxHttpRequest javaxRequest = javaxRequest("/api/issues/search", "10.0.0.5", true, null);
-    ServerUserSession session = loggedInServerSession(javaxRequest);
+    JakartaHttpRequest jakartaRequest = jakartaRequest("/api/issues/search", "10.0.0.5", true, null);
+    ServerUserSession session = loggedInServerSession(jakartaRequest);
 
-    underTest.initUserSession(javaxRequest, response);
+    underTest.initUserSession(jakartaRequest, response);
 
     verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null);
   }
 
   @Test
   public void organization_without_the_service_flag_gives_no_service_organization() {
-    JavaxHttpRequest javaxRequest = javaxRequest("/api/issues/search", "10.0.0.5", false, "org-key");
-    ServerUserSession session = loggedInServerSession(javaxRequest);
+    JakartaHttpRequest jakartaRequest = jakartaRequest("/api/issues/search", "10.0.0.5", false, "org-key");
+    ServerUserSession session = loggedInServerSession(jakartaRequest);
 
-    underTest.initUserSession(javaxRequest, response);
+    underTest.initUserSession(jakartaRequest, response);
 
     verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null);
   }
 
   @Test
   public void blank_or_non_text_service_organization_is_ignored() {
-    JavaxHttpRequest javaxRequest = javaxRequest("/api/issues/search", "10.0.0.5", true, " ");
-    ServerUserSession session = loggedInServerSession(javaxRequest);
-    underTest.initUserSession(javaxRequest, response);
+    JakartaHttpRequest jakartaRequest = jakartaRequest("/api/issues/search", "10.0.0.5", true, " ");
+    ServerUserSession session = loggedInServerSession(jakartaRequest);
+    underTest.initUserSession(jakartaRequest, response);
     verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null);
 
-    JavaxHttpRequest numberOrgRequest = javaxRequest("/api/issues/search", "10.0.0.5", true, 42);
+    JakartaHttpRequest numberOrgRequest = jakartaRequest("/api/issues/search", "10.0.0.5", true, 42);
     ServerUserSession other = loggedInServerSession(numberOrgRequest);
     underTest.initUserSession(numberOrgRequest, response);
     verify(other).withIpAllowlist(ipAccess, "10.0.0.5", null);
@@ -430,14 +430,14 @@ public class UserSessionInitializerIT {
     return session;
   }
 
-  private static JavaxHttpRequest javaxRequest(String path, String remoteAddr, boolean serviceLogin, Object serviceOrganization) {
-    javax.servlet.http.HttpServletRequest servletRequest = mock(javax.servlet.http.HttpServletRequest.class);
+  private static JakartaHttpRequest jakartaRequest(String path, String remoteAddr, boolean serviceLogin, Object serviceOrganization) {
+    jakarta.servlet.http.HttpServletRequest servletRequest = mock(jakarta.servlet.http.HttpServletRequest.class);
     when(servletRequest.getContextPath()).thenReturn("");
     when(servletRequest.getRequestURI()).thenReturn(path);
     when(servletRequest.getRemoteAddr()).thenReturn(remoteAddr);
     when(servletRequest.getAttribute(JwtHttpHandler.SERVICE_LOGIN_ATTRIBUTE)).thenReturn(serviceLogin ? Boolean.TRUE : null);
     when(servletRequest.getAttribute(JwtHttpHandler.SERVICE_LOGIN_ORG_ATTRIBUTE)).thenReturn(serviceOrganization);
-    return new JavaxHttpRequest(servletRequest);
+    return new JakartaHttpRequest(servletRequest);
   }
 
   private void assertPathIsIgnored(String path) {

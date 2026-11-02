@@ -44,7 +44,7 @@ import org.sonar.db.user.UserTokenDto;
 import org.sonar.server.authentication.event.AuthenticationEvent;
 import org.sonar.server.authentication.event.AuthenticationEvent.Source;
 import org.sonar.server.authentication.event.AuthenticationException;
-import org.sonar.server.http.JavaxHttpRequest;
+import org.sonar.server.http.JakartaHttpRequest;
 import org.sonar.server.organization.IpAllowlistUnavailableException;
 import org.sonar.server.organization.OrganizationIpAccess;
 import org.sonar.server.user.ServerUserSession;
@@ -227,10 +227,10 @@ public class UserSessionInitializer {
    */
   @CheckForNull
   private static String serviceLoginOrganization(HttpRequest request) {
-    if (!(request instanceof JavaxHttpRequest javaxRequest)) {
+    if (!(request instanceof JakartaHttpRequest jakartaRequest)) {
       return null;
     }
-    javax.servlet.http.HttpServletRequest servletRequest = javaxRequest.getDelegate();
+    jakarta.servlet.http.HttpServletRequest servletRequest = jakartaRequest.getDelegate();
     if (!Boolean.TRUE.equals(servletRequest.getAttribute(JwtHttpHandler.SERVICE_LOGIN_ATTRIBUTE))) {
       return null;
     }

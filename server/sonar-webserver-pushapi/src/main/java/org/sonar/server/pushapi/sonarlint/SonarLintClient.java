@@ -21,9 +21,9 @@ package org.sonar.server.pushapi.sonarlint;
 
 import java.util.Objects;
 import java.util.Set;
+import jakarta.servlet.AsyncContext;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import javax.servlet.AsyncContext;
 import org.sonar.server.pushapi.ServerPushClient;
 
 public class SonarLintClient extends ServerPushClient {

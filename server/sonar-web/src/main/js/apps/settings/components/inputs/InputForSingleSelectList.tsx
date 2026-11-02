@@ -29,7 +29,7 @@ function InputForSingleSelectList(
   props: Readonly<Props>,
   ref: React.ForwardedRef<HTMLInputElement>,
 ) {
-  const { name, options: opts, value, setting } = props;
+  const { name, options: opts, value, setting, disabled } = props;
 
   const options = React.useMemo(
     () => opts.map((option) => ({ label: option, value: option })),
@@ -40,6 +40,7 @@ function InputForSingleSelectList(
     <Select
       ariaLabel={getPropertyName(setting.definition)}
       data={options}
+      isDisabled={disabled}
       isNotClearable
       name={name}
       onChange={props.onChange}

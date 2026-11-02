@@ -103,6 +103,15 @@ public class PluginClassloaderFactoryTest {
     assertThat(canLoadClass(classLoader, FooBar.class.getCanonicalName())).isTrue();
   }
 
+  @Test
+  public void classloader_exposes_servlet_api_used_by_plugin_api() {
+    PluginClassLoaderDef def = basePluginDef();
+    ClassLoader classLoader = factory.create(emptyMap(), asList(def)).get(def);
+
+    assertThat(canLoadClass(classLoader, "jakarta.servlet.Filter")).isTrue();
+    assertThat(canLoadClass(classLoader, "org.sonar.api.web.ServletFilter")).isTrue();
+  }
+
   private static PluginClassLoaderDef basePluginDef() {
     PluginClassLoaderDef def = new PluginClassLoaderDef(BASE_PLUGIN_KEY);
     def.addMainClass(BASE_PLUGIN_KEY, BASE_PLUGIN_CLASSNAME);

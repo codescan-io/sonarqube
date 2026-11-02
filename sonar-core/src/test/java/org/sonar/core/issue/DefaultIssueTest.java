@@ -76,7 +76,7 @@ class DefaultIssueTest {
   @Test
   void message_should_be_abbreviated_if_too_long() {
     issue.setMessage(StringUtils.repeat("a", 5_000));
-    assertThat(issue.message()).hasSize(1_333);
+    assertThat(issue.message()).hasSize(2_700);
   }
 
   @Test

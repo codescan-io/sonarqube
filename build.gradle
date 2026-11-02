@@ -11,7 +11,7 @@ plugins {
   id 'com.gradleup.shadow' version '8.3.3' apply false
   id 'com.google.protobuf' version '0.8.19' apply false
   id "de.undercouch.download" version "5.6.0" apply false
-  id 'io.spring.dependency-management' version '1.1.6'
+  id 'io.spring.dependency-management' version '1.1.7'
   id "org.cyclonedx.bom" version "1.10.0" apply false
   id 'org.sonarqube' version '5.1.0.4882'
 }
@@ -221,6 +221,11 @@ subprojects {
 
   compileJava.options.encoding = "UTF-8"
   compileTestJava.options.encoding = "UTF-8"
+  // Spring 6.1+ only falls back to parameter names (bean qualifiers, @RequestParam/@PathVariable without a name)
+  // when classes are compiled with -parameters
+  tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << '-parameters'
+  }
 
   def testFixtureSrc = 'src/testFixtures'
   if (file(testFixtureSrc).exists()) {
@@ -229,7 +234,7 @@ subprojects {
 
   ext {
     protobufVersion = '4.28.2'
-    springVersion = '5.3.39'
+    springVersion = '6.2.12'
     elasticSearchClientVersion = '7.17.24'
   }
 
@@ -299,7 +304,7 @@ subprojects {
       dependency 'org.sonarsource.javascript:sonar-javascript-plugin:10.18.0-CODESCAN'
       dependency 'org.sonarsource.php:sonar-php-plugin:3.53.0.15220'
       dependency 'org.sonarsource.plugins.cayc:sonar-cayc-plugin:2.4.0.2018'
-      dependency 'org.sonarsource.python:sonar-python-plugin:5.29.0.35837'
+      dependency 'org.sonarsource.python:sonar-python-plugin:5.30-CODESCAN'
       dependency 'org.sonarsource.kotlin:sonar-kotlin-plugin:2.21.0.5736'
       dependency "org.sonarsource.api.plugin:sonar-plugin-api:$pluginApiVersion"
       dependency "org.sonarsource.api.plugin:sonar-plugin-api-test-fixtures:$pluginApiVersion"
@@ -314,19 +319,19 @@ subprojects {
       dependency 'com.sonarsource.architecture:sonar-architecture-java-frontend-plugin:1.4.0.2329'
 
       // please keep this list alphabetically ordered
-      dependencySet(group: 'ch.qos.logback', version: '1.3.16') {
+      dependencySet(group: 'ch.qos.logback', version: '1.6.5') {
         entry 'logback-classic'
         entry 'logback-core'
       }
-      // TODO switch to dependency 'ch.qos.logback.access:tomcat:2.0.1' when upgrading to Tomcat 10+
-      dependency 'ch.qos.logback:logback-access:1.3.16'
+      dependency('ch.qos.logback.access:logback-access-common:2.0.15')
+      dependency('ch.qos.logback.access:logback-access-tomcat:2.0.15')
       dependency('commons-beanutils:commons-beanutils:1.11.0') {
         exclude 'commons-logging:commons-logging'
       }
       dependency 'commons-codec:commons-codec:1.17.1'
       dependency 'commons-dbutils:commons-dbutils:1.8.1'
       dependency 'commons-io:commons-io:2.17.0'
-      imports { mavenBom 'com.fasterxml.jackson:jackson-bom:2.22.2' }
+      imports { mavenBom 'com.fasterxml.jackson:jackson-bom:2.22.3' }
       dependency 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
       dependencySet(group: 'com.github.scribejava', version: '8.3.3') {
         entry 'scribejava-apis'
@@ -361,12 +366,14 @@ subprojects {
       dependencySet(group: 'com.hazelcast', version: '5.7.0') {
         entry 'hazelcast'
       }
-      // Relocated over Hazelcast's baked-in Jackson 3 (codescan-application); stay on the 3.1.x line it compiled against.
-      dependencySet(group: 'tools.jackson.core', version: '3.1.6') {
+      // codescan-application replaces the copy of Jackson 3 bundled inside the Hazelcast jar with these versions.
+      // Hazelcast is compiled against an older 3.x line, so a Jackson upgrade needs the Hazelcast JSON paths
+      // re-checked. See CSN-132.
+      dependencySet(group: 'tools.jackson.core', version: '3.2.3') {
         entry 'jackson-core'
         entry 'jackson-databind'
       }
-      dependencySet(group: 'tools.jackson.jr', version: '3.1.6') {
+      dependencySet(group: 'tools.jackson.jr', version: '3.2.3') {
         entry 'jackson-jr-objects'
         entry 'jackson-jr-annotation-support'
       }
@@ -399,22 +406,23 @@ subprojects {
       dependency 'com.auth0:java-jwt:4.4.0'
       dependency 'io.netty:netty-all:4.2.18.Final'
       imports { mavenBom 'io.netty:netty-bom:4.2.18.Final' }
-      dependency 'com.sun.mail:jakarta.mail:1.6.8'
-      dependency 'javax.annotation:javax.annotation-api:1.3.2'
-      dependency 'javax.inject:javax.inject:1'
-      dependency 'javax.xml.bind:jaxb-api:2.3.1'
-      dependency 'jakarta.servlet:jakarta.servlet-api:4.0.4'
+      dependency 'jakarta.mail:jakarta.mail-api:2.1.5'
+      dependency 'jakarta.annotation:jakarta.annotation-api:3.0.0'
+      dependency 'jakarta.inject:jakarta.inject-api:2.0.1'
+      dependency 'jakarta.xml.bind:jakarta.xml.bind-api:2.3.3'
+      dependency 'jakarta.servlet:jakarta.servlet-api:6.1.0'
       dependency 'junit:junit:4.13.2'
       dependency 'org.xmlunit:xmlunit-core:2.10.0'
       dependency 'org.xmlunit:xmlunit-matchers:2.10.0'
-      dependency 'at.yawk.lz4:lz4-java:1.11.3'
+      dependency 'at.yawk.lz4:lz4-java:1.12.1'
       dependency 'org.littleshoot:littleproxy:1.1.2'
       dependency 'net.sf.trove4j:core:3.1.0'
       dependency 'org.awaitility:awaitility:4.2.2'
       dependency 'org.apache.commons:commons-collections4:4.4'
       dependency 'org.apache.commons:commons-csv:1.12.0'
       dependency 'org.apache.commons:commons-lang3:3.20.0'
-      dependency 'org.apache.commons:commons-email:1.6.0'
+      dependency 'org.apache.commons:commons-email2-jakarta:2.0.0-M1'
+      dependency 'org.eclipse.angus:angus-mail:2.0.5'
       dependency 'org.apache.commons:commons-text:1.12.0'
       dependency 'org.apache.mina:mina-core:2.2.3'
       dependency 'org.apache.kerby:kerb-simplekdc:2.1.0'
@@ -431,7 +439,7 @@ subprojects {
         entry 'log4j-api'
         entry 'log4j-to-slf4j'
       }
-      dependencySet(group: 'org.apache.tomcat.embed', version: '9.0.111') {
+      dependencySet(group: 'org.apache.tomcat.embed', version: '11.0.26') {
         entry 'tomcat-embed-core'
         entry('tomcat-embed-jasper') {
           exclude 'org.eclipse.jdt.core.compiler:ecj'
@@ -447,18 +455,13 @@ subprojects {
         exclude 'org.slf4j:slf4j-api'
       }
       dependency 'com.fasterxml.staxmate:staxmate:2.4.1'
-      dependencySet(group: 'org.eclipse.jetty', version: '9.4.6.v20170531') {
-        entry 'jetty-proxy'
-        entry 'jetty-server'
-        entry 'jetty-servlet'
-      }
       dependency("org.elasticsearch.client:elasticsearch-rest-high-level-client:${elasticSearchClientVersion}") {
         exclude 'org.apache.logging.log4j:log4j-core'
         exclude 'org.elasticsearch:jna'
         exclude 'com.fasterxml.jackson.core:jackson-core'
         exclude 'org.lz4:lz4-java'
       }
-      dependency 'com.fasterxml.jackson.core:jackson-core:2.22.2'
+      dependency 'com.fasterxml.jackson.core:jackson-core:2.22.3'
       dependency "org.elasticsearch.plugin:transport-netty4-client:${elasticSearchClientVersion}"
       dependency 'org.elasticsearch:mocksocket:1.2'
       dependency 'org.eclipse.jgit:org.eclipse.jgit:7.3.0.202506031305-r'
@@ -490,7 +493,7 @@ subprojects {
       }
       dependency "org.springframework:spring-test:${springVersion}"
       dependency 'org.mybatis:mybatis:3.5.16'
-      dependencySet(group: 'org.slf4j', version: '2.0.16') {
+      dependencySet(group: 'org.slf4j', version: '2.0.20') {
         entry 'jcl-over-slf4j'
         entry 'jul-to-slf4j'
         entry 'log4j-over-slf4j'
@@ -514,12 +517,16 @@ subprojects {
       dependency("org.springframework:spring-webmvc:${springVersion}") {
         exclude 'commons-logging:commons-logging'
       }
-      dependency 'org.springdoc:springdoc-openapi-webmvc-core:1.8.0'
-      dependency 'org.subethamail:subethasmtp:3.1.7'
+      dependency 'org.springdoc:springdoc-openapi-starter-webmvc-api:2.8.13'
+      dependencySet(group: 'com.icegreen', version: '2.1.14') {
+        entry 'greenmail'
+        entry 'greenmail-junit4'
+        entry 'greenmail-junit5'
+      }
       dependency 'org.yaml:snakeyaml:2.3'
-      dependency 'org.hibernate.validator:hibernate-validator:6.2.5.Final'
-      dependency 'jakarta.el:jakarta.el-api:3.0.3'
-      dependency 'org.glassfish:jakarta.el:3.0.4'
+      dependency 'org.hibernate.validator:hibernate-validator:9.0.1.Final'
+      dependency 'jakarta.el:jakarta.el-api:5.0.1'
+      dependency 'org.glassfish.expressly:expressly:5.0.0'
       dependency 'org.kohsuke:github-api:1.326'
       dependency 'org.wiremock:wiremock-standalone:3.9.1'
       dependency 'org.skyscreamer:jsonassert:1.5.3'
@@ -541,18 +548,24 @@ subprojects {
     all {
       // do not conflict with com.sun.mail:javax.mail
       exclude group: 'javax.mail', module: 'mail'
+      // Jakarta Mail is provided by org.eclipse.angus:angus-mail. Keep out the end-of-life com.sun.mail 2.0.x jars
+      // pulled by commons-email2-jakarta and the API-bundling org.eclipse.angus:jakarta.mail pulled by greenmail,
+      // so a single copy of jakarta.mail.* and jakarta.activation.* is on every classpath
+      exclude group: 'com.sun.mail'
+      exclude group: 'com.sun.activation'
+      exclude group: 'org.eclipse.angus', module: 'jakarta.mail'
     }
   }
   configurations.configureEach {
     resolutionStrategy {
-      force 'com.fasterxml.jackson.core:jackson-core:2.22.2'
+      force 'com.fasterxml.jackson.core:jackson-core:2.22.3'
       force 'org.eclipse.jgit:org.eclipse.jgit:7.3.0.202506031305-r'
-      force 'at.yawk.lz4:lz4-java:1.11.3'
+      force 'at.yawk.lz4:lz4-java:1.12.1'
     }
 
     resolutionStrategy.capabilitiesResolution {
         withCapability('org.lz4:lz4-java') {
-            select('at.yawk.lz4:lz4-java:1.11.3')
+            select('at.yawk.lz4:lz4-java:1.12.1')
         }
     }
   }
