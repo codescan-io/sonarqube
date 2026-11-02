@@ -1591,6 +1591,36 @@ public class OrganizationIpAccessTest {
   }
 
   @Test
+  public void internal_ranges_count_as_set_when_a_range_parses() {
+    assertThat(underTest.isInternalCidrSet()).isTrue();
+    assertThat(accessWithInternal("10.0.0.0/16").isInternalCidrSet()).isTrue();
+    assertThat(accessWithInternal(" , 10.0.0.0/16 ,").isInternalCidrSet()).isTrue();
+    assertThat(accessWithInternal("fd00::/8").isInternalCidrSet()).isTrue();
+  }
+
+  @Test
+  public void internal_ranges_count_as_unset_when_missing_blank_or_without_a_valid_range() {
+    assertThat(access(properties(TRUSTED_PROXIES, LOAD_BALANCER)).isInternalCidrSet()).isFalse();
+    for (String unset : new String[] {"", "   ", ",", " , ,"}) {
+      assertThat(accessWithInternal(unset).isInternalCidrSet()).as("'%s'", unset).isFalse();
+    }
+    for (String invalid : new String[] {"garbage", "10.0.0.1", "10.0.0.0/33", "localhost/8", "fe80::1%eth0/64"}) {
+      assertThat(accessWithInternal(invalid).isInternalCidrSet()).as(invalid).isFalse();
+    }
+  }
+
+  @Test
+  public void an_invalid_entry_next_to_a_valid_one_leaves_no_range_in_use_so_it_counts_as_unset() {
+    // parseInternalRanges drops the whole list when one entry is bad, so no request is internal
+    assertThat(accessWithInternal("10.0.0.0/16,garbage").isInternalCidrSet()).isFalse();
+  }
+
+  @Test
+  public void internal_ranges_set_does_not_depend_on_trusted_proxies() {
+    assertThat(untrustedAccess(null).isInternalCidrSet()).isTrue();
+  }
+
+  @Test
   public void without_trusted_proxies_no_address_is_internal() {
     OrganizationIpAccess access = untrustedAccess(null);
 

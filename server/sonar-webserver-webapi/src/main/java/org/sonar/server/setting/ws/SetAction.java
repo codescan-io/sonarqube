@@ -81,6 +81,8 @@ public class SetAction implements SettingsWsAction {
   private static final int VALUE_MAXIMUM_LENGTH = 4000;
   private static final String MSG_IP_ALLOWLIST_NEEDS_TRUSTED_PROXIES = "IP Allowlist cannot be turned on until the web server's trusted proxies are set ("
     + OrganizationIpAccess.TRUSTED_PROXIES_ENV_VAR + ").";
+  private static final String MSG_IP_ALLOWLIST_NEEDS_INTERNAL_CIDR = "IP Allowlist cannot be turned on until the internal service ranges are set ("
+    + OrganizationIpAccess.INTERNAL_CIDR_PROPERTY + "), otherwise analysis jobs of organizations with an IP allowlist would be blocked.";
   private static final String MSG_IP_ALLOWLIST_TRUE_OR_FALSE = "Use true or false for " + OrganizationIpAccess.FEATURE_FLAG_PROPERTY + ".";
   private static final TypeToken<Map<String, String>> MAP_TYPE_TOKEN = new TypeToken<>() {
   };
@@ -265,14 +267,18 @@ public class SetAction implements SettingsWsAction {
 
   /**
    * Without trusted proxies the client address can be forged through X-Forwarded-For, so turning the feature on would
-   * block every organization with an allowlist. Checked on the value as it is stored, whether {@code value} or
-   * {@code values} carried it; {@code fieldValues} stores field numbers, never {@code true}.
+   * block every organization with an allowlist. Without internal service ranges no request counts as internal service
+   * traffic, so the analysis jobs of those organizations would be blocked too. Checked on the value as it is stored,
+   * whether {@code value} or {@code values} carried it; {@code fieldValues} stores field numbers, never {@code true}.
+   * Turning it off is never refused.
    */
   private void checkIpAllowlistCanBeTurnedOn(SetRequest request) {
-    checkRequest(!OrganizationIpAccess.FEATURE_FLAG_PROPERTY.equals(persistedKey(request))
-      || !OrganizationIpAccess.isFeatureOn(persistedValue(request))
-      || organizationIpAccess.isTrustedProxiesSet(),
-      MSG_IP_ALLOWLIST_NEEDS_TRUSTED_PROXIES);
+    if (!OrganizationIpAccess.FEATURE_FLAG_PROPERTY.equals(persistedKey(request))
+      || !OrganizationIpAccess.isFeatureOn(persistedValue(request))) {
+      return;
+    }
+    checkRequest(organizationIpAccess.isTrustedProxiesSet(), MSG_IP_ALLOWLIST_NEEDS_TRUSTED_PROXIES);
+    checkRequest(organizationIpAccess.isInternalCidrSet(), MSG_IP_ALLOWLIST_NEEDS_INTERNAL_CIDR);
   }
 
   private static void validatePropertySet(SetRequest request, @Nullable PropertyDefinition definition) {

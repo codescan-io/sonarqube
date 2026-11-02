@@ -89,6 +89,8 @@ public class SetActionIT {
   private static final String IP_ALLOWLIST_TRUE_OR_FALSE = "Use true or false for codescan.cloud.ipAllowlist.enabled.";
   private static final String IP_ALLOWLIST_REFUSED = "IP Allowlist cannot be turned on until the web server's trusted proxies are set "
     + "(CODESCAN_TRUSTED_PROXIES).";
+  private static final String IP_ALLOWLIST_INTERNAL_REFUSED = "IP Allowlist cannot be turned on until the internal service ranges are set "
+    + "(sonar.codescan.internalCidr), otherwise analysis jobs of organizations with an IP allowlist would be blocked.";
 
   @Rule
   public UserSessionRule userSession = UserSessionRule.standalone().logIn();
@@ -689,8 +691,9 @@ public class SetActionIT {
   }
 
   @Test
-  public void turning_ip_allowlist_on_is_allowed_once_trusted_proxies_are_set() {
+  public void turning_ip_allowlist_on_is_allowed_once_trusted_proxies_and_internal_ranges_are_set() {
     when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+    when(ipAccess.isInternalCidrSet()).thenReturn(true);
 
     callForGlobalSetting(IP_ALLOWLIST_FLAG, "true");
 
@@ -698,8 +701,65 @@ public class SetActionIT {
   }
 
   @Test
+  public void turning_ip_allowlist_on_is_refused_while_internal_ranges_are_not_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "true"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_INTERNAL_REFUSED);
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+    assertThat(settingsChangeNotifier.wasCalled).isFalse();
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_through_the_values_parameter_is_refused_while_internal_ranges_are_not_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting(IP_ALLOWLIST_FLAG, List.of("true")))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_INTERNAL_REFUSED);
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_is_refused_while_internal_ranges_are_not_set_when_the_setting_is_defined() {
+    definitions.addComponent(PropertyDefinition.builder(IP_ALLOWLIST_FLAG).type(PropertyType.BOOLEAN).defaultValue("false").build());
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "true"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_INTERNAL_REFUSED);
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_for_a_project_is_refused_while_internal_ranges_are_not_set() {
+    ProjectDto project = db.components().insertPrivateProject().getProjectDto();
+    logInAsProjectAdministrator(project);
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForProjectSettingByKey(IP_ALLOWLIST_FLAG, "true", project.getKey()))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_INTERNAL_REFUSED);
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_names_the_trusted_proxies_first_when_neither_is_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "true"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_REFUSED);
+  }
+
+  @Test
   public void turning_ip_allowlist_off_is_always_allowed() {
     when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
     propertyDb.insertProperty(newGlobalPropertyDto(IP_ALLOWLIST_FLAG, "true"), null, null, null, null);
 
     callForGlobalSetting(IP_ALLOWLIST_FLAG, "false");

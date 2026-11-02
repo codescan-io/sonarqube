@@ -154,6 +154,15 @@ public class OrganizationIpAccess {
     return clientAddressTrusted;
   }
 
+  /**
+   * Whether {@value #INTERNAL_CIDR_PROPERTY} in the web server's startup properties holds a range that parsed. A missing,
+   * blank or invalid value, or a list with an invalid entry (which drops the whole list), leaves no request counting as
+   * internal service traffic, so analysis jobs of organizations with an allowlist would be blocked.
+   */
+  public boolean isInternalCidrSet() {
+    return !internalRanges.isEmpty();
+  }
+
   /** The rule both this class and the web server's X-Forwarded-For handling apply to {@value #TRUSTED_PROXIES_PROPERTY}. */
   public static boolean isTrustedProxiesSet(@Nullable String trustedProxiesRegex) {
     return trustedProxiesRegex != null && !trustedProxiesRegex.isBlank();
