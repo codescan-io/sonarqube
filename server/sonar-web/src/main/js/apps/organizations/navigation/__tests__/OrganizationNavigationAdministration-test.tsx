@@ -18,7 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { getValues } from '../../../../api/settings';
 import { mockAppState, mockLoggedInUser } from '../../../../helpers/testMocks';
@@ -75,6 +75,19 @@ it('hides the IP Allowlist entry while the setting is loading', async () => {
   jest.mocked(getValues).mockReturnValue(new Promise(() => {}));
   await openMenu();
 
+  expect(await screen.findByRole('menuitem', { name: WEBHOOK_LOG })).toBeInTheDocument();
+  expect(screen.queryByRole('menuitem', { name: IP_ALLOWLIST })).not.toBeInTheDocument();
+  expect(screen.queryByRole('menuitem', { name: RESOLUTION_TRANSFER })).not.toBeInTheDocument();
+});
+
+it('hides the IP Allowlist entry when the settings request fails', async () => {
+  const failure = Promise.reject(new Error('settings request failed'));
+  failure.catch(() => {});
+  jest.mocked(getValues).mockReturnValue(failure);
+  await openMenu();
+
+  await waitFor(() => expect(getValues).toHaveBeenCalled());
+  await failure.catch(() => {});
   expect(await screen.findByRole('menuitem', { name: WEBHOOK_LOG })).toBeInTheDocument();
   expect(screen.queryByRole('menuitem', { name: IP_ALLOWLIST })).not.toBeInTheDocument();
   expect(screen.queryByRole('menuitem', { name: RESOLUTION_TRANSFER })).not.toBeInTheDocument();

@@ -707,6 +707,49 @@ public class SetActionIT {
   }
 
   @Test
+  public void a_malformed_request_turning_ip_allowlist_on_gets_the_usual_message() {
+    definitions.addComponent(PropertyDefinition.builder(IP_ALLOWLIST_FLAG).type(PropertyType.BOOLEAN).defaultValue("false").build());
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting(IP_ALLOWLIST_FLAG, List.of("true")))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage("Parameter 'value' must be used for single value setting. Parameter 'values' must be used for multi value setting.");
+  }
+
+  @Test
+  public void trusted_proxies_cannot_be_saved_in_the_database() {
+    assertThatThrownBy(() -> callForGlobalSetting("sonar.web.trustedProxiesRegex", ".*"))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.web.trustedProxiesRegex' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("sonar.web.trustedProxiesRegex")).isNull();
+  }
+
+  @Test
+  public void internal_cidr_cannot_be_saved_in_the_database() {
+    assertThatThrownBy(() -> callForGlobalSetting("sonar.codescan.internalCidr", "0.0.0.0/0"))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.codescan.internalCidr' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("sonar.codescan.internalCidr")).isNull();
+  }
+
+  @Test
+  public void startup_only_settings_are_refused_whatever_the_case_of_the_key() {
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting("SONAR.WEB.TRUSTEDPROXIESREGEX", List.of(".*")))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'SONAR.WEB.TRUSTEDPROXIESREGEX' can only be set in the web server's startup properties");
+  }
+
+  @Test
+  public void startup_only_settings_cannot_be_saved_on_a_project() {
+    ProjectDto project = db.components().insertPrivateProject().getProjectDto();
+    logInAsProjectAdministrator(project);
+
+    assertThatThrownBy(() -> callForProjectSettingByKey("sonar.codescan.internalCidr", "0.0.0.0/0", project.getKey()))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.codescan.internalCidr' can only be set in the web server's startup properties");
+  }
+
+  @Test
   public void other_settings_set_to_true_do_not_need_trusted_proxies() {
     when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
 

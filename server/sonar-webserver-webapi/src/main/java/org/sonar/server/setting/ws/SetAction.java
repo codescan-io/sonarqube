@@ -157,6 +157,7 @@ public class SetAction implements SettingsWsAction {
     try (DbSession dbSession = dbClient.openSession(false)) {
       SetRequest wsRequest = toWsRequest(request);
       throwIfForbiddenKey(wsRequest.getKey());
+      throwIfStartupOnlyKey(wsRequest.getKey());
       SettingsWsSupport.validateKey(wsRequest.getKey());
       doHandle(dbSession, wsRequest);
     }
@@ -166,6 +167,13 @@ public class SetAction implements SettingsWsAction {
   private static void throwIfForbiddenKey(String key) {
     if (FORBIDDEN_KEYS.contains(key)) {
       throw new IllegalArgumentException(format("For security reasons, the key '%s' cannot be updated using this webservice. Please use the API v2", key));
+    }
+  }
+
+  /** Saved in the database, these settings would be ignored, so an admin would see a value that is not in use. */
+  private static void throwIfStartupOnlyKey(String key) {
+    if (OrganizationIpAccess.STARTUP_ONLY_PROPERTIES.stream().anyMatch(key::equalsIgnoreCase)) {
+      throw new IllegalArgumentException(format("Setting '%s' can only be set in the web server's startup properties", key));
     }
   }
 
@@ -181,12 +189,12 @@ public class SetAction implements SettingsWsAction {
     String value;
 
     commonChecks(request, component);
-    checkIpAllowlistCanBeTurnedOn(request);
 
     if (!request.getFieldValues().isEmpty()) {
       value = doHandlePropertySet(dbSession, request, definition, component);
     } else {
       validate(request);
+      checkIpAllowlistCanBeTurnedOn(request);
       PropertyDto property = toProperty(request, component);
       value = property.getValue();
       dbClient.propertiesDao().saveProperty(dbSession, property, null, projectKey, projectName, qualifier);
@@ -244,7 +252,8 @@ public class SetAction implements SettingsWsAction {
 
   /**
    * Without trusted proxies the client address can be forged through X-Forwarded-For, so turning the feature on would
-   * block every organization with an allowlist. Checked on the value as it is stored, whichever parameter carried it.
+   * block every organization with an allowlist. Checked on the value as it is stored, whether {@code value} or
+   * {@code values} carried it; {@code fieldValues} stores field numbers, never {@code true}.
    */
   private void checkIpAllowlistCanBeTurnedOn(SetRequest request) {
     checkRequest(!OrganizationIpAccess.FEATURE_FLAG_PROPERTY.equals(persistedKey(request))

@@ -20,6 +20,7 @@
 package org.sonar.server.organization;
 
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -38,8 +39,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.event.Level;
-import org.sonar.api.config.Configuration;
-import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.impl.utils.TestSystem2;
 import org.sonar.api.testfixtures.log.LogTester;
 import org.sonar.db.DbClient;
@@ -76,7 +75,7 @@ public class OrganizationIpAccessTest {
   private final AtomicLong clock = new AtomicLong(1_000_000L);
   /** Can be set back or forward, as an administrator or NTP does; nothing may depend on it. */
   private final TestSystem2 wallClock = new TestSystem2().setNow(WALL_NOW);
-  private final MapSettings settings = new MapSettings();
+  private final Properties settings = new Properties();
   private final Set<Thread> waiters = ConcurrentHashMap.newKeySet();
   private OrganizationIpAccess underTest;
 
@@ -92,7 +91,7 @@ public class OrganizationIpAccessTest {
     setFeatureFlag("true");
     settings.setProperty("sonar.codescan.internalCidr", "10.0.0.0/16,10.1.0.0/16");
     settings.setProperty(TRUSTED_PROXIES, LOAD_BALANCER);
-    underTest = access(settings.asConfig());
+    underTest = access(settings);
   }
 
   @Test
@@ -126,7 +125,7 @@ public class OrganizationIpAccessTest {
     when(dao.selectEnabledRanges(any())).thenReturn(List.of(
       range("org-v6", false, "2001:db8::/32"),
       range("org-v6-upper", false, "2001:DB8::/32")));
-    OrganizationIpAccess access = access(settings.asConfig());
+    OrganizationIpAccess access = access(settings);
 
     assertThat(access.isBlocked("org-v6", "2001:DB8::1", () -> false)).isFalse();
     assertThat(access.isBlocked("org-v6-upper", "2001:db8::1", () -> false)).isFalse();
@@ -152,7 +151,7 @@ public class OrganizationIpAccessTest {
       range("org-mixed", false, "203.0.113.77/24"),
       range("org-only-bad", false, "example.com/24"),
       range("org-ok", false, "198.51.100.0/24")));
-    OrganizationIpAccess access = access(settings.asConfig());
+    OrganizationIpAccess access = access(settings);
 
     assertThat(access.isBlocked("org-mixed", "203.0.113.9", () -> false)).isFalse();
     assertThat(access.isBlocked("org-mixed", "192.0.2.1", () -> false)).isTrue();
@@ -167,7 +166,7 @@ public class OrganizationIpAccessTest {
     when(dao.selectEnabledRanges(any())).thenReturn(List.of(
       range("org-mixed", false, "not-an-ip"),
       range("org-mixed", false, "203.0.113.0/24")));
-    OrganizationIpAccess access = access(settings.asConfig());
+    OrganizationIpAccess access = access(settings);
     logTester.clear();
 
     access.isBlocked("org-mixed", "203.0.113.9", () -> false);
@@ -256,7 +255,7 @@ public class OrganizationIpAccessTest {
   public void flag_with_a_value_other_than_true_is_off() {
     for (String value : new String[] {"TRUE", " true", "yes", "1", ""}) {
       setFeatureFlag(value);
-      OrganizationIpAccess access = access(settings.asConfig());
+      OrganizationIpAccess access = access(settings);
 
       assertThat(access.isBlocked("org-a", "192.0.2.1", () -> false)).as(value).isFalse();
     }
@@ -391,7 +390,7 @@ public class OrganizationIpAccessTest {
 
   @Test
   public void no_internal_ranges_configured_means_nothing_is_internal() {
-    OrganizationIpAccess noInternal = access(new MapSettings().setProperty(TRUSTED_PROXIES, LOAD_BALANCER).asConfig());
+    OrganizationIpAccess noInternal = access(properties(TRUSTED_PROXIES, LOAD_BALANCER));
 
     assertThat(noInternal.isInternalServiceAddress("10.0.0.1")).isFalse();
   }
@@ -550,7 +549,7 @@ public class OrganizationIpAccessTest {
   @Test(timeout = 30_000)
   public void older_load_never_replaces_a_newer_one_that_started_at_the_same_clock_reading() throws Exception {
     // no wait before a takeover, and the clock does not move: both loads start at the same reading
-    OrganizationIpAccess access = access(settings.asConfig(), OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, 0L);
+    OrganizationIpAccess access = access(settings, OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, 0L);
     AtomicInteger calls = new AtomicInteger();
     CountDownLatch olderStarted = new CountDownLatch(1);
     CountDownLatch releaseOlder = new CountDownLatch(1);
@@ -679,7 +678,7 @@ public class OrganizationIpAccessTest {
 
   @Test(timeout = 30_000)
   public void old_snapshot_is_not_served_once_60_seconds_old_while_a_slow_reload_runs() throws Exception {
-    OrganizationIpAccess access = access(settings.asConfig(), 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    OrganizationIpAccess access = access(settings, 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
     access.isBlocked("org-a", "192.0.2.1", () -> false);
     CountDownLatch reloadStarted = new CountDownLatch(1);
     CountDownLatch finishReload = new CountDownLatch(1);
@@ -907,7 +906,7 @@ public class OrganizationIpAccessTest {
 
   @Test(timeout = 30_000)
   public void load_past_the_wait_deadline_is_not_taken_over_before_the_takeover_deadline() throws Exception {
-    OrganizationIpAccess access = access(settings.asConfig(), 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    OrganizationIpAccess access = access(settings, 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
     AtomicInteger calls = new AtomicInteger();
     CountDownLatch loadStarted = new CountDownLatch(1);
     CountDownLatch finishLoad = new CountDownLatch(1);
@@ -970,7 +969,7 @@ public class OrganizationIpAccessTest {
   @Test(timeout = 30_000)
   public void finishing_the_stuck_load_does_not_release_the_load_that_took_over() throws Exception {
     long deadline = 45_000L;
-    OrganizationIpAccess access = access(settings.asConfig(), OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, deadline);
+    OrganizationIpAccess access = access(settings, OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, deadline);
     AtomicInteger calls = new AtomicInteger();
     CountDownLatch stuckStarted = new CountDownLatch(1);
     CountDownLatch releaseStuck = new CountDownLatch(1);
@@ -1041,7 +1040,7 @@ public class OrganizationIpAccessTest {
   @Test(timeout = 30_000)
   public void thread_whose_wait_on_a_stuck_load_runs_out_gets_the_list_of_the_load_that_took_over() throws Exception {
     long waitMs = 1_000L;
-    OrganizationIpAccess access = access(settings.asConfig(), waitMs, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    OrganizationIpAccess access = access(settings, waitMs, OrganizationIpAccess.TAKEOVER_AFTER_MS);
     AtomicInteger calls = new AtomicInteger();
     CountDownLatch stuckStarted = new CountDownLatch(1);
     CountDownLatch releaseStuck = new CountDownLatch(1);
@@ -1105,7 +1104,7 @@ public class OrganizationIpAccessTest {
 
   @Test(timeout = 30_000)
   public void no_third_load_is_started_while_two_are_stuck_and_the_caller_is_not_let_in() throws Exception {
-    OrganizationIpAccess access = access(settings.asConfig(), 200L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    OrganizationIpAccess access = access(settings, 200L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
     AtomicInteger calls = new AtomicInteger();
     List<CountDownLatch> started = List.of(new CountDownLatch(1), new CountDownLatch(1), new CountDownLatch(1));
     List<CountDownLatch> release = List.of(new CountDownLatch(1), new CountDownLatch(1), new CountDownLatch(1));
@@ -1151,7 +1150,7 @@ public class OrganizationIpAccessTest {
     AtomicReference<Thread> pauseOnNextRead = new AtomicReference<>();
     CountDownLatch paused = new CountDownLatch(1);
     CountDownLatch resume = new CountDownLatch(1);
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, settings.asConfig(), () -> {
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, settings, () -> {
       if (pauseOnNextRead.compareAndSet(Thread.currentThread(), null)) {
         paused.countDown();
         assertThat(await(resume)).isTrue();
@@ -1189,7 +1188,7 @@ public class OrganizationIpAccessTest {
     AtomicReference<Thread> pauseOnNextRead = new AtomicReference<>();
     CountDownLatch finishing = new CountDownLatch(1);
     CountDownLatch finish = new CountDownLatch(1);
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, settings.asConfig(), () -> {
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, settings, () -> {
       clockReads.incrementAndGet();
       if (pauseOnNextRead.compareAndSet(Thread.currentThread(), null)) {
         finishing.countDown();
@@ -1302,7 +1301,7 @@ public class OrganizationIpAccessTest {
 
   @Test(timeout = 30_000)
   public void thread_that_waits_too_long_for_the_one_load_throws() throws Exception {
-    OrganizationIpAccess impatient = access(settings.asConfig(), 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    OrganizationIpAccess impatient = access(settings, 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
     CountDownLatch loadStarted = new CountDownLatch(1);
     CountDownLatch finishLoad = new CountDownLatch(1);
     when(dao.selectEnabledRanges(any())).thenAnswer(invocation -> {
@@ -1519,7 +1518,7 @@ public class OrganizationIpAccessTest {
 
   @Test
   public void load_count_is_released_when_ending_the_waits_throws_an_error() {
-    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, settings.asConfig(), clock::get, 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS) {
+    OrganizationIpAccess access = new OrganizationIpAccess(dbClient, settings, clock::get, 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS) {
       @Override
       <T> CompletableFuture<T> newLoadResult() {
         return new CompletableFuture<>() {
@@ -1548,32 +1547,38 @@ public class OrganizationIpAccessTest {
   }
 
   private OrganizationIpAccess untrustedAccess(@Nullable String trustedProxies) {
-    MapSettings s = new MapSettings();
+    Properties s = new Properties();
     s.setProperty("sonar.codescan.internalCidr", "10.0.0.0/16");
     if (trustedProxies != null) {
       s.setProperty(TRUSTED_PROXIES, trustedProxies);
     }
-    return access(s.asConfig());
+    return access(s);
   }
 
   private OrganizationIpAccess accessWithInternal(String cidrs) {
-    MapSettings s = new MapSettings();
+    Properties s = new Properties();
     s.setProperty("sonar.codescan.internalCidr", cidrs);
     s.setProperty(TRUSTED_PROXIES, LOAD_BALANCER);
-    return access(s.asConfig());
+    return access(s);
   }
 
-  private OrganizationIpAccess access(Configuration config) {
-    return access(config, OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+  private static Properties properties(String key, String value) {
+    Properties properties = new Properties();
+    properties.setProperty(key, value);
+    return properties;
   }
 
-  private OrganizationIpAccess access(Configuration config, long loadWaitTimeoutMs, long takeoverAfterMs) {
-    return new OrganizationIpAccess(dbClient, config, clock::get, loadWaitTimeoutMs, takeoverAfterMs);
+  private OrganizationIpAccess access(Properties processProperties) {
+    return access(processProperties, OrganizationIpAccess.LOAD_WAIT_TIMEOUT_MS, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+  }
+
+  private OrganizationIpAccess access(Properties processProperties, long loadWaitTimeoutMs, long takeoverAfterMs) {
+    return new OrganizationIpAccess(dbClient, processProperties, clock::get, loadWaitTimeoutMs, takeoverAfterMs);
   }
 
   /** Built as in production, so its ages run on the real steady clock and the wall clock is only {@link #wallClock}. */
   private OrganizationIpAccess productionAccess() {
-    return new OrganizationIpAccess(dbClient, wallClock, settings.asConfig());
+    return new OrganizationIpAccess(dbClient, wallClock, settings);
   }
 
   private static IpAllowlistRangeDto range(String org, boolean appliesToAdmins, String cidr) {

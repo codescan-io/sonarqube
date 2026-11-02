@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,7 +40,6 @@ import javax.annotation.Nullable;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.sonar.api.config.Configuration;
 import org.sonar.api.server.ServerSide;
 import org.sonar.api.utils.System2;
 import org.sonar.db.DbClient;
@@ -76,6 +76,8 @@ public class OrganizationIpAccess {
   public static final String INTERNAL_CIDR_PROPERTY = "sonar.codescan.internalCidr";
   public static final String TRUSTED_PROXIES_PROPERTY = "sonar.web.trustedProxiesRegex";
   public static final String FEATURE_FLAG_PROPERTY = "codescan.cloud.ipAllowlist.enabled";
+  /** Read only from the web server's startup properties, so a value saved in the database would be ignored. */
+  public static final Set<String> STARTUP_ONLY_PROPERTIES = Set.of(TRUSTED_PROXIES_PROPERTY, INTERNAL_CIDR_PROPERTY);
   static final long SNAPSHOT_TTL_MS = 30_000L;
   /** Oldest a snapshot may be and still answer while a reload is running or after a reload failed. */
   static final long MAX_STALE_MS = 2 * SNAPSHOT_TTL_MS;
@@ -113,27 +115,35 @@ public class OrganizationIpAccess {
   /**
    * {@code system2} is not read: the wall clock can be set back or forward, so every age and deadline here is
    * measured on {@link System#nanoTime()}, which never goes backwards.
+   *
+   * @param processProperties the web server's startup properties, the ones Tomcat's X-Forwarded-For handling is
+   *        configured with. Not {@code Configuration}: it also returns values saved in the database, which Tomcat
+   *        never reads, so a saved value could make a forgeable client address look trusted or internal.
    */
   @Inject
-  public OrganizationIpAccess(DbClient dbClient, System2 system2, Configuration config) {
-    this(dbClient, config, () -> System.nanoTime() / 1_000_000L, LOAD_WAIT_TIMEOUT_MS, TAKEOVER_AFTER_MS);
+  public OrganizationIpAccess(DbClient dbClient, System2 system2, Properties processProperties) {
+    this(dbClient, processProperties, () -> System.nanoTime() / 1_000_000L, LOAD_WAIT_TIMEOUT_MS, TAKEOVER_AFTER_MS);
   }
 
   /** @param clock milliseconds on a clock that never goes backwards */
-  OrganizationIpAccess(DbClient dbClient, Configuration config, LongSupplier clock, long loadWaitTimeoutMs, long takeoverAfterMs) {
+  OrganizationIpAccess(DbClient dbClient, Properties processProperties, LongSupplier clock, long loadWaitTimeoutMs, long takeoverAfterMs) {
     this.dbClient = dbClient;
     this.clock = clock;
     this.loadWaitTimeoutMs = loadWaitTimeoutMs;
     this.takeoverAfterMs = takeoverAfterMs;
-    this.internalRanges = parseInternalRanges(config.getStringArray(INTERNAL_CIDR_PROPERTY));
-    this.clientAddressTrusted = isTrustedProxiesSet(config.get(TRUSTED_PROXIES_PROPERTY).orElse(null));
+    String internalCidrs = processProperties.getProperty(INTERNAL_CIDR_PROPERTY);
+    this.internalRanges = parseInternalRanges(internalCidrs == null ? new String[0] : internalCidrs.split(","));
+    this.clientAddressTrusted = isTrustedProxiesSet(processProperties.getProperty(TRUSTED_PROXIES_PROPERTY));
     long now = clock.getAsLong();
     this.lastBlockLogCleanupAt = new AtomicLong(now - BLOCK_LOG_CLEANUP_INTERVAL_MS);
     this.lastLoadFailureLogAt = new AtomicLong(now - BLOCK_LOG_INTERVAL_MS);
     this.lastUntrustedAddressLogAt = new AtomicLong(now - BLOCK_LOG_INTERVAL_MS);
   }
 
-  /** Whether {@value #TRUSTED_PROXIES_PROPERTY} was set when the web server started, so the client address can be trusted. */
+  /**
+   * Whether {@value #TRUSTED_PROXIES_PROPERTY} is set in the web server's startup properties, the value Tomcat's
+   * X-Forwarded-For handling uses, so the client address can be trusted.
+   */
   public boolean isTrustedProxiesSet() {
     return clientAddressTrusted;
   }

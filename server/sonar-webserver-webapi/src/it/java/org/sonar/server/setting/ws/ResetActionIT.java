@@ -24,6 +24,7 @@ import javax.annotation.Nullable;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.sonar.api.PropertyType;
 import org.sonar.api.config.PropertyDefinition;
 import org.sonar.api.config.PropertyDefinitions;
 import org.sonar.api.server.ws.WebService;
@@ -102,6 +103,36 @@ public class ResetActionIT {
 
     executeRequestOnGlobalSetting("foo");
     assertGlobalPropertyDoesNotExist("foo");
+  }
+
+  /**
+   * Resetting turns the IP allowlist off, which never needs trusted proxies, so reset does not ask whether they are
+   * set; the web server here has none.
+   */
+  @Test
+  public void turning_ip_allowlist_off_by_reset_is_allowed_while_trusted_proxies_are_not_set() {
+    logInAsSystemAdministrator();
+    definitions.addComponent(PropertyDefinition.builder("codescan.cloud.ipAllowlist.enabled").type(PropertyType.BOOLEAN).defaultValue("false").build());
+    propertyDb.insertProperties(null, null, null, null, newGlobalPropertyDto().setKey("codescan.cloud.ipAllowlist.enabled").setValue("true"));
+
+    executeRequestOnGlobalSetting("codescan.cloud.ipAllowlist.enabled");
+
+    assertGlobalPropertyDoesNotExist("codescan.cloud.ipAllowlist.enabled");
+  }
+
+  /** api/settings/set refuses these settings; reset can still remove a value saved in the database. */
+  @Test
+  public void startup_only_settings_saved_in_the_database_can_be_removed() {
+    logInAsSystemAdministrator();
+    propertyDb.insertProperties(null, null, null, null,
+      newGlobalPropertyDto().setKey("sonar.web.trustedProxiesRegex").setValue(".*"),
+      newGlobalPropertyDto().setKey("sonar.codescan.internalCidr").setValue("0.0.0.0/0"));
+
+    executeRequestOnGlobalSetting("sonar.web.trustedProxiesRegex");
+    executeRequestOnGlobalSetting("sonar.codescan.internalCidr");
+
+    assertGlobalPropertyDoesNotExist("sonar.web.trustedProxiesRegex");
+    assertGlobalPropertyDoesNotExist("sonar.codescan.internalCidr");
   }
 
   @Test

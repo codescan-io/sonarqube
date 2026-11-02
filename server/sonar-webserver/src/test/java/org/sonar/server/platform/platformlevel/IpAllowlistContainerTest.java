@@ -20,6 +20,7 @@
 package org.sonar.server.platform.platformlevel;
 
 import java.util.List;
+import java.util.Properties;
 import org.junit.Test;
 import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.utils.System2;
@@ -66,7 +67,7 @@ public class IpAllowlistContainerTest {
   public void container_creates_every_ip_allowlist_component() {
     SpringComponentContainer container = new SpringComponentContainer();
     try {
-      container.add(mock(DbClient.class), System2.INSTANCE, new MapSettings().asConfig(), new ThreadLocalUserSession(),
+      container.add(mock(DbClient.class), System2.INSTANCE, new MapSettings().asConfig(), new Properties(), new ThreadLocalUserSession(),
         mock(UserSessionFactory.class), mock(AuthenticationEvent.class), mock(RequestAuthenticator.class),
         mock(SettingsUpdater.class), mock(SettingsChangeNotifier.class), mock(SettingValidations.class));
       COMPONENTS.forEach(container::add);
@@ -74,6 +75,49 @@ public class IpAllowlistContainerTest {
       container.startComponents();
 
       COMPONENTS.forEach(type -> assertThat(container.getComponentByType(type)).as(type.getName()).isNotNull());
+    } finally {
+      container.stopComponents();
+    }
+  }
+
+  /**
+   * The web server's Configuration also returns values saved in the database, which Tomcat never reads. Only the
+   * process properties, the ones Tomcat is configured with, may decide whether the client address is trusted and
+   * which addresses are internal.
+   */
+  @Test
+  public void ip_access_reads_trusted_proxies_and_internal_ranges_from_the_process_properties_only() {
+    MapSettings configurationWithDatabaseValues = new MapSettings()
+      .setProperty(OrganizationIpAccess.TRUSTED_PROXIES_PROPERTY, ".*")
+      .setProperty(OrganizationIpAccess.INTERNAL_CIDR_PROPERTY, "0.0.0.0/0");
+    SpringComponentContainer container = new SpringComponentContainer();
+    try {
+      container.add(mock(DbClient.class), System2.INSTANCE, configurationWithDatabaseValues.asConfig(), new Properties(),
+        OrganizationIpAccess.class);
+      container.startComponents();
+
+      OrganizationIpAccess ipAccess = container.getComponentByType(OrganizationIpAccess.class);
+      assertThat(ipAccess.isTrustedProxiesSet()).isFalse();
+      assertThat(ipAccess.isInternalServiceAddress("203.0.113.9")).isFalse();
+    } finally {
+      container.stopComponents();
+    }
+  }
+
+  @Test
+  public void ip_access_uses_trusted_proxies_and_internal_ranges_set_in_the_process_properties() {
+    Properties processProperties = new Properties();
+    processProperties.setProperty(OrganizationIpAccess.TRUSTED_PROXIES_PROPERTY, "10\\.0\\.0\\.1");
+    processProperties.setProperty(OrganizationIpAccess.INTERNAL_CIDR_PROPERTY, "10.1.0.0/16, 10.2.0.0/16");
+    SpringComponentContainer container = new SpringComponentContainer();
+    try {
+      container.add(mock(DbClient.class), System2.INSTANCE, new MapSettings().asConfig(), processProperties, OrganizationIpAccess.class);
+      container.startComponents();
+
+      OrganizationIpAccess ipAccess = container.getComponentByType(OrganizationIpAccess.class);
+      assertThat(ipAccess.isTrustedProxiesSet()).isTrue();
+      assertThat(ipAccess.isInternalServiceAddress("10.2.3.4")).isTrue();
+      assertThat(ipAccess.isInternalServiceAddress("10.3.3.4")).isFalse();
     } finally {
       container.stopComponents();
     }
