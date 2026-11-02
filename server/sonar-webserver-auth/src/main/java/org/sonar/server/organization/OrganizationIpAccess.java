@@ -60,11 +60,17 @@ import static java.util.stream.Collectors.toSet;
  * run, and the load started last wins. Ages are counted from the start of the read, on a clock that never goes
  * backwards. A failed read is never kept. When no usable list can be had, the call throws
  * {@link OrganizationIpAccessUnavailableException}: callers must treat it as a failed request, never as allowed.
+ *
+ * <p>The client address can only be trusted when {@value #TRUSTED_PROXIES_PROPERTY} names the load balancers. Without
+ * it Tomcat takes X-Forwarded-For from any private address, so anyone inside the network can choose the address seen
+ * here. Then every address is treated as unknown: each organization with an allowlist blocks every request it applies
+ * to, and no address is internal.
  */
 @ServerSide
 public class OrganizationIpAccess {
 
   public static final String INTERNAL_CIDR_PROPERTY = "sonar.codescan.internalCidr";
+  public static final String TRUSTED_PROXIES_PROPERTY = "sonar.web.trustedProxiesRegex";
   static final long SNAPSHOT_TTL_MS = 30_000L;
   /** Oldest a snapshot may be and still answer while a reload is running or after a reload failed. */
   static final long MAX_STALE_MS = 2 * SNAPSHOT_TTL_MS;
@@ -94,6 +100,8 @@ public class OrganizationIpAccess {
   private final AtomicLong loadNumbers = new AtomicLong();
   private final long loadWaitTimeoutMs;
   private final long takeoverAfterMs;
+  private final boolean clientAddressTrusted;
+  private final AtomicLong lastUntrustedAddressLogAt;
 
   private volatile Snapshot snapshot;
 
@@ -113,9 +121,11 @@ public class OrganizationIpAccess {
     this.loadWaitTimeoutMs = loadWaitTimeoutMs;
     this.takeoverAfterMs = takeoverAfterMs;
     this.internalRanges = parseInternalRanges(config.getStringArray(INTERNAL_CIDR_PROPERTY));
+    this.clientAddressTrusted = config.get(TRUSTED_PROXIES_PROPERTY).filter(v -> !v.isBlank()).isPresent();
     long now = clock.getAsLong();
     this.lastBlockLogCleanupAt = new AtomicLong(now - BLOCK_LOG_CLEANUP_INTERVAL_MS);
     this.lastLoadFailureLogAt = new AtomicLong(now - BLOCK_LOG_INTERVAL_MS);
+    this.lastUntrustedAddressLogAt = new AtomicLong(now - BLOCK_LOG_INTERVAL_MS);
   }
 
   /**
@@ -132,7 +142,7 @@ public class OrganizationIpAccess {
       return false;
     }
     Policy policy = policies().get(organizationUuid);
-    if (policy == null || policy.allows(clientIp)) {
+    if (policy == null || policy.allows(trusted(clientIp))) {
       return false;
     }
     return policy.appliesToAdmins() || !isOrgAdmin.getAsBoolean();
@@ -146,8 +156,10 @@ public class OrganizationIpAccess {
    *         database is unavailable
    */
   public Set<String> blockedOrganizationUuids(@Nullable String clientIp) {
-    return policies().entrySet().stream()
-      .filter(e -> !e.getValue().allows(clientIp))
+    Map<String, Policy> policies = policies();
+    String address = policies.isEmpty() ? clientIp : trusted(clientIp);
+    return policies.entrySet().stream()
+      .filter(e -> !e.getValue().allows(address))
       .map(Map.Entry::getKey)
       .collect(toSet());
   }
@@ -159,10 +171,26 @@ public class OrganizationIpAccess {
    * that cannot be parsed is not internal.
    */
   public boolean isInternalServiceAddress(@Nullable String clientIp) {
-    if (clientIp == null || clientIp.indexOf('%') >= 0) {
+    if (!clientAddressTrusted || clientIp == null || clientIp.indexOf('%') >= 0) {
       return false;
     }
     return internalRanges.stream().anyMatch(r -> r.containsLiteral(clientIp));
+  }
+
+  /** Called only when an organization has an allowlist, so the error is logged only while it blocks requests. */
+  @Nullable
+  private String trusted(@Nullable String clientIp) {
+    if (clientAddressTrusted) {
+      return clientIp;
+    }
+    long now = clock.getAsLong();
+    long last = lastUntrustedAddressLogAt.get();
+    if (now - last >= BLOCK_LOG_INTERVAL_MS && lastUntrustedAddressLogAt.compareAndSet(last, now)) {
+      LOG.error("IP allowlist cannot be enforced: {} is not set, so the client address can be forged through X-Forwarded-For. "
+        + "Every organization with an IP allowlist blocks every request it applies to until it is set to the addresses of the load balancer",
+        TRUSTED_PROXIES_PROPERTY);
+    }
+    return null;
   }
 
   /**

@@ -46,6 +46,8 @@ import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.event.Level;
+import org.sonar.api.testfixtures.log.LogTester;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.sonar.process.NetworkUtilsImpl;
@@ -63,6 +65,8 @@ public class TomcatRemoteIpTest {
 
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
+  @Rule
+  public LogTester logTester = new LogTester();
 
   private final Tomcat mockTomcat = mock(Tomcat.class, Mockito.RETURNS_DEEP_STUBS);
   private Tomcat realTomcat;
@@ -89,6 +93,21 @@ public class TomcatRemoteIpTest {
     new TomcatRemoteIp().configure(mockTomcat, props("   "));
 
     assertThat(captureValve().getInternalProxies()).isEqualTo(new RemoteIpValve().getInternalProxies());
+  }
+
+  @Test
+  public void configure_warns_when_trusted_proxies_property_is_missing_or_blank() {
+    new TomcatRemoteIp().configure(mockTomcat, new Props(new Properties()));
+    new TomcatRemoteIp().configure(mockTomcat, props("   "));
+
+    assertThat(logTester.logs(Level.WARN)).filteredOn(l -> l.startsWith(PROPERTY + " is not set")).hasSize(2);
+  }
+
+  @Test
+  public void configure_does_not_warn_when_trusted_proxies_property_is_set() {
+    new TomcatRemoteIp().configure(mockTomcat, props("10\\.1\\.\\d{1,3}\\.\\d{1,3}"));
+
+    assertThat(logTester.logs(Level.WARN)).isEmpty();
   }
 
   @Test

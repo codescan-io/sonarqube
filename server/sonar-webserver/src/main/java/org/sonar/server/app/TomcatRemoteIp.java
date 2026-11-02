@@ -34,6 +34,7 @@ import org.apache.tomcat.util.http.MimeHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.process.Props;
+import org.sonar.server.organization.OrganizationIpAccess;
 
 /**
  * Makes getRemoteAddr() return the client address: X-Forwarded-For is read right to left and
@@ -49,7 +50,7 @@ class TomcatRemoteIp {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TomcatRemoteIp.class);
 
-  static final String TRUSTED_PROXIES_PROPERTY = "sonar.web.trustedProxiesRegex";
+  static final String TRUSTED_PROXIES_PROPERTY = OrganizationIpAccess.TRUSTED_PROXIES_PROPERTY;
   static final String FORWARDED_FOR_HEADER = "X-Forwarded-For";
   // a Catalina request note is internal to the container and not visible to servlets
   static final String ORIGINAL_FORWARDED_FOR_NOTE = "org.sonar.server.app.originalForwardedFor";
@@ -66,6 +67,9 @@ class TomcatRemoteIp {
       } catch (PatternSyntaxException e) {
         throw new IllegalArgumentException("Invalid regular expression in property " + TRUSTED_PROXIES_PROPERTY + ": " + e.getMessage(), e);
       }
+    } else {
+      LOGGER.warn("{} is not set: X-Forwarded-For is taken from any private address, and every organization with an IP allowlist "
+        + "blocks every request it applies to until it is set to the addresses of the load balancer", TRUSTED_PROXIES_PROPERTY);
     }
     tomcat.getEngine().getPipeline().addValve(valve);
     tomcat.getEngine().getPipeline().addValve(new ForwardedForRestoringValve());

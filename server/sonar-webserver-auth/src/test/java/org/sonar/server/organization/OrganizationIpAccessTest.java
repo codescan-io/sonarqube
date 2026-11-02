@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.Nullable;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -58,6 +59,9 @@ import static org.mockito.Mockito.when;
 public class OrganizationIpAccessTest {
 
   private static final long WALL_NOW = 1_700_000_000_000L;
+  private static final String TRUSTED_PROXIES = "sonar.web.trustedProxiesRegex";
+  private static final String LOAD_BALANCER = "10\\.0\\.0\\.2";
+  private static final String UNTRUSTED_ADDRESS_LOG = "IP allowlist cannot be enforced: sonar.web.trustedProxiesRegex is not set";
   private static final String RELOAD_FAILED_LOG = "Cannot reload the IP allowlist, using the last list read at most until it is 60 seconds old";
 
   @Rule
@@ -83,6 +87,7 @@ public class OrganizationIpAccessTest {
       range("org-admins", true, "198.51.100.7/32"),
       range("org-empty", false, null)));
     settings.setProperty("sonar.codescan.internalCidr", "10.0.0.0/16,10.1.0.0/16");
+    settings.setProperty(TRUSTED_PROXIES, LOAD_BALANCER);
     underTest = access(settings.asConfig());
   }
 
@@ -290,7 +295,7 @@ public class OrganizationIpAccessTest {
 
   @Test
   public void no_internal_ranges_configured_means_nothing_is_internal() {
-    OrganizationIpAccess noInternal = access(new MapSettings().asConfig());
+    OrganizationIpAccess noInternal = access(new MapSettings().setProperty(TRUSTED_PROXIES, LOAD_BALANCER).asConfig());
 
     assertThat(noInternal.isInternalServiceAddress("10.0.0.1")).isFalse();
   }
@@ -1344,6 +1349,71 @@ public class OrganizationIpAccessTest {
   }
 
   @Test
+  public void without_trusted_proxies_an_org_with_an_allowlist_blocks_even_an_address_inside_its_list() {
+    OrganizationIpAccess access = untrustedAccess("");
+
+    assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isTrue();
+    assertThat(access.isBlocked("org-admins", "198.51.100.7", () -> true)).isTrue();
+  }
+
+  @Test
+  public void without_trusted_proxies_admins_stay_exempt_where_the_allowlist_does_not_apply_to_them() {
+    OrganizationIpAccess access = untrustedAccess(null);
+
+    assertThat(access.isBlocked("org-a", "203.0.113.9", () -> true)).isFalse();
+  }
+
+  @Test
+  public void without_trusted_proxies_an_org_without_an_allowlist_is_not_blocked_and_nothing_is_logged() {
+    OrganizationIpAccess access = untrustedAccess(null);
+    logTester.clear();
+
+    assertThat(access.isBlocked("org-other", "192.0.2.1", () -> false)).isFalse();
+    assertThat(access.isBlocked(null, "192.0.2.1", () -> false)).isFalse();
+    assertThat(logTester.logs(Level.ERROR)).isEmpty();
+  }
+
+  @Test
+  public void without_trusted_proxies_every_org_with_an_allowlist_is_listed_as_blocked() {
+    OrganizationIpAccess access = untrustedAccess("   ");
+
+    assertThat(access.blockedOrganizationUuids("203.0.113.9")).containsExactlyInAnyOrder("org-a", "org-admins", "org-empty");
+  }
+
+  @Test
+  public void without_trusted_proxies_no_address_is_internal() {
+    OrganizationIpAccess access = untrustedAccess(null);
+
+    assertThat(access.isInternalServiceAddress("10.0.4.5")).isFalse();
+  }
+
+  @Test
+  public void without_trusted_proxies_no_allowlist_means_no_block_listed() {
+    when(dao.selectEnabledRanges(any())).thenReturn(List.of());
+    OrganizationIpAccess access = untrustedAccess(null);
+    logTester.clear();
+
+    assertThat(access.blockedOrganizationUuids("192.0.2.1")).isEmpty();
+    assertThat(logTester.logs(Level.ERROR)).isEmpty();
+  }
+
+  @Test
+  public void without_trusted_proxies_the_error_is_logged_once_a_minute() {
+    OrganizationIpAccess access = untrustedAccess(null);
+    logTester.clear();
+
+    access.isBlocked("org-a", "203.0.113.9", () -> false);
+    access.blockedOrganizationUuids("203.0.113.9");
+    clock.set(1_000_000L + OrganizationIpAccess.BLOCK_LOG_INTERVAL_MS - 1);
+    access.isBlocked("org-a", "203.0.113.9", () -> false);
+    assertThat(logTester.logs(Level.ERROR)).filteredOn(l -> l.startsWith(UNTRUSTED_ADDRESS_LOG)).hasSize(1);
+
+    clock.set(1_000_000L + OrganizationIpAccess.BLOCK_LOG_INTERVAL_MS);
+    access.isBlocked("org-a", "203.0.113.9", () -> false);
+    assertThat(logTester.logs(Level.ERROR)).filteredOn(l -> l.startsWith(UNTRUSTED_ADDRESS_LOG)).hasSize(2);
+  }
+
+  @Test
   public void load_count_is_released_when_ending_the_waits_throws_an_error() {
     OrganizationIpAccess access = new OrganizationIpAccess(dbClient, settings.asConfig(), clock::get, 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS) {
       @Override
@@ -1369,9 +1439,19 @@ public class OrganizationIpAccessTest {
     verify(dao, times(3)).selectEnabledRanges(any());
   }
 
+  private OrganizationIpAccess untrustedAccess(@Nullable String trustedProxies) {
+    MapSettings s = new MapSettings();
+    s.setProperty("sonar.codescan.internalCidr", "10.0.0.0/16");
+    if (trustedProxies != null) {
+      s.setProperty(TRUSTED_PROXIES, trustedProxies);
+    }
+    return access(s.asConfig());
+  }
+
   private OrganizationIpAccess accessWithInternal(String cidrs) {
     MapSettings s = new MapSettings();
     s.setProperty("sonar.codescan.internalCidr", cidrs);
+    s.setProperty(TRUSTED_PROXIES, LOAD_BALANCER);
     return access(s.asConfig());
   }
 
