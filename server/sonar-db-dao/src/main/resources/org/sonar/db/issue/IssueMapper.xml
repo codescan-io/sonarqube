@@ -255,6 +255,7 @@
     inner join issues s on s.kee = r.issue_key
     where r.transfer_uuid = #{transferUuid,jdbcType=VARCHAR}
       and s.resolution = 'EXCEPTION'
+      and (s.issue_resolution_expires_at is null or s.issue_resolution_expires_at &gt; #{now,jdbcType=BIGINT})
       and r.destination_issue_key in
       <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
   </select>

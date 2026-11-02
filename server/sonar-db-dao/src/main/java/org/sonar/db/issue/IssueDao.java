@@ -188,13 +188,13 @@ public class IssueDao implements Dao {
 
   /**
    * CodeScan: for each of {@code keys} that the resolution transfer {@code transferUuid} paired with a source issue
-   * that is still an exception, that source and its expiry. A key paired with several such sources appears once per
-   * source; a key with none is left out.
+   * that is still an exception and has not expired at {@code now}, that source and its expiry. A key paired with
+   * several such sources appears once per source; a key with none is left out.
    */
   public List<IssueExceptionSourceDto> selectExceptionSourcesOfTransfer(DbSession session, String transferUuid,
-    Collection<String> keys) {
+    Collection<String> keys, long now) {
     return executeLargeInputs(keys, partition -> mapper(session).selectExceptionSourcesOfTransfer(transferUuid,
-      partition));
+      partition, now));
   }
 
   /**

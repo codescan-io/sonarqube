@@ -102,7 +102,7 @@ public class IssueDaoBulkTransitionIT {
     pair(UUID.randomUUID().toString(), neverExpires, "D3");
 
     List<IssueExceptionSourceDto> sources = underTest.selectExceptionSourcesOfTransfer(db.getSession(), run,
-      List.of("D1", "D2", "D3", "D4"));
+      List.of("D1", "D2", "D3", "D4"), EXPIRES_AT - 1);
 
     assertThat(sources)
       .extracting(IssueExceptionSourceDto::getIssueKey, IssueExceptionSourceDto::getSourceKey,
@@ -111,6 +111,26 @@ public class IssueDaoBulkTransitionIT {
         tuple("D1", expiring.getKey(), EXPIRES_AT),
         tuple("D1", neverExpires.getKey(), null),
         tuple("D3", expiring.getKey(), EXPIRES_AT));
+  }
+
+  @Test
+  public void selectExceptionSourcesOfTransferLeavesOutASourceThatHasExpired() {
+    givenTheTransferReportTable();
+    IssueDto expiring = insertOpenIssue();
+    IssueDto neverExpires = insertOpenIssue();
+    underTest.bulkTransition(db.getSession(), List.of(expiring.getKey()), project.uuid(),
+      RESOLUTION_EXCEPTION, EXPIRES_AT, NOW);
+    underTest.bulkTransition(db.getSession(), List.of(neverExpires.getKey()), project.uuid(),
+      RESOLUTION_EXCEPTION, null, NOW);
+    db.getSession().commit();
+    String run = UUID.randomUUID().toString();
+    pair(run, expiring, "D1");
+    pair(run, neverExpires, "D2");
+
+    List<IssueExceptionSourceDto> sources = underTest.selectExceptionSourcesOfTransfer(db.getSession(), run,
+      List.of("D1", "D2"), EXPIRES_AT);
+
+    assertThat(sources).extracting(IssueExceptionSourceDto::getIssueKey).containsExactly("D2");
   }
 
   /** The resolution transfer report lives in CodeScan's schema, so the test database only gets the columns read. */

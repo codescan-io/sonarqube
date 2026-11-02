@@ -72,7 +72,7 @@ public interface IssueMapper {
 
   /** CodeScan: the source exception a resolution transfer paired each of {@code keys} with. */
   List<IssueExceptionSourceDto> selectExceptionSourcesOfTransfer(@Param("transferUuid") String transferUuid,
-    @Param("keys") List<String> keys);
+    @Param("keys") List<String> keys, @Param("now") long now);
 
   void insertAsNewCodeOnReferenceBranch(NewCodeReferenceIssueDto issue);
 

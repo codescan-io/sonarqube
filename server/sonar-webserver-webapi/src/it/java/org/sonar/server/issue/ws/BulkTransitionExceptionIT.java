@@ -56,7 +56,8 @@ import static org.sonar.db.issue.IssueChangeDto.TYPE_FIELD_CHANGE;
 /** CSN-82: the exception transition of {@code api/issues/bulk_transition}, copied from the source each issue's transfer paired it with. */
 public class BulkTransitionExceptionIT {
 
-  private static final long NOW = 2_000_000_000_000L;
+  /** Before every expiry these tests give a source, so only the ones set in the past have expired. */
+  private static final long NOW = utcMidnight("2026-06-01");
   private static final String REASON = "Approved until the vendor patch";
   private static final String OTHER_REASON = "Accepted risk for the legacy module";
   private static final String COMMENT = "Resolution transferred from src (branch- main)";
@@ -150,16 +151,44 @@ public class BulkTransitionExceptionIT {
   }
 
   @Test
-  public void aSourceThatIsNoLongerAnExceptionGivesNeitherExpiryNorReason() {
+  public void anIssueWhoseSourceIsNoLongerAnExceptionIsNotTransitioned() {
     givenAProject();
     IssueDto source = insertException(utcMidnight("2026-12-31"), REASON);
     dbClient.issueDao().update(db.getSession(), source.setStatus(STATUS_OPEN).setResolution(null));
     db.commit();
     IssueDto issue = insertOpenIssue();
 
-    exceptionRequest(List.of(issue), List.of(source)).execute();
+    String json = exceptionRequest(List.of(issue), List.of(source)).execute().getInput();
 
-    assertException(issue, null, null);
+    assertThat(json).contains("\"transitioned\":0").contains("\"notTransitioned\":[\"" + issue.getKey() + "\"]");
+    assertUntouched(issue);
+  }
+
+  @Test
+  public void anIssueWhoseSourceHasExpiredIsNotTransitioned() {
+    givenAProject();
+    IssueDto source = insertException(utcMidnight("2026-05-31"), REASON);
+    IssueDto issue = insertOpenIssue();
+
+    String json = exceptionRequest(List.of(issue), List.of(source)).execute().getInput();
+
+    assertThat(json).contains("\"transitioned\":0").contains("\"notTransitioned\":[\"" + issue.getKey() + "\"]");
+    assertUntouched(issue);
+  }
+
+  @Test
+  public void onlyTheIssuesWithoutASourceAreDeclinedFromAChunk() {
+    givenAProject();
+    IssueDto source = insertException(utcMidnight("2026-12-31"), REASON);
+    IssueDto expired = insertException(utcMidnight("2026-01-31"), OTHER_REASON);
+    IssueDto issue = insertOpenIssue();
+    IssueDto declined = insertOpenIssue();
+
+    String json = exceptionRequest(List.of(issue, declined), List.of(source, expired)).execute().getInput();
+
+    assertThat(json).contains("\"transitioned\":1").contains("\"notTransitioned\":[\"" + declined.getKey() + "\"]");
+    assertException(issue, utcMidnight("2026-12-31"), REASON);
+    assertUntouched(declined);
   }
 
   @Test
@@ -183,9 +212,11 @@ public class BulkTransitionExceptionIT {
     IssueDto issue = insertOpenIssue();
     pair(UUID.randomUUID().toString(), source, issue);
 
-    baseRequest(List.of(issue), "exception").setParam("transferUuid", transferUuid).execute();
+    String json = baseRequest(List.of(issue), "exception").setParam("transferUuid", transferUuid).execute()
+      .getInput();
 
-    assertException(issue, null, null);
+    assertThat(json).contains("\"notTransitioned\":[\"" + issue.getKey() + "\"]");
+    assertUntouched(issue);
   }
 
   @Test
@@ -266,6 +297,17 @@ public class BulkTransitionExceptionIT {
       assertThat(changeData(issue, TYPE_EXCEPTION_REASON)).isEmpty();
     } else {
       assertThat(changeData(issue, TYPE_EXCEPTION_REASON)).containsExactly(reason);
+    }
+  }
+
+  /** Still open, with no expiry and no changelog: nothing about it was written. */
+  private void assertUntouched(IssueDto issue) {
+    IssueDto reloaded = reload(issue);
+    assertThat(reloaded.getStatus()).isEqualTo(STATUS_OPEN);
+    assertThat(reloaded.getResolution()).isNull();
+    assertThat(reloaded.getIssueResolutionExpiresAt()).isNull();
+    for (String changeType : List.of(TYPE_FIELD_CHANGE, TYPE_EXCEPTION_REASON, TYPE_COMMENT)) {
+      assertThat(changeData(issue, changeType)).isEmpty();
     }
   }
 
