@@ -81,6 +81,7 @@ public class SetAction implements SettingsWsAction {
   private static final int VALUE_MAXIMUM_LENGTH = 4000;
   private static final String MSG_IP_ALLOWLIST_NEEDS_TRUSTED_PROXIES = "IP Allowlist cannot be turned on until the web server's trusted proxies are set ("
     + OrganizationIpAccess.TRUSTED_PROXIES_PROPERTY + ").";
+  private static final String MSG_IP_ALLOWLIST_TRUE_OR_FALSE = "Use true or false for " + OrganizationIpAccess.FEATURE_FLAG_PROPERTY + ".";
   private static final TypeToken<Map<String, String>> MAP_TYPE_TOKEN = new TypeToken<>() {
   };
   private static final Set<String> FORBIDDEN_KEYS = Set.of(GITLAB_AUTH_URL, GITHUB_API_URL, GITHUB_WEB_URL, MULTI_QUALITY_MODE_ENABLED);
@@ -194,6 +195,7 @@ public class SetAction implements SettingsWsAction {
       value = doHandlePropertySet(dbSession, request, definition, component);
     } else {
       validate(request);
+      checkIpAllowlistValue(request);
       checkIpAllowlistCanBeTurnedOn(request);
       PropertyDto property = toProperty(request, component);
       value = property.getValue();
@@ -248,6 +250,17 @@ public class SetAction implements SettingsWsAction {
     validations.validateQualifier(settingData);
     validations.validateValueType(settingData);
     validations.validateSSRF(settingData);
+  }
+
+  /**
+   * Every reader treats only the exact value {@code true} as on, while a BOOLEAN definition also accepts {@code TRUE}, so
+   * a value in another case would be saved and shown as on while the feature stays off.
+   */
+  private void checkIpAllowlistValue(SetRequest request) {
+    if (OrganizationIpAccess.FEATURE_FLAG_PROPERTY.equals(persistedKey(request))) {
+      String value = persistedValue(request);
+      checkRequest("true".equals(value) || "false".equals(value), MSG_IP_ALLOWLIST_TRUE_OR_FALSE);
+    }
   }
 
   /**

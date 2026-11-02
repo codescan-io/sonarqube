@@ -64,6 +64,7 @@ public class OrganizationIpAccessTest {
   private static final String FEATURE_FLAG = "codescan.cloud.ipAllowlist.enabled";
   private static final String LOAD_BALANCER = "10\\.0\\.0\\.2";
   private static final String UNTRUSTED_ADDRESS_LOG = "IP allowlist cannot be enforced: sonar.web.trustedProxiesRegex is not set";
+  private static final String FLAG_READ_FAILED_LOG = "Cannot read codescan.cloud.ipAllowlist.enabled, so the IP allowlist stays off as it was when last read";
   private static final String RELOAD_FAILED_LOG = "Cannot reload the IP allowlist, using the last list read at most until it is 60 seconds old";
 
   @Rule
@@ -283,13 +284,119 @@ public class OrganizationIpAccessTest {
   }
 
   @Test
-  public void failed_flag_read_is_thrown_to_the_caller_and_never_lets_the_request_in() {
+  public void failed_flag_read_before_any_successful_read_is_thrown_and_never_lets_the_request_in() {
     when(dao.selectGlobalPropertyValues(any(), eq(FEATURE_FLAG))).thenThrow(new IllegalStateException("db down"));
 
     assertThatThrownBy(() -> underTest.isBlocked("org-a", "192.0.2.1", () -> false))
       .isInstanceOf(OrganizationIpAccessUnavailableException.class)
       .hasRootCauseMessage("db down");
     assertThatThrownBy(() -> underTest.blockedOrganizationUuids("192.0.2.1")).isInstanceOf(OrganizationIpAccessUnavailableException.class);
+  }
+
+  @Test
+  public void failed_flag_read_after_the_flag_was_last_read_as_off_keeps_the_feature_off() {
+    setFeatureFlag("false");
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isFalse();
+    when(dao.selectGlobalPropertyValues(any(), eq(FEATURE_FLAG))).thenThrow(new IllegalStateException("db down"));
+    logTester.clear();
+
+    // past the age at which the last snapshot may still be used, so only the remembered value decides
+    clock.set(1_000_000L + OrganizationIpAccess.MAX_STALE_MS);
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isFalse();
+    assertThat(underTest.blockedOrganizationUuids(null)).isEmpty();
+    verify(dao, never()).selectEnabledRanges(any());
+    assertThat(logTester.logs(Level.WARN)).containsExactly(FLAG_READ_FAILED_LOG);
+
+    clock.set(1_000_000L + OrganizationIpAccess.MAX_STALE_MS + OrganizationIpAccess.SNAPSHOT_TTL_MS);
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isFalse();
+    verify(dao, times(3)).selectGlobalPropertyValues(any(), eq(FEATURE_FLAG));
+  }
+
+  @Test
+  public void failed_flag_read_after_the_flag_was_last_read_as_on_is_thrown_and_never_lets_the_request_in() {
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
+    when(dao.selectGlobalPropertyValues(any(), eq(FEATURE_FLAG))).thenThrow(new IllegalStateException("db down"));
+
+    clock.set(1_000_000L + OrganizationIpAccess.MAX_STALE_MS);
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false))
+      .isInstanceOf(OrganizationIpAccessUnavailableException.class)
+      .hasRootCauseMessage("db down");
+  }
+
+  @Test
+  public void failed_allowlist_read_after_the_flag_was_read_as_on_is_thrown_even_if_the_flag_was_off_before() {
+    setFeatureFlag("false");
+    assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> false)).isFalse();
+
+    setFeatureFlag("true");
+    when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
+    clock.set(1_000_000L + OrganizationIpAccess.MAX_STALE_MS);
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false))
+      .isInstanceOf(OrganizationIpAccessUnavailableException.class);
+
+    // the flag was last read as on, so a failed flag read no longer counts as off
+    when(dao.selectGlobalPropertyValues(any(), eq(FEATURE_FLAG))).thenThrow(new IllegalStateException("db down"));
+    assertThatThrownBy(() -> underTest.isBlocked("org-a", "203.0.113.9", () -> false))
+      .isInstanceOf(OrganizationIpAccessUnavailableException.class);
+  }
+
+  @Test(timeout = 30_000)
+  public void slow_flag_read_after_the_flag_was_last_read_as_off_keeps_the_feature_off_for_waiting_threads() throws Exception {
+    OrganizationIpAccess access = access(settings, 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    setFeatureFlag("false");
+    assertThat(access.isBlocked("org-a", "192.0.2.1", () -> false)).isFalse();
+    CountDownLatch readStarted = new CountDownLatch(1);
+    CountDownLatch finishRead = new CountDownLatch(1);
+    when(dao.selectGlobalPropertyValues(any(), eq(FEATURE_FLAG))).thenAnswer(invocation -> {
+      readStarted.countDown();
+      assertThat(finishRead.await(10, TimeUnit.SECONDS)).isTrue();
+      return List.of("false");
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      clock.set(1_000_000L + 55_000L);
+      Future<Boolean> leader = executor.submit(() -> access.isBlocked("org-a", "192.0.2.1", () -> false));
+      assertThat(readStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      clock.set(1_000_000L + OrganizationIpAccess.MAX_STALE_MS);
+      assertThat(access.isBlocked("org-a", "192.0.2.1", () -> false)).isFalse();
+
+      finishRead.countDown();
+      assertThat(leader.get(10, TimeUnit.SECONDS)).isFalse();
+    } finally {
+      finishRead.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 30_000)
+  public void slow_flag_read_after_the_flag_was_last_read_as_on_times_out_waiting_threads() throws Exception {
+    OrganizationIpAccess access = access(settings, 50L, OrganizationIpAccess.TAKEOVER_AFTER_MS);
+    assertThat(access.isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
+    CountDownLatch readStarted = new CountDownLatch(1);
+    CountDownLatch finishRead = new CountDownLatch(1);
+    when(dao.selectGlobalPropertyValues(any(), eq(FEATURE_FLAG))).thenAnswer(invocation -> {
+      readStarted.countDown();
+      assertThat(finishRead.await(10, TimeUnit.SECONDS)).isTrue();
+      return List.of("true");
+    });
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      clock.set(1_000_000L + 55_000L);
+      Future<Boolean> leader = executor.submit(() -> access.isBlocked("org-a", "192.0.2.1", () -> false));
+      assertThat(readStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      clock.set(1_000_000L + OrganizationIpAccess.MAX_STALE_MS);
+      assertThatThrownBy(() -> access.isBlocked("org-a", "192.0.2.1", () -> false))
+        .isInstanceOf(OrganizationIpAccessUnavailableException.class)
+        .hasMessageContaining("Timed out");
+
+      finishRead.countDown();
+      assertThat(leader.get(10, TimeUnit.SECONDS)).isTrue();
+    } finally {
+      finishRead.countDown();
+      executor.shutdownNow();
+    }
   }
 
   @Test

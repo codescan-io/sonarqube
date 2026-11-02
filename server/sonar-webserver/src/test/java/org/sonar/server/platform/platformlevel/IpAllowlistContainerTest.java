@@ -104,6 +104,34 @@ public class IpAllowlistContainerTest {
     }
   }
 
+  /**
+   * As in the running server: the startup properties and the database-backed Configuration are added to the first
+   * container, and the IP allowlist to a later child container.
+   */
+  @Test
+  public void ip_access_in_a_child_container_gets_the_startup_properties_of_the_parent() {
+    Properties processProperties = new Properties();
+    processProperties.setProperty(OrganizationIpAccess.TRUSTED_PROXIES_PROPERTY, "10\\.0\\.0\\.1");
+    processProperties.setProperty(OrganizationIpAccess.INTERNAL_CIDR_PROPERTY, "10.2.0.0/16");
+    MapSettings configurationWithDatabaseValues = new MapSettings()
+      .setProperty(OrganizationIpAccess.INTERNAL_CIDR_PROPERTY, "0.0.0.0/0");
+    SpringComponentContainer parent = new SpringComponentContainer();
+    try {
+      parent.add(mock(DbClient.class), System2.INSTANCE, configurationWithDatabaseValues.asConfig(), processProperties);
+      parent.startComponents();
+      SpringComponentContainer child = parent.createChild();
+      child.add(OrganizationIpAccess.class);
+      child.startComponents();
+
+      OrganizationIpAccess ipAccess = child.getComponentByType(OrganizationIpAccess.class);
+      assertThat(ipAccess.isTrustedProxiesSet()).isTrue();
+      assertThat(ipAccess.isInternalServiceAddress("10.2.3.4")).isTrue();
+      assertThat(ipAccess.isInternalServiceAddress("203.0.113.9")).isFalse();
+    } finally {
+      parent.stopComponents();
+    }
+  }
+
   @Test
   public void ip_access_uses_trusted_proxies_and_internal_ranges_set_in_the_process_properties() {
     Properties processProperties = new Properties();

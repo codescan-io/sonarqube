@@ -55,7 +55,9 @@ import static java.util.stream.Collectors.toSet;
  *
  * <p>While the global setting {@value #FEATURE_FLAG_PROPERTY} is not {@code true}, the feature is off: no organization is
  * blocked and the stored ranges are not read. The setting is read in the same load as the allowlists, so a change takes
- * effect on the next reload.
+ * effect on the next reload. When the setting cannot be read and was off when last read, the feature stays off, so a
+ * database problem does not block organizations while the feature is off. Before the first successful read, or when
+ * it was last read as on, a failed read is handled like a failed allowlist read.
  *
  * <p>All enabled allowlists are read in one query and kept for {@link #SNAPSHOT_TTL_MS}. One caller reloads an
  * expired snapshot while the others keep using it until it is {@link #MAX_STALE_MS} old, also when the reload
@@ -111,6 +113,8 @@ public class OrganizationIpAccess {
   private final AtomicLong lastUntrustedAddressLogAt;
 
   private volatile Snapshot snapshot;
+  /** The setting {@value #FEATURE_FLAG_PROPERTY} as last read, by the load started last; null until a read succeeds. */
+  private final AtomicReference<FlagReading> lastFlagReading = new AtomicReference<>();
 
   /**
    * {@code system2} is not read: the wall clock can be set back or forward, so every age and deadline here is
@@ -300,7 +304,7 @@ public class OrganizationIpAccess {
         mine.result().complete(current);
         return current.policies();
       }
-      Snapshot loaded = new Snapshot(load(), mine.number(), mine.startedAt());
+      Snapshot loaded = new Snapshot(load(mine.number()), mine.number(), mine.startedAt());
       publish(loaded);
       mine.result().complete(loaded);
       return loaded.policies();
@@ -358,6 +362,9 @@ public class OrganizationIpAccess {
     if (current != null && current.isUsableWhenStale(clock.getAsLong())) {
       return current.policies();
     }
+    if (wasFlagLastReadAsOff()) {
+      return Map.of();
+    }
     throw new OrganizationIpAccessUnavailableException(message, cause);
   }
 
@@ -370,13 +377,22 @@ public class OrganizationIpAccess {
     }
   }
 
-  private Map<String, Policy> load() {
+  private Map<String, Policy> load(long loadNumber) {
     List<IpAllowlistRangeDto> rows;
+    Boolean featureOn = null;
     try (DbSession dbSession = dbClient.openSession(false)) {
-      if (dbClient.ipAllowlistDao().selectGlobalPropertyValues(dbSession, FEATURE_FLAG_PROPERTY).stream().noneMatch(OrganizationIpAccess::isFeatureOn)) {
+      featureOn = dbClient.ipAllowlistDao().selectGlobalPropertyValues(dbSession, FEATURE_FLAG_PROPERTY).stream().anyMatch(OrganizationIpAccess::isFeatureOn);
+      rememberFlag(new FlagReading(loadNumber, featureOn));
+      if (!featureOn) {
         return Map.of();
       }
       rows = dbClient.ipAllowlistDao().selectEnabledRanges(dbSession);
+    } catch (RuntimeException e) {
+      if (!Boolean.TRUE.equals(featureOn) && wasFlagLastReadAsOff()) {
+        logFlagReadFailure(e);
+        return Map.of();
+      }
+      throw e;
     }
     Map<String, Boolean> appliesToAdmins = new HashMap<>();
     Map<String, List<IpRangeMatcher>> ranges = new HashMap<>();
@@ -396,6 +412,28 @@ public class OrganizationIpAccess {
     Map<String, Policy> result = new HashMap<>();
     appliesToAdmins.forEach((org, applies) -> result.put(org, new Policy(applies, List.copyOf(ranges.get(org)))));
     return Map.copyOf(result);
+  }
+
+  /** A load that was taken over can finish after the one that took over from it: the load started last wins. */
+  private void rememberFlag(FlagReading reading) {
+    lastFlagReading.accumulateAndGet(reading, (last, next) -> last == null || next.loadNumber() > last.loadNumber() ? next : last);
+  }
+
+  private boolean wasFlagLastReadAsOff() {
+    FlagReading last = lastFlagReading.get();
+    return last != null && !last.on();
+  }
+
+  /** Logged at most once a minute, as a failed allowlist read is. */
+  private void logFlagReadFailure(RuntimeException e) {
+    long now = clock.getAsLong();
+    long last = lastLoadFailureLogAt.get();
+    if (now - last >= BLOCK_LOG_INTERVAL_MS && lastLoadFailureLogAt.compareAndSet(last, now)) {
+      LOG.warn("Cannot read {}, so the IP allowlist stays off as it was when last read", FEATURE_FLAG_PROPERTY, e);
+    }
+  }
+
+  private record FlagReading(long loadNumber, boolean on) {
   }
 
   /** The snapshot is reloaded every {@link #SNAPSHOT_TTL_MS}, so a range that stays bad is reported once. */

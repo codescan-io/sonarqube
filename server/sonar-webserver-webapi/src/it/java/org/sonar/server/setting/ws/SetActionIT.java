@@ -86,6 +86,7 @@ public class SetActionIT {
 
   private static final Gson GSON = GsonHelper.create();
   private static final String IP_ALLOWLIST_FLAG = "codescan.cloud.ipAllowlist.enabled";
+  private static final String IP_ALLOWLIST_TRUE_OR_FALSE = "Use true or false for codescan.cloud.ipAllowlist.enabled.";
   private static final String IP_ALLOWLIST_REFUSED = "IP Allowlist cannot be turned on until the web server's trusted proxies are set "
     + "(sonar.web.trustedProxiesRegex).";
 
@@ -714,6 +715,54 @@ public class SetActionIT {
     assertThatThrownBy(() -> callForMultiValueGlobalSetting(IP_ALLOWLIST_FLAG, List.of("true")))
       .isInstanceOf(BadRequestException.class)
       .hasMessage("Parameter 'value' must be used for single value setting. Parameter 'values' must be used for multi value setting.");
+  }
+
+  @Test
+  public void ip_allowlist_setting_accepts_only_lower_case_true_or_false() {
+    definitions.addComponent(PropertyDefinition.builder(IP_ALLOWLIST_FLAG).type(PropertyType.BOOLEAN).defaultValue("false").build());
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+
+    for (String value : List.of("TRUE", "True", "FALSE", "False")) {
+      assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, value))
+        .as(value)
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage(IP_ALLOWLIST_TRUE_OR_FALSE);
+    }
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+  }
+
+  @Test
+  public void ip_allowlist_setting_accepts_only_lower_case_true_or_false_through_the_values_parameter() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting(IP_ALLOWLIST_FLAG, List.of("True")))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_TRUE_OR_FALSE);
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting(IP_ALLOWLIST_FLAG, List.of("true", "true")))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_TRUE_OR_FALSE);
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+  }
+
+  @Test
+  public void ip_allowlist_setting_accepts_only_true_or_false_when_it_is_not_defined() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+
+    for (String value : List.of("yes", "1", "on")) {
+      assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, value))
+        .as(value)
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage(IP_ALLOWLIST_TRUE_OR_FALSE);
+    }
+  }
+
+  @Test
+  public void ip_allowlist_setting_in_the_wrong_case_gets_the_true_or_false_message_even_without_trusted_proxies() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "TRUE"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_TRUE_OR_FALSE);
   }
 
   @Test
