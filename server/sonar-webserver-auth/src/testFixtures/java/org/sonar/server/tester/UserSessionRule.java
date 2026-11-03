@@ -23,6 +23,7 @@ import com.google.common.base.Preconditions;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
@@ -134,6 +135,21 @@ public class UserSessionRule implements TestRule, UserSession, BeforeTestExecuti
 
   public UserSessionRule setNonSystemAdministrator() {
     ensureMockUserSession().setSystemAdministrator(false);
+    return this;
+  }
+
+  public UserSessionRule setIpBlockedOrganizationUuids(String... organizationUuids) {
+    ensureAbstractMockUserSession().setIpBlockedOrganizationUuids(organizationUuids);
+    return this;
+  }
+
+  public UserSessionRule setIpBlockedOrganizations(OrganizationDto... organizations) {
+    ensureAbstractMockUserSession().setIpBlockedOrganizations(organizations);
+    return this;
+  }
+
+  public UserSessionRule setClientIp(@Nullable String clientIp) {
+    ensureAbstractMockUserSession().setClientIp(clientIp);
     return this;
   }
 
@@ -464,6 +480,32 @@ public class UserSessionRule implements TestRule, UserSession, BeforeTestExecuti
 
   @Override
   public void checkMembership(OrganizationDto organization) {
+  }
+
+  @Override
+  public boolean isBlockedByIpAllowlist(@Nullable String organizationUuid) {
+    return currentUserSession.isBlockedByIpAllowlist(organizationUuid);
+  }
+
+  @Override
+  public boolean isBlockedByIpAllowlistForKey(@Nullable String organizationKey) {
+    return currentUserSession.isBlockedByIpAllowlistForKey(organizationKey);
+  }
+
+  @Override
+  public boolean mayBeBlockedByIpAllowlist() {
+    return currentUserSession.mayBeBlockedByIpAllowlist();
+  }
+
+  @Override
+  public Set<String> getIpBlockedOrganizationUuids() {
+    return currentUserSession.getIpBlockedOrganizationUuids();
+  }
+
+  @Override
+  @CheckForNull
+  public String getClientIp() {
+    return currentUserSession.getClientIp();
   }
 
   public void flagSessionAsGui() {

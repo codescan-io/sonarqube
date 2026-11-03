@@ -74,6 +74,10 @@ public class DbVersion108 implements DbVersion {
       .add(10_8_031, "Add 'codefix_status' column to 'issues' table", AddCodefixStatusColumnToIssuesTable.class)
       .add(10_8_032, "Update 'is_archived' column default value to 'false' in 'organizations' table", AlterArchiveColumnsToFalse.class)
       .add(10_8_033, "Add 'issue_ai_metadata' column to 'issues' table", AddIssueAiMetadataColumnToIssuesTable.class)
+      .add(10_8_034, "Add 'ip_allowlist_enabled' and 'ip_allowlist_applies_to_admins' columns to 'organizations' table",
+        AddIpAllowlistColumnsToOrganizationsTable.class)
+      .add(10_8_035, "Create 'cs_ip_allowlist_range' table", CreateIpAllowlistRangeTable.class)
+      .add(10_8_036, "Create indexes on 'cs_ip_allowlist_range' table", CreateIndexesOnIpAllowlistRangeTable.class)
     ;
   }
 

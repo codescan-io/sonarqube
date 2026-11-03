@@ -64,6 +64,7 @@ public class ProjectFinder {
       candidateProjects = new HashSet<>();
       candidateProjects.addAll(projectsWithDirectScanPermission);
       candidateProjects.addAll(projectsWithOrgLevelScanPermissions);
+      candidateProjects.removeIf(p -> userSession.isBlockedByIpAllowlist(p.getOrganizationUuid()));
     }
 
     Set<ProjectDto> filteredProjects = filterByQuery(searchQuery, candidateProjects);

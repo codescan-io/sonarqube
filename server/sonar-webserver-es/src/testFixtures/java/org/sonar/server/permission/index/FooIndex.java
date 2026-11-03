@@ -42,7 +42,7 @@ public class FooIndex {
     SearchHits hits = esClient.search(EsClient.prepareSearch(DESCRIPTOR.getName())
         .source(new SearchSourceBuilder().query(QueryBuilders.boolQuery()
           .must(QueryBuilders.termQuery(FooIndexDefinition.FIELD_PROJECT_UUID, projectUuid))
-          .filter(authorizationTypeSupport.createQueryFilter()))))
+          .filter(authorizationTypeSupport.createQueryFilter(FooIndexDefinition.FIELD_ORGANIZATION_UUID)))))
       .getHits();
     List<String> names = Arrays.stream(hits.getHits())
       .map(h -> h.getSourceAsMap().get(FooIndexDefinition.FIELD_NAME).toString())

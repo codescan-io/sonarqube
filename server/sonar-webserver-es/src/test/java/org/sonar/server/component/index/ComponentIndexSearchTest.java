@@ -135,6 +135,30 @@ public class ComponentIndexSearchTest {
       .doesNotContain(unauthorizedProject.getUuid());
   }
 
+  @Test
+  public void search_and_suggestions_leave_out_projects_of_organizations_blocked_by_their_ip_allowlist() {
+    ProjectData allowed = db.components().insertPrivateProject(c -> c.setName("Shiny allowed").setOrganizationUuid("org-allowed"),
+      p -> p.setOrganizationUuid("org-allowed"));
+    ProjectData blocked = db.components().insertPrivateProject(c -> c.setName("Shiny blocked").setOrganizationUuid("org-blocked"),
+      p -> p.setOrganizationUuid("org-blocked"));
+    index(allowed.getProjectDto(), blocked.getProjectDto());
+    SuggestionQuery suggestionQuery = SuggestionQuery.builder().setQuery("shiny").setQualifiers(List.of(ComponentQualifiers.PROJECT)).build();
+
+    userSession.logIn().setIpBlockedOrganizationUuids("org-blocked");
+    SearchIdResult<String> result = underTest.search(ComponentQuery.builder().build(), new SearchOptions());
+    assertThat(result.getUuids()).containsExactly(allowed.projectUuid());
+    assertThat(result.getTotal()).isOne();
+    assertThat(underTest.search(ComponentQuery.builder().setOrganization("org-blocked").build(), new SearchOptions()).getUuids()).isEmpty();
+    assertThat(underTest.searchSuggestions(suggestionQuery, features.get()).getQualifiers())
+      .flatExtracting(ComponentHitsPerQualifier::getHits)
+      .extracting(ComponentHit::getUuid)
+      .containsExactly(allowed.projectUuid());
+
+    userSession.logIn();
+    assertThat(underTest.search(ComponentQuery.builder().build(), new SearchOptions()).getUuids())
+      .containsExactlyInAnyOrder(allowed.projectUuid(), blocked.projectUuid());
+  }
+
   private void index(EntityDto... components) {
     indexer.indexAll();
     Arrays.stream(components).forEach(authorizationIndexerTester::allowOnlyAnyone);

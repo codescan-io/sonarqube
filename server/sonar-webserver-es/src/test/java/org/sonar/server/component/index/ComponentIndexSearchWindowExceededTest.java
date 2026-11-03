@@ -48,7 +48,7 @@ public class ComponentIndexSearchWindowExceededTest {
   @Test
   public void search_shouldUseAccurateCountTrackParameterAndNotLimitCountTo10000() {
     // bypassing the permission check
-    when(authorizationTypeSupport.createQueryFilter()).thenReturn(QueryBuilders.matchAllQuery());
+    when(authorizationTypeSupport.createQueryFilter(ComponentIndexDefinition.FIELD_ORGANIZATION_UUID)).thenReturn(QueryBuilders.matchAllQuery());
 
     underTest.search(ComponentQuery.builder().build(), new SearchOptions().setPage(2, 3));
 

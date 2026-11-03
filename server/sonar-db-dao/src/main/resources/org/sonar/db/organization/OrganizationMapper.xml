@@ -15,6 +15,8 @@
     org.updated_at as "updatedAt",
     org.is_archived as "isArchived",
     org.archived_at as "archivedAt",
+    org.ip_allowlist_enabled as "ipAllowlistEnabled",
+    org.ip_allowlist_applies_to_admins as "ipAllowlistAppliesToAdmins",
     org.invite_users_enabled as "inviteUsersEnabled"
   </sql>
 

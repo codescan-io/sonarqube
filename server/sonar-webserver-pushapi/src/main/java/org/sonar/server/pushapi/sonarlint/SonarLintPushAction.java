@@ -109,7 +109,8 @@ public class SonarLintPushAction extends ServerPushAction {
 
     Set<String> projectUuids = projectDtos.stream().map(ProjectDto::getUuid).collect(Collectors.toSet());
 
-    SonarLintClient sonarLintClient = new SonarLintClient(sonarLintPushEventExecutorService, asyncContext, projectUuids, params.getLanguages(), userSession.getUuid());
+    SonarLintClient sonarLintClient = new SonarLintClient(sonarLintPushEventExecutorService, asyncContext, projectUuids, params.getLanguages(), userSession.getUuid(),
+      userSession.getClientIp());
 
     clientsRegistry.registerClient(sonarLintClient);
 

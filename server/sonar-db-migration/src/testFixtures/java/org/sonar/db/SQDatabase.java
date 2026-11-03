@@ -56,6 +56,8 @@ import static com.google.common.base.Preconditions.checkState;
 
 public class SQDatabase extends DefaultDatabase {
   private static final String IGNORED_KEYWORDS_OPTION = ";NON_KEYWORDS=VALUE";
+  /** Tables and columns that codescanng creates in production, so the fork has no migration for them. */
+  private static final String CODESCANNG_SCHEMA_SCRIPT = "org/sonar/db/codescanng-test-schema.sql";
   private final boolean createSchema;
   @Nullable
   private final Class<? extends MigrationStep> migrationStep;
@@ -127,6 +129,9 @@ public class SQDatabase extends DefaultDatabase {
       // create and populate schema
       createMigrationHistoryTable(noopDatabase);
       executeDbMigrations(noopDatabase, migrationStep);
+      if (migrationStep == null) {
+        executeScript(connection, CODESCANNG_SCHEMA_SCRIPT);
+      }
     } catch (SQLException e) {
       throw new IllegalStateException("Fail to create schema", e);
     } finally {

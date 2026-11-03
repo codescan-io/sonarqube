@@ -23,6 +23,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
+import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,12 @@ public class DatabaseTestUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseTestUtils.class);
 
+  /**
+   * Tables that codescanng owns in production, so they are not in {@link SqTables#TABLES}. Without this, rows
+   * written by one test would stay for the next one.
+   */
+  private static final List<String> CODESCANNG_TABLES = List.of("cs_ip_allowlist_range", "organization_members", "organizations");
+
   private DatabaseTestUtils() {
 
   }
@@ -43,7 +51,7 @@ public class DatabaseTestUtils {
     try (Connection connection = dataSource.getConnection()) {
       connection.setAutoCommit(false);
       try (Statement statement = connection.createStatement()) {
-        for (String table : SqTables.TABLES) {
+        for (String table : Stream.concat(SqTables.TABLES.stream(), CODESCANNG_TABLES.stream()).toList()) {
           try {
             if (shouldTruncate(connection, table)) {
               statement.executeUpdate(truncateSql(table));
