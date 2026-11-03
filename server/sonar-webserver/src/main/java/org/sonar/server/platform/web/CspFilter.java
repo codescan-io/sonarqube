@@ -94,7 +94,7 @@ public class CspFilter implements Filter {
         List<String> cspPolicies = new ArrayList<>();
         cspPolicies.add("default-src 'self'");
         cspPolicies.add("base-uri 'none'");
-        cspPolicies.add("img-src * data: blob:");
+        cspPolicies.add(telemetryDisabled ? "img-src 'self' data: blob:" : "img-src * data: blob:");
         cspPolicies.add("object-src 'none'");
         cspPolicies.add("font-src 'self' data:");
         cspPolicies.add("worker-src 'none'");
@@ -110,10 +110,10 @@ public class CspFilter implements Filter {
     }
 
     private static String buildConnectSrc(boolean pendoDisabled, boolean telemetryDisabled) {
-        String src = "connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com http://localhost:*";
-        if (!telemetryDisabled) {
-            src += " https:";
-        }
+        String src = telemetryDisabled
+                ? "connect-src 'self' http://localhost:*"
+                : "connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com "
+                        + "http://localhost:* https:";
         if (!pendoDisabled) {
             src += " app.pendo.io data.pendo.io pendo-static-6580644462460928.storage.googleapis.com";
         }
@@ -132,10 +132,11 @@ public class CspFilter implements Filter {
             String contextPath) {
         // Dropping 'unsafe-inline' requires the window.__assetsPath script in index.html to be
         // hash-pinned, which is how the default policy already serves the same bundle.
-        String hosts = "https://edge.fullstory.com https://rs.fullstory.com https://static.zdassets.com";
         String src = telemetryDisabled
-                ? "script-src 'self' " + getAssetsPathScriptCSPHash(contextPath) + " " + hosts
-                : "script-src 'self' " + hosts + " 'unsafe-inline' 'unsafe-eval'";
+                ? "script-src 'self' " + getAssetsPathScriptCSPHash(contextPath)
+                : "script-src 'self' https://edge.fullstory.com https://rs.fullstory.com "
+                        + "https://static.zdassets.com https://connect.facebook.net https://snap.licdn.com "
+                        + "'unsafe-inline' 'unsafe-eval'";
         if (!pendoDisabled) {
             src += " https://pendo-io-static.storage.googleapis.com"
                     + " pendo-static-6580644462460928.storage.googleapis.com"
