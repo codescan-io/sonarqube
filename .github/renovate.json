@@ -38,7 +38,7 @@
     "org.sonarsource.javascript:sonar-javascript-plugin",
     "org.sonarsource.php:sonar-php-plugin",
     "org.sonarsource.python:sonar-python-plugin",
-    "org.sonarsource.slang:sonar-go-plugin",
+    "org.sonarsource.go:sonar-go-plugin",
     "org.sonarsource.kotlin:sonar-kotlin-plugin",
     "org.sonarsource.slang:sonar-ruby-plugin",
     "org.sonarsource.slang:sonar-scala-plugin",
