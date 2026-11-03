@@ -130,8 +130,18 @@ export async function parseCodescanErrorMessage(error: unknown): Promise<string 
  * Validate an XPath expression against a code sample.
  * Backend expects a JSON body (XPathValidationRequest), so this uses postJSONBody.
  */
-export function validateAIXPath(request: ValidateXPathRequest): Promise<ValidationResult> {
-  return postJSONBody('/_codescan/ai-rules/validate-xpath', request);
+export function validateAIXPath({
+  xpath,
+  code,
+  ...request
+}: ValidateXPathRequest): Promise<ValidationResult> {
+  // The parent axis `..` in an XPath and the SOQL in a code sample can match the path traversal and
+  // SQL injection signatures of a WAF body inspection, so both are sent base64url-encoded.
+  return postJSONBody('/_codescan/ai-rules/validate-xpath', {
+    ...request,
+    encodedXpath: encodeBase64Url(xpath),
+    encodedCode: encodeBase64Url(code),
+  });
 }
 
 /**

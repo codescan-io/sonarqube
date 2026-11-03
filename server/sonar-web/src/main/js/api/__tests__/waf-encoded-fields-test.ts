@@ -18,7 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { generateAIXPath } from '../../apps/coding-rules/components/ai-custom-rules/aiRuleService';
+import {
+  generateAIXPath,
+  validateAIXPath,
+} from '../../apps/coding-rules/components/ai-custom-rules/aiRuleService';
 import { axiosToCatch, postJSON, postJSONBody } from '../../helpers/request';
 import { addIssueComment, editIssueComment } from '../issues';
 import { createLink } from '../projectLinks';
@@ -132,4 +135,19 @@ it('should send AI rule description encoded', async () => {
   );
   expect(body).toMatchObject({ organization: 'org', ruleKey: 'my_rule' });
   expectEncodedOnly(body, 'description', 'encodedDescription');
+});
+
+it('should send AI rule validation xpath and code encoded', async () => {
+  const xpath = '//MethodCallExpression/../BlockStatement';
+  await validateAIXPath({ xpath, code: TEXT, language: 'apex', organization: 'org' });
+
+  const body = lastBody(postJSONBody);
+  expect(postJSONBody).toHaveBeenLastCalledWith(
+    '/_codescan/ai-rules/validate-xpath',
+    expect.anything(),
+  );
+  expect(body).toMatchObject({ language: 'apex', organization: 'org' });
+  expect(body.xpath).toBeUndefined();
+  expect(decodeBase64Url(body.encodedXpath)).toBe(xpath);
+  expectEncodedOnly(body, 'code', 'encodedCode');
 });
