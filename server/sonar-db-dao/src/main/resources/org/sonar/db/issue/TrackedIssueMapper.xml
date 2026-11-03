@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "mybatis-3-mapper.dtd">
+
+<mapper namespace="org.sonar.db.issue.TrackedIssueMapper">
+
+  <sql id="selectColumns">
+    h.uuid as "uuid",
+    h.organization_uuid as "organizationUuid",
+    h.project_uuid as "projectUuid",
+    h.branch_uuid as "branchUuid",
+    h.branch_key as "branchKey",
+    h.branch_type as "branchType",
+    h.base_branch_key as "baseBranchKey",
+    h.issue_key as "issueKey",
+    h.rule_uuid as "ruleUuid",
+    h.rule_key as "ruleKey",
+    h.component_key as "componentKey",
+    h.line as "line",
+    h.message as "message",
+    h.severity as "severity",
+    h.issue_type as "issueType",
+    h.clean_code_attribute as "cleanCodeAttribute",
+    h.impacts as "impacts",
+    h.tags as "tags",
+    h.author_login as "authorLogin",
+    h.assignee_uuid as "assigneeUuid",
+    h.effort as "effort",
+    h.issue_status as "issueStatus",
+    h.status as "status",
+    h.resolution as "resolution",
+    h.issue_creation_date as "issueCreationDate",
+    h.issue_close_date as "issueCloseDate",
+    h.captured_at as "capturedAt",
+    h.captured_by as "capturedBy",
+    h.captured_by_uuid as "capturedByUuid"
+  </sql>
+
+  <insert id="insert" parameterType="map" useGeneratedKeys="false">
+    insert into cs_tracked_issue
+    (
+      uuid,
+      organization_uuid,
+      project_uuid,
+      branch_uuid,
+      branch_key,
+      branch_type,
+      base_branch_key,
+      issue_key,
+      rule_uuid,
+      rule_key,
+      component_key,
+      line,
+      message,
+      severity,
+      issue_type,
+      clean_code_attribute,
+      impacts,
+      tags,
+      author_login,
+      assignee_uuid,
+      effort,
+      issue_status,
+      status,
+      resolution,
+      issue_creation_date,
+      issue_close_date,
+      captured_at,
+      captured_by,
+      captured_by_uuid
+    )
+    values
+    (
+      #{dto.uuid, jdbcType=VARCHAR},
+      #{dto.organizationUuid, jdbcType=VARCHAR},
+      #{dto.projectUuid, jdbcType=VARCHAR},
+      #{dto.branchUuid, jdbcType=VARCHAR},
+      #{dto.branchKey, jdbcType=VARCHAR},
+      #{dto.branchType, jdbcType=VARCHAR},
+      #{dto.baseBranchKey, jdbcType=VARCHAR},
+      #{dto.issueKey, jdbcType=VARCHAR},
+      #{dto.ruleUuid, jdbcType=VARCHAR},
+      #{dto.ruleKey, jdbcType=VARCHAR},
+      #{dto.componentKey, jdbcType=VARCHAR},
+      #{dto.line, jdbcType=INTEGER},
+      #{dto.message, jdbcType=VARCHAR},
+      #{dto.severity, jdbcType=VARCHAR},
+      #{dto.issueType, jdbcType=VARCHAR},
+      #{dto.cleanCodeAttribute, jdbcType=VARCHAR},
+      #{dto.impacts, jdbcType=VARCHAR},
+      #{dto.tags, jdbcType=VARCHAR},
+      #{dto.authorLogin, jdbcType=VARCHAR},
+      #{dto.assigneeUuid, jdbcType=VARCHAR},
+      #{dto.effort, jdbcType=INTEGER},
+      #{dto.issueStatus, jdbcType=VARCHAR},
+      #{dto.status, jdbcType=VARCHAR},
+      #{dto.resolution, jdbcType=VARCHAR},
+      #{dto.issueCreationDate, jdbcType=BIGINT},
+      #{dto.issueCloseDate, jdbcType=BIGINT},
+      #{dto.capturedAt, jdbcType=BIGINT},
+      #{dto.capturedBy, jdbcType=VARCHAR},
+      #{dto.capturedByUuid, jdbcType=VARCHAR}
+    )
+  </insert>
+
+  <select id="selectCapturedIssueKeys" parameterType="map" resultType="String">
+    select h.issue_key
+    from cs_tracked_issue h
+    where
+      h.project_uuid = #{projectUuid, jdbcType=VARCHAR}
+      and h.branch_key = #{branchKey, jdbcType=VARCHAR}
+      and h.issue_status = #{issueStatus, jdbcType=VARCHAR}
+      and h.issue_key in
+      <foreach collection="issueKeys" open="(" close=")" item="issueKey" separator=",">
+        #{issueKey, jdbcType=VARCHAR}
+      </foreach>
+  </select>
+
+  <select id="scrollByProjectUuid" parameterType="map" resultType="org.sonar.db.issue.TrackedIssueDto"
+          fetchSize="${_scrollFetchSize}" resultSetType="FORWARD_ONLY">
+    select
+      <include refid="selectColumns"/>
+    from cs_tracked_issue h
+    where
+      h.project_uuid = #{projectUuid, jdbcType=VARCHAR}
+      and h.issue_status = #{issueStatus, jdbcType=VARCHAR}
+      <if test="branchKeys != null and branchKeys.size() > 0">
+        and h.branch_key in
+        <foreach collection="branchKeys" open="(" close=")" item="branchKey" separator=",">
+          #{branchKey, jdbcType=VARCHAR}
+        </foreach>
+      </if>
+    order by h.captured_at, h.uuid
+  </select>
+
+  <select id="selectBranchesByProjectUuid" parameterType="map"
+          resultType="org.sonar.db.issue.TrackedIssueBranchDto">
+    select
+      h.branch_key as "branchKey",
+      h.branch_type as "branchType",
+      max(h.base_branch_key) as "baseBranchKey",
+      case when max(pb.uuid) is null then ${_false} else ${_true} end as "active",
+      count(1) as "issueCount"
+    from cs_tracked_issue h
+    left join project_branches pb
+      on pb.project_uuid = h.project_uuid
+      and pb.kee = h.branch_key
+      and pb.branch_type = h.branch_type
+    where
+      h.project_uuid = #{projectUuid, jdbcType=VARCHAR}
+    group by h.branch_key, h.branch_type
+    order by h.branch_type, h.branch_key
+  </select>
+
+  <delete id="deleteCapturedIssues" parameterType="map">
+    delete from cs_tracked_issue
+    where
+      project_uuid = #{projectUuid, jdbcType=VARCHAR}
+      and branch_key = #{branchKey, jdbcType=VARCHAR}
+      and issue_status = #{issueStatus, jdbcType=VARCHAR}
+      and issue_key in
+      <foreach collection="issueKeys" open="(" close=")" item="issueKey" separator=",">
+        #{issueKey, jdbcType=VARCHAR}
+      </foreach>
+  </delete>
+
+  <select id="countByProjectUuid" parameterType="map" resultType="long">
+    select count(1)
+    from cs_tracked_issue h
+    where h.project_uuid = #{projectUuid, jdbcType=VARCHAR}
+  </select>
+
+  <delete id="deleteByProjectUuid" parameterType="map">
+    delete from cs_tracked_issue
+    where project_uuid = #{projectUuid, jdbcType=VARCHAR}
+  </delete>
+</mapper>

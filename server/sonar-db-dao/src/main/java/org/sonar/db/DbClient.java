@@ -53,6 +53,7 @@ import org.sonar.db.ideusage.IdeUsageDao;
 import org.sonar.db.issue.AnticipatedTransitionDao;
 import org.sonar.db.issue.IssueChangeDao;
 import org.sonar.db.issue.IssueDao;
+import org.sonar.db.issue.TrackedIssueDao;
 import org.sonar.db.issue.IssueFixedDao;
 import org.sonar.db.measure.MeasureDao;
 import org.sonar.db.measure.ProjectMeasureDao;
@@ -209,6 +210,7 @@ public class DbClient {
   private final RuleChangeDao ruleChangeDao;
   private final ProjectExportDao projectExportDao;
   private final IssueFixedDao issueFixedDao;
+  private final TrackedIssueDao trackedIssueDao;
   private final TelemetryMetricsSentDao telemetryMetricsSentDao;
   private final CveDao cveDao;
   private final CveCweDao cveCweDao;
@@ -312,6 +314,7 @@ public class DbClient {
     ruleChangeDao = getDao(map, RuleChangeDao.class);
     projectExportDao = getDao(map, ProjectExportDao.class);
     issueFixedDao = getDao(map, IssueFixedDao.class);
+    trackedIssueDao = getDao(map, TrackedIssueDao.class);
     telemetryMetricsSentDao = getDao(map, TelemetryMetricsSentDao.class);
     cveDao = getDao(map, CveDao.class);
     cveCweDao = getDao(map, CveCweDao.class);
@@ -377,6 +380,10 @@ public class DbClient {
 
   public IssueFixedDao issueFixedDao() {
     return issueFixedDao;
+  }
+
+  public TrackedIssueDao trackedIssueDao() {
+    return trackedIssueDao;
   }
 
   public TelemetryMetricsSentDao telemetryMetricsSentDao() {

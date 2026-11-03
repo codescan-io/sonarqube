@@ -80,6 +80,7 @@ public class OrganizationDto {
   private boolean inviteUsersEnabled;
   private boolean isArchived;
   private long archivedAt;
+  private boolean retainIssueHistoryEnabled;
 
   public String getUuid() {
     return uuid;
@@ -209,6 +210,15 @@ public class OrganizationDto {
     this.archivedAt = archivedAt;
   }
 
+  public boolean isRetainIssueHistoryEnabled() {
+    return retainIssueHistoryEnabled;
+  }
+
+  public OrganizationDto setRetainIssueHistoryEnabled(boolean retainIssueHistoryEnabled) {
+    this.retainIssueHistoryEnabled = retainIssueHistoryEnabled;
+    return this;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -241,6 +251,7 @@ public class OrganizationDto {
             ", createdAt=" + createdAt +
             ", updatedAt=" + updatedAt +
             ", inviteUsersEnabled=" + inviteUsersEnabled +
+            ", retainIssueHistoryEnabled=" + retainIssueHistoryEnabled +
             '}';
   }
 }

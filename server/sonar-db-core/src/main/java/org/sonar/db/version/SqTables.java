@@ -46,6 +46,7 @@ public final class SqTables {
     "cves",
     "cve_cwe",
     "components",
+    "cs_tracked_issue",
     "default_qprofiles",
     "deprecated_rule_keys",
     "devops_perms_mapping",

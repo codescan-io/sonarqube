@@ -15,7 +15,8 @@
     org.updated_at as "updatedAt",
     org.is_archived as "isArchived",
     org.archived_at as "archivedAt",
-    org.invite_users_enabled as "inviteUsersEnabled"
+    org.invite_users_enabled as "inviteUsersEnabled",
+    org.retain_issue_history_enabled as "retainIssueHistoryEnabled"
   </sql>
 
   <sql id="defaultTemplatesColumns">
