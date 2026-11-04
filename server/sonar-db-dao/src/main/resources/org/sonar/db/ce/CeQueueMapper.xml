@@ -170,20 +170,23 @@
       cq.status='PENDING'
       and cq.started_at is null
       and cq2.uuid is null
+      and (cq.task_type &lt;&gt; 'RESOLUTION_PROLIFERATION'
+        or not exists (
+          select 1 from ce_queue cq3
+          where cq3.entity_uuid = cq.entity_uuid
+            and cq3.status = 'PENDING'
+            and cq3.task_type &lt;&gt; 'RESOLUTION_PROLIFERATION'))
       <if test="excludeIndexationJob">
         and cq.task_type &lt;&gt; 'ISSUE_SYNC'
       </if>
   </sql>
 
   <!--
-    Oldest first, except that RESOLUTION_PROLIFERATION always goes last. A proliferation run queues one task per
-    batch of marked issues and can occupy a project for hours; without this, an analysis submitted while it runs
-    would sit behind the whole backlog, because a task is only eligible when nothing else is running for its
-    project. Every other task type evaluates to 0, so their order relative to each other is unchanged.
+    Oldest first. Proliferation is held back by the eligibility predicate above, which scopes the wait to the
+    project the task belongs to, so the ordering itself stays what it has always been for every task type.
   -->
   <sql id="orderBySelectEligibleForPeek">
     order by
-      case cq.task_type when 'RESOLUTION_PROLIFERATION' then 1 else 0 end asc,
       cq.created_at asc,
       cq.uuid asc
   </sql>

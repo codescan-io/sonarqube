@@ -20,8 +20,6 @@
 package org.sonar.server.issue;
 
 import com.google.common.collect.Lists;
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -41,6 +39,11 @@ import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.component.BranchDto;
 import org.sonar.server.setting.ProjectConfigurationLoader;
 
+import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_AUTHOR;
+import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_MARKED_AT;
+import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_SOURCE_BRANCH_LABEL;
+import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_TRANSITION;
+
 
 @ServerSide
 public class IssueProliferationSubmitter {
@@ -49,13 +52,6 @@ public class IssueProliferationSubmitter {
 
 
   static final int ISSUES_PER_TASK = 500;
-
-  static final String CHARACTERISTIC_TRANSITION = "proliferationTransition";
-  static final String CHARACTERISTIC_MARKED_AT = "proliferationMarkedAt";
-  static final String CHARACTERISTIC_AUTHOR = "proliferationAuthor";
-  static final String CHARACTERISTIC_COMMENT = "proliferationComment";
-  static final String CHARACTERISTIC_EXCEPTION_REASON = "proliferationExceptionReason";
-  static final String CHARACTERISTIC_SOURCE_BRANCH_LABEL = "proliferationSourceBranch";
 
   private final DbClient dbClient;
   private final CeQueue ceQueue;
@@ -87,7 +83,7 @@ public class IssueProliferationSubmitter {
         return;
       }
 
-      Map<String, String> characteristics = characteristicsOf(context, transitionKey, comment, exceptionReason,
+      Map<String, String> characteristics = characteristicsOf(context, transitionKey,
         IssueMarkingProliferationService.branchLabel(sourceBranch.get()));
 
       List<CeTaskSubmit> submissions = new ArrayList<>();
@@ -98,7 +94,8 @@ public class IssueProliferationSubmitter {
           .setCharacteristics(characteristics);
         // The keys must be readable before the task row exists, or a worker could pick the task up and find
         // nothing to do. Same ordering as ReportSubmitter.
-        dbClient.ceTaskInputDao().insert(dbSession, builder.getUuid(), serialize(chunk));
+        dbClient.ceTaskInputDao().insert(dbSession, builder.getUuid(),
+          ProliferationTaskPayload.serialize(chunk, comment, exceptionReason));
         submissions.add(builder.build());
       }
       dbSession.commit();
@@ -118,8 +115,8 @@ public class IssueProliferationSubmitter {
   }
 
   private static Map<String, String> characteristicsOf(IssueChangeContext context, String transitionKey,
-    @Nullable String comment, @Nullable String exceptionReason, String sourceBranchLabel) {
-    // A HashMap rather than Map.of: the optional values are null more often than not, and Map.of rejects nulls.
+    String sourceBranchLabel) {
+    // A HashMap rather than Map.of: the author is null more often than not, and Map.of rejects nulls.
     Map<String, String> characteristics = new HashMap<>();
     characteristics.put(CHARACTERISTIC_TRANSITION, transitionKey);
     characteristics.put(CHARACTERISTIC_MARKED_AT, String.valueOf(context.date().getTime()));
@@ -127,16 +124,6 @@ public class IssueProliferationSubmitter {
     if (context.userUuid() != null) {
       characteristics.put(CHARACTERISTIC_AUTHOR, context.userUuid());
     }
-    if (comment != null) {
-      characteristics.put(CHARACTERISTIC_COMMENT, comment);
-    }
-    if (exceptionReason != null) {
-      characteristics.put(CHARACTERISTIC_EXCEPTION_REASON, exceptionReason);
-    }
     return characteristics;
-  }
-
-  private static ByteArrayInputStream serialize(List<String> issueKeys) {
-    return new ByteArrayInputStream(String.join("\n", issueKeys).getBytes(StandardCharsets.UTF_8));
   }
 }

@@ -36,6 +36,7 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.BranchType;
+import org.sonar.db.component.ComponentDao;
 import org.sonar.db.issue.IssueDao;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.server.issue.IssueMarkingProliferationService.ProliferatedMarking;
@@ -65,6 +66,7 @@ public class IssueMarkingProliferationServiceTest {
   private final DbSession dbSession = mock(DbSession.class);
   private final DbClient dbClient = mock(DbClient.class);
   private final IssueDao issueDao = mock(IssueDao.class);
+  private final ComponentDao componentDao = mock(ComponentDao.class);
   private final IssueWorkflow issueWorkflow = mock(IssueWorkflow.class);
   private final ProliferationIssueStorage issueStorage = mock(ProliferationIssueStorage.class);
   private final IssueFieldsSetter issueFieldsSetter = mock(IssueFieldsSetter.class);
@@ -74,7 +76,17 @@ public class IssueMarkingProliferationServiceTest {
   @Before
   public void setUp() {
     when(dbClient.issueDao()).thenReturn(issueDao);
+    when(dbClient.componentDao()).thenReturn(componentDao);
+    // The lookup resolves a file to its components on the target branches before asking for issues. These tests
+    // are about the matching, not the resolution, so every path resolves to one stand-in component.
+    when(componentDao.selectUuidsByPathAndBranchUuids(any(), anyString(), any()))
+      .thenAnswer(invocation -> List.of(componentsOf(invocation.getArgument(1))));
     underTest = new IssueMarkingProliferationService(dbClient, issueWorkflow, issueStorage, issueFieldsSetter);
+  }
+
+  /** The stand-in component uuid a file path resolves to, so a mock can be keyed on the path it came from. */
+  private static String componentsOf(String filePath) {
+    return "component-of:" + filePath;
   }
 
   private static IssueDto issue(String key, String branchUuid) {
@@ -99,8 +111,8 @@ public class IssueMarkingProliferationServiceTest {
 
   /** What the batched lookup returns for the one rule-and-file these tests use. */
   private void givenCandidates(IssueDto... candidates) {
-    when(issueDao.selectUnresolvedByRuleAndFileInBranches(eq(dbSession), any(), eq(RULE_UUID), eq(FILE_PATH), any()))
-      .thenReturn(List.of(candidates));
+    when(issueDao.selectUnresolvedByRuleAndComponents(eq(dbSession), eq(List.of(componentsOf(FILE_PATH))),
+      eq(RULE_UUID), any())).thenReturn(List.of(candidates));
   }
 
   /** The two phases as the task processor runs them: index every branch once, then write one branch from it. */
@@ -202,7 +214,7 @@ public class IssueMarkingProliferationServiceTest {
     // Without both, the signature is not well defined and every issue of that rule on the file would match - so
     // neither is even looked up.
     verifyNoInteractions(issueWorkflow);
-    verify(issueDao, times(0)).selectUnresolvedByRuleAndFileInBranches(any(), any(), any(), any(), any());
+    verify(issueDao, times(0)).selectUnresolvedByRuleAndComponents(any(), any(), any(), any());
   }
 
   @Test
@@ -216,7 +228,7 @@ public class IssueMarkingProliferationServiceTest {
     underTest.indexTargetsBySignature(dbSession, List.of(first, second, third), List.of(TARGET_BRANCH_UUID));
 
     // Two statements for three issues: the first two share a rule and a file, the third has its own file.
-    verify(issueDao, times(2)).selectUnresolvedByRuleAndFileInBranches(any(), any(), any(), any(), any());
+    verify(issueDao, times(2)).selectUnresolvedByRuleAndComponents(any(), any(), any(), any());
   }
 
   @Test
@@ -276,7 +288,7 @@ public class IssueMarkingProliferationServiceTest {
       List.of(source), List.of(TARGET_BRANCH_UUID, "branch-develop"));
 
     // One statement covered both branches; the rows are split by issues.project_uuid, which is the branch.
-    verify(issueDao, times(1)).selectUnresolvedByRuleAndFileInBranches(any(), any(), any(), any(), any());
+    verify(issueDao, times(1)).selectUnresolvedByRuleAndComponents(any(), any(), any(), any());
     assertThat(index.get(TARGET_BRANCH_UUID).get(Signature.of(source))).extracting(IssueDto::getKey)
       .containsExactly("BBB-777");
     assertThat(index.get("branch-develop").get(Signature.of(source))).extracting(IssueDto::getKey)
@@ -290,9 +302,9 @@ public class IssueMarkingProliferationServiceTest {
     good.setFilePath("src/Other.cls");
     IssueDto target = issue("BBB-777", TARGET_BRANCH_UUID);
     target.setFilePath("src/Other.cls");
-    when(issueDao.selectUnresolvedByRuleAndFileInBranches(any(), any(), any(), eq(FILE_PATH), any()))
+    when(issueDao.selectUnresolvedByRuleAndComponents(any(), eq(List.of(componentsOf(FILE_PATH))), any(), any()))
       .thenThrow(new IllegalStateException("boom"));
-    when(issueDao.selectUnresolvedByRuleAndFileInBranches(any(), any(), any(), eq("src/Other.cls"), any()))
+    when(issueDao.selectUnresolvedByRuleAndComponents(any(), eq(List.of(componentsOf("src/Other.cls"))), any(), any()))
       .thenReturn(List.of(target));
     when(issueWorkflow.doManualTransition(any(DefaultIssue.class), anyString(), any())).thenReturn(true);
 
@@ -309,15 +321,15 @@ public class IssueMarkingProliferationServiceTest {
     IssueDto third = issue("AAA-333", SOURCE_BRANCH_UUID);
     third.setFilePath("src/Third.cls");
     List<IssueDto> sources = List.of(first, second, third);
-    when(issueDao.selectUnresolvedByRuleAndFileInBranches(eq(dbSession), any(), any(), eq(FILE_PATH), any()))
+    when(issueDao.selectUnresolvedByRuleAndComponents(eq(dbSession), eq(List.of(componentsOf(FILE_PATH))), any(), any()))
       .thenReturn(List.of(issue("BBB-777", TARGET_BRANCH_UUID)));
     IssueDto onSecond = issue("BBB-888", TARGET_BRANCH_UUID);
     onSecond.setFilePath("src/Second.cls");
-    when(issueDao.selectUnresolvedByRuleAndFileInBranches(eq(dbSession), any(), any(), eq("src/Second.cls"), any()))
+    when(issueDao.selectUnresolvedByRuleAndComponents(eq(dbSession), eq(List.of(componentsOf("src/Second.cls"))), any(), any()))
       .thenReturn(List.of(onSecond));
     IssueDto onThird = issue("BBB-999", TARGET_BRANCH_UUID);
     onThird.setFilePath("src/Third.cls");
-    when(issueDao.selectUnresolvedByRuleAndFileInBranches(eq(dbSession), any(), any(), eq("src/Third.cls"), any()))
+    when(issueDao.selectUnresolvedByRuleAndComponents(eq(dbSession), eq(List.of(componentsOf("src/Third.cls"))), any(), any()))
       .thenReturn(List.of(onThird));
 
     List<Map<String, Map<Signature, List<IssueDto>>>> slices = List.of(
@@ -326,7 +338,7 @@ public class IssueMarkingProliferationServiceTest {
       underTest.indexTargetsBySignature(dbSession, sources, List.of(TARGET_BRANCH_UUID), 2, 3));
 
     // Three groups over three slices: each slice reads one, and no group is read twice.
-    verify(issueDao, times(3)).selectUnresolvedByRuleAndFileInBranches(any(), any(), any(), any(), any());
+    verify(issueDao, times(3)).selectUnresolvedByRuleAndComponents(any(), any(), any(), any());
     Map<String, Map<Signature, List<IssueDto>>> merged = IssueMarkingProliferationService.mergeIndexes(slices);
     assertThat(merged.get(TARGET_BRANCH_UUID).values().stream().flatMap(List::stream))
       .extracting(IssueDto::getKey).containsExactlyInAnyOrder("BBB-777", "BBB-888", "BBB-999");
@@ -340,7 +352,7 @@ public class IssueMarkingProliferationServiceTest {
       underTest.indexTargetsBySignature(dbSession, List.of(only), List.of(TARGET_BRANCH_UUID), 1, 2);
 
     // One group, two slices: slice 1 has nothing to do and must not issue a statement.
-    verify(issueDao, times(0)).selectUnresolvedByRuleAndFileInBranches(any(), any(), any(), any(), any());
+    verify(issueDao, times(0)).selectUnresolvedByRuleAndComponents(any(), any(), any(), any());
     assertThat(empty.get(TARGET_BRANCH_UUID)).isEmpty();
   }
 

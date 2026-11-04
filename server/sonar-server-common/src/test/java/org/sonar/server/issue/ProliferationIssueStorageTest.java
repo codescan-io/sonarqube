@@ -102,8 +102,9 @@ public class ProliferationIssueStorageTest {
 
     assertThat(written).containsExactly("AAA-1", "AAA-2");
     // One update and one diff statement for both issues, not one each.
+    // markedAt, not now: issue_update_date carries the date of the marking being copied.
     verify(issueDao, times(1)).bulkTransitionWithExpiry(eq(dbSession), eq(List.of("AAA-1", "AAA-2")),
-      eq(Issue.RESOLUTION_WONT_FIX), any(), anyLong(), eq(STATUSES));
+      eq(Issue.RESOLUTION_WONT_FIX), any(), eq(MARKED_AT), anyLong(), eq(STATUSES));
     ArgumentCaptor<ProliferationChangeQuery> diffs = ArgumentCaptor.forClass(ProliferationChangeQuery.class);
     verify(issueChangeDao, times(1)).insertProliferationDiffs(eq(dbSession), diffs.capture(), any());
     assertThat(diffs.getValue().getKeys()).containsExactly("AAA-1", "AAA-2");
@@ -126,7 +127,7 @@ public class ProliferationIssueStorageTest {
     underTest.save(dbSession, issues, BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES);
 
     // Two resolutions cannot share one update statement.
-    verify(issueDao, times(2)).bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), any());
+    verify(issueDao, times(2)).bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any());
   }
 
   @Test
@@ -139,8 +140,8 @@ public class ProliferationIssueStorageTest {
     underTest.save(dbSession, List.of(early, late), BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES);
 
     // A severity-based expiry differs between issues, and one update statement carries one value.
-    verify(issueDao, times(1)).bulkTransitionWithExpiry(any(), eq(List.of("AAA-1")), any(), eq(111L), anyLong(), any());
-    verify(issueDao, times(1)).bulkTransitionWithExpiry(any(), eq(List.of("AAA-2")), any(), eq(222L), anyLong(), any());
+    verify(issueDao, times(1)).bulkTransitionWithExpiry(any(), eq(List.of("AAA-1")), any(), eq(111L), anyLong(), anyLong(), any());
+    verify(issueDao, times(1)).bulkTransitionWithExpiry(any(), eq(List.of("AAA-2")), any(), eq(222L), anyLong(), anyLong(), any());
   }
 
   @Test
@@ -151,7 +152,7 @@ public class ProliferationIssueStorageTest {
     underTest.save(dbSession, List.of(exception), BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES);
 
     // The set-based statements have no column for an Exception reason, so they must not be used.
-    verify(issueDao, never()).bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), any());
+    verify(issueDao, never()).bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any());
     verify(issueDao, times(1)).updateWithoutIssueImpacts(eq(dbSession), any());
   }
 
@@ -163,7 +164,7 @@ public class ProliferationIssueStorageTest {
     underTest.save(dbSession, List.of(reassigned), BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES);
 
     // The update writes status, resolution and expiry only - an assignee change would be silently dropped.
-    verify(issueDao, never()).bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), any());
+    verify(issueDao, never()).bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any());
     verify(issueDao, times(1)).updateWithoutIssueImpacts(eq(dbSession), any());
   }
 

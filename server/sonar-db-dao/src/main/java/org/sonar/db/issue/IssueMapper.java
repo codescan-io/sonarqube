@@ -46,12 +46,11 @@ public interface IssueMapper {
     @Param("message") String message, @Param("statuses") Collection<String> statuses);
 
   /**
-   * Every unresolved issue of one rule in one file on the given branches, for callers that narrow by line and
-   * message themselves. {@code branchUuids} are project_uuid values.
+   * Every unresolved issue of one rule on the given components, for callers that narrow by line and message
+   * themselves. The caller resolves the components first, so this filters on the indexed component_uuid.
    */
-  List<IssueDto> selectUnresolvedByRuleAndFileInBranches(@Param("branchUuids") Collection<String> branchUuids,
-    @Param("ruleUuid") String ruleUuid, @Param("filePath") String filePath,
-    @Param("statuses") Collection<String> statuses);
+  List<IssueDto> selectUnresolvedByRuleAndComponents(@Param("componentUuids") Collection<String> componentUuids,
+    @Param("ruleUuid") String ruleUuid, @Param("statuses") Collection<String> statuses);
 
   Set<String> selectIssueKeysByComponentUuid(@Param("componentUuid") String componentUuid);
 
@@ -95,7 +94,7 @@ public interface IssueMapper {
    * takes the candidate statuses as a parameter.
    */
   int bulkTransitionWithExpiry(@Param("keys") List<String> keys, @Param("resolution") String resolution,
-    @Param("expiresAt") @Nullable Long expiresAt, @Param("now") long now,
+    @Param("expiresAt") @Nullable Long expiresAt, @Param("markedAt") long markedAt, @Param("now") long now,
     @Param("statuses") Collection<String> statuses);
 
   void insertAsNewCodeOnReferenceBranch(NewCodeReferenceIssueDto issue);

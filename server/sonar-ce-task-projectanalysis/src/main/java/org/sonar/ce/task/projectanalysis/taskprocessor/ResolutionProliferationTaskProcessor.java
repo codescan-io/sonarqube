@@ -19,10 +19,7 @@
  */
 package org.sonar.ce.task.projectanalysis.taskprocessor;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -57,9 +54,14 @@ import org.sonar.db.issue.IssueDto;
 import org.sonar.server.issue.IssueMarkingProliferationService;
 import org.sonar.server.issue.IssueMarkingProliferationService.ProliferatedMarking;
 import org.sonar.server.issue.IssueMarkingProliferationService.Signature;
+import org.sonar.server.issue.ProliferationTaskPayload;
 import org.sonar.server.measure.live.LiveMeasureComputer;
 
 import static org.sonar.core.issue.IssueChangeContext.issueChangeContextByUserBuilder;
+import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_AUTHOR;
+import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_MARKED_AT;
+import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_SOURCE_BRANCH_LABEL;
+import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_TRANSITION;
 
 
 public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, Startable {
@@ -68,14 +70,14 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
 
   private static final Set<String> HANDLED_TYPES = Set.of(CeTaskTypes.RESOLUTION_PROLIFERATION);
 
-  private static final String CHARACTERISTIC_TRANSITION = "proliferationTransition";
-  private static final String CHARACTERISTIC_MARKED_AT = "proliferationMarkedAt";
-  private static final String CHARACTERISTIC_AUTHOR = "proliferationAuthor";
-  private static final String CHARACTERISTIC_COMMENT = "proliferationComment";
-  private static final String CHARACTERISTIC_EXCEPTION_REASON = "proliferationExceptionReason";
-  private static final String CHARACTERISTIC_SOURCE_BRANCH_LABEL = "proliferationSourceBranch";
+  private static final ProliferationTaskPayload EMPTY_PAYLOAD =
+    new ProliferationTaskPayload(List.of(), null, null);
 
   static final int MAX_THREADS = 8;
+
+
+  private static final String LEGACY_CHARACTERISTIC_COMMENT = "proliferationComment";
+  private static final String LEGACY_CHARACTERISTIC_EXCEPTION_REASON = "proliferationExceptionReason";
 
   private final DbClient dbClient;
   private final IssueMarkingProliferationService proliferationService;
@@ -136,13 +138,14 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
 
     List<IssueDto> sourceIssues;
     List<String> targetBranchUuids;
+    ProliferationTaskPayload payload;
     Map<String, Map<Signature, List<IssueDto>>> targetsByBranch;
     try (DbSession dbSession = dbClient.openSession(false)) {
-      List<String> issueKeys = readIssueKeys(dbSession, task.getUuid());
-      if (issueKeys.isEmpty()) {
+      payload = readPayload(dbSession, task.getUuid());
+      if (payload.issueKeys().isEmpty()) {
         return;
       }
-      sourceIssues = dbClient.issueDao().selectByKeys(dbSession, issueKeys);
+      sourceIssues = dbClient.issueDao().selectByKeys(dbSession, payload.issueKeys());
       if (sourceIssues.isEmpty()) {
         return;
       }
@@ -172,8 +175,11 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
       issueChangeContextByUserBuilder(markedAt(characteristics),
         characteristics.get(CHARACTERISTIC_AUTHOR)).build(),
       transitionKey,
-      characteristics.get(CHARACTERISTIC_COMMENT),
-      characteristics.get(CHARACTERISTIC_EXCEPTION_REASON),
+      // The characteristics are the fallback, not the source: a task queued before the text moved into the
+      // payload still carries it there. Removable once no such task can still be pending.
+      payload.comment() != null ? payload.comment() : characteristics.get(LEGACY_CHARACTERISTIC_COMMENT),
+      payload.exceptionReason() != null ? payload.exceptionReason()
+        : characteristics.get(LEGACY_CHARACTERISTIC_EXCEPTION_REASON),
       characteristics.getOrDefault(CHARACTERISTIC_SOURCE_BRANCH_LABEL, sourceBranchUuid));
 
     refreshMeasures(runAcrossBranches(sourceIssues, targetBranchUuids, targetsByBranch, marking));
@@ -303,18 +309,22 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
     }
   }
 
-  private List<String> readIssueKeys(DbSession dbSession, String taskUuid) {
+  /**
+   * The whole payload is read into memory before it is parsed, rather than streamed: the text in it is read by
+   * byte count, and a {@link BufferedReader} over the same stream would have already pulled those bytes into
+   * its own buffer. A payload is a list of keys and a comment, so there is nothing to gain from streaming it.
+   */
+  private ProliferationTaskPayload readPayload(DbSession dbSession, String taskUuid) {
     Optional<DbInputStream> data = dbClient.ceTaskInputDao().selectData(dbSession, taskUuid);
     if (data.isEmpty()) {
       LOG.warn("Proliferation task {} has no stored issue keys", taskUuid);
-      return List.of();
+      return EMPTY_PAYLOAD;
     }
-    try (DbInputStream stream = data.get();
-      BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-      return reader.lines().filter(line -> !line.isBlank()).toList();
+    try (DbInputStream stream = data.get()) {
+      return ProliferationTaskPayload.parse(stream.readAllBytes());
     } catch (IOException e) {
       LOG.error("Could not read issue keys of proliferation task " + taskUuid, e);
-      return List.of();
+      return EMPTY_PAYLOAD;
     }
   }
 }
