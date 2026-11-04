@@ -248,7 +248,7 @@
     set status = 'RESOLVED',
       resolution = #{resolution,jdbcType=VARCHAR},
       issue_resolution_expires_at = #{expiresAt,jdbcType=BIGINT},
-      issue_update_date = #{now,jdbcType=BIGINT},
+      issue_update_date = #{markedAt,jdbcType=BIGINT},
       updated_at = #{now,jdbcType=BIGINT}
     where status in
       <foreach collection="statuses" open="(" close=")" item="status" separator=",">#{status,jdbcType=VARCHAR}</foreach>
@@ -635,7 +635,7 @@
   </select>
 
 
-  <select id="selectUnresolvedByRuleAndFileInBranches" parameterType="map" resultMap="issueResultMap">
+  <select id="selectUnresolvedByRuleAndComponents" parameterType="map" resultMap="issueResultMap">
     select
     <include refid="issueColumns"/>,
     u.login as assigneeLogin
@@ -649,12 +649,11 @@
     left outer join rules_default_impacts rdi on r.uuid = rdi.rule_uuid
     left join issues_dependency dep on i.kee = dep.issue_uuid
     left join cves cve on dep.cve_uuid = cve.uuid
-    where i.project_uuid in
-    <foreach collection="branchUuids" open="(" close=")" item="branchUuid" separator=",">
-      #{branchUuid,jdbcType=VARCHAR}
+    where i.component_uuid in
+    <foreach collection="componentUuids" open="(" close=")" item="componentUuid" separator=",">
+      #{componentUuid,jdbcType=VARCHAR}
     </foreach>
     and i.rule_uuid = #{ruleUuid,jdbcType=VARCHAR}
-    and p.path = #{filePath,jdbcType=VARCHAR}
     and i.status in
     <foreach collection="statuses" open="(" close=")" item="status" separator=",">
       #{status,jdbcType=VARCHAR}

@@ -153,7 +153,7 @@ public class ProliferationIssueStorage {
     }
 
     dbClient.issueDao().bulkTransitionWithExpiry(dbSession, keys, group.resolution(), group.expiresAt(),
-      shared.getNow(), shared.getStatuses());
+      shared.getMarkedAt(), shared.getNow(), shared.getStatuses());
   }
 
 

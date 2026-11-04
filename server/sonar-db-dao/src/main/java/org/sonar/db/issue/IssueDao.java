@@ -77,13 +77,13 @@ public class IssueDao implements Dao {
   }
 
 
-  public List<IssueDto> selectUnresolvedByRuleAndFileInBranches(DbSession session, Collection<String> branchUuids,
-    String ruleUuid, String filePath, Collection<String> statuses) {
-    if (branchUuids.isEmpty() || statuses.isEmpty()) {
+  public List<IssueDto> selectUnresolvedByRuleAndComponents(DbSession session, Collection<String> componentUuids,
+    String ruleUuid, Collection<String> statuses) {
+    if (componentUuids.isEmpty() || statuses.isEmpty()) {
       return List.of();
     }
-    return executeLargeInputs(branchUuids,
-      partition -> mapper(session).selectUnresolvedByRuleAndFileInBranches(partition, ruleUuid, filePath, statuses));
+    return executeLargeInputs(componentUuids,
+      partition -> mapper(session).selectUnresolvedByRuleAndComponents(partition, ruleUuid, statuses));
   }
 
   public Set<String> selectIssueKeysByComponentUuid(DbSession session, String componentUuid) {
@@ -223,14 +223,18 @@ public class IssueDao implements Dao {
   }
 
 
+  /**
+   * @param markedAt when the marking being copied was made, written to {@code issue_update_date}
+   * @param now      when this statement runs, written to {@code updated_at}
+   */
   public int bulkTransitionWithExpiry(DbSession session, Collection<String> keys, String resolution,
-    @Nullable Long expiresAt, long now, Collection<String> statuses) {
+    @Nullable Long expiresAt, long markedAt, long now, Collection<String> statuses) {
     if (keys.isEmpty() || statuses.isEmpty()) {
       return 0;
     }
     AtomicInteger updated = new AtomicInteger();
     executeLargeUpdates(keys, partition -> updated
-      .addAndGet(mapper(session).bulkTransitionWithExpiry(partition, resolution, expiresAt, now, statuses)));
+      .addAndGet(mapper(session).bulkTransitionWithExpiry(partition, resolution, expiresAt, markedAt, now, statuses)));
     return updated.get();
   }
 

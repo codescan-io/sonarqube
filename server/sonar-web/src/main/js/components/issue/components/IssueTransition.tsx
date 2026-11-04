@@ -30,7 +30,7 @@ import {
   SearchSelectDropdownControl,
 } from '~design-system';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
-import { useIssueCommentMutation, useIssueTransitionMutation } from '../../../queries/issues';
+import { useIssueTransitionMutation } from '../../../queries/issues';
 import { Issue } from '../../../types/types';
 import StatusHelper from '../../shared/StatusHelper';
 import { exceptionExpiryHintForIssue } from '../exceptionExpiryDisplay';
@@ -77,7 +77,6 @@ export default function IssueTransition(props: Readonly<Props>) {
 
   const [transitioning, setTransitioning] = React.useState(false);
   const { mutateAsync: setIssueTransition } = useIssueTransitionMutation();
-  const { mutateAsync: addIssueComment } = useIssueCommentMutation();
 
   async function handleSetTransition(
     transition: string,
@@ -93,6 +92,7 @@ export default function IssueTransition(props: Readonly<Props>) {
         transition: string;
         issueResolutionExpiryDate?: string;
         exceptionReason?: string;
+        comment?: string;
       } = { issue: issue.key, transition };
 
       if (transition === 'exception' && typeof exceptionReason === 'string' && exceptionReason.length > 0) {
@@ -101,12 +101,13 @@ export default function IssueTransition(props: Readonly<Props>) {
       if (issueResolutionExpiryDate !== undefined) {
         transitionPayload.issueResolutionExpiryDate = issueResolutionExpiryDate;
       }
+      // The comment travels with the transition rather than as a second add_comment request: resolution
+      // proliferation copies the marking to the other branches from what do_transition was given, and a comment
+      // that arrives afterwards is not part of that marking, so it would stay on this branch alone.
       if (typeof comment === 'string' && comment.length > 0 && transition !== 'exception') {
-        await setIssueTransition(transitionPayload);
-        await updateIssue(onChange, addIssueComment({ issue: issue.key, text: comment }));
-      } else {
-        await updateIssue(onChange, setIssueTransition(transitionPayload));
+        transitionPayload.comment = comment;
       }
+      await updateIssue(onChange, setIssueTransition(transitionPayload));
       togglePopup('transition', false);
     } finally {
       setTransitioning(false);
