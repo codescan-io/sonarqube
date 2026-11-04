@@ -59,8 +59,6 @@ import org.sonar.server.measure.live.LiveMeasureComputer;
 
 import static org.sonar.core.issue.IssueChangeContext.issueChangeContextByUserBuilder;
 import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_AUTHOR;
-import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_COMMENT;
-import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_EXCEPTION_REASON;
 import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_MARKED_AT;
 import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_SOURCE_BRANCH_LABEL;
 import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_TRANSITION;
@@ -76,6 +74,10 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
     new ProliferationTaskPayload(List.of(), null, null);
 
   static final int MAX_THREADS = 8;
+
+
+  private static final String LEGACY_CHARACTERISTIC_COMMENT = "proliferationComment";
+  private static final String LEGACY_CHARACTERISTIC_EXCEPTION_REASON = "proliferationExceptionReason";
 
   private final DbClient dbClient;
   private final IssueMarkingProliferationService proliferationService;
@@ -175,9 +177,9 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
       transitionKey,
       // The characteristics are the fallback, not the source: a task queued before the text moved into the
       // payload still carries it there. Removable once no such task can still be pending.
-      payload.comment() != null ? payload.comment() : characteristics.get(CHARACTERISTIC_COMMENT),
+      payload.comment() != null ? payload.comment() : characteristics.get(LEGACY_CHARACTERISTIC_COMMENT),
       payload.exceptionReason() != null ? payload.exceptionReason()
-        : characteristics.get(CHARACTERISTIC_EXCEPTION_REASON),
+        : characteristics.get(LEGACY_CHARACTERISTIC_EXCEPTION_REASON),
       characteristics.getOrDefault(CHARACTERISTIC_SOURCE_BRANCH_LABEL, sourceBranchUuid));
 
     refreshMeasures(runAcrossBranches(sourceIssues, targetBranchUuids, targetsByBranch, marking));

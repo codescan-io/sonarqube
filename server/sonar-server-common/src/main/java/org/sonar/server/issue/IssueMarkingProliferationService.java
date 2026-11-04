@@ -55,6 +55,13 @@ public class IssueMarkingProliferationService {
   /** @see io.codescan.cloud.DeveloperPlugin#KEY_CODESCAN_RESOLUTION_PROLIFERATION_ENABLED */
   public static final String KEY_RESOLUTION_PROLIFERATION_ENABLED = "codescan.cloud.resolutionProliferation.enabled";
 
+
+  public static final String CHARACTERISTIC_TRANSITION = "proliferationTransition";
+  public static final String CHARACTERISTIC_MARKED_AT = "proliferationMarkedAt";
+  public static final String CHARACTERISTIC_AUTHOR = "proliferationAuthor";
+
+  public static final String CHARACTERISTIC_SOURCE_BRANCH_LABEL = "proliferationSourceBranch";
+
   /** Only these markings proliferate; the other transitions (reopen, confirm, resolve as fixed) are untouched. */
   private static final Set<String> PROLIFERABLE_TRANSITIONS = Set.of(
     DefaultTransitions.EXCEPTION, DefaultTransitions.ACCEPT, DefaultTransitions.FALSE_POSITIVE,
@@ -198,10 +205,20 @@ public class IssueMarkingProliferationService {
     }
 
     Set<Signature> wanted = signaturesOf(sourceIssues);
+    // One resolution per file rather than per (rule, file): a file carrying issues of six rules is the same set
+    // of components each time, and the lookup below is the expensive half only when it has to find them itself.
+    Map<String, List<String>> componentsByFilePath = new HashMap<>();
     for (RuleAndFile group : groupsOfSlice(sourceIssues, slice, sliceCount)) {
       try {
-        List<IssueDto> candidates = dbClient.issueDao().selectUnresolvedByRuleAndFileInBranches(dbSession,
-          targetBranchUuids, group.ruleUuid(), group.filePath(), TARGET_STATUSES);
+        List<String> componentUuids = componentsByFilePath.computeIfAbsent(group.filePath(),
+          filePath -> dbClient.componentDao().selectUuidsByPathAndBranchUuids(dbSession, filePath,
+            targetBranchUuids));
+        if (componentUuids.isEmpty()) {
+          // The file does not exist on any target branch, so neither can any issue on it.
+          continue;
+        }
+        List<IssueDto> candidates = dbClient.issueDao().selectUnresolvedByRuleAndComponents(dbSession,
+          componentUuids, group.ruleUuid(), TARGET_STATUSES);
         index(candidates, wanted, byBranch);
       } catch (RuntimeException e) {
         // Same tolerance the per-issue lookup had: one unreadable group must not abandon the rest of the task.
