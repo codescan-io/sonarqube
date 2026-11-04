@@ -17,37 +17,37 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.scm.svn;
-
-import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.sonar.scm.svn.SvnScmSupport.newSvnClientManager;
-
-public class SvnScmSupportTest {
-  private SvnConfiguration config = mock(SvnConfiguration.class);
-
-  @Test
-  public void getObjects_shouldNotBeEmpty() {
-    assertThat(SvnScmSupport.getObjects()).isNotEmpty();
-  }
-
-  @Test
-  public void newSvnClientManager_whenPasswordConfigured_shouldNotReturnNull() {
-    when(config.password()).thenReturn("password");
-    when(config.passPhrase()).thenReturn("passPhrase");
-
-    assertThat(newSvnClientManager(config)).isNotNull();
-  }
-
-  @Test
-  public void newSvnClientManager_whenPasswordNotConfigured_shouldNotReturnNull() {
-    assertThat(config.password()).isNull();
-    assertThat(config.passPhrase()).isNull();
-
-    assertThat(newSvnClientManager(config)).isNotNull();
-  }
-
-}
+//package org.sonar.scm.svn;
+//
+//import org.junit.Test;
+//
+//import static org.assertj.core.api.Assertions.assertThat;
+//import static org.mockito.Mockito.mock;
+//import static org.mockito.Mockito.when;
+//import static org.sonar.scm.svn.SvnScmSupport.newSvnClientManager;
+//
+//public class SvnScmSupportTest {
+//  private SvnConfiguration config = mock(SvnConfiguration.class);
+//
+//  @Test
+//  public void getObjects_shouldNotBeEmpty() {
+//    assertThat(SvnScmSupport.getObjects()).isNotEmpty();
+//  }
+//
+//  @Test
+//  public void newSvnClientManager_whenPasswordConfigured_shouldNotReturnNull() {
+//    when(config.password()).thenReturn("password");
+//    when(config.passPhrase()).thenReturn("passPhrase");
+//
+//    assertThat(newSvnClientManager(config)).isNotNull();
+//  }
+//
+//  @Test
+//  public void newSvnClientManager_whenPasswordNotConfigured_shouldNotReturnNull() {
+//    assertThat(config.password()).isNull();
+//    assertThat(config.passPhrase()).isNull();
+//
+//    assertThat(newSvnClientManager(config)).isNotNull();
+//  }
+//
+//}

@@ -21,8 +21,8 @@ package org.sonar.server.email;
 
 import java.util.Properties;
 import java.util.Set;
-import org.apache.commons.mail.HtmlEmail;
-import org.apache.commons.mail.MultiPartEmail;
+import org.apache.commons.mail2.jakarta.HtmlEmail;
+import org.apache.commons.mail2.jakarta.MultiPartEmail;
 import org.junit.Test;
 import org.sonar.api.platform.Server;
 import org.sonar.server.oauth.OAuthMicrosoftRestClient;

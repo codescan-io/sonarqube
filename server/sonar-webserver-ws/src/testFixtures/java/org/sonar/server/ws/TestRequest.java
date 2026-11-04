@@ -163,12 +163,15 @@ public class TestRequest extends ValidatingRequest {
 
   @Override
   public Map<String, String> getHeaders() {
-    return ImmutableMap.copyOf(headers);
+    return new HashMap<>(headers);
   }
 
   @Override
   public Optional<String> header(String name) {
-    return Optional.ofNullable(headers.get(name));
+    return headers.entrySet().stream()
+      .filter(e -> e.getKey().equalsIgnoreCase(name))
+      .map(Map.Entry::getValue)
+      .findFirst();
   }
 
   public TestRequest setHeader(String name, String value) {

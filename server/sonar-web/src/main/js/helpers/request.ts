@@ -192,26 +192,58 @@ export function parseText(response: Response): Promise<string> {
  */
 export function parseError(response: Response): Promise<string> {
   const DEFAULT_MESSAGE = translate('default_error_message');
-  return parseJSON(response)
+
+  return response
+    .clone()
+    .json()
     .then(parseErrorResponse)
-    .catch(() => DEFAULT_MESSAGE);
+    .catch(() =>
+      response
+        .text()
+        .then((text) => text.trim() || DEFAULT_MESSAGE)
+        .catch(() => DEFAULT_MESSAGE),
+    );
 }
 
-export function parseErrorResponse(response?: AxiosResponse | Response): string {
+interface ErrorPayload {
+  error?: string;
+  errors?: { msg?: string }[];
+  message?: string;
+}
+
+export function parseErrorResponse(response?: AxiosResponse | Response | string): string {
   const DEFAULT_MESSAGE = translate('default_error_message');
-  let data;
-  if (!response) {
+  if (response === undefined || response === null) {
     return DEFAULT_MESSAGE;
   }
-  if ('data' in response) {
-    ({ data } = response);
-  } else {
-    data = response;
+
+  let data: unknown = response;
+  if (typeof response === 'object' && 'data' in response) {
+    data = (response as AxiosResponse).data;
   }
-  const { message, errors } = data;
-  return (
-    message ?? errors?.map((error: { msg: string }) => error.msg).join('. ') ?? DEFAULT_MESSAGE
-  );
+  if (typeof data === 'string') {
+    return data.trim() || DEFAULT_MESSAGE;
+  }
+  if (typeof data !== 'object' || data === null) {
+    return DEFAULT_MESSAGE;
+  }
+
+  const { message, error, errors } = data as ErrorPayload;
+  if (typeof message === 'string' && message.trim()) {
+    return message.trim();
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
+  }
+
+  const joined = Array.isArray(errors)
+    ? errors
+        .map((e) => e?.msg)
+        .filter(Boolean)
+        .join('. ')
+    : '';
+  return joined || DEFAULT_MESSAGE;
 }
 
 /**

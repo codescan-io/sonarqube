@@ -20,6 +20,7 @@
 package org.sonar.scanner.scan.filesystem;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -54,41 +55,52 @@ public class LanguageDetection {
    * Lower-case extension -> languages
    */
   private final Map<Language, PathPattern[]> patternsByLanguage;
+  /**
+   * Lower-case declared file suffixes, matched against the lower-cased file path so that a suffix is case-insensitive as a whole,
+   * not only after its last dot (e.g. "validationRule-meta.xml")
+   */
+  private final Map<Language, PathPattern[]> suffixPatternsByLanguage;
   private final List<Language> languagesToConsider;
   private final Map<String, Language> languageCacheByPath;
 
   public LanguageDetection(Configuration settings, LanguagesRepository languages) {
     Map<Language, PathPattern[]> patternsByLanguageBuilder = new LinkedHashMap<>();
+    Map<Language, PathPattern[]> suffixPatternsByLanguageBuilder = new LinkedHashMap<>();
     for (Language language : languages.all()) {
       String[] filePatterns = settings.getStringArray(getFileLangPatternPropKey(language.key()));
       PathPattern[] pathPatterns = PathPattern.create(filePatterns);
       if (pathPatterns.length > 0) {
         patternsByLanguageBuilder.put(language, pathPatterns);
+        suffixPatternsByLanguageBuilder.put(language, new PathPattern[0]);
       } else {
-        PathPattern[] languagePatterns = getLanguagePatterns(language);
-        patternsByLanguageBuilder.put(language, languagePatterns);
+        PathPattern[] suffixPatterns = getSuffixPatterns(language);
+        PathPattern[] filenamePatterns = getFilenamePatterns(language);
+        patternsByLanguageBuilder.put(language, filenamePatterns);
+        suffixPatternsByLanguageBuilder.put(language, suffixPatterns);
+        LOG.debug("Declared patterns of language {} were converted to {}", language, getDetails(language, suffixPatterns, filenamePatterns));
       }
     }
 
     languagesToConsider = List.copyOf(patternsByLanguageBuilder.keySet());
     patternsByLanguage = unmodifiableMap(patternsByLanguageBuilder);
+    suffixPatternsByLanguage = unmodifiableMap(suffixPatternsByLanguageBuilder);
     languageCacheByPath = new HashMap<>();
   }
 
-  private static PathPattern[] getLanguagePatterns(Language language) {
-    Stream<PathPattern> fileSuffixes = language.fileSuffixes().stream()
+  private static PathPattern[] getSuffixPatterns(Language language) {
+    return language.fileSuffixes().stream()
       .map(suffix -> "**/*" + sanitizeExtension(suffix))
-      .map(PathPattern::create);
-    Stream<PathPattern> filenamePatterns = language.filenamePatterns()
-      .stream()
-      .map(filenamePattern -> "**/*" + filenamePattern)
-      .map(PathPattern::create);
-
-    PathPattern[] defaultLanguagePatterns = Stream.concat(fileSuffixes, filenamePatterns)
       .distinct()
+      .map(PathPattern::create)
       .toArray(PathPattern[]::new);
-    LOG.debug("Declared patterns of language {} were converted to {}", language, getDetails(language, defaultLanguagePatterns));
-    return defaultLanguagePatterns;
+  }
+
+  private static PathPattern[] getFilenamePatterns(Language language) {
+    return language.filenamePatterns().stream()
+      .map(filenamePattern -> "**/*" + filenamePattern)
+      .distinct()
+      .map(PathPattern::create)
+      .toArray(PathPattern[]::new);
   }
 
   @CheckForNull
@@ -98,8 +110,9 @@ public class LanguageDetection {
       return detectedLanguage;
     }
 
+    Path lowerCaseRelativePath = Paths.get(StringUtils.lowerCase(relativePath.toString()));
     for (Language language : languagesToConsider) {
-      if (isCandidateForLanguage(absolutePath, relativePath, language)) {
+      if (isCandidateForLanguage(absolutePath, relativePath, lowerCaseRelativePath, language)) {
         if (detectedLanguage == null) {
           detectedLanguage = language;
           languageCacheByPath.put(absolutePath.toString(), language);
@@ -118,7 +131,11 @@ public class LanguageDetection {
     return languageCacheByPath.values().stream().map(Language::key).collect(Collectors.toSet());
   }
 
-  private boolean isCandidateForLanguage(Path absolutePath, Path relativePath, Language language) {
+  private boolean isCandidateForLanguage(Path absolutePath, Path relativePath, Path lowerCaseRelativePath, Language language) {
+    PathPattern[] suffixPatterns = suffixPatternsByLanguage.get(language);
+    if (Arrays.stream(suffixPatterns).anyMatch(pattern -> pattern.match(absolutePath, lowerCaseRelativePath, true))) {
+      return true;
+    }
     PathPattern[] patterns = patternsByLanguage.get(language);
     return patterns != null && Arrays.stream(patterns).anyMatch(pattern -> pattern.match(absolutePath, relativePath, false));
   }
@@ -128,12 +145,12 @@ public class LanguageDetection {
   }
 
   private String getDetails(Language detectedLanguage) {
-    return getDetails(detectedLanguage, patternsByLanguage.get(detectedLanguage));
+    return getDetails(detectedLanguage, suffixPatternsByLanguage.get(detectedLanguage), patternsByLanguage.get(detectedLanguage));
   }
 
-  private static String getDetails(Language detectedLanguage, PathPattern[] patterns) {
+  private static String getDetails(Language detectedLanguage, PathPattern[] suffixPatterns, PathPattern[] patterns) {
     return getFileLangPatternPropKey(detectedLanguage.key()) + " : " +
-      Arrays.stream(patterns).map(PathPattern::toString).collect(Collectors.joining(","));
+      Stream.concat(Arrays.stream(suffixPatterns), Arrays.stream(patterns)).map(PathPattern::toString).collect(Collectors.joining(","));
   }
 
   static String sanitizeExtension(String suffix) {

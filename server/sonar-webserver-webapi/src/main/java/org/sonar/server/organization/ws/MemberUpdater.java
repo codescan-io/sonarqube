@@ -30,6 +30,8 @@ import static org.sonar.db.permission.OrganizationPermission.ADMINISTER;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
@@ -43,6 +45,8 @@ import org.sonar.server.platform.billing.BillingValidationsProxy;
 import org.sonar.server.usergroups.DefaultGroupFinder;
 
 public class MemberUpdater {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MemberUpdater.class);
 
   private final DbClient dbClient;
   private final DefaultGroupFinder defaultGroupFinder;
@@ -118,6 +122,7 @@ public class MemberUpdater {
 
     usersToRemove.forEach(u -> removeMemberInDb(dbSession, organization, u));
     dbSession.commit();
+
   }
 
   private void removeMemberInDb(DbSession dbSession, OrganizationDto organization, UserDto user) {
@@ -130,7 +135,7 @@ public class MemberUpdater {
     dbClient.propertiesDao().deleteByOrganizationAndUser(dbSession, organizationUuid, userUuid);
     dbClient.propertiesDao().deleteByOrganizationAndMatchingLogin(dbSession, organizationUuid, user.getLogin(), singletonList(DEFAULT_ISSUE_ASSIGNEE));
     dbClient.ideUsageDao().deleteByOrganizationAndUser(dbSession, organizationUuid, userUuid);
-
+    dbClient.aiUserAllocationDao().updateLicenseByOrganizationAndUser(dbSession, organizationUuid, userUuid);
     dbClient.organizationMemberDao().delete(dbSession, organizationUuid, userUuid);
   }
 }

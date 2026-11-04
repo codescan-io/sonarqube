@@ -26,10 +26,10 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.Part;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
 import org.junit.Test;
-import org.sonar.server.http.JavaxHttpRequest;
+import org.sonar.server.http.JakartaHttpRequest;
 import org.sonarqube.ws.MediaTypes;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,7 +42,7 @@ public class ServletRequestTest {
 
   private final HttpServletRequest source = mock(HttpServletRequest.class);
 
-  private final ServletRequest underTest = new ServletRequest(new JavaxHttpRequest(source));
+  private final ServletRequest underTest = new ServletRequest(new JakartaHttpRequest(source));
 
   @Test
   public void call_method() {
@@ -77,7 +77,7 @@ public class ServletRequestTest {
   @Test
   public void has_param_from_source() {
     when(source.getParameterMap()).thenReturn(Map.of("param", new String[] {"value"}));
-    ServletRequest request = new ServletRequest(new JavaxHttpRequest(source));
+    ServletRequest request = new ServletRequest(new JakartaHttpRequest(source));
     assertThat(request.hasParam("param")).isTrue();
   }
 
@@ -217,4 +217,28 @@ public class ServletRequestTest {
     verify(source).startAsync();
   }
 
+  @Test
+  public void getHeaders_should_preserve_original_case() {
+    when(source.getHeaderNames()).thenReturn(java.util.Collections.enumeration(List.of("X-GitHub-Event", "Content-Type")));
+    when(source.getHeader("X-GitHub-Event")).thenReturn("code_scanning_alert");
+    when(source.getHeader("Content-Type")).thenReturn("application/json");
+
+    Map<String, String> headers = underTest.getHeaders();
+
+    assertThat(headers)
+      .hasSize(2)
+      .containsEntry("X-GitHub-Event", "code_scanning_alert")
+      .containsEntry("Content-Type", "application/json");
+  }
+
+  @Test
+  public void header_should_be_case_insensitive() {
+    when(source.getHeader("x-github-event")).thenReturn("code_scanning_alert");
+    when(source.getHeader("X-GitHub-Event")).thenReturn("code_scanning_alert");
+    when(source.getHeader("X-GITHUB-EVENT")).thenReturn("code_scanning_alert");
+
+    assertThat(underTest.header("x-github-event")).hasValue("code_scanning_alert");
+    assertThat(underTest.header("X-GitHub-Event")).hasValue("code_scanning_alert");
+    assertThat(underTest.header("X-GITHUB-EVENT")).hasValue("code_scanning_alert");
+  }
 }

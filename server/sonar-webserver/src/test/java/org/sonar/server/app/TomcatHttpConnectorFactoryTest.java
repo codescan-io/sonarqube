@@ -47,6 +47,7 @@ public class TomcatHttpConnectorFactoryTest {
     assertThat(connector.getURIEncoding()).isEqualTo("UTF-8");
     assertThat(connector.getProperty("socket.soReuseAddress")).isEqualTo("true");
     assertThat(connector.getProperty("relaxedQueryChars")).isEqualTo("\"<>[\\]^`{|}");
+    assertThat(connector.getEncodedSolidusHandling()).isEqualTo("decode");
     assertThat(connector.getProperty("maxHttpHeaderSize")).isEqualTo(49152);
     assertThat(connector.getMaxPostSize()).isEqualTo(-1);
     // Compression properties

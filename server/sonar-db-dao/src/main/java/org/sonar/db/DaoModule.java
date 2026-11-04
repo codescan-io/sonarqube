@@ -21,6 +21,7 @@ package org.sonar.db;
 
 import java.util.List;
 import org.sonar.core.platform.Module;
+import org.sonar.db.aiuserallocation.AiUserAllocationDao;
 import org.sonar.db.alm.pat.AlmPatDao;
 import org.sonar.db.alm.setting.AlmSettingDao;
 import org.sonar.db.alm.setting.ProjectAlmSettingDao;
@@ -178,6 +179,7 @@ public class DaoModule extends Module {
     ProjectQgateAssociationDao.class,
     PropertiesDao.class,
     IdeUsageDao.class,
+    AiUserAllocationDao.class,
     PurgeDao.class,
     PushEventDao.class,
     QProfileChangeDao.class,

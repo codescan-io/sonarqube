@@ -20,7 +20,7 @@
 package org.sonarqube.ws.client.issues;
 
 import java.util.List;
-import javax.annotation.Generated;
+import jakarta.annotation.Generated;
 
 /**
  * This is part of the internal API.
@@ -60,11 +60,13 @@ public class SearchRequest {
   private String resolved;
   private List<String> rules;
   private String s;
+  private List<String> searchAfter;
   private List<String> sansTop25;
   private List<String> severities;
   private String inNewCodePeriod;
   private List<String> sonarsourceSecurity;
   private List<String> statuses;
+  private List<String> issueStatuses;
   private List<String> tags;
   private List<String> types;
   private String organization;
@@ -502,6 +504,20 @@ public class SearchRequest {
   }
 
   /**
+   * Cursor for deep pagination: the sort values of the last issue of the previous page, taken from
+   * {@code Issues.Issue.getSort()}. Lets a caller page beyond the 10,000-result ceiling that {@code p}
+   * is bound by. Requires the same query and the same {@code s}/{@code asc} on every request of the walk.
+   */
+  public SearchRequest setSearchAfter(List<String> searchAfter) {
+    this.searchAfter = searchAfter;
+    return this;
+  }
+
+  public List<String> getSearchAfter() {
+    return searchAfter;
+  }
+
+  /**
    * Possible values:
    * <ul>
    *   <li>"insecure-interaction"</li>
@@ -608,6 +624,26 @@ public class SearchRequest {
 
   public List<String> getStatuses() {
     return statuses;
+  }
+
+  /**
+   * Example value: "OPEN,ACCEPTED"
+   * Possible values:
+   * <ul>
+   *   <li>"OPEN"</li>
+   *   <li>"CONFIRMED"</li>
+   *   <li>"FALSE_POSITIVE"</li>
+   *   <li>"ACCEPTED"</li>
+   *   <li>"FIXED"</li>
+   * </ul>
+   */
+  public SearchRequest setIssueStatuses(List<String> issueStatuses) {
+    this.issueStatuses = issueStatuses;
+    return this;
+  }
+
+  public List<String> getIssueStatuses() {
+    return issueStatuses;
   }
 
   /**
