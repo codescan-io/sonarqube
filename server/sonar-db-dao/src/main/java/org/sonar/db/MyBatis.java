@@ -87,11 +87,11 @@ import org.sonar.db.issue.ImpactDto;
 import org.sonar.db.issue.IssueChangeDto;
 import org.sonar.db.issue.IssueChangeMapper;
 import org.sonar.db.issue.IssueDto;
-import org.sonar.db.issue.TrackedIssueMapper;
 import org.sonar.db.issue.IssueFixedMapper;
 import org.sonar.db.issue.IssueMapper;
 import org.sonar.db.issue.NewCodeReferenceIssueDto;
 import org.sonar.db.issue.PrIssueDto;
+import org.sonar.db.issue.RetainedIssueMapper;
 import org.sonar.db.measure.LargestBranchNclocDto;
 import org.sonar.db.measure.MeasureMapper;
 import org.sonar.db.measure.ProjectLocDistributionDto;
@@ -326,7 +326,7 @@ public class MyBatis {
       IssueChangeMapper.class,
       IssueMapper.class,
       IssueFixedMapper.class,
-      TrackedIssueMapper.class,
+      RetainedIssueMapper.class,
       IssuesDependencyMapper.class,
       MeasureMapper.class,
       ProjectMeasureMapper.class,

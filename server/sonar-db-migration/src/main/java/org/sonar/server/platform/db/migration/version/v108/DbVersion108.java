@@ -76,8 +76,12 @@ public class DbVersion108 implements DbVersion {
       .add(10_8_033, "Add 'issue_ai_metadata' column to 'issues' table", AddIssueAiMetadataColumnToIssuesTable.class)
       .add(10_8_037, "Add 'retain_issue_history_enabled' column to 'organizations' table",
         AddRetainIssueHistoryColumnToOrganizationsTable.class)
-      .add(10_8_038, "Create 'cs_tracked_issue' table", CreateTrackedIssueTable.class)
-      .add(10_8_039, "Create indexes on 'cs_tracked_issue' table", CreateIndexesOnTrackedIssueTable.class)
+      .add(10_8_038, "Create 'cs_retain_details' table", CreateRetainDetailsTable.class)
+      .add(10_8_039, "Create index on 'cs_retain_details' table", CreateIndexOnRetainDetailsTable.class)
+      .add(10_8_040, "Create 'cs_issue_track_for_retain' table", CreateIssueTrackForRetainTable.class)
+      .add(10_8_041, "Create indexes on 'cs_issue_track_for_retain' table", CreateIndexesOnIssueTrackForRetainTable.class)
+      .add(10_8_042, "Create 'cs_retain_issue_comments' table", CreateRetainIssueCommentsTable.class)
+      .add(10_8_043, "Create index on 'cs_retain_issue_comments' table", CreateIndexOnRetainIssueCommentsTable.class)
     ;
   }
 

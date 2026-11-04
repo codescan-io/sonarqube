@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "mybatis-3-mapper.dtd">
+
+<mapper namespace="org.sonar.db.issue.RetainedIssueMapper">
+
+  <!-- cs_retain_details -->
+
+  <select id="selectBranch" parameterType="map" resultType="org.sonar.db.issue.RetainDetailsDto">
+    select
+      d.branch_uuid as "branchUuid",
+      d.project_uuid as "projectUuid",
+      d.branch_key as "branchKey",
+      d.branch_type as "branchType",
+      d.target_branch_key as "targetBranchKey"
+    from cs_retain_details d
+    where d.branch_uuid = #{branchUuid, jdbcType=VARCHAR}
+  </select>
+
+  <insert id="insertBranch" parameterType="map" useGeneratedKeys="false">
+    insert into cs_retain_details
+    (
+      branch_uuid,
+      project_uuid,
+      branch_key,
+      branch_type,
+      target_branch_key
+    )
+    values
+    (
+      #{dto.branchUuid, jdbcType=VARCHAR},
+      #{dto.projectUuid, jdbcType=VARCHAR},
+      #{dto.branchKey, jdbcType=VARCHAR},
+      #{dto.branchType, jdbcType=VARCHAR},
+      #{dto.targetBranchKey, jdbcType=VARCHAR}
+    )
+  </insert>
+
+  <update id="updateBranch" parameterType="map">
+    update cs_retain_details set
+      branch_key = #{dto.branchKey, jdbcType=VARCHAR},
+      target_branch_key = #{dto.targetBranchKey, jdbcType=VARCHAR}
+    where branch_uuid = #{dto.branchUuid, jdbcType=VARCHAR}
+  </update>
+
+  <select id="selectBranchesByProjectUuid" parameterType="map" resultType="org.sonar.db.issue.RetainedBranchDto">
+    select
+      d.branch_uuid as "branchUuid",
+      d.branch_key as "branchKey",
+      d.branch_type as "branchType",
+      d.target_branch_key as "targetBranchKey",
+      case when pb.uuid is null then ${_false} else ${_true} end as "active",
+      count(t.uuid) as "issueCount"
+    from cs_retain_details d
+    left join project_branches pb on pb.uuid = d.branch_uuid
+    left join cs_issue_track_for_retain t on t.branch_uuid = d.branch_uuid
+    where d.project_uuid = #{projectUuid, jdbcType=VARCHAR}
+    group by d.branch_uuid, d.branch_key, d.branch_type, d.target_branch_key, pb.uuid
+    order by d.branch_type, d.branch_key, d.branch_uuid
+  </select>
+
+  <!-- cs_issue_track_for_retain -->
+
+  <sql id="issueColumns">
+    t.uuid as "uuid",
+    t.branch_uuid as "branchUuid",
+    t.issue_kee as "issueKey",
+    t.retained_status as "retainedStatus",
+    t.rule_uuid as "ruleUuid",
+    t.component_key as "componentKey",
+    t.message as "message",
+    t.severity as "severity",
+    t.issue_type as "issueType",
+    t.tags as "tags",
+    t.assignee_uuid as "assigneeUuid",
+    t.status_marked_by_uuid as "statusMarkedByUuid",
+    t.issue_creation_date as "issueCreationDate",
+    t.fixed_at as "fixedAt"
+  </sql>
+
+  <select id="selectRetainedIssueKeys" parameterType="map" resultType="String">
+    select t.issue_kee
+    from cs_issue_track_for_retain t
+    where
+      t.retained_status = #{retainedStatus, jdbcType=VARCHAR}
+      and t.issue_kee in
+      <foreach collection="issueKeys" open="(" close=")" item="issueKey" separator=",">
+        #{issueKey, jdbcType=VARCHAR}
+      </foreach>
+  </select>
+
+  <insert id="insertIssue" parameterType="map" useGeneratedKeys="false">
+    insert into cs_issue_track_for_retain
+    (
+      uuid,
+      branch_uuid,
+      issue_kee,
+      retained_status,
+      rule_uuid,
+      component_key,
+      message,
+      severity,
+      issue_type,
+      tags,
+      assignee_uuid,
+      status_marked_by_uuid,
+      issue_creation_date,
+      fixed_at
+    )
+    values
+    (
+      #{dto.uuid, jdbcType=VARCHAR},
+      #{dto.branchUuid, jdbcType=VARCHAR},
+      #{dto.issueKey, jdbcType=VARCHAR},
+      #{dto.retainedStatus, jdbcType=VARCHAR},
+      #{dto.ruleUuid, jdbcType=VARCHAR},
+      #{dto.componentKey, jdbcType=VARCHAR},
+      #{dto.message, jdbcType=VARCHAR},
+      #{dto.severity, jdbcType=VARCHAR},
+      #{dto.issueType, jdbcType=INTEGER},
+      #{dto.tags, jdbcType=VARCHAR},
+      #{dto.assigneeUuid, jdbcType=VARCHAR},
+      #{dto.statusMarkedByUuid, jdbcType=VARCHAR},
+      #{dto.issueCreationDate, jdbcType=BIGINT},
+      #{dto.fixedAt, jdbcType=BIGINT}
+    )
+  </insert>
+
+  <delete id="deleteRetainedIssues" parameterType="map">
+    delete from cs_issue_track_for_retain
+    where
+      retained_status = #{retainedStatus, jdbcType=VARCHAR}
+      and issue_kee in
+      <foreach collection="issueKeys" open="(" close=")" item="issueKey" separator=",">
+        #{issueKey, jdbcType=VARCHAR}
+      </foreach>
+  </delete>
+
+  <select id="scrollIssuesByProjectUuid" parameterType="map" resultType="org.sonar.db.issue.IssueTrackForRetainDto"
+          fetchSize="${_scrollFetchSize}" resultSetType="FORWARD_ONLY">
+    select
+      <include refid="issueColumns"/>
+    from cs_issue_track_for_retain t
+    inner join cs_retain_details d on d.branch_uuid = t.branch_uuid
+    where
+      d.project_uuid = #{projectUuid, jdbcType=VARCHAR}
+      and t.retained_status = #{retainedStatus, jdbcType=VARCHAR}
+      <if test="branchUuids != null and branchUuids.size() > 0">
+        and t.branch_uuid in
+        <foreach collection="branchUuids" open="(" close=")" item="branchUuid" separator=",">
+          #{branchUuid, jdbcType=VARCHAR}
+        </foreach>
+      </if>
+    order by t.fixed_at, t.uuid
+  </select>
+
+  <select id="countIssuesByProjectUuid" parameterType="map" resultType="long">
+    select count(1)
+    from cs_issue_track_for_retain t
+    inner join cs_retain_details d on d.branch_uuid = t.branch_uuid
+    where d.project_uuid = #{projectUuid, jdbcType=VARCHAR}
+  </select>
+
+  <!-- cs_retain_issue_comments -->
+
+  <insert id="copyCommentsOfIssueKeys" parameterType="map">
+    insert into cs_retain_issue_comments
+    (
+      uuid,
+      issue_kee,
+      change_data,
+      user_uuid,
+      issue_change_creation_date
+    )
+    select
+      ic.uuid,
+      ic.issue_key,
+      ic.change_data,
+      ic.user_login,
+      ic.issue_change_creation_date
+    from issue_changes ic
+    where
+      ic.change_type = 'comment'
+      and ic.issue_key in
+      <foreach collection="issueKeys" open="(" close=")" item="issueKey" separator=",">
+        #{issueKey, jdbcType=VARCHAR}
+      </foreach>
+      and exists (select 1 from cs_issue_track_for_retain t where t.issue_kee = ic.issue_key)
+      and not exists (select 1 from cs_retain_issue_comments c where c.uuid = ic.uuid)
+  </insert>
+
+  <insert id="copyCommentsOfBranch" parameterType="map">
+    insert into cs_retain_issue_comments
+    (
+      uuid,
+      issue_kee,
+      change_data,
+      user_uuid,
+      issue_change_creation_date
+    )
+    select
+      ic.uuid,
+      ic.issue_key,
+      ic.change_data,
+      ic.user_login,
+      ic.issue_change_creation_date
+    from issue_changes ic
+    where
+      ic.project_uuid = #{branchUuid, jdbcType=VARCHAR}
+      and ic.change_type = 'comment'
+      and exists (select 1 from cs_issue_track_for_retain t where t.issue_kee = ic.issue_key)
+      and not exists (select 1 from cs_retain_issue_comments c where c.uuid = ic.uuid)
+  </insert>
+
+  <select id="selectCommentsByIssueKeys" parameterType="map" resultType="org.sonar.db.issue.RetainIssueCommentDto">
+    select
+      c.uuid as "uuid",
+      c.issue_kee as "issueKey",
+      c.change_data as "changeData",
+      c.user_uuid as "userUuid",
+      c.issue_change_creation_date as "issueChangeCreationDate"
+    from cs_retain_issue_comments c
+    where c.issue_kee in
+      <foreach collection="issueKeys" open="(" close=")" item="issueKey" separator=",">
+        #{issueKey, jdbcType=VARCHAR}
+      </foreach>
+    order by c.issue_kee, c.issue_change_creation_date, c.uuid
+  </select>
+
+  <!-- project deletion, children first -->
+
+  <delete id="deleteCommentsByProjectUuid" parameterType="map">
+    delete from cs_retain_issue_comments
+    where issue_kee in (
+      select t.issue_kee
+      from cs_issue_track_for_retain t
+      inner join cs_retain_details d on d.branch_uuid = t.branch_uuid
+      where d.project_uuid = #{projectUuid, jdbcType=VARCHAR}
+    )
+  </delete>
+
+  <delete id="deleteIssuesByProjectUuid" parameterType="map">
+    delete from cs_issue_track_for_retain
+    where branch_uuid in (
+      select d.branch_uuid
+      from cs_retain_details d
+      where d.project_uuid = #{projectUuid, jdbcType=VARCHAR}
+    )
+  </delete>
+
+  <delete id="deleteBranchesByProjectUuid" parameterType="map">
+    delete from cs_retain_details
+    where project_uuid = #{projectUuid, jdbcType=VARCHAR}
+  </delete>
+</mapper>

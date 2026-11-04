@@ -31,7 +31,7 @@ import static org.sonar.db.DatabaseUtils.tableColumnExists;
 /**
  * Organization-level switch for retaining Fixed issues beyond the closed-issue retention window. codescanng writes
  * it; SonarQube only reads it, when deciding whether to capture a newly fixed issue into
- * 'cs_tracked_issue'. See CSN-261.
+ * 'cs_issue_track_for_retain'. See CSN-261.
  */
 public class AddRetainIssueHistoryColumnToOrganizationsTable extends DdlChange {
 

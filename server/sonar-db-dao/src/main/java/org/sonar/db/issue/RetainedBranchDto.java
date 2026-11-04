@@ -19,17 +19,44 @@
  */
 package org.sonar.db.issue;
 
-import javax.annotation.Nullable;
+import javax.annotation.CheckForNull;
 import org.sonar.db.component.BranchType;
 
 /**
- * A branch or pull request that 'cs_tracked_issue' holds rows for. {@code active} is false once the branch
- * itself has been deleted, which is what lets an export list it as a selectable but deleted scope.
+ * A branch or pull request that holds retained issues, as listed for the CSV export. {@code active} is false once
+ * the branch has been deleted: its uuid no longer has a 'project_branches' row.
  */
-public record TrackedIssueBranchDto(
-  String branchKey,
-  BranchType branchType,
-  @Nullable String baseBranchKey,
-  boolean active,
-  long issueCount) {
+public class RetainedBranchDto {
+
+  private String branchUuid;
+  private String branchKey;
+  private BranchType branchType;
+  private String targetBranchKey;
+  private boolean active;
+  private long issueCount;
+
+  public String getBranchUuid() {
+    return branchUuid;
+  }
+
+  public String getBranchKey() {
+    return branchKey;
+  }
+
+  public BranchType getBranchType() {
+    return branchType;
+  }
+
+  @CheckForNull
+  public String getTargetBranchKey() {
+    return targetBranchKey;
+  }
+
+  public boolean isActive() {
+    return active;
+  }
+
+  public long getIssueCount() {
+    return issueCount;
+  }
 }
