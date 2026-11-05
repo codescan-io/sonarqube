@@ -52,12 +52,15 @@ export default function AIRuleWizard(props: Readonly<Props>) {
   const [ruleData, setRuleData] = React.useState<RuleData | null>(null);
   const [generationError, setGenerationError] = React.useState(false);
   const [defineError, setDefineError] = React.useState<string | undefined>(undefined);
+  // Set when a regenerate fails but the earlier result is still usable.
+  const [regenerateFailed, setRegenerateFailed] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 
   const handleClose = () => {
     setCurrentStep('define');
     setRuleData(null);
     setGenerationError(false);
+    setRegenerateFailed(false);
     setLoading(false);
     onClose();
   };
@@ -90,6 +93,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
   const handleDefineSubmit = async (values: AIRuleFormValues) => {
     setFormValues(values);
     setDefineError(undefined);
+    setRegenerateFailed(false);
 
     try {
       if (!organization) {
@@ -160,6 +164,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
   };
 
   const handleReviewBack = () => {
+    setRegenerateFailed(false);
     setCurrentStep('define');
   };
 
@@ -171,13 +176,16 @@ export default function AIRuleWizard(props: Readonly<Props>) {
         throw new Error('Organization is required to create a custom rule');
       }
 
+      // The earlier XPath was generated and paid for, so a refused regenerate keeps the user on
+      // Review with it rather than closing the wizard.
       const quota = await getAiRuleQuota(organization);
       if (quota.regenerateBlockedReason) {
         addGlobalErrorMessage(quota.regenerateBlockedReason);
-        handleClose();
+        setRegenerateFailed(true);
         return;
       }
 
+      setRegenerateFailed(false);
       setCurrentStep('generate');
       setGenerationError(false);
 
@@ -208,6 +216,12 @@ export default function AIRuleWizard(props: Readonly<Props>) {
       const message = await parseCodescanErrorMessage(error);
       if (message !== undefined) {
         addGlobalErrorMessage(message);
+      }
+      if (ruleData?.generatedXPath) {
+        setRegenerateFailed(true);
+        setGenerationError(false);
+        setCurrentStep('review');
+        return;
       }
       setGenerationError(true);
     }
@@ -333,6 +347,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
             onActivate={handleActivateRule}
             loading={loading}
             hasError={generationError}
+            regenerateFailed={regenerateFailed}
           />
         ) : null;
     }
