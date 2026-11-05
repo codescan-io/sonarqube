@@ -259,18 +259,6 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
         )}
         <Card className='sw-mt-4 sw-mb-4'>
           <div className="boxed-group boxed-group-inner">
-            <h2 className="boxed-title">{translate('organization.disable_invite_users')}</h2>
-            <p className="big-spacer-bottom width-50 sw-my-8">
-              <InstanceMessage message={translate('organization.disable_invite_users.description')} />
-            </p>
-            <Switch
-              value={!this.state.inviteUsersEnabled}
-              onChange={() => this.handleSwitchChange()}
-            />
-          </div>
-        </Card>
-        <Card className='sw-mt-4 sw-mb-4'>
-          <div className="boxed-group boxed-group-inner">
             <h2 className="boxed-title">Enable AI Custom Rules</h2>
             <p className="big-spacer-bottom width-50 sw-my-8">
               When enabled, users can generate XPath expressions using AI when creating custom rules for Salesforce metadata.
