@@ -30,6 +30,7 @@ import { Organization } from '../../../types/types';
 import { AppState } from '../../../types/appstate';
 import { useAppState } from '../../../app/components/app-state/withAppStateContext';
 import { WHITELIST_VALUE_CODESCAN } from '../../../helpers/constants';
+import useAiCustomRulesInstanceEnabled from '../../coding-rules/components/ai-custom-rules/useAiCustomRulesInstanceEnabled';
 import OrganizationAvatarUrlInput from '../../create/components/OrganizationAvatarUrlInput';
 import OrganizationDescriptionInput from '../../create/components/OrganizationDescriptionInput';
 import OrganizationNameInput from '../../create/components/OrganizationNameInput';
@@ -41,6 +42,7 @@ import OrganizationAvatar from './OrganizationAvatar';
 interface Props {
   organization: Organization;
   appState: AppState;
+  aiCustomRulesInstanceEnabled: boolean;
 }
 
 interface State {
@@ -269,6 +271,7 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
             />
           </div>
         </Card>
+        {this.props.aiCustomRulesInstanceEnabled && (
         <Card className='sw-mt-4 sw-mb-4'>
           <div className="boxed-group boxed-group-inner">
             <h2 className="boxed-title">Enable AI Custom Rules</h2>
@@ -281,6 +284,7 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
             />
           </div>
         </Card>
+        )}
 
 
         {showDelete && <OrganizationArchive />}
@@ -289,9 +293,16 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
   }
 }
 
-function OrganizationEditWrapper(props: Props) {
+function OrganizationEditWrapper(props: Omit<Props, 'appState' | 'aiCustomRulesInstanceEnabled'>) {
   const appState = useAppState();
-  return <OrganizationEdit {...props} appState={appState} />;
+  const aiCustomRulesInstanceEnabled = useAiCustomRulesInstanceEnabled();
+  return (
+    <OrganizationEdit
+      {...props}
+      appState={appState}
+      aiCustomRulesInstanceEnabled={aiCustomRulesInstanceEnabled}
+    />
+  );
 }
 
 export default whenLoggedIn(withOrganizationContext(OrganizationEditWrapper));
