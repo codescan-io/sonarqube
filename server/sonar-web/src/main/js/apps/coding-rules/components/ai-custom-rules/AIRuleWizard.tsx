@@ -21,7 +21,6 @@
 import * as React from 'react';
 import { addGlobalErrorMessage } from '~design-system';
 import { createRule } from '../../../../api/rules';
-import { translate } from '../../../../helpers/l10n';
 import { RuleDetails } from '../../../../types/types';
 import { generateAIXPath, getAiRuleQuota, parseCodescanErrorMessage } from './aiRuleService';
 import './AIRuleWizard.css';
@@ -97,15 +96,12 @@ export default function AIRuleWizard(props: Readonly<Props>) {
         throw new Error('Organization is required to create a custom rule');
       }
 
-      // Short-circuit on credit shortage — backend would 400 anyway; failing fast here
-      // avoids spending a partial round-trip and gives the user a clearer message.
+      // Licence and credit refusals can only be fixed by an administrator, so close the wizard
+      // instead of leaving the user on a form they cannot complete.
       const quota = await getAiRuleQuota(organization);
-      if (!quota.moduleLicensed) {
-        addGlobalErrorMessage(translate('ai_custom_rules.module_not_licensed'));
-        return;
-      }
-      if (quota.remainingCredits < quota.costPerGenerate) {
-        addGlobalErrorMessage(translate('ai_custom_rules.insufficient_credits'));
+      if (quota.generateBlockedReason) {
+        addGlobalErrorMessage(quota.generateBlockedReason);
+        handleClose();
         return;
       }
 
@@ -176,12 +172,9 @@ export default function AIRuleWizard(props: Readonly<Props>) {
       }
 
       const quota = await getAiRuleQuota(organization);
-      if (!quota.moduleLicensed) {
-        addGlobalErrorMessage(translate('ai_custom_rules.module_not_licensed'));
-        return;
-      }
-      if (quota.remainingCredits < quota.costPerRegenerate) {
-        addGlobalErrorMessage(translate('ai_custom_rules.insufficient_credits'));
+      if (quota.regenerateBlockedReason) {
+        addGlobalErrorMessage(quota.regenerateBlockedReason);
+        handleClose();
         return;
       }
 
