@@ -32,12 +32,14 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public class CspFilter implements Filter {
 
     private static final String PENDO_DISABLE_TOGGLE = "PENDO_DISABLE";
     private static final String GA_DISABLE_TOGGLE = "GA_DISABLE";
+    private static final String LOOPBACK_SOURCE = "http://localhost:*";
 
     private final List<String> cspHeaders = new ArrayList<>();
     private String defaultPolicies = null;
@@ -60,6 +62,13 @@ public class CspFilter implements Filter {
             throws IOException, ServletException {
         boolean isCodescan = request.getServerName().contains("codescan.io") || request.getServerName().contains("autorabit.com");
         String policies = isCodescan ? codescanPolicies : defaultPolicies;
+        // SonarLint listens on a loopback port, a different origin from the page, so 'self' does
+        // not cover the token POST. Only the IDE connection page makes that call.
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        if ("/sonarlint/auth".equals(httpRequest.getRequestURI().replaceFirst(httpRequest.getContextPath(), ""))
+                && !policies.contains(LOOPBACK_SOURCE)) {
+            policies = policies.replace("connect-src 'self'", "connect-src 'self' " + LOOPBACK_SOURCE);
+        }
         // Add policies to all HTTP headers
         for (String header : this.cspHeaders) {
             ((HttpServletResponse) response).setHeader(header, policies);
@@ -77,7 +86,7 @@ public class CspFilter implements Filter {
         List<String> cspPolicies = new ArrayList<>();
         cspPolicies.add("default-src 'self'");
         cspPolicies.add("base-uri 'none'");
-        cspPolicies.add("connect-src 'self' http://localhost:* https:");
+        cspPolicies.add("connect-src 'self' " + LOOPBACK_SOURCE + " https:");
         cspPolicies.add("font-src 'self' data:");
         cspPolicies.add("img-src * data: blob:");
         cspPolicies.add("object-src 'none'");
@@ -118,7 +127,7 @@ public class CspFilter implements Filter {
         String src = telemetryDisabled
                 ? "connect-src 'self'"
                 : "connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com "
-                        + "http://localhost:* https:";
+                        + LOOPBACK_SOURCE + " https:";
         if (!pendoDisabled) {
             src += " app.pendo.io data.pendo.io pendo-static-6580644462460928.storage.googleapis.com";
         }
