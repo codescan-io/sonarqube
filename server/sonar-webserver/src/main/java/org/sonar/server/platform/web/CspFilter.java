@@ -101,6 +101,11 @@ public class CspFilter implements Filter {
         cspPolicies.add(buildConnectSrc(pendoDisabled, telemetryDisabled));
         cspPolicies.add(buildScriptSrc(pendoDisabled, gaDisabled, telemetryDisabled, contextPath));
         cspPolicies.add(buildStyleSrc(pendoDisabled));
+        if (telemetryDisabled) {
+            // X-Frame-Options is still set by SecurityServletFilter, but browsers honour
+            // frame-ancestors in preference to it wherever both are present.
+            cspPolicies.add("frame-ancestors 'self'");
+        }
         if (!pendoDisabled) {
             cspPolicies.add("frame-ancestors 'self' app.pendo.io");
             cspPolicies.add("frame-src 'self' app.pendo.io");
@@ -111,7 +116,7 @@ public class CspFilter implements Filter {
 
     private static String buildConnectSrc(boolean pendoDisabled, boolean telemetryDisabled) {
         String src = telemetryDisabled
-                ? "connect-src 'self' http://localhost:*"
+                ? "connect-src 'self'"
                 : "connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com "
                         + "http://localhost:* https:";
         if (!pendoDisabled) {
