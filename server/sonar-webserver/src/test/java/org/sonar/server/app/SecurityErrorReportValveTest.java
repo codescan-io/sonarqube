@@ -56,6 +56,6 @@ public class SecurityErrorReportValveTest {
     verify(response).setHeader("X-Frame-Options", "SAMEORIGIN");
     verify(response).setHeader("X-XSS-Protection", "0");
     verify(response).setHeader("X-Content-Type-Options", "nosniff");
-    verify(response).setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains;");
+    verify(response).setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
 }
