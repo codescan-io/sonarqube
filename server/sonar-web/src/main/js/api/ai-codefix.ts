@@ -169,12 +169,19 @@ export function getCodefixStatus(issueKey: string): Promise<CodefixStatusRespons
     });
 }
 
-export function getPullRequestStatus(jobId: string, issueKey?: string): Promise<Notification> {
+export function getPullRequestStatus(jobId: string, issueKey?: string): Promise<Notification | null> {
   const params: Record<string, string> = { jobId };
   if (issueKey) {
     params.issueKey = issueKey;
   }
-  return get(`${CODEFIX_BASE}/get-pr-status`, params).then(parseJSON).catch(() => undefined as any);
+  return get(`${CODEFIX_BASE}/get-pr-status`, params)
+    .then(parseJSON)
+    .catch((error) => {
+      if (isNotFoundResponse(error)) {
+        return null;
+      }
+      return Promise.reject(error);
+    });
 }
 
 export function createBulkCodefixPr(data: CodefixBulkCreatePrSubmit): Promise<{ jobId?: string }> {
