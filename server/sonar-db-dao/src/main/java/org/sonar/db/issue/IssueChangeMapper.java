@@ -37,8 +37,9 @@ public interface IssueChangeMapper {
     @Param("issueStatus") String issueStatus, @Param("branchUuid") String branchUuid,
     @Param("changeAuthor") String changeAuthor, @Param("now") long now, @Param("uuidPrefix") String uuidPrefix);
 
-  /** Writes one comment row per transitioned issue in one statement. */
-  void insertTransitionComments(@Param("keys") List<String> keys, @Param("comment") String comment,
+  /** Writes one comment-like row (a comment or an exception reason) per transitioned issue in one statement. */
+  void insertTransitionComments(@Param("keys") List<String> keys, @Param("changeType") String changeType,
+    @Param("comment") String comment,
     @Param("branchUuid") String branchUuid, @Param("changeAuthor") String changeAuthor, @Param("now") long now,
     @Param("uuidPrefix") String uuidPrefix, @Param("keePrefix") String keePrefix);
 
