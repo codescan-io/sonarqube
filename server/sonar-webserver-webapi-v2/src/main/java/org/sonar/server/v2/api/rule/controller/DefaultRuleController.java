@@ -74,7 +74,7 @@ public class DefaultRuleController implements RuleController {
     NewCustomRule newCustomRule = NewCustomRule.createForCustomRule(RuleKey.parse(request.key()), RuleKey.parse(request.templateKey()))
       .setOrganizationKey(request.organization())
       .setName(request.name())
-      .setMarkdownDescription(request.markdownDescription())
+      .setMarkdownDescription(readMarkdownDescription(request))
       .setStatus(ofNullable(request.status()).map(RuleStatusRestEnum::getRuleStatus).orElse(null))
       .setCleanCodeAttribute(request.cleanCodeAttribute() != null ? request.cleanCodeAttribute().getCleanCodeAttribute() : null)
       .setImpacts(request.impacts().stream().map(DefaultRuleController::toNewCustomRuleImpact).toList())
@@ -93,6 +93,17 @@ public class DefaultRuleController implements RuleController {
       newCustomRule.setParameters(params);
     }
     return newCustomRule;
+  }
+
+  private static String readMarkdownDescription(RuleCreateRestRequest request) {
+    String encoded = request.encodedMarkdownDescription();
+    if (encoded != null && !encoded.isEmpty()) {
+      return EncodedParameters.decode(encoded, "encodedMarkdownDescription");
+    }
+    if (request.markdownDescription() == null) {
+      throw new IllegalArgumentException("Either 'markdownDescription' or 'encodedMarkdownDescription' must be provided");
+    }
+    return request.markdownDescription();
   }
 
   @CheckForNull
