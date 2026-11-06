@@ -42,6 +42,13 @@ public interface IssueChangeMapper {
     @Param("branchUuid") String branchUuid, @Param("changeAuthor") String changeAuthor, @Param("now") long now,
     @Param("uuidPrefix") String uuidPrefix, @Param("keePrefix") String keePrefix);
 
+
+  void insertProliferationDiffs(ProliferationChangeQuery query);
+
+  /** CodeScan: as {@link #insertTransitionComments}, for proliferation. The query's change type is what lets the
+   *  same statement write both plain comments and Exception reasons. */
+  void insertProliferationComments(ProliferationChangeQuery query);
+
   int delete(String key);
 
   void deleteByUuids(@Param("changeUuids") Collection<String> uuids);

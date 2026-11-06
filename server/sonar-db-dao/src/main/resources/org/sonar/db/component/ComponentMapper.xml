@@ -423,6 +423,17 @@
       and p.copy_component_uuid is not null
   </select>
 
+  <select id="selectUuidsByPathAndBranchUuids" parameterType="map" resultType="String">
+    SELECT p.uuid
+    FROM components p
+    WHERE p.path = #{filePath,jdbcType=VARCHAR}
+      AND p.enabled = ${_true}
+      AND p.branch_uuid in
+      <foreach collection="branchUuids" open="(" close=")" item="branchUuid" separator=",">
+        #{branchUuid,jdbcType=VARCHAR}
+      </foreach>
+  </select>
+
   <select id="selectByBranchUuid" parameterType="map" resultType="Component">
     SELECT
     <include refid="componentColumns"/>

@@ -63,6 +63,7 @@ import org.sonar.server.issue.AddTagsAction;
 import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.AssignAction;
 import org.sonar.server.issue.IssueChangePostProcessor;
+import org.sonar.server.issue.IssueProliferationSubmitter;
 import org.sonar.server.issue.RemoveTagsAction;
 import org.sonar.server.issue.WebIssueStorage;
 import org.sonar.server.issue.notification.IssuesChangesNotificationBuilder;
@@ -82,6 +83,9 @@ import static java.lang.String.format;
 import static java.util.Map.of;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.sonar.api.issue.DefaultTransitions.ACCEPT;
 import static org.sonar.api.issue.DefaultTransitions.CONFIRM;
@@ -129,6 +133,7 @@ public class BulkChangeAction implements IssuesWsAction {
   // Codescan: uuid of the user to attribute the change (and its comment) to instead of the caller. Only honored for
   // system administrators. Used by the resolution-transfer feature to credit the original resolver.
   private static final String PARAM_CHANGE_AUTHOR = "changeAuthor";
+  private static final String PARAM_PROLIFERATE = "proliferate";
 
   private final System2 system2;
   private final UserSession userSession;
@@ -139,11 +144,13 @@ public class BulkChangeAction implements IssuesWsAction {
   private final IssueChangePostProcessor issueChangePostProcessor;
   private final IssuesChangesNotificationSerializer notificationSerializer;
   private final IssueChangeEventService issueChangeEventService;
+  private final IssueProliferationSubmitter proliferationSubmitter;
 
   public BulkChangeAction(System2 system2, UserSession userSession, DbClient dbClient, WebIssueStorage issueStorage,
     NotificationManager notificationService, List<Action> actions,
     IssueChangePostProcessor issueChangePostProcessor, IssuesChangesNotificationSerializer notificationSerializer,
-    IssueChangeEventService issueChangeEventService) {
+    IssueChangeEventService issueChangeEventService, IssueProliferationSubmitter proliferationSubmitter) {
+    this.proliferationSubmitter = proliferationSubmitter;
     this.system2 = system2;
     this.userSession = userSession;
     this.dbClient = dbClient;
@@ -221,6 +228,14 @@ public class BulkChangeAction implements IssuesWsAction {
       .setDescription("Codescan customization: uuid of the user the change and its comment should be attributed to "
         + "instead of the caller. Only honored when the caller is a system administrator.")
       .setInternal(true)
+      .setRequired(false);
+    action.createParam(PARAM_PROLIFERATE)
+      .setDescription("Codescan customization: set to false to suppress cross-branch resolution proliferation for "
+        + "this call. Defaults to true. Used by Resolution Transfer, which proliferates in its own phase after the "
+        + "transfer rather than inside each batch.")
+      .setInternal(true)
+      .setBooleanPossibleValues()
+      .setDefaultValue("true")
       .setRequired(false);
   }
 
@@ -339,6 +354,7 @@ public class BulkChangeAction implements IssuesWsAction {
       .filter(bulkChange(issueChangeContext, bulkChangeData, result))
       .toList();
     issueStorage.save(dbSession, defaultIssues);
+    proliferateMarkings(dbSession, request, bulkChangeData, issueChangeContext, defaultIssues);
     refreshLiveMeasures(dbSession, bulkChangeData, result);
 
     Set<String> assigneeUuids = defaultIssues.stream().map(DefaultIssue::assignee).filter(Objects::nonNull).collect(Collectors.toSet());
@@ -350,6 +366,33 @@ public class BulkChangeAction implements IssuesWsAction {
     distributeEvents(defaultIssues, bulkChangeData);
 
     return result;
+  }
+
+
+  private void proliferateMarkings(DbSession dbSession, Request request, BulkChangeData bulkChangeData,
+    IssueChangeContext issueChangeContext, List<DefaultIssue> changedIssues) {
+    if (!request.mandatoryParamAsBoolean(PARAM_PROLIFERATE)) {
+      return;
+    }
+    Map<String, Object> transitionProperties = bulkChangeData.getProperties(DO_TRANSITION_KEY);
+    if (transitionProperties == null) {
+      return;
+    }
+    String transition = (String) transitionProperties.get(TRANSITION_PARAMETER);
+    if (transition == null) {
+      return;
+    }
+    String exceptionReason = (String) transitionProperties.get(PARAM_EXCEPTION_REASON);
+    Map<String, Object> commentProperties = bulkChangeData.getProperties(COMMENT_KEY);
+    String comment = commentProperties == null ? null : (String) commentProperties.get(COMMENT_PROPERTY);
+
+    // One task per source branch. A bulk change is normally confined to one branch, but nothing stops a caller
+    // mixing branches in one call, and a task carries the branch its issues came from.
+    Map<String, List<String>> keysByBranch = changedIssues.stream()
+      .filter(issue -> issue.projectUuid() != null)
+      .collect(groupingBy(DefaultIssue::projectUuid, mapping(DefaultIssue::key, toList())));
+    keysByBranch.forEach((branchUuid, keys) -> proliferationSubmitter.submit(dbSession, branchUuid, keys,
+      issueChangeContext, transition, comment, exceptionReason));
   }
 
   /**

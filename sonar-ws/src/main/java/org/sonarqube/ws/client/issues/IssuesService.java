@@ -116,8 +116,19 @@ public class IssuesService extends BaseService {
         .setParam("sendNotifications", request.getSendNotifications())
         .setParam("set_severity", request.getSetSeverity() == null ? null : request.getSetSeverity().stream().collect(Collectors.joining(",")))
         .setParam("set_type", request.getSetType() == null ? null : request.getSetType().stream().collect(Collectors.joining(",")))
-        .setParam("changeAuthor", request.getChangeAuthor()),
+        .setParam("changeAuthor", request.getChangeAuthor())
+        .setParam("proliferate", request.getProliferate()),
       BulkChangeWsResponse.parser());
+  }
+
+
+  public void proliferate(ProliferateRequest request) {
+    call(
+      new PostRequest(path("proliferate"))
+        .setParam("issues", request.getIssues() == null ? null : request.getIssues().stream().collect(Collectors.joining(",")))
+        .setParam("comment", request.getComment())
+        .setParam("markedAt", request.getMarkedAt()))
+      .content();
   }
 
   /**

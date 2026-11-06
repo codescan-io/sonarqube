@@ -37,6 +37,21 @@ public interface IssueMapper {
 
   List<IssueDto> selectByKeys(List<String> keys);
 
+  /**
+   * Unresolved issues on the given branches sharing a marking signature (file path, rule, line, message).
+   * {@code branchUuids} are project_uuid values - issues are partitioned per branch by that column.
+   */
+  List<IssueDto> selectUnresolvedBySignatureInBranches(@Param("branchUuids") Collection<String> branchUuids,
+    @Param("ruleUuid") String ruleUuid, @Param("filePath") String filePath, @Param("line") @Nullable Integer line,
+    @Param("message") String message, @Param("statuses") Collection<String> statuses);
+
+  /**
+   * Every unresolved issue of one rule on the given components, for callers that narrow by line and message
+   * themselves. The caller resolves the components first, so this filters on the indexed component_uuid.
+   */
+  List<IssueDto> selectUnresolvedByRuleAndComponents(@Param("componentUuids") Collection<String> componentUuids,
+    @Param("ruleUuid") String ruleUuid, @Param("statuses") Collection<String> statuses);
+
   Set<String> selectIssueKeysByComponentUuid(@Param("componentUuid") String componentUuid);
 
   Set<String> selectIssueKeysByComponentUuidWithFilters(@Param("componentUuid") String componentUuid,
@@ -70,6 +85,14 @@ public interface IssueMapper {
   int bulkTransition(@Param("keys") List<String> keys, @Param("branchUuid") String branchUuid,
     @Param("resolution") String resolution,
     @Param("now") long now);
+
+  /**
+   * CodeScan: as {@link #bulkTransition}, for proliferation - writes the expiry, leaves the assignee alone, and
+   * takes the candidate statuses as a parameter.
+   */
+  int bulkTransitionWithExpiry(@Param("keys") List<String> keys, @Param("resolution") String resolution,
+    @Param("expiresAt") @Nullable Long expiresAt, @Param("markedAt") long markedAt, @Param("now") long now,
+    @Param("statuses") Collection<String> statuses);
 
   void insertAsNewCodeOnReferenceBranch(NewCodeReferenceIssueDto issue);
 

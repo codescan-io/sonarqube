@@ -21,6 +21,7 @@ package org.sonar.server.issue.ws;
 
 import com.google.common.io.Resources;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import org.sonar.api.issue.DefaultTransitions;
 import org.sonar.api.issue.impact.Severity;
@@ -39,6 +40,7 @@ import org.sonar.db.issue.IssueDto;
 import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.IssueFieldsSetter;
 import org.sonar.server.issue.IssueFinder;
+import org.sonar.server.issue.IssueProliferationSubmitter;
 import org.sonar.server.issue.TransitionService;
 import org.sonar.server.pushapi.issues.IssueChangeEventService;
 import org.sonar.server.user.UserSession;
@@ -69,12 +71,14 @@ public class DoTransitionAction implements IssuesWsAction {
   private final System2 system2;
   private final CodeIssueExceptionExpiryService codeIssueExceptionExpiryService;
   private final IssueFieldsSetter issueFieldsSetter;
+  private final IssueProliferationSubmitter proliferationSubmitter;
   private static final String PARAM_EXCEPTION_REASON = "exceptionReason";
   private static final String PARAM_COMMENT = "comment";
 
   public DoTransitionAction(DbClient dbClient, UserSession userSession, IssueChangeEventService issueChangeEventService,
     IssueFinder issueFinder, IssueUpdater issueUpdater, TransitionService transitionService,
-    OperationResponseWriter responseWriter, System2 system2, CodeIssueExceptionExpiryService codeIssueExceptionExpiryService, IssueFieldsSetter issueFieldsSetter) {
+    OperationResponseWriter responseWriter, System2 system2, CodeIssueExceptionExpiryService codeIssueExceptionExpiryService, IssueFieldsSetter issueFieldsSetter,
+    IssueProliferationSubmitter proliferationSubmitter) {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.issueChangeEventService = issueChangeEventService;
@@ -85,6 +89,7 @@ public class DoTransitionAction implements IssuesWsAction {
     this.system2 = system2;
     this.codeIssueExceptionExpiryService = codeIssueExceptionExpiryService;
     this.issueFieldsSetter = issueFieldsSetter;
+    this.proliferationSubmitter = proliferationSubmitter;
   }
 
   @Override
@@ -177,6 +182,9 @@ public class DoTransitionAction implements IssuesWsAction {
         }
       BranchDto branch = issueUpdater.getBranch(session, defaultIssue);
       SearchResponseData response = issueUpdater.saveIssueAndPreloadSearchResponseData(session, issueDto, defaultIssue, context, branch);
+
+      proliferationSubmitter.submit(session, issueDto.getProjectUuid(), List.of(issueDto.getKey()), context,
+        transitionKey, comment, exceptionReason);
 
       if (branch.getBranchType().equals(BRANCH) && response.getComponentByUuid(defaultIssue.projectUuid()) != null) {
         issueChangeEventService.distributeIssueChangeEvent(defaultIssue, null, Map.of(), null, transitionKey, branch,

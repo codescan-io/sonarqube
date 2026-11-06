@@ -49,6 +49,7 @@ import org.sonar.server.exceptions.UnauthorizedException;
 import org.sonar.server.issue.Action;
 import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.IssueFieldsSetter;
+import org.sonar.server.issue.IssueProliferationSubmitter;
 import org.sonar.server.issue.TestIssueChangePostProcessor;
 import org.sonar.server.issue.TransitionService;
 import org.sonar.server.issue.WebIssueStorage;
@@ -135,7 +136,8 @@ public class BulkChangeActionIT {
   private List<Action> actions = new ArrayList<>();
 
   private WsActionTester tester = new WsActionTester(new BulkChangeAction(system2, userSession, dbClient, issueStorage, notificationManager, actions,
-    issueChangePostProcessor, issuesChangesSerializer, issueChangeEventService));
+    issueChangePostProcessor, issuesChangesSerializer, issueChangeEventService,
+    mock(IssueProliferationSubmitter.class)));
 
   @Before
   public void setUp() {
