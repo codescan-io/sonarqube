@@ -27,8 +27,10 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonar.api.impl.utils.TestSystem2;
 import org.sonar.api.utils.System2;
+import org.sonar.core.issue.DefaultIssue;
 import org.sonar.core.util.SequenceUuidFactory;
 import org.sonar.db.DbClient;
+import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueDto;
@@ -41,6 +43,7 @@ import org.sonar.server.ws.WsActionTester;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -61,7 +64,17 @@ public class BulkTransitionActionIT {
   public UserSessionRule userSession = UserSessionRule.standalone();
 
   private final DbClient dbClient = db.getDbClient();
-  private final IssueIndexer issueIndexer = mock(IssueIndexer.class);
+  /**
+   * The indexer owns the commit, as upstream's commitAndIndexIssues does: the es_queue rows have to go in with
+   * the issues. A mock that only records the call would therefore swallow the commit and roll the chunk back, so
+   * it commits the session it is handed.
+   */
+  private final IssueIndexer issueIndexer = mock(IssueIndexer.class, invocation -> {
+    if ("commitAndIndexIssueKeys".equals(invocation.getMethod().getName())) {
+      ((DbSession) invocation.getArgument(0)).commit();
+    }
+    return org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
+  });
   private final TestIssueChangePostProcessor postProcessor = new TestIssueChangePostProcessor();
 
   private final WsActionTester tester = new WsActionTester(new BulkTransitionAction(dbClient, userSession,
@@ -151,7 +164,7 @@ public class BulkTransitionActionIT {
     assertThat(changelogRowsOf(foreign.getKey())).isZero();
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Collection<String>> reindexed = ArgumentCaptor.forClass(Collection.class);
-    verify(issueIndexer).indexOnAnalysis(eq(mainBranch.uuid()), reindexed.capture());
+    verify(issueIndexer).commitAndIndexIssueKeys(any(), reindexed.capture(), eq(mainBranch.uuid()));
     assertThat(reindexed.getValue()).containsExactly(mine.getKey());
   }
 
@@ -200,7 +213,62 @@ public class BulkTransitionActionIT {
     assertThat(response).contains("\"requested\":0", "\"transitioned\":0");
     assertThat(statusOf(issue.getKey())).isEqualTo(STATUS_OPEN);
     assertThat(postProcessor.wasCalled()).isTrue();
+    assertThat(postProcessor.calledIssues())
+      .as("no key was named, so there is no issue to carry to the quality-gate listeners")
+      .isEmpty();
     verifyNoInteractions(issueIndexer);
+  }
+
+  /**
+   * The quality-gate listeners are dropped before any of them is called when this list is empty, so a transfer
+   * that flips the gate would send no webhook and leave no quality-gate event on the project's activity. One
+   * entry reaches every listener that a thousand would: a call carries one branch, and both listeners read the
+   * change event rather than the issues.
+   */
+  @Test
+  public void the_recomputation_carries_an_issue_so_the_quality_gate_listeners_are_reached() {
+    userSession.logIn().setSystemAdministrator();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto rule = db.rules().insertIssueRule();
+    IssueDto open = insertOpenIssue(rule, project, file);
+
+    tester.newRequest()
+      .setParam("issues", open.getKey())
+      .setParam("transition", "falsepositive")
+      .setParam("branchUuid", project.uuid())
+      .setParam("refreshMeasures", "true")
+      .execute();
+
+    assertThat(postProcessor.calledIssues()).hasSize(1);
+    DefaultIssue carried = postProcessor.calledIssues().get(0);
+    assertThat(carried.key()).isEqualTo(open.getKey());
+    assertThat(carried.projectUuid())
+      .as("the branch it belongs to, which is how the broadcast finds its change events")
+      .isEqualTo(project.uuid());
+    assertThat(carried.status()).isEqualTo("RESOLVED");
+    assertThat(carried.resolution()).isEqualTo("FALSE-POSITIVE");
+  }
+
+  /** Nothing moved, but an earlier chunk of the same run did, so the gate may still have changed. */
+  @Test
+  public void a_recomputation_that_moved_nothing_still_carries_an_issue() {
+    userSession.logIn().setSystemAdministrator();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto rule = db.rules().insertIssueRule();
+    IssueDto alreadyResolved = db.issues().insertIssue(rule, project, file,
+      i -> i.setStatus("RESOLVED").setResolution("FALSE-POSITIVE").setType(CODE_SMELL));
+
+    tester.newRequest()
+      .setParam("issues", alreadyResolved.getKey())
+      .setParam("transition", "falsepositive")
+      .setParam("branchUuid", project.uuid())
+      .setParam("refreshMeasures", "true")
+      .execute();
+
+    assertThat(postProcessor.calledIssues()).hasSize(1);
+    assertThat(postProcessor.calledIssues().get(0).key()).isEqualTo(alreadyResolved.getKey());
   }
 
   private IssueDto insertOpenIssue(RuleDto rule, ComponentDto branch, ComponentDto file) {

@@ -30,11 +30,13 @@ public class TestIssueChangePostProcessor implements IssueChangePostProcessor {
 
   private boolean called = false;
   private final List<ComponentDto> calledComponents = new ArrayList<>();
+  private final List<DefaultIssue> calledIssues = new ArrayList<>();
 
   @Override
   public void process(DbSession dbSession, List<DefaultIssue> changedIssues, Collection<ComponentDto> components, boolean fromAlm) {
     called = true;
     calledComponents.addAll(components);
+    calledIssues.addAll(changedIssues);
   }
 
   public boolean wasCalled() {
@@ -43,5 +45,10 @@ public class TestIssueChangePostProcessor implements IssueChangePostProcessor {
 
   public List<ComponentDto> calledComponents() {
     return calledComponents;
+  }
+
+  /** What reaches the quality-gate listeners: an empty list stops the broadcast before any of them is called. */
+  public List<DefaultIssue> calledIssues() {
+    return calledIssues;
   }
 }
