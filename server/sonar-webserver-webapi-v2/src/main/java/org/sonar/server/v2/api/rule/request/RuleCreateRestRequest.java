@@ -84,6 +84,12 @@ public record RuleCreateRestRequest(
 
   @Nullable
   @Schema(description = "Whether the rule's XPath was generated using AI", defaultValue = "false")
-  Boolean aiGenerated
+  Boolean aiGenerated,
+
+  // Parameter values such as XPath expressions can match the SQL injection signatures of a WAF body inspection.
+  @Nullable
+  @Schema(description = "Same as 'parameters', with each 'defaultValue' base64url-encoded (RFC 4648 §5, padding optional) "
+    + "from UTF-8. When not empty, it is used instead of 'parameters'.")
+  List<Parameter> encodedParameters
 ) {
 }
