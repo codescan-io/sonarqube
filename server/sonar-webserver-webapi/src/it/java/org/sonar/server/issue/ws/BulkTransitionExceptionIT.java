@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.sonar.api.impl.utils.TestSystem2;
 import org.sonar.core.util.SequenceUuidFactory;
 import org.sonar.db.DbClient;
+import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueChangeDto;
@@ -68,7 +69,13 @@ public class BulkTransitionExceptionIT {
   public UserSessionRule userSession = UserSessionRule.standalone();
 
   private final DbClient dbClient = db.getDbClient();
-  private final IssueIndexer issueIndexer = mock(IssueIndexer.class);
+  /** The indexer owns the commit, so the mock commits the session it is handed rather than rolling the chunk back. */
+  private final IssueIndexer issueIndexer = mock(IssueIndexer.class, invocation -> {
+    if ("commitAndIndexIssueKeys".equals(invocation.getMethod().getName())) {
+      ((DbSession) invocation.getArgument(0)).commit();
+    }
+    return org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
+  });
   private final WsActionTester ws = new WsActionTester(new BulkTransitionAction(dbClient, userSession, issueIndexer,
     new SequenceUuidFactory(), new TestSystem2().setNow(NOW), new TestIssueChangePostProcessor()));
 
@@ -93,7 +100,7 @@ public class BulkTransitionExceptionIT {
     for (IssueDto issue : List.of(first, second)) {
       assertThat(changeData(issue, TYPE_COMMENT)).containsExactly(COMMENT);
       assertThat(changeData(issue, TYPE_FIELD_CHANGE))
-        .containsExactly("resolution=EXCEPTION,status=OPEN|RESOLVED,issueStatus=OPEN|EXCEPTION");
+        .containsExactly("resolution=EXCEPTION,assignee=|,status=OPEN|RESOLVED,issueStatus=OPEN|EXCEPTION");
     }
   }
 
