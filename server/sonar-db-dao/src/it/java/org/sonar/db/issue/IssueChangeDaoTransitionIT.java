@@ -77,7 +77,7 @@ public class IssueChangeDaoTransitionIT {
     db.getSession().commit();
 
     assertThat(changeOf(issue, TYPE_FIELD_CHANGE).getChangeData())
-      .isEqualTo(equivalentFieldDiffs(issue.getKey(), STATUS_OPEN, STATUS_OPEN).toEncodedString());
+      .isEqualTo(equivalentFieldDiffs(issue.getKey(), STATUS_OPEN, STATUS_OPEN, true).toEncodedString());
   }
 
   @Test
@@ -90,8 +90,44 @@ public class IssueChangeDaoTransitionIT {
     db.getSession().commit();
 
     assertThat(changeOf(issue, TYPE_FIELD_CHANGE).getChangeData())
-      .isEqualTo(equivalentFieldDiffs(issue.getKey(), STATUS_REOPENED, STATUS_OPEN).toEncodedString())
-      .isEqualTo("resolution=FALSE-POSITIVE,status=REOPENED|RESOLVED,issueStatus=OPEN|FALSE_POSITIVE");
+      .isEqualTo(equivalentFieldDiffs(issue.getKey(), STATUS_REOPENED, STATUS_OPEN, true).toEncodedString())
+      .isEqualTo("resolution=FALSE-POSITIVE,assignee=|,status=REOPENED|RESOLVED,issueStatus=OPEN|FALSE_POSITIVE");
+  }
+
+  /**
+   * The transition unassigns the issue, exactly as UnsetAssignee does on the same transition applied one at a
+   * time, so an assigned issue has to carry that change in its changelog or it loses its assignee with nothing
+   * to show for it.
+   */
+  @Test
+  public void anAssignedIssueRecordsLosingItsAssignee() {
+    givenAProject();
+    IssueDto issue = db.issues().insertIssue(rule, project, file,
+      i -> i.setStatus(STATUS_OPEN).setResolution(null).setAssigneeUuid("someone-uuid"));
+
+    underTest.insertTransitionDiffs(db.getSession(), List.of(issue.getKey()), RESOLUTION_FALSE_POSITIVE,
+      "FALSE_POSITIVE", project.uuid(), AUTHOR, NOW, uuidFactory);
+    db.getSession().commit();
+
+    assertThat(changeOf(issue, TYPE_FIELD_CHANGE).getChangeData())
+      .isEqualTo("resolution=FALSE-POSITIVE,assignee=|,status=OPEN|RESOLVED,issueStatus=OPEN|FALSE_POSITIVE")
+      .isEqualTo(equivalentFieldDiffs(issue.getKey(), STATUS_OPEN, STATUS_OPEN, true).toEncodedString());
+  }
+
+  /** An issue nobody was assigned loses nothing, so its changelog says nothing about an assignee. */
+  @Test
+  public void anUnassignedIssueRecordsNoAssigneeChange() {
+    givenAProject();
+    IssueDto issue = db.issues().insertIssue(rule, project, file,
+      i -> i.setStatus(STATUS_OPEN).setResolution(null).setAssigneeUuid(null));
+
+    underTest.insertTransitionDiffs(db.getSession(), List.of(issue.getKey()), RESOLUTION_FALSE_POSITIVE,
+      "FALSE_POSITIVE", project.uuid(), AUTHOR, NOW, uuidFactory);
+    db.getSession().commit();
+
+    assertThat(changeOf(issue, TYPE_FIELD_CHANGE).getChangeData())
+      .isEqualTo("resolution=FALSE-POSITIVE,status=OPEN|RESOLVED,issueStatus=OPEN|FALSE_POSITIVE")
+      .isEqualTo(equivalentFieldDiffs(issue.getKey(), STATUS_OPEN, STATUS_OPEN, false).toEncodedString());
   }
 
   @Test
@@ -172,13 +208,22 @@ public class IssueChangeDaoTransitionIT {
       TYPE_EXCEPTION_REASON)).isEmpty();
   }
 
-  /** What the per-row writer builds for the same issue, which the set-based SQL has to reproduce byte for byte. */
-  private static FieldDiffs equivalentFieldDiffs(String issueKey, String oldStatus, String oldIssueStatus) {
-    return new FieldDiffs()
+  /**
+   * What the per-row writer builds for the same issue, which the set-based SQL has to reproduce byte for byte.
+   * The assignee change is recorded with an empty old value, as IssueFieldsSetter does with its UNUSED constant,
+   * and sits where the workflow applies it: UnsetAssignee runs straight after SetResolution.
+   */
+  private static FieldDiffs equivalentFieldDiffs(String issueKey, String oldStatus, String oldIssueStatus,
+    boolean assigned) {
+    FieldDiffs diffs = new FieldDiffs()
       .setUserUuid(AUTHOR)
       .setCreationDate(new Date(NOW))
       .setIssueKey(issueKey)
-      .setDiff("resolution", null, RESOLUTION_FALSE_POSITIVE)
+      .setDiff("resolution", null, RESOLUTION_FALSE_POSITIVE);
+    if (assigned) {
+      diffs.setDiff("assignee", "", null);
+    }
+    return diffs
       .setDiff("status", oldStatus, STATUS_RESOLVED)
       .setDiff("issueStatus", oldIssueStatus, "FALSE_POSITIVE");
   }

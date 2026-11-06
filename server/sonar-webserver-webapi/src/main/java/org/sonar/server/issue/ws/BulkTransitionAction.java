@@ -38,6 +38,7 @@ import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.utils.System2;
+import org.sonar.core.issue.DefaultIssue;
 import org.sonar.api.utils.text.JsonWriter;
 import org.sonar.core.util.UuidFactory;
 import org.sonar.db.DbClient;
@@ -54,6 +55,7 @@ import org.sonarqube.ws.MediaTypes;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.trimToNull;
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.sonar.api.issue.Issue.STATUS_RESOLVED;
 
 /**
  * CodeScan: resolves a large set of issues in one request, for callers that have already decided which issues to
@@ -134,7 +136,9 @@ public class BulkTransitionAction implements IssuesWsAction {
   @Override
   public void define(WebService.NewController controller) {
     WebService.NewAction action = controller.createAction(ACTION)
-      .setDescription("Resolve a large set of issues in one request. Requires system administration permission.")
+      .setDescription("Resolve a large set of issues in one request. Requires system administration permission. "
+        + "Runs on PostgreSQL, Oracle and H2: the set-based changelog statements concatenate with ||, which "
+        + "SQL Server does not support.")
       .setSince("24.12")
       .setInternal(true)
       .setPost(true)
@@ -151,7 +155,9 @@ public class BulkTransitionAction implements IssuesWsAction {
         + "issues.project_uuid holds, and reindexed once the issues are written.")
       .setRequired(true);
     action.createParam(PARAM_CHANGE_AUTHOR)
-      .setDescription("Uuid of the user the change is attributed to. Defaults to the caller.");
+      .setDescription("Uuid of the user the change is attributed to: for a transfer, whoever resolved the source "
+        + "issue, not whoever asked for the transfer. Omitted leaves the change unattributed, which is what the "
+        + "caller sends when the source issue's resolver cannot be determined.");
     action.createParam(PARAM_COMMENT)
       .setDescription("Comment to add to every resolved issue. Omitted means no comment is written.");
     action.createParam(PARAM_TRANSFER_UUID)
@@ -264,7 +270,8 @@ public class BulkTransitionAction implements IssuesWsAction {
     if (issueKeys.isEmpty()) {
       // A caller asking only for the recomputation its run owes: a run that was stopped, failed, or never got an
       // answer for the chunk that was going to carry it. Nothing is read or written, so no session is opened.
-      LOG.info("bulk_transition refresh only: measures={}ms", refreshMeasuresOfBranch(branchUuid));
+      // No key is named, so there is no issue to carry to the quality-gate listeners and they are not reached.
+      LOG.info("bulk_transition refresh only: measures={}ms", refreshMeasuresOfBranch(branchUuid, null, null));
       return new Result(List.of(), List.of());
     }
     long startedAt = system2.now();
@@ -297,7 +304,9 @@ public class BulkTransitionAction implements IssuesWsAction {
           keysByValue(exception.expiresAt(), movableKeys).forEach((expiresAt, keys) ->
             dbClient.issueDao().bulkTransition(dbSession, keys, branchUuid, resolution, expiresAt, now));
         }
-        dbSession.commit();
+        // Commits and indexes together: the es_queue rows go in with the issues, so an Elasticsearch failure is
+        // retried by the recovery daemon instead of leaving the index permanently behind the database.
+        issueIndexer.commitAndIndexIssueKeys(dbSession, movableKeys, branchUuid);
         transitioned = movableKeys;
       }
     }
@@ -305,13 +314,14 @@ public class BulkTransitionAction implements IssuesWsAction {
     if (transitioned.isEmpty()) {
       // The caller may still be asking for the recomputation its run owes: a run that was stopped or failed asks
       // this way, naming keys it has already resolved.
-      long onlyMeasuresMs = refreshMeasures ? refreshMeasuresOfBranch(branchUuid) : 0;
+      long onlyMeasuresMs = refreshMeasures
+        ? refreshMeasuresOfBranch(branchUuid, issueKeys.get(0), resolution)
+        : 0;
       LOG.info("bulk_transition 0 issues on branch {}: measures={}ms", branchUuid, onlyMeasuresMs);
       return new Result(List.of(), issueKeys);
     }
 
-    issueIndexer.indexOnAnalysis(branchUuid, transitioned);
-    long measuresMs = refreshMeasures ? refreshMeasuresOfBranch(branchUuid) : 0;
+    long measuresMs = refreshMeasures ? refreshMeasuresOfBranch(branchUuid, transitioned.get(0), resolution) : 0;
     LOG.info("bulk_transition {} issue(s) on branch {}: total={}ms measures={}ms",
       transitioned.size(), branchUuid, system2.now() - startedAt, measuresMs);
 
@@ -326,17 +336,41 @@ public class BulkTransitionAction implements IssuesWsAction {
    * carrying its pre-transfer counts, and the project total summing them. It costs around half as much again as a
    * chunk-scoped refresh on a project of 6,000 files, and a run pays it once.
    */
-  private long refreshMeasuresOfBranch(String branchUuid) {
+  private long refreshMeasuresOfBranch(String branchUuid, @Nullable String resolvedKey, @Nullable String resolution) {
     long startedAt = system2.now();
     try (DbSession dbSession = dbClient.openSession(false)) {
       List<ComponentDto> components = dbClient.componentDao().selectByBranchUuid(branchUuid, dbSession);
       if (components.isEmpty()) {
         return 0;
       }
-      issueChangePostProcessor.process(dbSession, List.of(), components, false);
+      issueChangePostProcessor.process(dbSession, changedIssuesOf(branchUuid, resolvedKey, resolution), components,
+        false);
       dbSession.commit();
     }
     return system2.now() - startedAt;
+  }
+
+  /**
+   * One issue, not every issue the run resolved. QGChangeEventListenersImpl drops the whole broadcast when this
+   * list is empty, then indexes it by branch and hands the listeners a set neither of them reads - both work from
+   * the QGChangeEvent alone. A call carries one branch, so one entry reaches every listener that a thousand
+   * would, without building a DefaultIssue and a ChangedIssueImpl per resolved issue.
+   *
+   * <p>It carries the four fields anything on that path looks at: the branch it belongs to, a key the run really
+   * resolved, and the status and resolution it was moved to. Type, severity and impacts are left unset because
+   * nothing reads them; a listener that starts to would need the issues loaded properly rather than this.
+   */
+  private static List<DefaultIssue> changedIssuesOf(String branchUuid, @Nullable String resolvedKey,
+    @Nullable String resolution) {
+    if (resolvedKey == null || resolution == null) {
+      return List.of();
+    }
+    DefaultIssue issue = new DefaultIssue();
+    issue.setKey(resolvedKey);
+    issue.setProjectUuid(branchUuid);
+    issue.setStatus(STATUS_RESOLVED);
+    issue.setResolution(resolution);
+    return List.of(issue);
   }
 
   /**
