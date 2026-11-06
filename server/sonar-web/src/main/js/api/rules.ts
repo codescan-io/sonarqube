@@ -85,15 +85,33 @@ export function getRuleTags(parameters: { organization: string; ps?: number; q: 
   return getJSON('/api/rules/tags', parameters).then((r) => r.tags, throwGlobalError);
 }
 
-// A rule description can match the SQL injection and path traversal signatures of a WAF body
-// inspection, so createRule and updateRule send it base64url-encoded.
+// Rule descriptions and parameter values such as XPath expressions can match the SQL injection and
+// path traversal signatures of a WAF body inspection, so createRule and updateRule send them
+// base64url-encoded.
+function encodeParameterValues(parameters: Partial<RestRuleParameter>[]) {
+  return parameters.map((parameter) => ({
+    ...parameter,
+    defaultValue:
+      parameter.defaultValue == null
+        ? parameter.defaultValue
+        : encodeBase64Url(parameter.defaultValue),
+  }));
+}
+
 export function createRule({
   markdownDescription,
+  parameters,
   ...data
 }: CreateRuleData): Promise<RestRuleDetails> {
-  const body = markdownDescription
-    ? { ...data, encodedMarkdownDescription: encodeBase64Url(markdownDescription) }
-    : { ...data, markdownDescription };
+  const body = {
+    ...data,
+    ...(markdownDescription
+      ? { encodedMarkdownDescription: encodeBase64Url(markdownDescription) }
+      : { markdownDescription }),
+    ...(parameters?.length
+      ? { encodedParameters: encodeParameterValues(parameters) }
+      : { parameters }),
+  };
 
   return axiosToCatch.post<RuleDetails>(RULES_ENDPOINT, body).catch(({ response }) => {
     // do not show global error if the status code is 409
@@ -124,6 +142,7 @@ export function updateRule(data: RulesUpdateRequest): Promise<RuleDetails> {
           encodedMarkdownDescription: encodeBase64Url(data.markdownDescription),
         }
       : {}),
+    ...(data.params ? { params: undefined, encodedParams: encodeBase64Url(data.params) } : {}),
     impacts,
   }).then((r) => r.rule, throwGlobalError);
 }

@@ -19,11 +19,6 @@
  */
 package org.sonar.server.qualityprofile.ws;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CodingErrorAction;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,6 +40,7 @@ import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.qualityprofile.QProfileDto;
 import org.sonar.db.rule.RuleDto;
+import org.sonar.server.common.text.EncodedParameters;
 import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.qualityprofile.QProfileRules;
 import org.sonar.server.qualityprofile.RuleActivation;
@@ -192,16 +188,7 @@ public class ActivateRuleAction implements QProfileWsAction {
     if (encodedParams == null || encodedParams.isEmpty()) {
       return request.param(PARAM_PARAMS);
     }
-    try {
-      byte[] decoded = Base64.getUrlDecoder().decode(encodedParams);
-      return StandardCharsets.UTF_8.newDecoder()
-        .onMalformedInput(CodingErrorAction.REPORT)
-        .onUnmappableCharacter(CodingErrorAction.REPORT)
-        .decode(ByteBuffer.wrap(decoded))
-        .toString();
-    } catch (IllegalArgumentException | CharacterCodingException e) {
-      throw BadRequestException.create(format("Parameter '%s' is not valid base64url", PARAM_ENCODED_PARAMS));
-    }
+    return EncodedParameters.decode(encodedParams, PARAM_ENCODED_PARAMS);
   }
 
   @NotNull
