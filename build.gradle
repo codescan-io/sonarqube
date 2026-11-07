@@ -409,7 +409,7 @@ subprojects {
       dependency 'jakarta.mail:jakarta.mail-api:2.1.5'
       dependency 'jakarta.annotation:jakarta.annotation-api:3.0.0'
       dependency 'jakarta.inject:jakarta.inject-api:2.0.1'
-      dependency 'jakarta.xml.bind:jakarta.xml.bind-api:2.3.3'
+      dependency 'jakarta.xml.bind:jakarta.xml.bind-api:3.0.1'
       dependency 'jakarta.servlet:jakarta.servlet-api:6.1.0'
       dependency 'junit:junit:4.13.2'
       dependency 'org.xmlunit:xmlunit-core:2.10.0'
