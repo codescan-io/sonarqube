@@ -97,21 +97,24 @@ public class HazelcastMemberBuilder {
       .setInterfaces(singletonList(requireNonNull(networkInterface, "Network interface is missing")));
 
     JoinConfig joinConfig = netConfig.getJoin();
-    joinConfig.getAwsConfig().setEnabled(false);
+    joinConfig.getAwsConfig().setEnabled(true);
     joinConfig.getMulticastConfig().setEnabled(false);
 
-    if (KUBERNETES.equals(type)) {
-      joinConfig.getKubernetesConfig().setEnabled(true)
-        .setProperty("service-dns", requireNonNull(members, "Service DNS is missing"))
-        .setProperty("service-port", CLUSTER_NODE_HZ_PORT.getDefaultValue());
-    } else {
-      List<String> addressesWithDefaultPorts = Stream.of(this.members.split(","))
-          .filter(host -> !host.isBlank())
-          .map(String::trim)
-          .map(HazelcastMemberBuilder::applyDefaultPortToHost)
-          .toList();
-      joinConfig.getTcpIpConfig().setEnabled(true);
-      joinConfig.getTcpIpConfig().setMembers(requireNonNull(addressesWithDefaultPorts, "Members are missing"));
+    // CSAMZ-21: Codescan - We'll use Hazelcast AWS ECS auto-discovery mechanism.
+    if (this.members != null) {
+      if (KUBERNETES.equals(type)) {
+        joinConfig.getKubernetesConfig().setEnabled(true)
+                .setProperty("service-dns", requireNonNull(members, "Service DNS is missing"))
+                .setProperty("service-port", CLUSTER_NODE_HZ_PORT.getDefaultValue());
+      } else {
+        List<String> addressesWithDefaultPorts = Stream.of(this.members.split(","))
+                .filter(host -> !host.isBlank())
+                .map(String::trim)
+                .map(HazelcastMemberBuilder::applyDefaultPortToHost)
+                .toList();
+        joinConfig.getTcpIpConfig().setEnabled(true);
+        joinConfig.getTcpIpConfig().setMembers(requireNonNull(addressesWithDefaultPorts, "Members are missing"));
+      }
     }
 
     // We are not using the partition group of Hazelcast, so disabling it
