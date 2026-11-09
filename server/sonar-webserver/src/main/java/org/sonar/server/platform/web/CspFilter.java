@@ -32,12 +32,14 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public class CspFilter implements Filter {
 
     private static final String PENDO_DISABLE_TOGGLE = "PENDO_DISABLE";
     private static final String GA_DISABLE_TOGGLE = "GA_DISABLE";
+    private static final String LOOPBACK_SOURCE = "http://localhost:*";
 
     private final List<String> cspHeaders = new ArrayList<>();
     private String defaultPolicies = null;
@@ -51,7 +53,8 @@ public class CspFilter implements Filter {
         boolean gaDisabled = "true".equalsIgnoreCase(System.getenv(GA_DISABLE_TOGGLE));
 
         this.defaultPolicies = String.join("; ", getDefaultCspPolicies(filterConfig)).trim();
-        this.codescanPolicies = String.join("; ", getCodescanCspPolicies(pendoDisabled, gaDisabled)).trim();
+        this.codescanPolicies = String.join("; ", getCodescanCspPolicies(pendoDisabled, gaDisabled,
+                filterConfig.getServletContext().getContextPath())).trim();
     }
 
     @Override
@@ -59,6 +62,13 @@ public class CspFilter implements Filter {
             throws IOException, ServletException {
         boolean isCodescan = request.getServerName().contains("codescan.io") || request.getServerName().contains("autorabit.com");
         String policies = isCodescan ? codescanPolicies : defaultPolicies;
+        // SonarLint listens on a loopback port, a different origin from the page, so 'self' does
+        // not cover the token POST. Only the IDE connection page makes that call.
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        if ("/sonarlint/auth".equals(httpRequest.getRequestURI().replaceFirst(httpRequest.getContextPath(), ""))
+                && !policies.contains(LOOPBACK_SOURCE)) {
+            policies = policies.replace("connect-src 'self'", "connect-src 'self' " + LOOPBACK_SOURCE);
+        }
         // Add policies to all HTTP headers
         for (String header : this.cspHeaders) {
             ((HttpServletResponse) response).setHeader(header, policies);
@@ -76,7 +86,7 @@ public class CspFilter implements Filter {
         List<String> cspPolicies = new ArrayList<>();
         cspPolicies.add("default-src 'self'");
         cspPolicies.add("base-uri 'none'");
-        cspPolicies.add("connect-src 'self' http: https:");
+        cspPolicies.add("connect-src 'self' " + LOOPBACK_SOURCE + " https:");
         cspPolicies.add("font-src 'self' data:");
         cspPolicies.add("img-src * data: blob:");
         cspPolicies.add("object-src 'none'");
@@ -86,17 +96,25 @@ public class CspFilter implements Filter {
         return cspPolicies;
     }
 
-    private List<String> getCodescanCspPolicies(boolean pendoDisabled, boolean gaDisabled) {
+    private List<String> getCodescanCspPolicies(boolean pendoDisabled, boolean gaDisabled, String contextPath) {
+        // Both toggles set means no third-party telemetry runs in this deployment, so script-src
+        // needs neither 'unsafe-inline' nor 'unsafe-eval' and connect-src needs no scheme wildcard.
+        boolean telemetryDisabled = pendoDisabled && gaDisabled;
         List<String> cspPolicies = new ArrayList<>();
         cspPolicies.add("default-src 'self'");
         cspPolicies.add("base-uri 'none'");
-        cspPolicies.add("img-src * data: blob:");
+        cspPolicies.add(telemetryDisabled ? "img-src 'self' data: blob:" : "img-src * data: blob:");
         cspPolicies.add("object-src 'none'");
         cspPolicies.add("font-src 'self' data:");
         cspPolicies.add("worker-src 'none'");
-        cspPolicies.add(buildConnectSrc(pendoDisabled));
-        cspPolicies.add(buildScriptSrc(pendoDisabled, gaDisabled));
+        cspPolicies.add(buildConnectSrc(pendoDisabled, telemetryDisabled));
+        cspPolicies.add(buildScriptSrc(pendoDisabled, gaDisabled, telemetryDisabled, contextPath));
         cspPolicies.add(buildStyleSrc(pendoDisabled));
+        if (telemetryDisabled) {
+            // X-Frame-Options is still set by SecurityServletFilter, but browsers honour
+            // frame-ancestors in preference to it wherever both are present.
+            cspPolicies.add("frame-ancestors 'self'");
+        }
         if (!pendoDisabled) {
             cspPolicies.add("frame-ancestors 'self' app.pendo.io");
             cspPolicies.add("frame-src 'self' app.pendo.io");
@@ -105,8 +123,11 @@ public class CspFilter implements Filter {
         return cspPolicies;
     }
 
-    private static String buildConnectSrc(boolean pendoDisabled) {
-        String src = "connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com http: https:";
+    private static String buildConnectSrc(boolean pendoDisabled, boolean telemetryDisabled) {
+        String src = telemetryDisabled
+                ? "connect-src 'self'"
+                : "connect-src 'self' https://edge.fullstory.com https://rs.fullstory.com "
+                        + LOOPBACK_SOURCE + " https:";
         if (!pendoDisabled) {
             src += " app.pendo.io data.pendo.io pendo-static-6580644462460928.storage.googleapis.com";
         }
@@ -121,10 +142,15 @@ public class CspFilter implements Filter {
         return src;
     }
 
-    private static String buildScriptSrc(boolean pendoDisabled, boolean gaDisabled) {
-        String src = "script-src 'self' https://edge.fullstory.com https://rs.fullstory.com "
-                + "https://static.zdassets.com https://connect.facebook.net https://snap.licdn.com "
-                + "'unsafe-inline' 'unsafe-eval'";
+    private static String buildScriptSrc(boolean pendoDisabled, boolean gaDisabled, boolean telemetryDisabled,
+            String contextPath) {
+        // Dropping 'unsafe-inline' requires the window.__assetsPath script in index.html to be
+        // hash-pinned, which is how the default policy already serves the same bundle.
+        String src = telemetryDisabled
+                ? "script-src 'self' " + getAssetsPathScriptCSPHash(contextPath)
+                : "script-src 'self' https://edge.fullstory.com https://rs.fullstory.com "
+                        + "https://static.zdassets.com https://connect.facebook.net https://snap.licdn.com "
+                        + "'unsafe-inline' 'unsafe-eval'";
         if (!pendoDisabled) {
             src += " https://pendo-io-static.storage.googleapis.com"
                     + " pendo-static-6580644462460928.storage.googleapis.com"

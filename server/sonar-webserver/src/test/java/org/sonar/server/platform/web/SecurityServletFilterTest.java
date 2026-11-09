@@ -26,7 +26,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.Test;
 
-import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -101,7 +100,7 @@ public class SecurityServletFilterTest {
     verify(response).setHeader("X-Frame-Options", "SAMEORIGIN");
     verify(response).setHeader("X-XSS-Protection", "0");
     verify(response).setHeader("X-Content-Type-Options", "nosniff");
-    assertNull(response.getHeader("Strict-Transport-Security"));
+    verify(response).setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
 
   @Test
@@ -114,7 +113,7 @@ public class SecurityServletFilterTest {
     verify(response).setHeader("X-Frame-Options", "SAMEORIGIN");
     verify(response).setHeader("X-XSS-Protection", "0");
     verify(response).setHeader("X-Content-Type-Options", "nosniff");
-    verify(response).setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains;");
+    verify(response).setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     verify(response).addHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     verify(response).addHeader("Permissions-Policy", "microphone=(), geolocation=(), fullscreen=(self)");
     verify(response).addHeader("Content-Security-Policy", "upgrade-insecure-requests");
@@ -129,7 +128,7 @@ public class SecurityServletFilterTest {
     verify(response, never()).setHeader(eq("X-Frame-Options"), anyString());
     verify(response).setHeader("X-XSS-Protection", "0");
     verify(response).setHeader("X-Content-Type-Options", "nosniff");
-    verify(response).addHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    verify(response).setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     verify(response).addHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     verify(response).addHeader("Permissions-Policy", "microphone=(), geolocation=(), fullscreen=(self)");
     verify(response).addHeader("Content-Security-Policy", "upgrade-insecure-requests");
@@ -147,7 +146,7 @@ public class SecurityServletFilterTest {
     verify(response, never()).setHeader(eq("X-Frame-Options"), anyString());
     verify(response).setHeader("X-XSS-Protection", "0");
     verify(response).setHeader("X-Content-Type-Options", "nosniff");
-    verify(response).addHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    verify(response).setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     verify(response).addHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     verify(response).addHeader("Permissions-Policy", "microphone=(), geolocation=(), fullscreen=(self)");
     verify(response).addHeader("Content-Security-Policy", "upgrade-insecure-requests");

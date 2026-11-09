@@ -18,6 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import { get, parseJSON, postJSONBody } from '../../../../helpers/request';
+import { encodeBase64Url } from '../../../../helpers/strings';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 
 export interface GenerateXPathRequest {
@@ -89,14 +90,25 @@ export interface AiRuleQuota {
   remainingCredits: number;
   costPerGenerate: number;
   costPerRegenerate: number;
+  // Null when allowed; otherwise the message the backend would reject the call with.
+  generateBlockedReason: string | null;
+  regenerateBlockedReason: string | null;
 }
 
 /**
  * Generate XPath from natural language description using AI.
  * Does not create a rule — rule creation uses the standard v2 rules API.
  */
-export function generateAIXPath(request: GenerateXPathRequest): Promise<GenerateXPathResponse> {
-  return postJSONBody('/_codescan/ai-rules/generate-xpath', request);
+export function generateAIXPath({
+  description,
+  ...request
+}: GenerateXPathRequest): Promise<GenerateXPathResponse> {
+  // The description is free text that can match the SQL injection and path traversal signatures of
+  // a WAF body inspection, so it is sent base64url-encoded.
+  return postJSONBody('/_codescan/ai-rules/generate-xpath', {
+    ...request,
+    encodedDescription: encodeBase64Url(description),
+  });
 }
 
 /**
@@ -121,8 +133,18 @@ export async function parseCodescanErrorMessage(error: unknown): Promise<string 
  * Validate an XPath expression against a code sample.
  * Backend expects a JSON body (XPathValidationRequest), so this uses postJSONBody.
  */
-export function validateAIXPath(request: ValidateXPathRequest): Promise<ValidationResult> {
-  return postJSONBody('/_codescan/ai-rules/validate-xpath', request);
+export function validateAIXPath({
+  xpath,
+  code,
+  ...request
+}: ValidateXPathRequest): Promise<ValidationResult> {
+  // The parent axis `..` in an XPath and the SOQL in a code sample can match the path traversal and
+  // SQL injection signatures of a WAF body inspection, so both are sent base64url-encoded.
+  return postJSONBody('/_codescan/ai-rules/validate-xpath', {
+    ...request,
+    encodedXpath: encodeBase64Url(xpath),
+    encodedCode: encodeBase64Url(code),
+  });
 }
 
 /**
