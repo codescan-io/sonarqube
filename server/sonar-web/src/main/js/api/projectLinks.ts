@@ -21,6 +21,7 @@
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import { post, postJSON } from '../helpers/request';
+import { encodeBase64Url } from '../helpers/strings';
 import { ProjectLink } from '../types/types';
 
 export function getProjectLinks(projectKey: string): Promise<ProjectLink[]> {
@@ -34,10 +35,18 @@ export function deleteLink(linkId: string) {
   return post('/api/project_links/delete', { id: linkId }).catch(throwGlobalError);
 }
 
-export function createLink(data: {
+export function createLink({
+  url,
+  ...data
+}: {
   name: string;
   projectKey: string;
   url: string;
 }): Promise<ProjectLink> {
-  return postJSON('/api/project_links/create', data).then((r) => r.link, throwGlobalError);
+  // A URL path can contain "../", which matches the path traversal signature of a WAF body
+  // inspection, so the URL is sent base64url-encoded.
+  return postJSON(
+    '/api/project_links/create',
+    url ? { ...data, encodedUrl: encodeBase64Url(url) } : { ...data, url },
+  ).then((r) => r.link, throwGlobalError);
 }
