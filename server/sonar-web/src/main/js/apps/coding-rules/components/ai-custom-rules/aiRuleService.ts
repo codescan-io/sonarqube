@@ -90,6 +90,9 @@ export interface AiRuleQuota {
   remainingCredits: number;
   costPerGenerate: number;
   costPerRegenerate: number;
+  // Null when allowed; otherwise the message the backend would reject the call with.
+  generateBlockedReason: string | null;
+  regenerateBlockedReason: string | null;
 }
 
 /**
