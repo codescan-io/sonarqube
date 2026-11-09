@@ -77,11 +77,6 @@ public class SecurityServletFilter implements Filter {
       httpResponse.setHeader("X-Frame-Options", "SAMEORIGIN");
     }
 
-    // If the request is secure, the Strict-Transport-Security header is added.
-    if ("https".equals(httpRequest.getHeader("x-forwarded-proto"))) {
-      httpResponse.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains;");
-    }
-
     // Cross-site scripting
     // See https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html#x-xss-protection
     httpResponse.setHeader("X-XSS-Protection", "0");
@@ -91,7 +86,7 @@ public class SecurityServletFilter implements Filter {
     httpResponse.setHeader("X-Content-Type-Options", "nosniff");
 
     // Man-in-the-middle attacks
-    httpResponse.addHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    httpResponse.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
 
     // Cross site referrer information leakage protection
     httpResponse.addHeader("Referrer-Policy", "strict-origin-when-cross-origin");

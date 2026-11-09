@@ -58,6 +58,22 @@ public interface IssueMapper {
 
   int update(IssueDto issue);
 
+  /**
+   * CodeScan: the keys a bulk transition would actually move, with the status each is moving from, read in the
+   * same transaction as {@link #bulkTransition} and under the same predicate - see IssueMapper.xml's
+   * {@code transitionablePredicate}, which both share with the changelog inserts.
+   */
+  List<IssueKeyStatusDto> selectTransitionable(@Param("keys") List<String> keys,
+    @Param("branchUuid") String branchUuid);
+
+  /** CodeScan: one statement for a whole chunk, in place of one update per issue. */
+  int bulkTransition(@Param("keys") List<String> keys, @Param("branchUuid") String branchUuid,
+    @Param("resolution") String resolution, @Nullable @Param("expiresAt") Long expiresAt, @Param("now") long now);
+
+  /** CodeScan: the source exception a resolution transfer paired each of {@code keys} with. */
+  List<IssueExceptionSourceDto> selectExceptionSourcesOfTransfer(@Param("transferUuid") String transferUuid,
+    @Param("keys") List<String> keys, @Param("now") long now);
+
   void insertAsNewCodeOnReferenceBranch(NewCodeReferenceIssueDto issue);
 
   void insertIssueImpact(@Param("issueKey") String issueKey, @Param("dto") ImpactDto issue);
