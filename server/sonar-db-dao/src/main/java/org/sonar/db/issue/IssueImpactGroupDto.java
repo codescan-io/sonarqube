@@ -25,6 +25,7 @@ import org.sonar.api.issue.impact.Severity;
 import org.sonar.api.issue.impact.SoftwareQuality;
 
 public class IssueImpactGroupDto {
+  private String componentUuid;
 
   private String status;
   private String resolution;
@@ -93,5 +94,14 @@ public class IssueImpactGroupDto {
 
   public void setEffort(double effort) {
     this.effort = effort;
+  }
+
+  /** The component the group belongs to; set only by the statements that group several components at once. */
+  public String getComponentUuid() {
+    return componentUuid;
+  }
+
+  public void setComponentUuid(String componentUuid) {
+    this.componentUuid = componentUuid;
   }
 }

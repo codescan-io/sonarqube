@@ -24,6 +24,7 @@ import javax.annotation.Nullable;
 import org.sonar.api.issue.impact.Severity;
 
 public class IssueImpactSeverityGroupDto {
+  private String componentUuid;
 
   private String resolution;
   private Severity severity;
@@ -67,4 +68,12 @@ public class IssueImpactSeverityGroupDto {
     this.severity = severity;
   }
 
+  /** The component the group belongs to; set only by the statements that group several components at once. */
+  public String getComponentUuid() {
+    return componentUuid;
+  }
+
+  public void setComponentUuid(String componentUuid) {
+    this.componentUuid = componentUuid;
+  }
 }
