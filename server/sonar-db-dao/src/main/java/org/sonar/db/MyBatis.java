@@ -101,7 +101,6 @@ import org.sonar.db.newcodeperiod.NewCodePeriodMapper;
 import org.sonar.db.notification.NotificationQueueDto;
 import org.sonar.db.notification.NotificationQueueMapper;
 import org.sonar.db.organization.OrganizationDto;
-import org.sonar.db.organization.IpAllowlistMapper;
 import org.sonar.db.organization.OrganizationMapper;
 import org.sonar.db.organization.OrganizationMemberDto;
 import org.sonar.db.organization.OrganizationMemberMapper;
@@ -332,7 +331,6 @@ public class MyBatis {
       MetricMapper.class,
       NewCodePeriodMapper.class,
       NotificationQueueMapper.class,
-      IpAllowlistMapper.class,
       OrganizationMapper.class,
       OrganizationMemberMapper.class,
       PermissionTemplateCharacteristicMapper.class,

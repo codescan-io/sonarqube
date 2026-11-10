@@ -21,7 +21,6 @@ package org.sonar.server.pushapi.sonarlint;
 
 import java.util.List;
 import java.util.Set;
-import javax.annotation.Nullable;
 import org.sonar.api.server.ServerSide;
 import org.sonar.api.web.UserRole;
 import org.sonar.db.DbClient;
@@ -29,8 +28,6 @@ import org.sonar.db.DbSession;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.exceptions.ForbiddenException;
-import org.sonar.server.organization.OrganizationIpAccess;
-import org.sonar.server.user.ServerUserSession;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.user.UserSessionFactory;
 
@@ -39,12 +36,10 @@ public class SonarLintClientPermissionsValidator {
 
   private final DbClient dbClient;
   private final UserSessionFactory userSessionFactory;
-  private final OrganizationIpAccess ipAccess;
 
-  public SonarLintClientPermissionsValidator(DbClient dbClient, UserSessionFactory userSessionFactory, OrganizationIpAccess ipAccess) {
+  public SonarLintClientPermissionsValidator(DbClient dbClient, UserSessionFactory userSessionFactory) {
     this.dbClient = dbClient;
     this.userSessionFactory = userSessionFactory;
-    this.ipAccess = ipAccess;
   }
 
   public List<ProjectDto> validateUserCanReceivePushEventForProjects(UserSession userSession, Set<String> projectKeys) {
@@ -56,13 +51,7 @@ public class SonarLintClientPermissionsValidator {
     return projectDtos;
   }
 
-  /**
-   * @param clientIp the address the push connection was opened from; the organizations' IP allowlists are applied to it
-   * @throws ForbiddenException when the user may not receive events for one of the projects, including when an IP
-   *         allowlist blocks the address
-   * @throws org.sonar.server.organization.IpAllowlistUnavailableException when an IP allowlist cannot be read
-   */
-  public void validateUserCanReceivePushEventForProjectUuids(String userUuid, @Nullable String clientIp, Set<String> projectUuids) {
+  public void validateUserCanReceivePushEventForProjectUuids(String userUuid, Set<String> projectUuids) {
     UserDto userDto;
     try (DbSession dbSession = dbClient.openSession(false)) {
       userDto = dbClient.userDao().selectByUuid(dbSession, userUuid);
@@ -71,10 +60,6 @@ public class SonarLintClientPermissionsValidator {
       throw new ForbiddenException("User does not exist");
     }
     UserSession userSession = userSessionFactory.create(userDto, false);
-    if (userSession instanceof ServerUserSession serverUserSession) {
-      // checked outside any web request: the address the push connection came from, and no service-login exemption
-      serverUserSession.withIpAllowlist(ipAccess, clientIp, null);
-    }
     List<ProjectDto> projectDtos;
     try (DbSession dbSession = dbClient.openSession(false)) {
       projectDtos = dbClient.projectDao().selectByUuids(dbSession, projectUuids);

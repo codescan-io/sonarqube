@@ -556,27 +556,6 @@ class ProjectMeasuresIndexTest {
   }
 
   @Test
-  void search_leaves_out_projects_of_organizations_blocked_by_their_ip_allowlist() {
-    index(
-      newDoc(PROJECT1).setOrganizationUuid("org-allowed").setLanguages(singletonList("java")).setTags(newArrayList("allowed-tag")),
-      newDoc(PROJECT2).setOrganizationUuid("org-blocked").setLanguages(singletonList("xoo")).setTags(newArrayList("blocked-tag")));
-
-    userSession.logIn(USER1).setIpBlockedOrganizationUuids("org-blocked");
-    SearchIdResult<String> result = underTest.search(new ProjectMeasuresQuery(), new SearchOptions().addFacets(LANGUAGES));
-    assertThat(result.getUuids()).containsExactly(PROJECT1.uuid());
-    assertThat(result.getTotal()).isOne();
-    assertThat(result.getFacets().get(LANGUAGES)).containsOnly(entry("java", 1L));
-    assertResults(new ProjectMeasuresQuery().setOrganizationUuids(Set.of("org-allowed", "org-blocked")), PROJECT1);
-    assertThat(underTest.searchTags(null, 1, 10)).containsOnly("allowed-tag");
-
-    userSession.anonymous().setIpBlockedOrganizationUuids("org-blocked");
-    assertResults(new ProjectMeasuresQuery(), PROJECT1);
-
-    userSession.logIn(USER1);
-    assertResults(new ProjectMeasuresQuery(), PROJECT1, PROJECT2);
-  }
-
-  @Test
   void return_all_projects_and_applications_when_setIgnoreAuthorization_is_true() {
     indexForUser(USER1, newDoc(PROJECT1), newDoc(PROJECT2), newDoc(APP1), newDoc(APP2));
     indexForUser(USER2, newDoc(PROJECT3), newDoc(APP3));

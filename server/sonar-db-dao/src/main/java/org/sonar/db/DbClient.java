@@ -59,7 +59,6 @@ import org.sonar.db.measure.ProjectMeasureDao;
 import org.sonar.db.metric.MetricDao;
 import org.sonar.db.newcodeperiod.NewCodePeriodDao;
 import org.sonar.db.notification.NotificationQueueDao;
-import org.sonar.db.organization.IpAllowlistDao;
 import org.sonar.db.organization.OrganizationDao;
 import org.sonar.db.organization.OrganizationMemberDao;
 import org.sonar.db.permission.AuthorizationDao;
@@ -124,7 +123,6 @@ public class DbClient {
 
   private final SchemaMigrationDao schemaMigrationDao;
   private final AuthorizationDao authorizationDao;
-  private final IpAllowlistDao ipAllowlistDao;
   private final OrganizationDao organizationDao;
   private final OrganizationMemberDao organizationMemberDao;
   private final QualityProfileDao qualityProfileDao;
@@ -232,7 +230,6 @@ public class DbClient {
     projectAlmSettingDao = getDao(map, ProjectAlmSettingDao.class);
     schemaMigrationDao = getDao(map, SchemaMigrationDao.class);
     authorizationDao = getDao(map, AuthorizationDao.class);
-    ipAllowlistDao = getDao(map, IpAllowlistDao.class);
     organizationDao = getDao(map, OrganizationDao.class);
     organizationMemberDao = getDao(map, OrganizationMemberDao.class);
     qualityProfileDao = getDao(map, QualityProfileDao.class);
@@ -356,10 +353,6 @@ public class DbClient {
 
   public AuthorizationDao authorizationDao() {
     return authorizationDao;
-  }
-
-  public IpAllowlistDao ipAllowlistDao() {
-    return ipAllowlistDao;
   }
 
   public OrganizationDao organizationDao() {

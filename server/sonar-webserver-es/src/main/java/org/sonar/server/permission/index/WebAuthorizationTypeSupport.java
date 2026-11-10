@@ -20,7 +20,6 @@
 package org.sonar.server.permission.index;
 
 import java.util.Optional;
-import java.util.Set;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -46,13 +45,10 @@ public class WebAuthorizationTypeSupport {
   }
 
   /**
-   * Build a filter to restrict query to the documents on which user has read access, leaving out the
-   * documents of organizations whose IP allowlist blocks this request.
-   *
-   * @param organizationUuidField the field of the searched documents that holds their organization uuid
-   * @throws org.sonar.server.exceptions.ServerException with HTTP 503 when the allowlist cannot be read
+   * Build a filter to restrict query to the documents on which
+   * user has read access.
    */
-  public QueryBuilder createQueryFilter(String organizationUuidField) {
+  public QueryBuilder createQueryFilter() {
     if (userSession.isRoot()) {
       return QueryBuilders.matchAllQuery();
     }
@@ -71,17 +67,9 @@ public class WebAuthorizationTypeSupport {
       .map(GroupDto::getUuid)
       .forEach(groupUuid -> filter.should(termQuery(FIELD_GROUP_IDS, groupUuid)));
 
-    QueryBuilder authorization = JoinQueryBuilders.hasParentQuery(
+    return JoinQueryBuilders.hasParentQuery(
       TYPE_AUTHORIZATION,
       QueryBuilders.boolQuery().filter(filter),
       false);
-
-    Set<String> blockedOrganizationUuids = userSession.getIpBlockedOrganizationUuids();
-    if (blockedOrganizationUuids.isEmpty()) {
-      return authorization;
-    }
-    return boolQuery()
-      .filter(authorization)
-      .mustNot(QueryBuilders.termsQuery(organizationUuidField, blockedOrganizationUuids));
   }
 }

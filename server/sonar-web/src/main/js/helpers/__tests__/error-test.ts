@@ -20,7 +20,6 @@
 
 import { addGlobalErrorMessage } from '~design-system';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
-import { IP_ALLOWLIST_TOAST_ID, markIpAllowlistBlockedPageMounted } from '../ipAllowlist';
 
 jest.mock('~design-system', () => ({
   addGlobalErrorMessage: jest.fn(),
@@ -90,51 +89,4 @@ it('should unwrap response if necessary', async () => {
 
   /* eslint-disable-next-line no-console */
   expect(console.warn).toHaveBeenCalled();
-});
-
-describe('IP allowlist 403', () => {
-  const MSG =
-    "Access to organization 'acme' is blocked by its IP allowlist. Your IP address is 192.0.2.1.";
-
-  function jsonResponse(status: number, msg: string) {
-    return new Response(JSON.stringify({ errors: [{ msg }] }), { status });
-  }
-
-  it('shows the message, with a known toast id, when no blocked page is involved', async () => {
-    const response = jsonResponse(403, MSG);
-
-    await expect(throwGlobalError(response)).rejects.toBe(response);
-
-    expect(addGlobalErrorMessage).toHaveBeenCalledWith(MSG, { toastId: IP_ALLOWLIST_TOAST_ID });
-  });
-
-  it('shows no message while the blocked page is on screen, but still rejects', async () => {
-    const unmount = markIpAllowlistBlockedPageMounted();
-    const response = jsonResponse(403, MSG);
-
-    await expect(throwGlobalError(response)).rejects.toBe(response);
-
-    expect(addGlobalErrorMessage).not.toHaveBeenCalled();
-    unmount();
-  });
-
-  it('shows the message again once the blocked page has gone', async () => {
-    markIpAllowlistBlockedPageMounted()();
-
-    await throwGlobalError(jsonResponse(403, MSG)).catch(() => {});
-
-    expect(addGlobalErrorMessage).toHaveBeenCalledWith(MSG, { toastId: IP_ALLOWLIST_TOAST_ID });
-  });
-
-  it('still shows the message of any other 403', async () => {
-    await throwGlobalError(jsonResponse(403, 'Insufficient privileges')).catch(() => {});
-
-    expect(addGlobalErrorMessage).toHaveBeenCalledWith('Insufficient privileges');
-  });
-
-  it('still shows the message of a 500 that carries the same words', async () => {
-    await throwGlobalError(jsonResponse(500, MSG)).catch(() => {});
-
-    expect(addGlobalErrorMessage).toHaveBeenCalledWith(MSG);
-  });
 });

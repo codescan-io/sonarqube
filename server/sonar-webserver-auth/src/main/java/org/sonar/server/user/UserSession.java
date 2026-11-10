@@ -23,9 +23,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.entity.EntityDto;
 import org.sonar.db.organization.OrganizationDto;
@@ -263,54 +261,6 @@ public interface UserSession {
 
   default boolean hasMembership(String organizationKey) {
     return false;
-  }
-
-  /**
-   * True when the organization's IP allowlist blocks this request. Root, exempt organization
-   * administrators and the analysis job's service login for its own organization are never blocked.
-   * A session that does not apply the allowlist, such as one used outside a web request, returns false.
-   * Implementations that wrap another session must delegate, or the check is off for every request.
-   *
-   * @throws org.sonar.server.exceptions.ServerException with HTTP 503 when the allowlist cannot be read
-   */
-  default boolean isBlockedByIpAllowlist(@Nullable String organizationUuid) {
-    return false;
-  }
-
-  /**
-   * Same as {@link #isBlockedByIpAllowlist(String)}, for an organization key. An unknown key is not blocked.
-   */
-  default boolean isBlockedByIpAllowlistForKey(@Nullable String organizationKey) {
-    return false;
-  }
-
-  /**
-   * True when some organization's allowlist leaves this request's address out, whoever the caller is. Read from the
-   * allowlist policies alone, with no permission lookup, so it is cheap to ask on every request. False means
-   * {@link #isBlockedByIpAllowlist(String)} is false for every organization. True only means it may be true for some:
-   * an administrator the allowlist exempts is still not blocked.
-   *
-   * @throws org.sonar.server.exceptions.ServerException with HTTP 503 when the allowlist cannot be read
-   */
-  default boolean mayBeBlockedByIpAllowlist() {
-    return false;
-  }
-
-  /**
-   * Organizations whose IP allowlist blocks this request, for leaving them out of search results.
-   *
-   * @throws org.sonar.server.exceptions.ServerException with HTTP 503 when the allowlist cannot be read
-   */
-  default Set<String> getIpBlockedOrganizationUuids() {
-    return Set.of();
-  }
-
-  /**
-   * Address of the client the allowlist was checked against, or null when this session does not apply the allowlist.
-   */
-  @CheckForNull
-  default String getClientIp() {
-    return null;
   }
 
   /**

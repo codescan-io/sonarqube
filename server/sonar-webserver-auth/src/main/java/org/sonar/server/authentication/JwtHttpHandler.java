@@ -59,17 +59,6 @@ public class JwtHttpHandler {
 
   private static final String REFRESH_TOKEN_PARAM = "refreshToken";
 
-  /**
-   * Claims codescanng signs into the login of an analysis job. The job is exempt from an organization's
-   * IP allowlist only for the organization named by {@link #SERVICE_LOGIN_ORG_CLAIM}, and only from an internal address.
-   */
-  public static final String SERVICE_LOGIN_CLAIM = "codescanService";
-  public static final String SERVICE_LOGIN_ORG_CLAIM = "codescanServiceOrg";
-
-  /** Request attributes holding those claims once the token is valid: {@code Boolean.TRUE} and the organization key. */
-  public static final String SERVICE_LOGIN_ATTRIBUTE = "codescan.serviceLogin";
-  public static final String SERVICE_LOGIN_ORG_ATTRIBUTE = "codescan.serviceLoginOrg";
-
   // Time after which a user will be disconnected
   private static final int SESSION_DISCONNECT_IN_SECONDS = 3 * 30 * 24 * 60 * 60;
 
@@ -127,19 +116,7 @@ public class JwtHttpHandler {
 
   public Optional<UserDto> validateToken(HttpRequest request, HttpResponse response) {
     Optional<Token> token = getToken(request, response);
-    token.ifPresent(t -> recordServiceLogin(t.getProperties(), request));
     return token.map(Token::getUserDto);
-  }
-
-  /** Only values of the expected type are recorded, so a claim that is not the boolean true grants nothing. */
-  private static void recordServiceLogin(Map<String, Object> claims, HttpRequest request) {
-    if (!Boolean.TRUE.equals(claims.get(SERVICE_LOGIN_CLAIM))) {
-      return;
-    }
-    request.setAttribute(SERVICE_LOGIN_ATTRIBUTE, Boolean.TRUE);
-    if (claims.get(SERVICE_LOGIN_ORG_CLAIM) instanceof String organizationKey && !organizationKey.isBlank()) {
-      request.setAttribute(SERVICE_LOGIN_ORG_ATTRIBUTE, organizationKey);
-    }
   }
 
   public Optional<Token> getToken(HttpRequest request, HttpResponse response) {

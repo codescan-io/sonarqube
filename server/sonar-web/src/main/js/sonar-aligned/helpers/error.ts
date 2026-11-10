@@ -18,14 +18,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { ToastOptions } from 'react-toastify';
 import { addGlobalErrorMessage } from '~design-system';
 import handleRequiredAuthentication from '../../helpers/handleRequiredAuthentication';
-import {
-  IP_ALLOWLIST_TOAST_ID,
-  getIpAllowlistBlockedMessage,
-  isIpAllowlistToastSuppressed,
-} from '../../helpers/ipAllowlist';
 import { HttpStatus, parseError } from '../../helpers/request';
 
 interface ThrowGlobalErrorOptions {
@@ -44,18 +38,19 @@ export function throwGlobalError(
   }
 
   if (param instanceof Response) {
-    const response = param;
-    return getIpAllowlistBlockedMessage(response).then((blockedMessage) => {
-      if (blockedMessage === undefined) {
-        return showMessageThenReject(response, options);
-      }
-      // The blocked page already says this; a toast on top of it would only repeat it. Anywhere else
-      // the toast is the only thing that tells the user, and it carries an id so that the redirect
-      // can remove just this one.
-      return isIpAllowlistToastSuppressed()
-        ? Promise.reject(response)
-        : showMessageThenReject(response, options, { toastId: IP_ALLOWLIST_TOAST_ID });
-    });
+    return parseError(param)
+      .then(
+        (...args) => {
+          addGlobalErrorMessage(...args);
+          if (options.redirectUnauthorizedNoReasons && param.status === HttpStatus.Unauthorized) {
+            handleRequiredAuthentication();
+          }
+        },
+        () => {
+          /* ignore parsing errors */
+        },
+      )
+      .then(() => Promise.reject(param));
   }
 
   // Axios response object
@@ -66,28 +61,4 @@ export function throwGlobalError(
   }
 
   return Promise.reject(param);
-}
-
-function showMessageThenReject(
-  response: Response,
-  options: ThrowGlobalErrorOptions,
-  toastOptions?: ToastOptions,
-): Promise<never> {
-  return parseError(response)
-    .then(
-      (message) => {
-        if (toastOptions) {
-          addGlobalErrorMessage(message, toastOptions);
-        } else {
-          addGlobalErrorMessage(message);
-        }
-        if (options.redirectUnauthorizedNoReasons && response.status === HttpStatus.Unauthorized) {
-          handleRequiredAuthentication();
-        }
-      },
-      () => {
-        /* ignore parsing errors */
-      },
-    )
-    .then(() => Promise.reject(response));
 }

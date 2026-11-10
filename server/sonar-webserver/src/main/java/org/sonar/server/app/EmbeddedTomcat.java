@@ -61,7 +61,6 @@ class EmbeddedTomcat {
     tomcat.getHost().setCreateDirs(false);
     tomcat.getHost().setDeployOnStartup(true);
     new TomcatErrorHandling().configure(tomcat);
-    new TomcatRemoteIp().configure(tomcat, props);
     new TomcatAccessLog().configure(tomcat, props);
     tomcat.getService().addConnector(tomcatHttpConnectorFactory.createConnector(props));
     webappContext = new TomcatContexts().configure(tomcat, props);

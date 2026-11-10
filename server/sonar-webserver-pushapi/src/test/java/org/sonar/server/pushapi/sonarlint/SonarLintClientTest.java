@@ -36,47 +36,47 @@ public class SonarLintClientTest {
 
   @Test
   public void equals_twoClientsWithSameArgumentsAreEqual() {
-    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of(), USER_UUID, null);
-    SonarLintClient second = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of(), USER_UUID, null);
+    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of(), USER_UUID);
+    SonarLintClient second = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of(), USER_UUID);
 
     assertThat(first).isEqualTo(second);
   }
 
   @Test
   public void equals_twoClientsWithDifferentAsyncObjects() {
-    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of(), USER_UUID, null);
-    SonarLintClient second = new SonarLintClient(sonarLintPushEventExecutorService, secondContext, Set.of(), Set.of(), USER_UUID, null);
+    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of(), USER_UUID);
+    SonarLintClient second = new SonarLintClient(sonarLintPushEventExecutorService, secondContext, Set.of(), Set.of(), USER_UUID);
 
     assertThat(first).isNotEqualTo(second);
   }
 
   @Test
   public void equals_twoClientsWithDifferentLanguages() {
-    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of("java"), USER_UUID, null);
-    SonarLintClient second = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of("cobol"), USER_UUID, null);
+    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of("java"), USER_UUID);
+    SonarLintClient second = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of("cobol"), USER_UUID);
 
     assertThat(first).isNotEqualTo(second);
   }
 
   @Test
   public void equals_twoClientsWithDifferentProjectUuids() {
-    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of("project1", "project2"), Set.of(), USER_UUID, null);
-    SonarLintClient second = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of("project1"), Set.of(), USER_UUID, null);
+    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of("project1", "project2"), Set.of(), USER_UUID);
+    SonarLintClient second = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of("project1"), Set.of(), USER_UUID);
 
     assertThat(first).isNotEqualTo(second);
   }
 
   @Test
   public void equals_secondClientIsNull() {
-    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of("project1", "project2"), Set.of(), USER_UUID, null);
+    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of("project1", "project2"), Set.of(), USER_UUID);
 
     assertThat(first).isNotEqualTo(null);
   }
 
   @Test
   public void hashCode_producesSameHashesForEqualObjects() {
-    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of(), USER_UUID, null);
-    SonarLintClient second = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of(), USER_UUID, null);
+    SonarLintClient first = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of(), USER_UUID);
+    SonarLintClient second = new SonarLintClient(sonarLintPushEventExecutorService, firstContext, Set.of(), Set.of(), USER_UUID);
 
     assertThat(first).hasSameHashCodeAs(second);
   }

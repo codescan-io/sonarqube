@@ -400,7 +400,7 @@ public class ProjectMeasuresIndex {
       "__indexType", new SimpleFieldFilterScope(FIELD_INDEX_TYPE),
       termQuery(FIELD_INDEX_TYPE, TYPE_PROJECT_MEASURES.getName()));
     if (!query.isIgnoreAuthorization()) {
-      filters.addFilter("__authorization", new SimpleFieldFilterScope("parent"), authorizationTypeSupport.createQueryFilter(FIELD_ORGANIZATION_UUID));
+      filters.addFilter("__authorization", new SimpleFieldFilterScope("parent"), authorizationTypeSupport.createQueryFilter());
     }
     Multimap<String, MetricCriterion> metricCriterionMultimap = ArrayListMultimap.create();
     query.getMetricCriteria()
@@ -500,7 +500,7 @@ public class ProjectMeasuresIndex {
     }
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder()
-      .query(authorizationTypeSupport.createQueryFilter(FIELD_ORGANIZATION_UUID))
+      .query(authorizationTypeSupport.createQueryFilter())
       .fetchSource(false)
       .aggregation(tagFacet);
 

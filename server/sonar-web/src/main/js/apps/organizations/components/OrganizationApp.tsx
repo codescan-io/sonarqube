@@ -26,7 +26,6 @@ import { getOrganization, getOrganizationBillingDetails, getOrganizationNavigati
 import { useCurrentOrganizationKey } from '../../../app/components/current-organization/CurrentOrganizationKeyContext';
 import { useAppState } from '../../../app/components/app-state/withAppStateContext';
 import { isDeploymentForAmazon } from '../../../helpers/urls';
-import { getIpAllowlistBlockedMessage, showIpAllowlistBlockedPage } from '../../../helpers/ipAllowlist';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { Helmet } from "react-helmet-async";
 import Suggestions from "../../../components/embed-docs-modal/Suggestions";
@@ -82,14 +81,7 @@ const OrganizationApp: React.FC<OrganizationAppProps> = ({  userOrganizations, l
 
             }
           }
-        ).catch(async (e) => {
-          const blockedMessage = await getIpAllowlistBlockedMessage(e);
-          if (blockedMessage !== undefined) {
-            showIpAllowlistBlockedPage(navigate, blockedMessage);
-          } else {
-            return throwGlobalError(e);
-          }
-        });
+        ).catch(throwGlobalError);
 
         // Fetched alongside (but not awaited with) the org navigation, feeding the global
         // trial banner. Skipped on the Amazon white-label product, which has no trial concept.

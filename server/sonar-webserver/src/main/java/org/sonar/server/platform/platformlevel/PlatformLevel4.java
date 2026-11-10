@@ -201,9 +201,6 @@ import org.sonar.server.platform.telemetry.TelemetryUserEnabledProvider;
 import org.sonar.server.platform.telemetry.TelemetryVersionProvider;
 import org.sonar.server.platform.web.ActionDeprecationLoggerInterceptor;
 import org.sonar.server.platform.web.CustomerAdminFilter;
-import org.sonar.server.platform.web.IpAllowlistActionInterceptor;
-import org.sonar.server.platform.web.IpAllowlistApiV2Filter;
-import org.sonar.server.platform.web.IpAllowlistRequestCheck;
 import org.sonar.server.platform.web.SonarLintConnectionFilter;
 import org.sonar.server.platform.web.WebServiceFilter;
 import org.sonar.server.platform.web.WebServiceReroutingFilter;
@@ -425,13 +422,10 @@ public class PlatformLevel4 extends PlatformLevel {
 
       // web services
       ActionDeprecationLoggerInterceptor.class,
-      IpAllowlistRequestCheck.class,
-      IpAllowlistActionInterceptor.class,
       WebServiceEngine.class,
       new WebServicesWsModule(),
       new EsMigrationsWsModule(),
       SonarLintConnectionFilter.class,
-      IpAllowlistApiV2Filter.class,
       WebServiceFilter.class,
       WebServiceReroutingFilter.class,
       CustomerAdminFilter.class,

@@ -21,7 +21,6 @@ package org.sonar.server.authentication;
 
 import org.junit.Test;
 import org.sonar.core.platform.ListContainer;
-import org.sonar.server.organization.OrganizationIpAccess;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -31,12 +30,5 @@ public class AuthenticationModuleTest {
     ListContainer container = new ListContainer();
     new AuthenticationModule().configure(container);
     assertThat(container.getAddedObjects()).isNotEmpty();
-  }
-
-  @Test
-  public void registers_organization_ip_access() {
-    ListContainer container = new ListContainer();
-    new AuthenticationModule().configure(container);
-    assertThat(container.getAddedObjects()).contains(OrganizationIpAccess.class);
   }
 }

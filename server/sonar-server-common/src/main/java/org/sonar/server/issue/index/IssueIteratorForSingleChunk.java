@@ -21,6 +21,7 @@ package org.sonar.server.issue.index;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -215,7 +216,7 @@ class IssueIteratorForSingleChunk implements IssueIterator {
   public void close() {
     try {
       indexCursor.close();
-    } catch (RuntimeException e) {
+    } catch (IOException e) {
       LOG.atWarn().setMessage("unable to close the cursor, this may lead to database connexion leak. error is : {}").addArgument(e).log();
     }
     session.close();

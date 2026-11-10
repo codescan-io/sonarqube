@@ -30,7 +30,6 @@ import org.sonar.api.server.ServerSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.server.exceptions.ForbiddenException;
-import org.sonar.server.organization.IpAllowlistUnavailableException;
 
 @ServerSide
 public class SonarLintClientsRegistry {
@@ -71,14 +70,11 @@ public class SonarLintClientsRegistry {
         Set<String> clientProjectUuids = new HashSet<>(c.getClientProjectUuids());
         clientProjectUuids.retainAll(Set.of(event.getProjectUuid()));
         try {
-          sonarLintClientPermissionsValidator.validateUserCanReceivePushEventForProjectUuids(c.getUserUuid(), c.getClientIp(), clientProjectUuids);
+          sonarLintClientPermissionsValidator.validateUserCanReceivePushEventForProjectUuids(c.getUserUuid(), clientProjectUuids);
           c.writeAndFlush(event.serialize());
         } catch (ForbiddenException forbiddenException) {
           logClientUnauthenticated(forbiddenException);
           unregisterClient(c);
-        } catch (IpAllowlistUnavailableException e) {
-          // not delivered, but the client stays connected for later events; the cause is logged where it is raised
-          LOG.debug("Push event not sent: the IP allowlist cannot be read");
         } catch (IllegalStateException | IOException e) {
           logUnexpectedError(e);
           unregisterClient(c);

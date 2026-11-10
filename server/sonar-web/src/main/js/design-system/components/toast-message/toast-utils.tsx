@@ -49,10 +49,6 @@ export function dismissAllGlobalMessages() {
   toast.dismiss();
 }
 
-export function dismissGlobalMessage(toastId: string) {
-  toast.dismiss(toastId);
-}
-
 function createToast(message: ReactNode, level: MessageLevel, overrides?: ToastOptions) {
   return toast(
     <div

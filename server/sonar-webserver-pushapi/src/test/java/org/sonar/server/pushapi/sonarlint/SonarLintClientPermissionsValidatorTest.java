@@ -29,7 +29,6 @@ import org.sonar.db.project.ProjectDto;
 import org.sonar.db.user.UserDao;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.exceptions.ForbiddenException;
-import org.sonar.server.organization.OrganizationIpAccess;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.user.UserSessionFactory;
 
@@ -52,7 +51,7 @@ public class SonarLintClientPermissionsValidatorTest {
   private final ProjectDao projectDao = mock(ProjectDao.class);
   private final UserSession userSession = mock(UserSession.class);
 
-  private SonarLintClientPermissionsValidator underTest = new SonarLintClientPermissionsValidator(dbClient, userSessionFactory, mock(OrganizationIpAccess.class));
+  private SonarLintClientPermissionsValidator underTest = new SonarLintClientPermissionsValidator(dbClient, userSessionFactory);
 
   @Before
   public void before() {
@@ -69,7 +68,7 @@ public class SonarLintClientPermissionsValidatorTest {
     when(userDao.selectByUuid(any(), any())).thenReturn(userDto);
     when(userSession.isActive()).thenReturn(true);
 
-    assertThatCode(() -> underTest.validateUserCanReceivePushEventForProjectUuids(USER_UUID, null, exampleProjectuuids))
+    assertThatCode(() -> underTest.validateUserCanReceivePushEventForProjectUuids(USER_UUID, exampleProjectuuids))
       .doesNotThrowAnyException();
   }
 
@@ -80,7 +79,7 @@ public class SonarLintClientPermissionsValidatorTest {
     when(userSession.isActive()).thenReturn(false);
 
     assertThrows(ForbiddenException.class,
-      () -> underTest.validateUserCanReceivePushEventForProjectUuids(USER_UUID, null, exampleProjectuuids));
+      () -> underTest.validateUserCanReceivePushEventForProjectUuids(USER_UUID, exampleProjectuuids));
   }
 
   @Test
@@ -91,6 +90,6 @@ public class SonarLintClientPermissionsValidatorTest {
     when(userSession.checkEntityPermission(any(), any())).thenThrow(ForbiddenException.class);
 
     assertThrows(ForbiddenException.class,
-      () -> underTest.validateUserCanReceivePushEventForProjectUuids(USER_UUID, null, exampleProjectuuids));
+      () -> underTest.validateUserCanReceivePushEventForProjectUuids(USER_UUID, exampleProjectuuids));
   }
 }

@@ -23,9 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetAddress;
-import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import org.apache.catalina.connector.Connector;
 import org.apache.commons.io.FileUtils;
@@ -101,52 +99,6 @@ public class EmbeddedTomcatTest {
       .isInstanceOf(ConnectException.class)
       .hasMessage("Connection refused");
 
-  }
-
-  @Test
-  public void start_shouldLogClientAddressFromXForwardedForInAccessLog() throws Exception {
-    InetAddress address = InetAddress.getLoopbackAddress();
-    int httpPort = NetworkUtilsImpl.INSTANCE.getNextLoopbackAvailablePort();
-    Props props = getProps(address, httpPort);
-    File logs = new File(props.nonNullValue("sonar.path.logs"));
-
-    EmbeddedTomcat tomcat = new EmbeddedTomcat(props, new TomcatHttpConnectorFactory());
-    tomcat.start();
-    try {
-      HttpURLConnection connection = (HttpURLConnection) new URL("http://" + address.getHostAddress() + ":" + httpPort + "/ping").openConnection();
-      connection.setConnectTimeout(5_000);
-      connection.setReadTimeout(5_000);
-      connection.setRequestProperty("X-Forwarded-For", "1.2.3.4, 203.0.113.9");
-      connection.getResponseCode();
-      connection.disconnect();
-
-      File accessLog = new File(logs, "access.log");
-      long deadline = System.currentTimeMillis() + 5_000;
-      String content = "";
-      while (!content.contains("\n") && System.currentTimeMillis() < deadline) {
-        Thread.sleep(50);
-        if (accessLog.exists()) {
-          content = FileUtils.readFileToString(accessLog, StandardCharsets.UTF_8);
-        }
-      }
-      assertThat(content).startsWith("203.0.113.9 ");
-    } finally {
-      tomcat.terminate();
-    }
-  }
-
-  @Test
-  public void start_whenTrustedProxiesRegexIsInvalid_shouldFailNamingTheProperty() throws IOException {
-    InetAddress address = InetAddress.getLoopbackAddress();
-    int httpPort = NetworkUtilsImpl.INSTANCE.getNextLoopbackAvailablePort();
-    Props props = getProps(address, httpPort);
-    props.set("sonar.web.trustedProxiesRegex", "10\\.(");
-
-    EmbeddedTomcat tomcat = new EmbeddedTomcat(props, new TomcatHttpConnectorFactory());
-
-    assertThatThrownBy(tomcat::start)
-      .isInstanceOf(IllegalArgumentException.class)
-      .hasMessageContaining("sonar.web.trustedProxiesRegex");
   }
 
   private Props getProps(InetAddress address, int httpPort) throws IOException {

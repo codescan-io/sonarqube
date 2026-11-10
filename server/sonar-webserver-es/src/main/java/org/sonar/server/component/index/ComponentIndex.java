@@ -90,7 +90,7 @@ public class ComponentIndex {
       .size(searchOptions.getLimit());
 
     BoolQueryBuilder esQuery = boolQuery();
-    esQuery.filter(authorizationTypeSupport.createQueryFilter(FIELD_ORGANIZATION_UUID));
+    esQuery.filter(authorizationTypeSupport.createQueryFilter());
     setNullable(query.getQuery(), q -> {
       ComponentTextSearchQuery componentTextSearchQuery = ComponentTextSearchQuery.builder()
         .setQueryText(q)
@@ -172,7 +172,7 @@ public class ComponentIndex {
   private QueryBuilder createQuery(SuggestionQuery query, ComponentTextSearchFeature... features) {
     BoolQueryBuilder esQuery = boolQuery();
     esQuery.filter(termQuery(FIELD_INDEX_TYPE, TYPE_COMPONENT.getName()));
-    esQuery.filter(authorizationTypeSupport.createQueryFilter(FIELD_ORGANIZATION_UUID));
+    esQuery.filter(authorizationTypeSupport.createQueryFilter());
     ComponentTextSearchQuery componentTextSearchQuery = ComponentTextSearchQuery.builder()
       .setQueryText(query.getQuery())
       .setFieldKey(FIELD_KEY)
