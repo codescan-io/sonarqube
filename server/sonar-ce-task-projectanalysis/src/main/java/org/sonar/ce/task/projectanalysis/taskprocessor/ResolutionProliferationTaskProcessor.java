@@ -35,6 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import javax.annotation.CheckForNull;
 import org.slf4j.Logger;
@@ -53,8 +54,10 @@ import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.server.issue.IssueMarkingProliferationService;
+import org.sonar.server.issue.IssueMarkingProliferationService.BranchOutcome;
 import org.sonar.server.issue.IssueMarkingProliferationService.ProliferatedMarking;
 import org.sonar.server.issue.IssueMarkingProliferationService.Signature;
+import org.sonar.server.issue.IssueMarkingProliferationService.TargetIndex;
 import org.sonar.server.issue.ProliferationTaskPayload;
 import org.sonar.server.measure.live.LiveMeasureComputer;
 
@@ -77,11 +80,11 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
   static final int MAX_THREADS = 8;
 
   /**
-   * Upper bound on the write and refresh phase of one task. The project's analyses wait behind the task (the queue
-   * holds tasks of the same entity), so a stuck branch must not hold them forever; jobs still running at the deadline
-   * are cancelled and logged.
+   * Upper bound on each parallel phase of one task (reading candidates; writing and refreshing branches). The
+   * project's analyses wait behind the task (the queue holds tasks of the same entity), so a stuck job must not hold
+   * them forever; jobs still running at the deadline are cancelled and counted as failures.
    */
-  static final Duration BRANCH_JOBS_TIMEOUT = Duration.ofHours(1);
+  static final Duration JOBS_TIMEOUT = Duration.ofHours(1);
 
 
   private static final String LEGACY_CHARACTERISTIC_COMMENT = "proliferationComment";
@@ -128,6 +131,11 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
    * Proliferation produces no task result: what it did is in the issues it marked and in the log, and
    * {@code ce_activity} records only that the task ran. The work is a void method of its own so this one has a
    * single exit instead of eight identical ones.
+   * <p>
+   * Every failure - a candidate group that could not be read, a slice or branch job that threw or ran out of time,
+   * a match that could not be prepared, a branch that could not be indexed or refreshed - is counted, and the task
+   * fails once everything else has been done. Nothing re-runs a marking that was lost, so the task status is the
+   * only place it can show.
    */
   @CheckForNull
   @Override
@@ -147,7 +155,7 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
     List<IssueDto> sourceIssues;
     List<String> targetBranchUuids;
     ProliferationTaskPayload payload;
-    Map<String, Map<Signature, List<IssueDto>>> targetsByBranch;
+    TargetIndex targets;
     try (DbSession dbSession = dbClient.openSession(false)) {
       payload = readPayload(dbSession, task.getUuid());
       if (payload.issueKeys().isEmpty()) {
@@ -169,10 +177,8 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
 
 
     long readStart = system2.now();
-    targetsByBranch = readTargets(sourceIssues, targetBranchUuids);
-    if (targetsByBranch.isEmpty()) {
-      return;
-    }
+    Failures failures = new Failures();
+    targets = readTargets(sourceIssues, targetBranchUuids, failures);
 
     Map<String, String> characteristics = task.getCharacteristics();
     String transitionKey = characteristics.get(CHARACTERISTIC_TRANSITION);
@@ -192,24 +198,39 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
       characteristics.getOrDefault(CHARACTERISTIC_SOURCE_BRANCH_LABEL, sourceBranchUuid));
 
     long writeStart = system2.now();
-    runAcrossBranches(sourceIssues, targetBranchUuids, targetsByBranch, marking);
+    long branchesWithMatches = targetBranchUuids.stream().filter(targets::hasMatches).count();
+    runAcrossBranches(sourceIssues, targetBranchUuids, targets, marking, failures);
     LOG.info("Proliferation task {}: {} source issue(s), {} target branch(es), {} with matches; read {} ms, "
-        + "write and measure refresh {} ms", task.getUuid(), sourceIssues.size(), targetBranchUuids.size(),
-      targetsByBranch.values().stream().filter(m -> !m.isEmpty()).count(), writeStart - readStart,
-      system2.now() - writeStart);
+        + "write and measure refresh {} ms; failed: {} candidate group(s), {} branch(es)", task.getUuid(),
+      sourceIssues.size(), targetBranchUuids.size(), branchesWithMatches, writeStart - readStart,
+      system2.now() - writeStart, failures.reads.get(), failures.branches.get());
+    if (failures.reads.get() > 0 || failures.branches.get() > 0) {
+      throw new IllegalStateException(String.format("Resolution proliferation of task %s failed for %d candidate "
+        + "group(s) and %d of %d target branch(es); the other branches were written. See the log for the causes.",
+        task.getUuid(), failures.reads.get(), failures.branches.get(), branchesWithMatches));
+    }
   }
 
-  private Map<String, Map<Signature, List<IssueDto>>> readTargets(List<IssueDto> sourceIssues,
-    List<String> targetBranchUuids) {
+  /**
+   * Failure counts of one task. {@code reads} are (rule, file) candidate groups, or whole slices, that could not be
+   * read; {@code branches} are branches where something failed: the job itself, a match, indexing or the refresh.
+   */
+  private static final class Failures {
+    private final AtomicInteger reads = new AtomicInteger();
+    private final AtomicInteger branches = new AtomicInteger();
+  }
 
+  private TargetIndex readTargets(List<IssueDto> sourceIssues, List<String> targetBranchUuids, Failures failures) {
     int sliceCount = Math.min(MAX_THREADS, sourceIssues.size());
     if (sliceCount <= 1) {
       try (DbSession dbSession = dbClient.openSession(false)) {
-        return proliferationService.indexTargetsBySignature(dbSession, sourceIssues, targetBranchUuids);
+        TargetIndex index = proliferationService.indexTargetsBySignature(dbSession, sourceIssues, targetBranchUuids);
+        failures.reads.addAndGet(index.failedGroups());
+        return index;
       }
     }
 
-    List<Callable<Map<String, Map<Signature, List<IssueDto>>>>> jobs = new ArrayList<>(sliceCount);
+    List<Callable<TargetIndex>> jobs = new ArrayList<>(sliceCount);
     for (int slice = 0; slice < sliceCount; slice++) {
       int own = slice;
       jobs.add(() -> {
@@ -220,36 +241,42 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
       });
     }
 
-    List<Map<String, Map<Signature, List<IssueDto>>>> slices = new ArrayList<>(sliceCount);
+    List<TargetIndex> slices = new ArrayList<>(sliceCount);
     try {
-      // The markings a failed slice would have carried are simply not applied; the rest still are, and the next
-      // run picks them up because an unmarked issue is still a candidate.
-      awaitAll(executor.invokeAll(jobs), slices::add, "Reading one slice of proliferation candidates failed");
+      // A failed slice is counted, so the task fails; the markings of the slices that were read are still applied.
+      int failedSlices = awaitAll(executor.invokeAll(jobs, JOBS_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS),
+        slices::add, "Reading one slice of proliferation candidates failed");
+      failures.reads.addAndGet(failedSlices);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOG.warn("Proliferation interrupted while reading candidates", e);
-      return Map.of();
+      throw new IllegalStateException("Proliferation interrupted while reading candidates", e);
     }
-    return IssueMarkingProliferationService.mergeIndexes(slices);
+    TargetIndex merged = IssueMarkingProliferationService.mergeIndexes(slices);
+    failures.reads.addAndGet(merged.failedGroups());
+    return merged;
   }
 
   /**
    * Waits for every job and hands each result to {@code onResult}, logging the ones that failed or were cancelled
-   * by the timeout instead of abandoning the rest. Interruption is left to the caller, which gives up on the whole
-   * pass.
+   * by the timeout instead of abandoning the rest, and returns how many did. Interruption is left to the caller,
+   * which gives up on the whole pass.
    */
-  private static <T> void awaitAll(Collection<Future<T>> futures, Consumer<T> onResult, String failureMessage)
+  private static <T> int awaitAll(Collection<Future<T>> futures, Consumer<T> onResult, String failureMessage)
     throws InterruptedException {
 
+    int failed = 0;
     for (Future<T> future : futures) {
       try {
         onResult.accept(future.get());
       } catch (ExecutionException e) {
+        failed++;
         LOG.error(failureMessage, e.getCause());
       } catch (CancellationException e) {
+        failed++;
         LOG.error("{}: cancelled, not finished in time", failureMessage);
       }
     }
+    return failed;
   }
 
 
@@ -261,22 +288,22 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
    * touched component), so running branches side by side is what bounds the task's duration.
    */
   private void runAcrossBranches(Collection<IssueDto> sourceIssues, List<String> targetBranchUuids,
-    Map<String, Map<Signature, List<IssueDto>>> targetsByBranch, ProliferatedMarking marking) {
+    TargetIndex targets, ProliferatedMarking marking, Failures failures) {
 
-    List<Callable<Void>> jobs = new ArrayList<>(targetBranchUuids.size());
+    List<Callable<Boolean>> jobs = new ArrayList<>(targetBranchUuids.size());
     for (String targetBranchUuid : targetBranchUuids) {
-      Map<Signature, List<IssueDto>> targets = targetsByBranch.getOrDefault(targetBranchUuid, Map.of());
-      if (targets.isEmpty()) {
+      if (!targets.hasMatches(targetBranchUuid)) {
         continue;
       }
+      Map<Signature, List<String>> branchTargets = targets.of(targetBranchUuid);
       jobs.add(() -> {
         try (DbSession own = dbClient.openSession(false)) {
-          Set<String> writtenComponents = proliferationService.proliferateToBranch(own, sourceIssues, targets,
+          BranchOutcome outcome = proliferationService.proliferateToBranch(own, sourceIssues, branchTargets,
             targetBranchUuid, marking);
           own.commit();
-          refreshBranchMeasures(own, targetBranchUuid, writtenComponents);
+          boolean refreshed = refreshBranchMeasures(own, targetBranchUuid, outcome.writtenComponents());
+          return outcome.failures() == 0 && refreshed;
         }
-        return null;
       });
     }
     if (jobs.isEmpty()) {
@@ -284,26 +311,33 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
     }
 
     try {
-      awaitAll(executor.invokeAll(jobs, BRANCH_JOBS_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS), ignored -> {
-        // Nothing to collect: each job writes and refreshes its own branch and reports its own count.
-      }, "Proliferation to one branch failed");
+      int failedJobs = awaitAll(executor.invokeAll(jobs, JOBS_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS),
+        succeeded -> {
+          if (!succeeded) {
+            failures.branches.incrementAndGet();
+          }
+        }, "Proliferation to one branch failed");
+      failures.branches.addAndGet(failedJobs);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOG.warn("Proliferation interrupted", e);
+      throw new IllegalStateException("Proliferation interrupted", e);
     }
   }
 
-  private void refreshBranchMeasures(DbSession dbSession, String branchUuid, Set<String> writtenComponentUuids) {
+  /** @return false when the refresh failed */
+  private boolean refreshBranchMeasures(DbSession dbSession, String branchUuid, Set<String> writtenComponentUuids) {
     if (writtenComponentUuids.isEmpty()) {
-      return;
+      return true;
     }
     try {
       List<ComponentDto> touchedComponents = dbClient.componentDao().selectByUuids(dbSession, writtenComponentUuids);
       if (!touchedComponents.isEmpty()) {
         liveMeasureComputer.refresh(dbSession, touchedComponents);
       }
+      return true;
     } catch (RuntimeException e) {
       LOG.error("Could not refresh measures of branch " + branchUuid + " after proliferation", e);
+      return false;
     }
   }
 
@@ -333,8 +367,7 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
     try (DbInputStream stream = data.get()) {
       return ProliferationTaskPayload.parse(stream.readAllBytes());
     } catch (IOException e) {
-      LOG.error("Could not read issue keys of proliferation task " + taskUuid, e);
-      return EMPTY_PAYLOAD;
+      throw new IllegalStateException("Could not read issue keys of proliferation task " + taskUuid, e);
     }
   }
 }
