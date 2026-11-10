@@ -492,7 +492,8 @@ subprojects {
         }
       }
       dependency "org.springframework:spring-test:${springVersion}"
-      dependency 'org.mybatis:mybatis:3.5.16'
+      // 3.6.0 is the first release bundling ognl >= 3.4.13 (CVE-2026-113730); 3.5.x stops at ognl 3.4.4.
+      dependency 'org.mybatis:mybatis:3.6.0'
       dependencySet(group: 'org.slf4j', version: '2.0.20') {
         entry 'jcl-over-slf4j'
         entry 'jul-to-slf4j'
