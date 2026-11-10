@@ -20,20 +20,21 @@
 package org.sonar.ce.task.projectanalysis.taskprocessor;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import javax.annotation.CheckForNull;
 import org.slf4j.Logger;
@@ -74,6 +75,13 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
     new ProliferationTaskPayload(List.of(), null, null);
 
   static final int MAX_THREADS = 8;
+
+  /**
+   * Upper bound on the write and refresh phase of one task. The project's analyses wait behind the task (the queue
+   * holds tasks of the same entity), so a stuck branch must not hold them forever; jobs still running at the deadline
+   * are cancelled and logged.
+   */
+  static final Duration BRANCH_JOBS_TIMEOUT = Duration.ofHours(1);
 
 
   private static final String LEGACY_CHARACTERISTIC_COMMENT = "proliferationComment";
@@ -160,6 +168,7 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
     }
 
 
+    long readStart = system2.now();
     targetsByBranch = readTargets(sourceIssues, targetBranchUuids);
     if (targetsByBranch.isEmpty()) {
       return;
@@ -182,7 +191,12 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
         : characteristics.get(LEGACY_CHARACTERISTIC_EXCEPTION_REASON),
       characteristics.getOrDefault(CHARACTERISTIC_SOURCE_BRANCH_LABEL, sourceBranchUuid));
 
-    refreshMeasures(runAcrossBranches(sourceIssues, targetBranchUuids, targetsByBranch, marking));
+    long writeStart = system2.now();
+    runAcrossBranches(sourceIssues, targetBranchUuids, targetsByBranch, marking);
+    LOG.info("Proliferation task {}: {} source issue(s), {} target branch(es), {} with matches; read {} ms, "
+        + "write and measure refresh {} ms", task.getUuid(), sourceIssues.size(), targetBranchUuids.size(),
+      targetsByBranch.values().stream().filter(m -> !m.isEmpty()).count(), writeStart - readStart,
+      system2.now() - writeStart);
   }
 
   private Map<String, Map<Signature, List<IssueDto>>> readTargets(List<IssueDto> sourceIssues,
@@ -220,8 +234,9 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
   }
 
   /**
-   * Waits for every job and hands each result to {@code onResult}, logging the ones that failed instead of
-   * abandoning the rest. Interruption is left to the caller, which gives up on the whole pass.
+   * Waits for every job and hands each result to {@code onResult}, logging the ones that failed or were cancelled
+   * by the timeout instead of abandoning the rest. Interruption is left to the caller, which gives up on the whole
+   * pass.
    */
   private static <T> void awaitAll(Collection<Future<T>> futures, Consumer<T> onResult, String failureMessage)
     throws InterruptedException {
@@ -231,64 +246,59 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
         onResult.accept(future.get());
       } catch (ExecutionException e) {
         LOG.error(failureMessage, e.getCause());
+      } catch (CancellationException e) {
+        LOG.error("{}: cancelled, not finished in time", failureMessage);
       }
     }
   }
 
 
-  private Map<String, Set<String>> runAcrossBranches(Collection<IssueDto> sourceIssues, List<String> targetBranchUuids,
+  /**
+   * One job per target branch with matches: write the marking, commit, then refresh the measures of the components
+   * whose issues were written. Branches are independent (their own issues, components and measure rows), so the
+   * refresh runs inside the job and branches proceed concurrently on the pool instead of refreshing one branch
+   * after another on the CE worker once every write is done. The refresh is latency-bound (a few statements per
+   * touched component), so running branches side by side is what bounds the task's duration.
+   */
+  private void runAcrossBranches(Collection<IssueDto> sourceIssues, List<String> targetBranchUuids,
     Map<String, Map<Signature, List<IssueDto>>> targetsByBranch, ProliferatedMarking marking) {
 
-    Map<String, Set<String>> touchedComponentsByBranch = new HashMap<>(targetBranchUuids.size());
     List<Callable<Void>> jobs = new ArrayList<>(targetBranchUuids.size());
     for (String targetBranchUuid : targetBranchUuids) {
       Map<Signature, List<IssueDto>> targets = targetsByBranch.getOrDefault(targetBranchUuid, Map.of());
       if (targets.isEmpty()) {
         continue;
       }
-      Set<String> touchedComponentUuids = new HashSet<>();
-      targets.values().forEach(issues -> issues.forEach(issue -> touchedComponentUuids.add(issue.getComponentUuid())));
-      touchedComponentsByBranch.put(targetBranchUuid, touchedComponentUuids);
       jobs.add(() -> {
         try (DbSession own = dbClient.openSession(false)) {
-          proliferationService.proliferateToBranch(own, sourceIssues, targets, targetBranchUuid, marking);
+          Set<String> writtenComponents = proliferationService.proliferateToBranch(own, sourceIssues, targets,
+            targetBranchUuid, marking);
           own.commit();
+          refreshBranchMeasures(own, targetBranchUuid, writtenComponents);
         }
         return null;
       });
     }
     if (jobs.isEmpty()) {
-      return Map.of();
+      return;
     }
 
     try {
-      awaitAll(executor.invokeAll(jobs), ignored -> {
-        // Nothing to collect: each job writes its own branch and reports its own count.
+      awaitAll(executor.invokeAll(jobs, BRANCH_JOBS_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS), ignored -> {
+        // Nothing to collect: each job writes and refreshes its own branch and reports its own count.
       }, "Proliferation to one branch failed");
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOG.warn("Proliferation interrupted", e);
     }
-    return touchedComponentsByBranch;
   }
 
-
-  private void refreshMeasures(Map<String, Set<String>> touchedComponentsByBranch) {
-    if (touchedComponentsByBranch.isEmpty()) {
-      return;
-    }
-    try (DbSession dbSession = dbClient.openSession(false)) {
-      touchedComponentsByBranch.forEach((branchUuid, componentUuids) ->
-        refreshBranchMeasures(dbSession, branchUuid, componentUuids));
-    }
-  }
-
-  private void refreshBranchMeasures(DbSession dbSession, String branchUuid, Set<String> touchedComponentUuids) {
-    if (touchedComponentUuids.isEmpty()) {
+  private void refreshBranchMeasures(DbSession dbSession, String branchUuid, Set<String> writtenComponentUuids) {
+    if (writtenComponentUuids.isEmpty()) {
       return;
     }
     try {
-      List<ComponentDto> touchedComponents = dbClient.componentDao().selectByUuids(dbSession, touchedComponentUuids);
+      List<ComponentDto> touchedComponents = dbClient.componentDao().selectByUuids(dbSession, writtenComponentUuids);
       if (!touchedComponents.isEmpty()) {
         liveMeasureComputer.refresh(dbSession, touchedComponents);
       }

@@ -48,6 +48,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
@@ -81,6 +82,11 @@ public class IssueMarkingProliferationServiceTest {
     // are about the matching, not the resolution, so every path resolves to one stand-in component.
     when(componentDao.selectUuidsByPathAndBranchUuids(any(), anyString(), any()))
       .thenAnswer(invocation -> List.of(componentsOf(invocation.getArgument(1))));
+    // The storage reports every issue it was handed as written, as it does when no row changed underneath it.
+    when(issueStorage.save(any(), any(), any(), anyLong(), any(), any())).thenAnswer(invocation -> {
+      Collection<DefaultIssue> issues = invocation.getArgument(1);
+      return issues.stream().map(DefaultIssue::key).toList();
+    });
     underTest = new IssueMarkingProliferationService(dbClient, issueWorkflow, issueStorage, issueFieldsSetter);
   }
 
@@ -131,7 +137,7 @@ public class IssueMarkingProliferationServiceTest {
   private Collection<DefaultIssue> captureSaved() {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Collection<DefaultIssue>> captor = ArgumentCaptor.forClass(Collection.class);
-    verify(issueStorage, org.mockito.Mockito.atLeastOnce()).save(eq(dbSession), captor.capture(), any(), anyLong(),
+    verify(issueStorage, org.mockito.Mockito.atLeast(0)).save(eq(dbSession), captor.capture(), any(), anyLong(),
       any(), any());
     return captor.getAllValues().stream().flatMap(Collection::stream).toList();
   }
@@ -172,6 +178,17 @@ public class IssueMarkingProliferationServiceTest {
 
     assertThat(proliferate(List.of(source), DefaultTransitions.ACCEPT, null))
       .containsExactly("component-BBB-777");
+  }
+
+  @Test
+  public void leavesOutTheComponentsOfIssuesThatWereNotWritten() {
+    IssueDto source = issue("AAA-111", SOURCE_BRANCH_UUID);
+    givenCandidates(issue("BBB-777", TARGET_BRANCH_UUID), issue("BBB-888", TARGET_BRANCH_UUID));
+    when(issueWorkflow.doManualTransition(any(DefaultIssue.class), anyString(), any())).thenReturn(true);
+    doReturn(List.of("BBB-888")).when(issueStorage).save(any(), any(), any(), anyLong(), any(), any());
+
+    assertThat(proliferate(List.of(source), DefaultTransitions.ACCEPT, null))
+      .containsExactly("component-BBB-888");
   }
 
   @Test

@@ -90,35 +90,35 @@ public class IssueMarkingProliferationService {
   }
 
 
+  /**
+   * Writes the marking to the matching issues of one branch and returns the components of the issues it wrote, which
+   * are the only ones whose measures change. Components of matches that were not written (the workflow declined the
+   * transition, or preparing them failed) are left out, so the caller refreshes no more than what changed.
+   */
   public Set<String> proliferateToBranch(DbSession dbSession, Collection<IssueDto> sourceIssues,
     Map<Signature, List<IssueDto>> targetsBySignature, String targetBranchUuid, ProliferatedMarking marking) {
 
-    Set<String> touchedComponents = new LinkedHashSet<>();
+    Set<String> writtenComponents = new LinkedHashSet<>();
     if (!PROLIFERABLE_TRANSITIONS.contains(marking.transitionKey()) || targetsBySignature.isEmpty()) {
-      return touchedComponents;
+      return writtenComponents;
     }
 
     List<DefaultIssue> pending = new ArrayList<>(SAVE_BATCH_SIZE);
     Set<String> alreadyPrepared = new HashSet<>();
     List<String> written = new ArrayList<>();
-    long markedAt = marking.context().date().getTime();
     for (IssueDto source : sourceIssues) {
       try {
         for (DefaultIssue prepared : prepareMatches(source, targetsBySignature, alreadyPrepared, marking)) {
           pending.add(prepared);
-          touchedComponents.add(prepared.componentUuid());
           if (pending.size() >= SAVE_BATCH_SIZE) {
-            written.addAll(issueStorage.save(dbSession, pending, targetBranchUuid, markedAt,
-              marking.context().userUuid(), TARGET_STATUSES));
-            pending.clear();
+            save(dbSession, pending, targetBranchUuid, marking, written, writtenComponents);
           }
         }
       } catch (RuntimeException e) {
         LOG.error("Failed to proliferate marking of issue {} to branch {}", source.getKey(), targetBranchUuid, e);
       }
     }
-    written.addAll(issueStorage.save(dbSession, pending, targetBranchUuid, markedAt, marking.context().userUuid(),
-      TARGET_STATUSES));
+    save(dbSession, pending, targetBranchUuid, marking, written, writtenComponents);
 
     // Once for the branch, after every batch is committed. Indexing per batch is what put two rows per issue
     // through es_queue and took the search index down on a million-issue run.
@@ -133,7 +133,27 @@ public class IssueMarkingProliferationService {
       LOG.info("Proliferated marking '{}' from branch {} to {} issue(s) on branch {}",
         marking.transitionKey(), marking.sourceBranchLabel(), written.size(), targetBranchUuid);
     }
-    return touchedComponents;
+    return writtenComponents;
+  }
+
+  private void save(DbSession dbSession, List<DefaultIssue> pending, String targetBranchUuid,
+    ProliferatedMarking marking, List<String> written, Set<String> writtenComponents) {
+
+    if (pending.isEmpty()) {
+      return;
+    }
+    Map<String, String> componentByKey = new HashMap<>(pending.size());
+    pending.forEach(issue -> componentByKey.put(issue.key(), issue.componentUuid()));
+    List<String> savedKeys = issueStorage.save(dbSession, List.copyOf(pending), targetBranchUuid,
+      marking.context().date().getTime(), marking.context().userUuid(), TARGET_STATUSES);
+    for (String key : savedKeys) {
+      written.add(key);
+      String componentUuid = componentByKey.get(key);
+      if (componentUuid != null) {
+        writtenComponents.add(componentUuid);
+      }
+    }
+    pending.clear();
   }
 
   /**
