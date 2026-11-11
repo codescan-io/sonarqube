@@ -110,6 +110,18 @@ public interface IssueMapper {
   Collection<IssueImpactSeverityGroupDto> selectIssueImpactSeverityGroupsByComponent(@Param("component") ComponentDto component,
     @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
 
+  /** As the three statements above, for several components at once; each row carries its component uuid. */
+  List<IssueGroupDto> selectIssueGroupsByComponentUuids(@Param("componentUuids") Collection<String> componentUuids,
+    @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
+
+  List<IssueImpactGroupDto> selectIssueImpactGroupsByComponentUuids(
+    @Param("componentUuids") Collection<String> componentUuids,
+    @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
+
+  List<IssueImpactSeverityGroupDto> selectIssueImpactSeverityGroupsByComponentUuids(
+    @Param("componentUuids") Collection<String> componentUuids,
+    @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
+
   List<IssueDto> selectByBranch(@Param("keys") Set<String> keys, @Nullable @Param("changedSince") Long changedSince);
 
   List<String> selectRecentlyClosedIssues(@Param("queryParams") IssueQueryParams issueQueryParams);
