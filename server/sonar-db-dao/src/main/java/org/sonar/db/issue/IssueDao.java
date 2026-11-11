@@ -62,21 +62,6 @@ public class IssueDao implements Dao {
     return executeLargeInputs(keys, mapper(session)::selectByKeys);
   }
 
-  /**
-   * Unresolved issues on the given branches that share a marking signature - file path, rule, line and message -
-   * with the issue being proliferated. {@code branchUuids} are project_uuid values, which is how issues are
-   * partitioned per branch. An empty branch list short-circuits rather than issuing an {@code in ()}.
-   */
-  public List<IssueDto> selectUnresolvedBySignatureInBranches(DbSession session, Collection<String> branchUuids,
-    String ruleUuid, String filePath, @Nullable Integer line, String message, Collection<String> statuses) {
-    if (branchUuids.isEmpty() || statuses.isEmpty()) {
-      return List.of();
-    }
-    return executeLargeInputs(branchUuids,
-      partition -> mapper(session).selectUnresolvedBySignatureInBranches(partition, ruleUuid, filePath, line, message, statuses));
-  }
-
-
   public List<IssueDto> selectUnresolvedByRuleAndComponents(DbSession session, Collection<String> componentUuids,
     String ruleUuid, Collection<String> statuses) {
     if (componentUuids.isEmpty() || statuses.isEmpty()) {

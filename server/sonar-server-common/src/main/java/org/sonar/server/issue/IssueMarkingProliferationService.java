@@ -62,16 +62,23 @@ public class IssueMarkingProliferationService {
 
   public static final String CHARACTERISTIC_SOURCE_BRANCH_LABEL = "proliferationSourceBranch";
 
+
+  private static final String TRANSITION_WONT_FIX = "wontfix";
+  private static final String STATUS_OPEN = "OPEN";
+  private static final String STATUS_REOPENED = "REOPENED";
+  private static final String RESOLUTION_FALSE_POSITIVE = "FALSE-POSITIVE";
+  private static final String RESOLUTION_WONT_FIX = "WONTFIX";
+
   /** Only these markings proliferate; the other transitions (reopen, confirm, resolve as fixed) are untouched. */
   private static final Set<String> PROLIFERABLE_TRANSITIONS = Set.of(
     DefaultTransitions.EXCEPTION, DefaultTransitions.ACCEPT, DefaultTransitions.FALSE_POSITIVE,
-    DefaultTransitions.WONT_FIX);
+    TRANSITION_WONT_FIX);
 
   /**
    * Candidate statuses on the other branches. An issue already resolved there is left alone - its own marking wins,
    * and re-stating it would add a duplicate comment on every subsequent run.
    */
-  private static final Set<String> TARGET_STATUSES = Set.of(Issue.STATUS_OPEN, Issue.STATUS_REOPENED);
+  private static final Set<String> TARGET_STATUSES = Set.of(STATUS_OPEN, STATUS_REOPENED);
 
   /** How many issues are written per commit. Bounds both the transaction and the heap a thread holds. */
   private static final int SAVE_BATCH_SIZE = 500;
@@ -360,6 +367,18 @@ public class IssueMarkingProliferationService {
   /** Exposed for the callers that need to know whether to bother queueing anything. */
   public boolean isProliferable(String transitionKey) {
     return PROLIFERABLE_TRANSITIONS.contains(transitionKey);
+  }
+
+  public static boolean carriesTransitionResolution(@Nullable String resolution, String transitionKey) {
+    if (resolution == null) {
+      return false;
+    }
+    return switch (transitionKey) {
+      case DefaultTransitions.FALSE_POSITIVE -> RESOLUTION_FALSE_POSITIVE.equals(resolution);
+      case DefaultTransitions.ACCEPT, TRANSITION_WONT_FIX -> RESOLUTION_WONT_FIX.equals(resolution);
+      case DefaultTransitions.EXCEPTION -> Issue.RESOLUTION_EXCEPTION.equals(resolution);
+      default -> false;
+    };
   }
 
   Collection<String> targetStatuses() {

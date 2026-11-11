@@ -91,7 +91,8 @@ public class IssueProliferationSubmitter {
         CeTaskSubmit.Builder builder = ceQueue.prepareSubmit()
           .setType(CeTaskTypes.RESOLUTION_PROLIFERATION)
           .setComponent(new CeTaskSubmit.Component(sourceBranchUuid, projectUuid))
-          .setCharacteristics(characteristics);
+          .setCharacteristics(characteristics)
+          .setSubmitterUuid(context.userUuid());
         // The keys must be readable before the task row exists, or a worker could pick the task up and find
         // nothing to do. Same ordering as ReportSubmitter.
         dbClient.ceTaskInputDao().insert(dbSession, builder.getUuid(),

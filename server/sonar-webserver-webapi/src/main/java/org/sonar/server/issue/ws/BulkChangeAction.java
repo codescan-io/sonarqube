@@ -63,6 +63,7 @@ import org.sonar.server.issue.AddTagsAction;
 import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.AssignAction;
 import org.sonar.server.issue.IssueChangePostProcessor;
+import org.sonar.server.issue.IssueMarkingProliferationService;
 import org.sonar.server.issue.IssueProliferationSubmitter;
 import org.sonar.server.issue.RemoveTagsAction;
 import org.sonar.server.issue.WebIssueStorage;
@@ -390,6 +391,7 @@ public class BulkChangeAction implements IssuesWsAction {
     // mixing branches in one call, and a task carries the branch its issues came from.
     Map<String, List<String>> keysByBranch = changedIssues.stream()
       .filter(issue -> issue.projectUuid() != null)
+      .filter(issue -> IssueMarkingProliferationService.carriesTransitionResolution(issue.resolution(), transition))
       .collect(groupingBy(DefaultIssue::projectUuid, mapping(DefaultIssue::key, toList())));
     keysByBranch.forEach((branchUuid, keys) -> proliferationSubmitter.submit(dbSession, branchUuid, keys,
       issueChangeContext, transition, comment, exceptionReason));

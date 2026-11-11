@@ -38,14 +38,6 @@ public interface IssueMapper {
   List<IssueDto> selectByKeys(List<String> keys);
 
   /**
-   * Unresolved issues on the given branches sharing a marking signature (file path, rule, line, message).
-   * {@code branchUuids} are project_uuid values - issues are partitioned per branch by that column.
-   */
-  List<IssueDto> selectUnresolvedBySignatureInBranches(@Param("branchUuids") Collection<String> branchUuids,
-    @Param("ruleUuid") String ruleUuid, @Param("filePath") String filePath, @Param("line") @Nullable Integer line,
-    @Param("message") String message, @Param("statuses") Collection<String> statuses);
-
-  /**
    * Every unresolved issue of one rule on the given components, for callers that narrow by line and message
    * themselves. The caller resolves the components first, so this filters on the indexed component_uuid.
    */

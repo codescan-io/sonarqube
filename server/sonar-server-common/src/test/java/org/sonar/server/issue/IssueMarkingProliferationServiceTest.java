@@ -29,6 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonar.api.issue.DefaultTransitions;
+import org.sonar.api.issue.Issue;
 import org.sonar.api.rules.RuleType;
 import org.sonar.core.issue.DefaultIssue;
 import org.sonar.core.issue.IssueChangeContext;
@@ -373,5 +374,80 @@ public class IssueMarkingProliferationServiceTest {
   @Test
   public void onlyOpenAndReopenedIssuesAreCandidates() {
     assertThat(underTest.targetStatuses()).containsExactlyInAnyOrder("OPEN", "REOPENED");
+  }
+
+  // carriesTransitionResolution: the gate a caller applies before proliferating, so that a transition the
+  // workflow refused is not copied to the other branches on the strength of some other action having succeeded.
+
+  @Test
+  public void carriesTransitionResolution_isTrueWhenTheIssueTookTheTransition() {
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_FALSE_POSITIVE, DefaultTransitions.FALSE_POSITIVE)).isTrue();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_WONT_FIX, DefaultTransitions.ACCEPT)).isTrue();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_EXCEPTION, DefaultTransitions.EXCEPTION)).isTrue();
+  }
+
+  /**
+   * The bug this gate exists for: a bulk change asking for False Positive plus a tag, on an issue that was
+   * already accepted. The transition is refused silently, the tag succeeds, and without this check the issue
+   * would be proliferated as False Positive - a marking no one applied anywhere.
+   */
+  @Test
+  public void carriesTransitionResolution_isFalseWhenTheTransitionWasRefusedOnAnAlreadyResolvedIssue() {
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_WONT_FIX, DefaultTransitions.FALSE_POSITIVE)).isFalse();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_FALSE_POSITIVE, DefaultTransitions.ACCEPT)).isFalse();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_FALSE_POSITIVE, DefaultTransitions.EXCEPTION)).isFalse();
+  }
+
+  /** No resolution at all: the issue was never transitioned - a security hotspot, or a refusal from OPEN. */
+  @Test
+  public void carriesTransitionResolution_isFalseWhenTheIssueHasNoResolution() {
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      null, DefaultTransitions.FALSE_POSITIVE)).isFalse();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      null, DefaultTransitions.ACCEPT)).isFalse();
+  }
+
+  /** WONT_FIX is the legacy alias of ACCEPT: an API caller using the old name must still proliferate. */
+  @Test
+  public void carriesTransitionResolution_treatsWontFixAsTheAliasOfAccept() {
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_WONT_FIX, DefaultTransitions.WONT_FIX)).isTrue();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_FALSE_POSITIVE, DefaultTransitions.WONT_FIX)).isFalse();
+  }
+
+  /** Transitions this feature does not copy, even when they succeeded and set a resolution. */
+  @Test
+  public void carriesTransitionResolution_isFalseForTransitionsThatAreNotMarkings() {
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_FIXED, DefaultTransitions.RESOLVE)).isFalse();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_WONT_FIX, DefaultTransitions.CONFIRM)).isFalse();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_WONT_FIX, DefaultTransitions.REOPEN)).isFalse();
+  }
+
+  /** Every transition the service will queue must be one the gate can answer true for. */
+  @Test
+  public void carriesTransitionResolution_acceptsEveryProliferableTransition() {
+    assertThat(underTest.isProliferable(DefaultTransitions.ACCEPT)).isTrue();
+    assertThat(underTest.isProliferable(DefaultTransitions.WONT_FIX)).isTrue();
+    assertThat(underTest.isProliferable(DefaultTransitions.FALSE_POSITIVE)).isTrue();
+    assertThat(underTest.isProliferable(DefaultTransitions.EXCEPTION)).isTrue();
+
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_WONT_FIX, DefaultTransitions.ACCEPT)).isTrue();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_WONT_FIX, DefaultTransitions.WONT_FIX)).isTrue();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_FALSE_POSITIVE, DefaultTransitions.FALSE_POSITIVE)).isTrue();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      Issue.RESOLUTION_EXCEPTION, DefaultTransitions.EXCEPTION)).isTrue();
   }
 }

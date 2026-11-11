@@ -43,7 +43,6 @@ import org.sonar.ce.task.CeTask;
 import org.sonar.ce.task.CeTaskResult;
 import org.sonar.ce.task.taskprocessor.CeTaskProcessor;
 import org.sonar.api.Startable;
-import org.sonar.core.issue.IssueChangeContext;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbInputStream;
 import org.sonar.db.DbSession;
@@ -56,6 +55,7 @@ import org.sonar.server.issue.IssueMarkingProliferationService.ProliferatedMarki
 import org.sonar.server.issue.IssueMarkingProliferationService.Signature;
 import org.sonar.server.issue.ProliferationTaskPayload;
 import org.sonar.server.measure.live.LiveMeasureComputer;
+import org.sonar.server.setting.ProjectConfigurationLoader;
 
 import static org.sonar.core.issue.IssueChangeContext.issueChangeContextByUserBuilder;
 import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_AUTHOR;
@@ -83,16 +83,18 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
   private final IssueMarkingProliferationService proliferationService;
   private final System2 system2;
   private final LiveMeasureComputer liveMeasureComputer;
+  private final ProjectConfigurationLoader projectConfigurationLoader;
 
   private ExecutorService executor;
 
   public ResolutionProliferationTaskProcessor(DbClient dbClient,
     IssueMarkingProliferationService proliferationService, System2 system2,
-    LiveMeasureComputer liveMeasureComputer) {
+    LiveMeasureComputer liveMeasureComputer, ProjectConfigurationLoader projectConfigurationLoader) {
     this.dbClient = dbClient;
     this.proliferationService = proliferationService;
     this.system2 = system2;
     this.liveMeasureComputer = liveMeasureComputer;
+    this.projectConfigurationLoader = projectConfigurationLoader;
   }
 
   @Override
@@ -141,6 +143,10 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
     ProliferationTaskPayload payload;
     Map<String, Map<Signature, List<IssueDto>>> targetsByBranch;
     try (DbSession dbSession = dbClient.openSession(false)) {
+      if (!isProliferationEnabled(dbSession, projectUuid)) {
+        LOG.info("Proliferation is disabled for project {}, skipping task {}", projectUuid, task.getUuid());
+        return;
+      }
       payload = readPayload(dbSession, task.getUuid());
       if (payload.issueKeys().isEmpty()) {
         return;
@@ -183,6 +189,12 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
       characteristics.getOrDefault(CHARACTERISTIC_SOURCE_BRANCH_LABEL, sourceBranchUuid));
 
     refreshMeasures(runAcrossBranches(sourceIssues, targetBranchUuids, targetsByBranch, marking));
+  }
+
+  private boolean isProliferationEnabled(DbSession dbSession, String projectUuid) {
+    return projectConfigurationLoader.loadProjectConfiguration(dbSession, projectUuid)
+      .getBoolean(IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED)
+      .orElse(false);
   }
 
   private Map<String, Map<Signature, List<IssueDto>>> readTargets(List<IssueDto> sourceIssues,

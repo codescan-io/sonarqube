@@ -94,6 +94,7 @@ public class ActivityAction implements CeWsAction {
     for (CeTaskProcessor taskProcessor : taskProcessors) {
       taskTypes.addAll(taskProcessor.getHandledCeTaskTypes());
     }
+    taskTypes.add(CeTaskTypes.RESOLUTION_PROLIFERATION);
   }
 
   @Override

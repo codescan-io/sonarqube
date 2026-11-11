@@ -121,16 +121,6 @@ public class IssuesService extends BaseService {
       BulkChangeWsResponse.parser());
   }
 
-
-  public void proliferate(ProliferateRequest request) {
-    call(
-      new PostRequest(path("proliferate"))
-        .setParam("issues", request.getIssues() == null ? null : request.getIssues().stream().collect(Collectors.joining(",")))
-        .setParam("comment", request.getComment())
-        .setParam("markedAt", request.getMarkedAt()))
-      .content();
-  }
-
   /**
    *
    * This is part of the internal API.
