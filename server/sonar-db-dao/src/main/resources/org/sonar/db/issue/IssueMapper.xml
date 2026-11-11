@@ -599,20 +599,15 @@
   </select>
 
 
-  <select id="selectUnresolvedByRuleAndComponents" parameterType="map" resultMap="issueResultMap">
+  <select id="scrollProliferationCandidates" parameterType="map"
+          resultType="org.sonar.db.issue.ProliferationCandidateDto" fetchSize="${_scrollFetchSize}"
+          resultSetType="FORWARD_ONLY">
     select
-    <include refid="issueColumns"/>,
-    u.login as assigneeLogin
+      i.kee as issueKey,
+      i.project_uuid as branchUuid,
+      i.line as line,
+      i.message as message
     from issues i
-    inner join rules r on r.uuid=i.rule_uuid
-    inner join components p on p.uuid=i.component_uuid
-    inner join components root on root.uuid=i.project_uuid
-    left join users u on i.assignee = u.uuid
-    left join new_code_reference_issues n on i.kee = n.issue_key
-    left outer join issues_impacts ii on i.kee = ii.issue_key
-    left outer join rules_default_impacts rdi on r.uuid = rdi.rule_uuid
-    left join issues_dependency dep on i.kee = dep.issue_uuid
-    left join cves cve on dep.cve_uuid = cve.uuid
     where i.component_uuid in
     <foreach collection="componentUuids" open="(" close=")" item="componentUuid" separator=",">
       #{componentUuid,jdbcType=VARCHAR}
@@ -622,6 +617,20 @@
     <foreach collection="statuses" open="(" close=")" item="status" separator=",">
       #{status,jdbcType=VARCHAR}
     </foreach>
+    and (
+      <if test="!lines.isEmpty()">
+        i.line in
+        <foreach collection="lines" open="(" close=")" item="line" separator=",">
+          #{line,jdbcType=INTEGER}
+        </foreach>
+      </if>
+      <if test="!lines.isEmpty() and includeNullLine">
+        or
+      </if>
+      <if test="includeNullLine">
+        i.line is null
+      </if>
+    )
   </select>
 
   <select id="selectByKeysIfNotUpdatedAt" parameterType="map" resultMap="issueResultMap">

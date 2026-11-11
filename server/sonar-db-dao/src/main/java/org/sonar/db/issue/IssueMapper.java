@@ -38,11 +38,14 @@ public interface IssueMapper {
   List<IssueDto> selectByKeys(List<String> keys);
 
   /**
-   * Every unresolved issue of one rule on the given components, for callers that narrow by line and message
-   * themselves. The caller resolves the components first, so this filters on the indexed component_uuid.
+   * The issues of one rule on the given components, in the given statuses, on the given lines (and on no line when
+   * {@code includeNullLine}), as key, branch, line and message only. At least one of {@code lines} and
+   * {@code includeNullLine} must select something.
    */
-  List<IssueDto> selectUnresolvedByRuleAndComponents(@Param("componentUuids") Collection<String> componentUuids,
-    @Param("ruleUuid") String ruleUuid, @Param("statuses") Collection<String> statuses);
+  void scrollProliferationCandidates(@Param("componentUuids") Collection<String> componentUuids,
+    @Param("ruleUuid") String ruleUuid, @Param("statuses") Collection<String> statuses,
+    @Param("lines") Collection<Integer> lines, @Param("includeNullLine") boolean includeNullLine,
+    ResultHandler<ProliferationCandidateDto> handler);
 
   Set<String> selectIssueKeysByComponentUuid(@Param("componentUuid") String componentUuid);
 

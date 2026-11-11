@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,7 @@ import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.BranchType;
 import org.sonar.db.issue.IssueDto;
+import org.sonar.db.issue.ProliferationCandidateDto;
 import org.sonar.server.issue.workflow.IssueWorkflow;
 
 
@@ -98,93 +100,123 @@ public class IssueMarkingProliferationService {
 
 
   /**
-   * Writes the marking to the matching issues of one branch and returns the components of the issues it wrote, which
-   * are the only ones whose measures change. Components of matches that were not written (the workflow declined the
-   * transition, or preparing them failed) are left out, so the caller refreshes no more than what changed.
+   * Writes the marking to the matching issues of one branch.
+   * <p>
+   * The matches arrive as keys: the full issues are loaded here, {@link #SAVE_BATCH_SIZE} at a time, so a thread
+   * holds one batch rather than every match of the branch. A match whose status left the candidate statuses since
+   * it was read is skipped. A match that fails to prepare is counted and skipped; a failed statement is not caught,
+   * because the session is unusable after it on some databases and the rest of the branch would fail anyway.
+   *
+   * @return the components of the issues written, the only ones whose measures change, and how many matches or
+   * index steps failed
    */
-  public Set<String> proliferateToBranch(DbSession dbSession, Collection<IssueDto> sourceIssues,
-    Map<Signature, List<IssueDto>> targetsBySignature, String targetBranchUuid, ProliferatedMarking marking) {
+  public BranchOutcome proliferateToBranch(DbSession dbSession, Collection<IssueDto> sourceIssues,
+    Map<Signature, List<String>> targetKeysBySignature, String targetBranchUuid, ProliferatedMarking marking) {
 
-    Set<String> writtenComponents = new LinkedHashSet<>();
-    if (!PROLIFERABLE_TRANSITIONS.contains(marking.transitionKey()) || targetsBySignature.isEmpty()) {
-      return writtenComponents;
+    if (!PROLIFERABLE_TRANSITIONS.contains(marking.transitionKey()) || targetKeysBySignature.isEmpty()) {
+      return new BranchOutcome(Set.of(), 0);
     }
 
-    List<DefaultIssue> pending = new ArrayList<>(SAVE_BATCH_SIZE);
-    Set<String> alreadyPrepared = new HashSet<>();
-    List<String> written = new ArrayList<>();
+    BranchWriter writer = new BranchWriter(dbSession, targetBranchUuid, marking);
+    // Carried across sources on purpose: two source issues can share a signature - the same rule reported with the
+    // same message on the same line - and both would otherwise mark the same target. Nothing in the database stops
+    // it either, because the target is still open there until the batch is written, so it matches both.
+    Set<String> alreadyQueued = new HashSet<>();
     for (IssueDto source : sourceIssues) {
-      try {
-        for (DefaultIssue prepared : prepareMatches(source, targetsBySignature, alreadyPrepared, marking)) {
-          pending.add(prepared);
-          if (pending.size() >= SAVE_BATCH_SIZE) {
-            save(dbSession, pending, targetBranchUuid, marking, written, writtenComponents);
-          }
+      for (String targetKey : matchesOf(source, targetKeysBySignature)) {
+        if (alreadyQueued.add(targetKey)) {
+          writer.queue(targetKey, source);
         }
-      } catch (RuntimeException e) {
-        LOG.error("Failed to proliferate marking of issue {} to branch {}", source.getKey(), targetBranchUuid, e);
       }
     }
-    save(dbSession, pending, targetBranchUuid, marking, written, writtenComponents);
+    writer.flush();
 
+    int failures = writer.failures;
     // Once for the branch, after every batch is committed. Indexing per batch is what put two rows per issue
     // through es_queue and took the search index down on a million-issue run.
     try {
-      issueStorage.indexBranch(targetBranchUuid, written);
+      issueStorage.indexBranch(targetBranchUuid, writer.written);
     } catch (RuntimeException e) {
-      // The issues are correct in the database; they are stale in the index until the branch is next indexed.
-      LOG.error("Proliferated {} issue(s) on branch {} but could not index them", written.size(), targetBranchUuid, e);
+      failures++;
+      LOG.error("Proliferated {} issue(s) on branch {} but could not index them", writer.written.size(),
+        targetBranchUuid, e);
     }
 
-    if (!written.isEmpty()) {
+    if (!writer.written.isEmpty()) {
       LOG.info("Proliferated marking '{}' from branch {} to {} issue(s) on branch {}",
-        marking.transitionKey(), marking.sourceBranchLabel(), written.size(), targetBranchUuid);
+        marking.transitionKey(), marking.sourceBranchLabel(), writer.written.size(), targetBranchUuid);
     }
-    return writtenComponents;
-  }
-
-  private void save(DbSession dbSession, List<DefaultIssue> pending, String targetBranchUuid,
-    ProliferatedMarking marking, List<String> written, Set<String> writtenComponents) {
-
-    if (pending.isEmpty()) {
-      return;
-    }
-    Map<String, String> componentByKey = new HashMap<>(pending.size());
-    pending.forEach(issue -> componentByKey.put(issue.key(), issue.componentUuid()));
-    List<String> savedKeys = issueStorage.save(dbSession, List.copyOf(pending), targetBranchUuid,
-      marking.context().date().getTime(), marking.context().userUuid(), TARGET_STATUSES);
-    for (String key : savedKeys) {
-      written.add(key);
-      String componentUuid = componentByKey.get(key);
-      if (componentUuid != null) {
-        writtenComponents.add(componentUuid);
-      }
-    }
-    pending.clear();
+    return new BranchOutcome(writer.writtenComponents, failures);
   }
 
   /**
-   * The targets of one source issue, transitioned in memory and ready to be written.
-   * <p>
-   * {@code alreadyPrepared} is carried across sources on purpose: two source issues can share a signature - the
-   * same rule reported with the same message on the same line - and both would otherwise mark the same target.
-   * Nothing in the database stops it either, because the target is still open there until the batch is written,
-   * so it matches both.
+   * What one branch's write produced.
+   *
+   * @param writtenComponents the components of the issues written
+   * @param failures          matches that could not be prepared, plus one if the branch could not be indexed
    */
-  private List<DefaultIssue> prepareMatches(IssueDto source, Map<Signature, List<IssueDto>> targetsBySignature,
-    Set<String> alreadyPrepared, ProliferatedMarking marking) {
+  public record BranchOutcome(Set<String> writtenComponents, int failures) {
+  }
 
-    List<DefaultIssue> prepared = new ArrayList<>();
-    for (IssueDto candidate : matchesOf(source, targetsBySignature)) {
-      if (!alreadyPrepared.add(candidate.getKey())) {
-        continue;
-      }
-      DefaultIssue issue = prepare(candidate, source, marking);
-      if (issue != null) {
-        prepared.add(issue);
+  /** Queues matched keys with their source and writes them in batches. */
+  private final class BranchWriter {
+    private final DbSession dbSession;
+    private final String branchUuid;
+    private final ProliferatedMarking marking;
+    private final Map<String, IssueDto> sourceByTargetKey = new LinkedHashMap<>();
+    private final List<String> written = new ArrayList<>();
+    private final Set<String> writtenComponents = new LinkedHashSet<>();
+    private int failures;
+
+    private BranchWriter(DbSession dbSession, String branchUuid, ProliferatedMarking marking) {
+      this.dbSession = dbSession;
+      this.branchUuid = branchUuid;
+      this.marking = marking;
+    }
+
+    void queue(String targetKey, IssueDto source) {
+      sourceByTargetKey.put(targetKey, source);
+      if (sourceByTargetKey.size() >= SAVE_BATCH_SIZE) {
+        flush();
       }
     }
-    return prepared;
+
+    void flush() {
+      if (sourceByTargetKey.isEmpty()) {
+        return;
+      }
+      List<DefaultIssue> prepared = new ArrayList<>(sourceByTargetKey.size());
+      for (IssueDto target : dbClient.issueDao().selectByKeys(dbSession, List.copyOf(sourceByTargetKey.keySet()))) {
+        if (!TARGET_STATUSES.contains(target.getStatus())) {
+          continue;
+        }
+        IssueDto source = sourceByTargetKey.get(target.getKey());
+        try {
+          DefaultIssue issue = prepare(target, source, marking);
+          if (issue != null) {
+            prepared.add(issue);
+          }
+        } catch (RuntimeException e) {
+          failures++;
+          LOG.error("Failed to proliferate marking of issue {} to issue {} on branch {}", source.getKey(),
+            target.getKey(), branchUuid, e);
+        }
+      }
+      sourceByTargetKey.clear();
+      if (prepared.isEmpty()) {
+        return;
+      }
+      Map<String, String> componentByKey = new HashMap<>(prepared.size());
+      prepared.forEach(issue -> componentByKey.put(issue.key(), issue.componentUuid()));
+      for (String key : issueStorage.save(dbSession, prepared, branchUuid, marking.context().date().getTime(),
+        marking.context().userUuid(), TARGET_STATUSES)) {
+        written.add(key);
+        String componentUuid = componentByKey.get(key);
+        if (componentUuid != null) {
+          writtenComponents.add(componentUuid);
+        }
+      }
+    }
   }
 
   /**
@@ -210,131 +242,159 @@ public class IssueMarkingProliferationService {
     }
   }
 
-  /** The grouping the lookup is batched by: one statement per rule and file, covering every target branch. */
-  private record RuleAndFile(String ruleUuid, String filePath) {
+  /**
+   * The grouping the lookup is batched by: one statement per rule and file, covering every target branch.
+   * {@code fileKey} is the file's component key, which every branch of the project shares.
+   */
+  private record RuleAndFile(String ruleUuid, String filePath, String fileKey) {
   }
 
-  public Map<String, Map<Signature, List<IssueDto>>> indexTargetsBySignature(DbSession dbSession,
-    Collection<IssueDto> sourceIssues, Collection<String> targetBranchUuids) {
+  /**
+   * The candidates of every target branch, as keys filed by signature, and how many (rule, file) groups could not
+   * be read.
+   */
+  public record TargetIndex(Map<String, Map<Signature, List<String>>> byBranch, int failedGroups) {
+
+    public boolean hasMatches(String branchUuid) {
+      return !byBranch.getOrDefault(branchUuid, Map.of()).isEmpty();
+    }
+
+    public Map<Signature, List<String>> of(String branchUuid) {
+      return byBranch.getOrDefault(branchUuid, Map.of());
+    }
+  }
+
+  public TargetIndex indexTargetsBySignature(DbSession dbSession, Collection<IssueDto> sourceIssues,
+    Collection<String> targetBranchUuids) {
     return indexTargetsBySignature(dbSession, sourceIssues, targetBranchUuids, 0, 1);
   }
 
+  /**
+   * Finds, for this slice's (rule, file) groups, the issues on the target branches that carry a source's
+   * signature. Line is filtered in SQL, message here, and only keys are kept: memory is bounded by the matches,
+   * not by the rule's footprint on the file across every branch.
+   */
+  public TargetIndex indexTargetsBySignature(DbSession dbSession, Collection<IssueDto> sourceIssues,
+    Collection<String> targetBranchUuids, int slice, int sliceCount) {
 
-  public Map<String, Map<Signature, List<IssueDto>>> indexTargetsBySignature(DbSession dbSession,
-    Collection<IssueDto> sourceIssues, Collection<String> targetBranchUuids, int slice, int sliceCount) {
-
-    Map<String, Map<Signature, List<IssueDto>>> byBranch = new HashMap<>();
+    Map<String, Map<Signature, List<String>>> byBranch = new HashMap<>();
     for (String branchUuid : targetBranchUuids) {
       byBranch.put(branchUuid, new HashMap<>());
     }
     if (sourceIssues.isEmpty() || targetBranchUuids.isEmpty()) {
-      return byBranch;
+      return new TargetIndex(byBranch, 0);
     }
 
-    Set<Signature> wanted = signaturesOf(sourceIssues);
+    int failedGroups = 0;
     // One resolution per file rather than per (rule, file): a file carrying issues of six rules is the same set
-    // of components each time, and the lookup below is the expensive half only when it has to find them itself.
+    // of components each time.
     Map<String, List<String>> componentsByFilePath = new HashMap<>();
-    for (RuleAndFile group : groupsOfSlice(sourceIssues, slice, sliceCount)) {
+    for (Map.Entry<RuleAndFile, Set<Signature>> group : groupsOfSlice(sourceIssues, slice, sliceCount).entrySet()) {
+      RuleAndFile ruleAndFile = group.getKey();
       try {
-        List<String> componentUuids = componentsByFilePath.computeIfAbsent(group.filePath(),
-          filePath -> dbClient.componentDao().selectUuidsByPathAndBranchUuids(dbSession, filePath,
-            targetBranchUuids));
+        List<String> componentUuids = componentsByFilePath.computeIfAbsent(ruleAndFile.filePath(),
+          filePath -> dbClient.componentDao().selectUuidsByKeyAndPathInBranches(dbSession, ruleAndFile.fileKey(),
+            filePath, targetBranchUuids));
         if (componentUuids.isEmpty()) {
           // The file does not exist on any target branch, so neither can any issue on it.
           continue;
         }
-        List<IssueDto> candidates = dbClient.issueDao().selectUnresolvedByRuleAndComponents(dbSession,
-          componentUuids, group.ruleUuid(), TARGET_STATUSES);
-        index(candidates, wanted, byBranch);
+        Set<Signature> wanted = group.getValue();
+        Set<Integer> lines = new HashSet<>();
+        boolean includeNullLine = false;
+        for (Signature signature : wanted) {
+          if (signature.line() == null) {
+            includeNullLine = true;
+          } else {
+            lines.add(signature.line());
+          }
+        }
+        dbClient.issueDao().scrollProliferationCandidates(dbSession, componentUuids, ruleAndFile.ruleUuid(),
+          TARGET_STATUSES, lines, includeNullLine, candidate -> index(candidate, ruleAndFile, wanted, byBranch));
       } catch (RuntimeException e) {
-        // Same tolerance the per-issue lookup had: one unreadable group must not abandon the rest of the task.
-        LOG.error("Failed to load proliferation candidates for rule {} in {}", group.ruleUuid(), group.filePath(), e);
+        failedGroups++;
+        LOG.error("Failed to load proliferation candidates for rule {} in {}", ruleAndFile.ruleUuid(),
+          ruleAndFile.filePath(), e);
+        // A failed statement leaves the transaction aborted on some databases; without this every later group of
+        // the slice would fail too. The session only reads.
+        dbSession.rollback();
       }
     }
-    return byBranch;
+    return new TargetIndex(byBranch, failedGroups);
   }
 
   /**
-   * The signatures the sources carry. The lookup below is deliberately broader than a signature, so this is what
-   * bounds the index by the matches that can actually happen rather than by the rule's whole footprint on a file.
+   * The (rule, file) groups this slice is responsible for, each with the signatures the sources carry in it. Every
+   * slice of one pass walks the same ordered set and takes a disjoint share of it, so between them they cover it
+   * exactly once and never twice.
    */
-  private static Set<Signature> signaturesOf(Collection<IssueDto> sourceIssues) {
-    Set<Signature> wanted = new HashSet<>();
-    for (IssueDto source : sourceIssues) {
-      Signature signature = Signature.of(source);
-      if (signature != null) {
-        wanted.add(signature);
-      }
-    }
-    return wanted;
-  }
+  private static Map<RuleAndFile, Set<Signature>> groupsOfSlice(Collection<IssueDto> sourceIssues, int slice,
+    int sliceCount) {
 
-  /**
-   * The (rule, file) pairs this slice is responsible for. Every slice of one pass walks the same ordered set and
-   * takes a disjoint share of it, so between them they cover it exactly once and never twice.
-   */
-  private static List<RuleAndFile> groupsOfSlice(Collection<IssueDto> sourceIssues, int slice, int sliceCount) {
-    Set<RuleAndFile> allGroups = new LinkedHashSet<>();
+    Map<RuleAndFile, Set<Signature>> allGroups = new LinkedHashMap<>();
     for (IssueDto source : sourceIssues) {
       Signature signature = Signature.of(source);
-      if (signature != null) {
-        allGroups.add(new RuleAndFile(signature.ruleUuid(), signature.filePath()));
+      String fileKey = source.getComponentKey();
+      if (signature != null && fileKey != null) {
+        allGroups.computeIfAbsent(new RuleAndFile(signature.ruleUuid(), signature.filePath(), fileKey),
+          k -> new HashSet<>()).add(signature);
       }
     }
 
-    List<RuleAndFile> groups = new ArrayList<>();
+    Map<RuleAndFile, Set<Signature>> groups = new LinkedHashMap<>();
     int position = 0;
-    for (RuleAndFile group : allGroups) {
+    for (Map.Entry<RuleAndFile, Set<Signature>> group : allGroups.entrySet()) {
       if (position++ % sliceCount == slice) {
-        groups.add(group);
+        groups.put(group.getKey(), group.getValue());
       }
     }
     return groups;
   }
 
-  /** Files one group's candidates under their branch, keeping only the signatures a source actually carries. */
-  private static void index(Collection<IssueDto> candidates, Set<Signature> wanted,
-    Map<String, Map<Signature, List<IssueDto>>> byBranch) {
+  /** Files one candidate under its branch when its signature is one a source actually carries. */
+  private static void index(ProliferationCandidateDto candidate, RuleAndFile group, Set<Signature> wanted,
+    Map<String, Map<Signature, List<String>>> byBranch) {
 
-    for (IssueDto candidate : candidates) {
-      Signature signature = Signature.of(candidate);
-      if (signature == null || !wanted.contains(signature)) {
-        continue;
-      }
-      // getProjectUuid() is the branch the issue belongs to; issues are partitioned per branch by that column.
-      Map<Signature, List<IssueDto>> ofBranch = byBranch.get(candidate.getProjectUuid());
-      if (ofBranch != null) {
-        ofBranch.computeIfAbsent(signature, k -> new ArrayList<>()).add(candidate);
-      }
+    if (candidate.getMessage() == null) {
+      return;
+    }
+    Signature signature = new Signature(group.ruleUuid(), group.filePath(), candidate.getLine(),
+      candidate.getMessage());
+    if (!wanted.contains(signature)) {
+      return;
+    }
+    // The branch uuid is the issue's project_uuid; issues are partitioned per branch by that column.
+    Map<Signature, List<String>> ofBranch = byBranch.get(candidate.getBranchUuid());
+    if (ofBranch != null) {
+      ofBranch.computeIfAbsent(signature, k -> new ArrayList<>()).add(candidate.getIssueKey());
     }
   }
 
-  /** Folds the slices of a parallel index read back into one map. */
-  public static Map<String, Map<Signature, List<IssueDto>>> mergeIndexes(
-    Collection<Map<String, Map<Signature, List<IssueDto>>>> slices) {
-
-    Map<String, Map<Signature, List<IssueDto>>> merged = new HashMap<>();
-    for (Map<String, Map<Signature, List<IssueDto>>> slice : slices) {
-      slice.forEach((branchUuid, bySignature) -> {
-        Map<Signature, List<IssueDto>> target = merged.computeIfAbsent(branchUuid, k -> new HashMap<>());
-        bySignature.forEach((signature, issues) ->
-          target.computeIfAbsent(signature, k -> new ArrayList<>()).addAll(issues));
+  /** Folds the slices of a parallel index read back into one index. */
+  public static TargetIndex mergeIndexes(Collection<TargetIndex> slices) {
+    Map<String, Map<Signature, List<String>>> merged = new HashMap<>();
+    int failedGroups = 0;
+    for (TargetIndex slice : slices) {
+      failedGroups += slice.failedGroups();
+      slice.byBranch().forEach((branchUuid, bySignature) -> {
+        Map<Signature, List<String>> target = merged.computeIfAbsent(branchUuid, k -> new HashMap<>());
+        bySignature.forEach((signature, keys) ->
+          target.computeIfAbsent(signature, k -> new ArrayList<>()).addAll(keys));
       });
     }
-    return merged;
+    return new TargetIndex(merged, failedGroups);
   }
 
   /**
-   * The targets on this branch carrying the source's signature, from the map {@link #indexTargetsBySignature}
-   * built. Nothing when the source has no well-defined signature, as before.
+   * The keys of the targets on this branch carrying the source's signature, from the index
+   * {@link #indexTargetsBySignature} built. Nothing when the source has no well-defined signature.
    */
-  private static List<IssueDto> matchesOf(IssueDto source, Map<Signature, List<IssueDto>> targetsBySignature) {
+  private static List<String> matchesOf(IssueDto source, Map<Signature, List<String>> targetKeysBySignature) {
     Signature signature = Signature.of(source);
     if (signature == null) {
       return List.of();
     }
-    return targetsBySignature.getOrDefault(signature, List.of());
+    return targetKeysBySignature.getOrDefault(signature, List.of());
   }
 
 

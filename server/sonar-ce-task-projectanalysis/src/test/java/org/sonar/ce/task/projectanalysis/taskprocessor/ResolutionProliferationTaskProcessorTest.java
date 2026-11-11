@@ -33,7 +33,8 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import org.junit.After;
 import org.junit.Before;
-X
+import org.junit.Test;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.issue.DefaultTransitions;
 import org.sonar.api.utils.System2;
 import org.sonar.ce.task.CeTask;
@@ -46,15 +47,18 @@ import org.sonar.db.component.BranchDao;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDao;
 import org.sonar.db.component.ComponentDto;
-import org.sonar.db.issue.IssueDao;
 import org.sonar.db.issue.IssueDto;
+import org.sonar.db.issue.IssueDao;
 import org.sonar.server.issue.IssueMarkingProliferationService;
+import org.sonar.server.issue.IssueMarkingProliferationService.BranchOutcome;
 import org.sonar.server.issue.IssueMarkingProliferationService.Signature;
+import org.sonar.server.issue.IssueMarkingProliferationService.TargetIndex;
 import org.sonar.server.issue.ProliferationTaskPayload;
 import org.sonar.server.measure.live.LiveMeasureComputer;
 import org.sonar.server.setting.ProjectConfigurationLoader;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -129,16 +133,26 @@ public class ResolutionProliferationTaskProcessorTest {
   }
 
   /** The candidates the read phase finds, per branch; a branch absent from the map has none. */
-  private void givenCandidates(Map<String, Map<Signature, List<IssueDto>>> byBranch) {
-    when(service.indexTargetsBySignature(any(), anyCollection(), anyCollection())).thenReturn(byBranch);
+  private void givenCandidates(Map<String, Map<Signature, List<String>>> byBranch) {
+    givenCandidates(byBranch, 0);
   }
 
-  private Map<Signature, List<IssueDto>> oneMatch(String branchUuid) {
-    return Map.of(signature, List.of(new IssueDto().setKee("target-on-" + branchUuid).setProjectUuid(branchUuid)));
+  private void givenCandidates(Map<String, Map<Signature, List<String>>> byBranch, int failedGroups) {
+    when(service.indexTargetsBySignature(any(), anyCollection(), anyCollection()))
+      .thenReturn(new TargetIndex(byBranch, failedGroups));
+  }
+
+  private Map<Signature, List<String>> oneMatch(String branchUuid) {
+    return Map.of(signature, List.of("target-on-" + branchUuid));
   }
 
   private void givenWrittenComponents(String branchUuid, Set<String> componentUuids) {
-    when(service.proliferateToBranch(any(), anyCollection(), any(), eq(branchUuid), any())).thenReturn(componentUuids);
+    givenOutcome(branchUuid, componentUuids, 0);
+  }
+
+  private void givenOutcome(String branchUuid, Set<String> componentUuids, int failures) {
+    when(service.proliferateToBranch(any(), anyCollection(), any(), eq(branchUuid), any()))
+      .thenReturn(new BranchOutcome(componentUuids, failures));
   }
 
   private static CeTask task() {
@@ -194,17 +208,65 @@ public class ResolutionProliferationTaskProcessorTest {
   }
 
   @Test
-  public void aFailingBranchDoesNotStopTheOthersFromBeingWrittenAndRefreshed() {
+  public void aFailingBranchFailsTheTaskAfterTheOthersAreWrittenAndRefreshed() {
     givenBranches("b1", "b2");
     givenCandidates(Map.of("b1", oneMatch("b1"), "b2", oneMatch("b2")));
     when(service.proliferateToBranch(any(), anyCollection(), any(), eq("b1"), any()))
       .thenThrow(new IllegalStateException("simulated"));
     givenWrittenComponents("b2", Set.of("file-b2"));
 
-    underTest.process(task());
+    assertThatThrownBy(() -> underTest.process(task()))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessageContaining("0 candidate group(s) and 1 of 2 target branch(es)");
 
     verify(liveMeasureComputer).refresh(any(), componentsNamed("file-b2"));
     verify(liveMeasureComputer, times(1)).refresh(any(), anyCollection());
+  }
+
+  @Test
+  public void aMatchThatFailedFailsTheTask() {
+    givenBranches("b1");
+    givenCandidates(Map.of("b1", oneMatch("b1")));
+    givenOutcome("b1", Set.of("file-b1"), 1);
+
+    assertThatThrownBy(() -> underTest.process(task()))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessageContaining("1 of 1 target branch(es)");
+    // What was written is still refreshed.
+    verify(liveMeasureComputer).refresh(any(), componentsNamed("file-b1"));
+  }
+
+  @Test
+  public void aFailedRefreshFailsTheTask() {
+    givenBranches("b1");
+    givenCandidates(Map.of("b1", oneMatch("b1")));
+    givenWrittenComponents("b1", Set.of("file-b1"));
+    when(liveMeasureComputer.refresh(any(), anyCollection())).thenThrow(new IllegalStateException("simulated"));
+
+    assertThatThrownBy(() -> underTest.process(task()))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessageContaining("1 of 1 target branch(es)");
+  }
+
+  @Test
+  public void anUnreadableCandidateGroupFailsTheTaskAfterTheRestIsWritten() {
+    givenBranches("b1");
+    givenCandidates(Map.of("b1", oneMatch("b1")), 1);
+    givenWrittenComponents("b1", Set.of("file-b1"));
+
+    assertThatThrownBy(() -> underTest.process(task()))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessageContaining("1 candidate group(s) and 0 of 1 target branch(es)");
+    verify(service).proliferateToBranch(any(), anyCollection(), any(), eq("b1"), any());
+  }
+
+  @Test
+  public void aSuccessfulRunDoesNotThrow() {
+    givenBranches("b1");
+    givenCandidates(Map.of("b1", oneMatch("b1")));
+    givenWrittenComponents("b1", Set.of("file-b1"));
+
+    assertThat(underTest.process(task())).isNull();
   }
 
   // Setting gate and task guards

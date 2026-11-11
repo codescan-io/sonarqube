@@ -50,7 +50,7 @@ public interface ComponentMapper {
 
   List<ComponentDto> selectByBranchUuid(@Param("branchUuid") String branchUuid);
 
-  List<String> selectUuidsByPathAndBranchUuids(@Param("filePath") String filePath,
+  List<String> selectUuidsByKeyAndPathInBranches(@Param("fileKey") String fileKey, @Param("filePath") String filePath,
     @Param("branchUuids") Collection<String> branchUuids);
 
   List<String> selectExistingUuids(@Param("uuids") Collection<String> uuids);
