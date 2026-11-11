@@ -37,7 +37,11 @@ import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
 
 public class IssueChangeDao implements Dao {
 
-  /** Leaves room in the 40-character uuid column for the row number the SQL appends. */
+  /**
+   * Leaves room in the 40-character uuid column for the row number the SQL appends. The row number restarts per
+   * statement and {@code executeLargeInputs} caps a partition at 1,000 keys, so it is at most 4 digits: 30 + 4
+   * of 40. Raising the partition size past 9,999 would need this lowered to match.
+   */
   private static final int PREFIX_LENGTH = 30;
 
   /**
@@ -53,8 +57,21 @@ public class IssueChangeDao implements Dao {
   /** Writes one comment row per transitioned issue, under the same predicate and partitioning as the diffs. */
   public void insertTransitionComments(DbSession session, Collection<String> keys, String comment,
     String branchUuid, @Nullable String changeAuthor, long now, UuidFactory uuidFactory) {
-    executeLargeInputsWithoutOutput(keys, partition -> mapper(session).insertTransitionComments(partition, comment,
-      branchUuid, changeAuthor, now, rowKeyPrefix(uuidFactory), rowKeyPrefix(uuidFactory)));
+    insertTransitionRows(session, keys, IssueChangeDto.TYPE_COMMENT, comment, branchUuid, changeAuthor, now,
+      uuidFactory);
+  }
+
+  /** Writes one exception reason row per transitioned issue, under the same predicate and partitioning as the diffs. */
+  public void insertTransitionExceptionReasons(DbSession session, Collection<String> keys, String exceptionReason,
+    String branchUuid, @Nullable String changeAuthor, long now, UuidFactory uuidFactory) {
+    insertTransitionRows(session, keys, IssueChangeDto.TYPE_EXCEPTION_REASON, exceptionReason, branchUuid,
+      changeAuthor, now, uuidFactory);
+  }
+
+  private void insertTransitionRows(DbSession session, Collection<String> keys, String changeType, String text,
+    String branchUuid, @Nullable String changeAuthor, long now, UuidFactory uuidFactory) {
+    executeLargeInputsWithoutOutput(keys, partition -> mapper(session).insertTransitionComments(partition, changeType,
+      text, branchUuid, changeAuthor, now, rowKeyPrefix(uuidFactory), rowKeyPrefix(uuidFactory)));
   }
 
   /**

@@ -19,10 +19,14 @@
  */
 package org.sonar.server.issue.ws;
 
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -34,23 +38,24 @@ import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.utils.System2;
+import org.sonar.core.issue.DefaultIssue;
 import org.sonar.api.utils.text.JsonWriter;
-import org.sonar.core.issue.FieldDiffs;
 import org.sonar.core.util.UuidFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueChangeDto;
+import org.sonar.db.issue.IssueExceptionSourceDto;
 import org.sonar.db.issue.IssueKeyStatusDto;
 import org.sonar.server.issue.IssueChangePostProcessor;
 import org.sonar.server.issue.index.IssueIndexer;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.MediaTypes;
 
-import static org.sonar.server.issue.IssueFieldsSetter.ISSUE_STATUS;
-import static org.sonar.server.issue.IssueFieldsSetter.RESOLUTION;
-import static org.sonar.server.issue.IssueFieldsSetter.STATUS;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.trimToNull;
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.sonar.api.issue.Issue.STATUS_RESOLVED;
 
 /**
  * CodeScan: resolves a large set of issues in one request, for callers that have already decided which issues to
@@ -65,8 +70,18 @@ import static com.google.common.base.Preconditions.checkArgument;
  *
  * <p><b>What it deliberately does not do.</b> No notifications, no quality-gate event per call, and no per-issue
  * permission check: it requires a system administrator, because the only caller is a server-side job acting on a
- * whole project. It supports only the two resolving transitions, which are the ones whose workflow reduces
- * cleanly to a predicate.
+ * whole project. It supports only the resolving transitions whose workflow reduces cleanly to a predicate: false
+ * positive, accept and exception. An exception is copied from the source issue the caller's resolution transfer
+ * paired each issue with, which this action reads from the transfer's report rows: the source's expiry date and its
+ * latest reason. Neither is sent, so one request carries exceptions with any mix of them, and a source without a
+ * reason gives an exception without one. An issue whose paired source is no longer an exception, or has expired, is
+ * returned in {@code notTransitioned}: there is no expiry to copy, and moving it anyway would make an exception that
+ * never expires.
+ *
+ * <p><b>{@code changeAuthor} is taken on trust.</b> It is written to the changelog as the author of every row in
+ * the chunk and is never checked against the caller, so a system administrator can attribute changes to any user.
+ * That is intended: the caller is a transfer job replaying who resolved each issue on the source project, and it
+ * is the system-administrator requirement that makes it safe. Do not expose this action to end users.
  */
 public class BulkTransitionAction implements IssuesWsAction {
 
@@ -80,22 +95,26 @@ public class BulkTransitionAction implements IssuesWsAction {
   private static final String PARAM_COMMENT = "comment";
   private static final String PARAM_REFRESH_MEASURES = "refreshMeasures";
   private static final String PARAM_BRANCH_UUID = "branchUuid";
-  private static final String PARAM_SET_BASED_CHANGELOG = "setBasedChangelog";
+  private static final String PARAM_TRANSFER_UUID = "transferUuid";
 
   /** Keeps one request's key list, its changelog rows and its index batch to a size the heap does not notice. */
   static final int MAX_ISSUES = 50_000;
 
-  /** Issues between JDBC batch flushes, so the pending-insert buffer never grows with the chunk size. */
-  private static final int CHANGELOG_FLUSH_EVERY = 2_000;
-
   private static final Map<String, String> TRANSITION_TO_RESOLUTION = Map.of(
     DefaultTransitions.FALSE_POSITIVE, Issue.RESOLUTION_FALSE_POSITIVE,
-    DefaultTransitions.ACCEPT, Issue.RESOLUTION_WONT_FIX);
+    DefaultTransitions.ACCEPT, Issue.RESOLUTION_WONT_FIX,
+    DefaultTransitions.EXCEPTION, Issue.RESOLUTION_EXCEPTION);
 
   /** The issue status each resolution presents as, so the changelog reads the same as a manual bulk change. */
   private static final Map<String, String> RESOLUTION_TO_ISSUE_STATUS = Map.of(
     Issue.RESOLUTION_FALSE_POSITIVE, "FALSE_POSITIVE",
-    Issue.RESOLUTION_WONT_FIX, "ACCEPTED");
+    Issue.RESOLUTION_WONT_FIX, "ACCEPTED",
+    Issue.RESOLUTION_EXCEPTION, "EXCEPTION");
+
+  /** The order the issue page shows an issue's exception reasons in, so the latest is the one it displays. */
+  private static final Comparator<IssueChangeDto> LATEST_CHANGE = Comparator
+    .comparing(IssueChangeDto::getIssueChangeCreationDate, Comparator.nullsFirst(Comparator.naturalOrder()))
+    .thenComparing(IssueChangeDto::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder()));
 
   private final DbClient dbClient;
   private final UserSession userSession;
@@ -117,33 +136,34 @@ public class BulkTransitionAction implements IssuesWsAction {
   @Override
   public void define(WebService.NewController controller) {
     WebService.NewAction action = controller.createAction(ACTION)
-      .setDescription("Resolve a large set of issues in one request. Requires system administration permission.")
+      .setDescription("Resolve a large set of issues in one request. Requires system administration permission. "
+        + "Runs on PostgreSQL, Oracle and H2: the set-based changelog statements concatenate with ||, which "
+        + "SQL Server does not support.")
       .setSince("24.12")
       .setInternal(true)
       .setPost(true)
       .setHandler(this);
 
     action.createParam(PARAM_ISSUES)
-      .setDescription("Comma-separated list of issue keys, at most " + MAX_ISSUES)
-      .setRequired(true);
+      .setDescription("Comma-separated list of issue keys, at most " + MAX_ISSUES + ". May be omitted when "
+        + PARAM_REFRESH_MEASURES + " is true, which asks for the branch's recomputation on its own.");
     action.createParam(PARAM_TRANSITION)
-      .setDescription("Transition to apply")
-      .setPossibleValues(TRANSITION_TO_RESOLUTION.keySet())
-      .setRequired(true);
+      .setDescription("Transition to apply. Required unless " + PARAM_ISSUES + " is empty.")
+      .setPossibleValues(TRANSITION_TO_RESOLUTION.keySet());
     action.createParam(PARAM_BRANCH_UUID)
       .setDescription("Branch uuid the issues belong to. Recorded on the changelog rows, which is what "
         + "issues.project_uuid holds, and reindexed once the issues are written.")
       .setRequired(true);
     action.createParam(PARAM_CHANGE_AUTHOR)
-      .setDescription("Uuid of the user the change is attributed to. Defaults to the caller.");
+      .setDescription("Uuid of the user the change is attributed to: for a transfer, whoever resolved the source "
+        + "issue, not whoever asked for the transfer. Omitted leaves the change unattributed, which is what the "
+        + "caller sends when the source issue's resolver cannot be determined.");
     action.createParam(PARAM_COMMENT)
       .setDescription("Comment to add to every resolved issue. Omitted means no comment is written.");
-    action.createParam(PARAM_SET_BASED_CHANGELOG)
-      .setDescription("Write the changelog with one statement per partition instead of one insert per row. "
-        + "Both paths produce the same rows, and the set-based one is around nine times faster, so it is the "
-        + "default; setting this to false falls back to the per-row path.")
-      .setBooleanPossibleValues()
-      .setDefaultValue("true");
+    action.createParam(PARAM_TRANSFER_UUID)
+      .setDescription("Resolution transfer the issues belong to. Each issue takes the expiry date and the latest "
+        + "reason of the source exception that transfer paired it with. Required with the '"
+        + DefaultTransitions.EXCEPTION + "' transition and rejected with any other.");
     action.createParam(PARAM_REFRESH_MEASURES)
       .setDescription("Recompute the branch's live measures and quality gate once this chunk is written. The "
         + "caller sets it on its last chunk only: doing it per chunk is the per-call cost this action exists to "
@@ -156,19 +176,24 @@ public class BulkTransitionAction implements IssuesWsAction {
   public void handle(Request request, Response response) throws Exception {
     userSession.checkLoggedIn().checkIsSystemAdministrator();
 
-    List<String> issueKeys = request.mandatoryParamAsStrings(PARAM_ISSUES);
+    List<String> issueKeys = Optional.ofNullable(request.paramAsStrings(PARAM_ISSUES)).orElseGet(List::of);
     checkArgument(issueKeys.size() <= MAX_ISSUES, "Number of issues is limited to %s", MAX_ISSUES);
-    String transition = request.mandatoryParam(PARAM_TRANSITION);
-    String resolution = TRANSITION_TO_RESOLUTION.get(transition);
-    checkArgument(resolution != null, "Unsupported transition: %s", transition);
     String branchUuid = request.mandatoryParam(PARAM_BRANCH_UUID);
     String changeAuthor = request.param(PARAM_CHANGE_AUTHOR);
     String comment = request.param(PARAM_COMMENT);
     boolean refreshMeasures = request.mandatoryParamAsBoolean(PARAM_REFRESH_MEASURES);
-    boolean setBasedChangelog = request.mandatoryParamAsBoolean(PARAM_SET_BASED_CHANGELOG);
+    String resolution = null;
+    if (issueKeys.isEmpty()) {
+      checkArgument(refreshMeasures, "%s is required unless %s is true", PARAM_ISSUES, PARAM_REFRESH_MEASURES);
+    } else {
+      String transition = request.mandatoryParam(PARAM_TRANSITION);
+      resolution = TRANSITION_TO_RESOLUTION.get(transition);
+      checkArgument(resolution != null, "Unsupported transition: %s", transition);
+    }
 
-    Result result = apply(issueKeys, resolution, branchUuid, changeAuthor, comment, refreshMeasures,
-      setBasedChangelog);
+    String transferUuid = transferUuid(request, resolution);
+
+    Result result = apply(issueKeys, resolution, transferUuid, branchUuid, changeAuthor, comment, refreshMeasures);
 
     try (JsonWriter json = response.newJsonWriter()) {
       json.beginObject()
@@ -180,182 +205,201 @@ public class BulkTransitionAction implements IssuesWsAction {
     response.stream().setMediaType(MediaTypes.JSON);
   }
 
-  private Result apply(List<String> issueKeys, String resolution, String branchUuid,
-    @Nullable String changeAuthor, @Nullable String comment, boolean refreshMeasures,
-    boolean setBasedChangelog) {
-    long now = system2.now();
-    List<IssueKeyStatusDto> movable;
+  /** The transfer an exception is copied through; null for the other transitions, which must not name one. */
+  @Nullable
+  private static String transferUuid(Request request, @Nullable String resolution) {
+    String transferUuid = trimToNull(request.param(PARAM_TRANSFER_UUID));
+    if (!Issue.RESOLUTION_EXCEPTION.equals(resolution)) {
+      checkArgument(transferUuid == null, "'%s' applies only to the '%s' transition", PARAM_TRANSFER_UUID,
+        DefaultTransitions.EXCEPTION);
+      return null;
+    }
+    checkArgument(transferUuid != null, "'%s' is required with the '%s' transition", PARAM_TRANSFER_UUID,
+      DefaultTransitions.EXCEPTION);
+    return transferUuid;
+  }
+
+  /**
+   * The expiry and reason each movable issue takes from the source exception the transfer paired it with, read in
+   * the chunk's session. An issue paired with several sources takes the one with the lowest key, so the choice does
+   * not depend on row order. An issue with no source that is still an unexpired exception is left out of both maps,
+   * and one whose source's latest reason is blank gets no reason.
+   */
+  private ExceptionFields exceptionFields(DbSession dbSession, List<String> movableKeys, String transferUuid,
+    long now) {
+    Map<String, IssueExceptionSourceDto> sourceByIssue = new HashMap<>();
+    for (IssueExceptionSourceDto source : dbClient.issueDao().selectExceptionSourcesOfTransfer(dbSession,
+      transferUuid, movableKeys, now)) {
+      sourceByIssue.merge(source.getIssueKey(), source,
+        (kept, other) -> kept.getSourceKey().compareTo(other.getSourceKey()) <= 0 ? kept : other);
+    }
+    Set<String> sourceKeys = sourceByIssue.values().stream().map(IssueExceptionSourceDto::getSourceKey)
+      .collect(Collectors.toSet());
+    Map<String, String> reasonBySource = dbClient.issueChangeDao()
+      .selectByTypeAndIssueKeys(dbSession, sourceKeys, IssueChangeDto.TYPE_EXCEPTION_REASON).stream()
+      .collect(Collectors.groupingBy(IssueChangeDto::getIssueKey, Collectors.collectingAndThen(
+        Collectors.maxBy(LATEST_CHANGE), latest -> latest.map(IssueChangeDto::getChangeData).orElse(null))));
+
+    Map<String, Long> expiresAt = new HashMap<>();
+    Map<String, String> reason = new HashMap<>();
+    for (String key : movableKeys) {
+      IssueExceptionSourceDto source = sourceByIssue.get(key);
+      if (source == null) {
+        continue;
+      }
+      expiresAt.put(key, source.getExpiresAt());
+      String sourceReason = reasonBySource.get(source.getSourceKey());
+      if (!isBlank(sourceReason)) {
+        reason.put(key, sourceReason);
+      }
+    }
+    return new ExceptionFields(expiresAt, reason);
+  }
+
+  /** Keys sharing a value, in the order they came, so one statement per distinct value writes them all. */
+  private static <V> Map<V, List<String>> keysByValue(Map<String, V> valueByKey, List<String> keys) {
+    Map<V, List<String>> grouped = new LinkedHashMap<>();
+    for (String key : keys) {
+      grouped.computeIfAbsent(valueByKey.get(key), v -> new ArrayList<>()).add(key);
+    }
+    return grouped;
+  }
+
+  private Result apply(List<String> issueKeys, @Nullable String resolution, @Nullable String transferUuid,
+    String branchUuid, @Nullable String changeAuthor, @Nullable String comment, boolean refreshMeasures) {
+    if (issueKeys.isEmpty()) {
+      // A caller asking only for the recomputation its run owes: a run that was stopped, failed, or never got an
+      // answer for the chunk that was going to carry it. Nothing is read or written, so no session is opened.
+      // No key is named, so there is no issue to carry to the quality-gate listeners and they are not reached.
+      LOG.info("bulk_transition refresh only: measures={}ms", refreshMeasuresOfBranch(branchUuid, null, null));
+      return new Result(List.of(), List.of());
+    }
+    long startedAt = system2.now();
+    long now = startedAt;
+    List<String> transitioned = List.of();
     // One session for the whole chunk: the issues and their changelog are written together or not at all. The read
-    // runs first, under the same predicate the update uses, so it is exactly the set the update will move - which
-    // is what makes a read-back afterwards unnecessary.
-    long selectMs;
-    long updateMs = 0;
-    long changelogMs = 0;
-    long commitMs = 0;
-    boolean nothingToMove = false;
+    // runs first, under the same predicate the update uses, so the changelog can be written from what it returned
+    // without reading anything back.
+    //
+    // The two are not locked against each other. Another writer - an analysis closing an issue, a user resolving
+    // one - can change a row between them, and the update then skips it while its changelog row has already been
+    // written. A row lock would close that window, but it would be held across the changelog inserts and the
+    // commit, on up to MAX_ISSUES rows, and the one writer it would block is the analysis that is trying to close
+    // those very issues. The window is one statement wide and the loser is a changelog line, so it is left open.
     try (DbSession dbSession = dbClient.openSession(true)) {
-      long t0 = system2.now();
-      movable = dbClient.issueDao().selectTransitionable(dbSession, issueKeys);
-      selectMs = system2.now() - t0;
-      nothingToMove = movable.isEmpty();
-      if (!nothingToMove) {
-        List<String> movableKeys = movable.stream().map(IssueKeyStatusDto::getKee).toList();
-        // Each phase flushes its own statements. In a batch session they would otherwise all execute at the first
-        // flush that follows, which would charge one phase for another's work and make the two changelog paths
-        // incomparable. Flushing is not committing, so the chunk stays atomic either way.
-        if (setBasedChangelog) {
-          t0 = system2.now();
-          writeChangelogSetBased(dbSession, movableKeys, resolution, branchUuid, changeAuthor, comment, now);
-          dbSession.flushStatements();
-          changelogMs = system2.now() - t0;
-        }
-        t0 = system2.now();
-        dbClient.issueDao().bulkTransition(dbSession, movableKeys, resolution, now);
+      List<String> movableKeys = dbClient.issueDao().selectTransitionable(dbSession, issueKeys, branchUuid).stream()
+        .map(IssueKeyStatusDto::getKee).toList();
+      ExceptionFields exception = transferUuid == null || movableKeys.isEmpty() ? null
+        : exceptionFields(dbSession, movableKeys, transferUuid, now);
+      if (exception != null) {
+        movableKeys = movableKeys.stream().filter(exception.expiresAt()::containsKey).toList();
+      }
+      if (!movableKeys.isEmpty()) {
+        // Runs before the update, because the diff row records the status the update overwrites.
+        writeChangelog(dbSession, movableKeys, resolution, exception, branchUuid, changeAuthor, comment, now);
         dbSession.flushStatements();
-        updateMs = system2.now() - t0;
-        if (!setBasedChangelog) {
-          t0 = system2.now();
-          writeChangelog(dbSession, movable, resolution, branchUuid, changeAuthor, comment, now);
-          dbSession.flushStatements();
-          changelogMs = system2.now() - t0;
+        if (exception == null) {
+          dbClient.issueDao().bulkTransition(dbSession, movableKeys, branchUuid, resolution, null, now);
+        } else {
+          keysByValue(exception.expiresAt(), movableKeys).forEach((expiresAt, keys) ->
+            dbClient.issueDao().bulkTransition(dbSession, keys, branchUuid, resolution, expiresAt, now));
         }
-        t0 = system2.now();
-        dbSession.commit();
-        commitMs = system2.now() - t0;
+        // Commits and indexes together: the es_queue rows go in with the issues, so an Elasticsearch failure is
+        // retried by the recovery daemon instead of leaving the index permanently behind the database.
+        issueIndexer.commitAndIndexIssueKeys(dbSession, movableKeys, branchUuid);
+        transitioned = movableKeys;
       }
     }
 
-    if (nothingToMove) {
+    if (transitioned.isEmpty()) {
       // The caller may still be asking for the recomputation its run owes: a run that was stopped or failed asks
-      // this way, naming keys it has already resolved. Which components its earlier chunks touched is not known
-      // here and it cannot send them all, so the branch is recomputed whole.
-      long onlyMeasuresMs = refreshMeasures ? refreshMeasuresOfBranch(branchUuid) : 0;
-      LOG.info("bulk_transition 0 issues: select={}ms measures={}ms", selectMs, onlyMeasuresMs);
+      // this way, naming keys it has already resolved.
+      long onlyMeasuresMs = refreshMeasures
+        ? refreshMeasuresOfBranch(branchUuid, issueKeys.get(0), resolution)
+        : 0;
+      LOG.info("bulk_transition 0 issues on branch {}: measures={}ms", branchUuid, onlyMeasuresMs);
       return new Result(List.of(), issueKeys);
     }
 
-    List<String> transitioned = movable.stream().map(IssueKeyStatusDto::getKee).toList();
-    long t0 = system2.now();
-    issueIndexer.indexOnAnalysis(branchUuid, transitioned);
-    long indexMs = system2.now() - t0;
-    long measuresMs = refreshMeasures
-      ? refreshMeasures(movable.stream().map(IssueKeyStatusDto::getComponentUuid).collect(Collectors.toSet()))
-      : 0;
-    LOG.info("bulk_transition {} issues: select={}ms update={}ms changelog={}ms commit={}ms index={}ms "
-        + "measures={}ms changelogMode={}",
-      transitioned.size(), selectMs, updateMs, changelogMs, commitMs, indexMs, measuresMs,
-      setBasedChangelog ? "set" : "row");
+    long measuresMs = refreshMeasures ? refreshMeasuresOfBranch(branchUuid, transitioned.get(0), resolution) : 0;
+    LOG.info("bulk_transition {} issue(s) on branch {}: total={}ms measures={}ms",
+      transitioned.size(), branchUuid, system2.now() - startedAt, measuresMs);
 
-    Set<String> moved = new HashSet<>(transitioned);
-    List<String> notTransitioned = issueKeys.stream().filter(key -> !moved.contains(key)).toList();
+    Set<String> movedKeys = new HashSet<>(transitioned);
+    List<String> notTransitioned = issueKeys.stream().filter(key -> !movedKeys.contains(key)).toList();
     return new Result(transitioned, notTransitioned);
   }
 
   /**
-   * Recomputes the whole branch, for a run that is settling after a stop or a failure. It costs more than the
-   * chunk-sized refresh a completed run pays - around half as much again on a project of 6,000 files - but which
-   * components the abandoned run's earlier chunks touched is not known here, so a chunk-sized refresh would leave
-   * part of the tree stale. A run settles once, so the difference is paid once.
+   * Recomputes the whole branch. A run sends one chunk per transition-and-author group and only its last chunk asks
+   * for this, so scoping the refresh to that chunk's components would leave every file the earlier chunks resolved
+   * carrying its pre-transfer counts, and the project total summing them. It costs around half as much again as a
+   * chunk-scoped refresh on a project of 6,000 files, and a run pays it once.
    */
-  private long refreshMeasuresOfBranch(String branchUuid) {
+  private long refreshMeasuresOfBranch(String branchUuid, @Nullable String resolvedKey, @Nullable String resolution) {
     long startedAt = system2.now();
     try (DbSession dbSession = dbClient.openSession(false)) {
       List<ComponentDto> components = dbClient.componentDao().selectByBranchUuid(branchUuid, dbSession);
       if (components.isEmpty()) {
         return 0;
       }
-      issueChangePostProcessor.process(dbSession, List.of(), components, false);
+      issueChangePostProcessor.process(dbSession, changedIssuesOf(branchUuid, resolvedKey, resolution), components,
+        false);
       dbSession.commit();
     }
     return system2.now() - startedAt;
   }
 
   /**
-   * One recomputation for the whole run, over the components the transition touched. {@link BulkChangeAction} pays
-   * this on every call, which is 2,000 redundant recomputations of one project for a million-issue transfer.
+   * One issue, not every issue the run resolved. QGChangeEventListenersImpl drops the whole broadcast when this
+   * list is empty, then indexes it by branch and hands the listeners a set neither of them reads - both work from
+   * the QGChangeEvent alone. A call carries one branch, so one entry reaches every listener that a thousand
+   * would, without building a DefaultIssue and a ChangedIssueImpl per resolved issue.
+   *
+   * <p>It carries the four fields anything on that path looks at: the branch it belongs to, a key the run really
+   * resolved, and the status and resolution it was moved to. Type, severity and impacts are left unset because
+   * nothing reads them; a listener that starts to would need the issues loaded properly rather than this.
    */
-  private long refreshMeasures(Set<String> touchedComponentUuids) {
-    long startedAt = system2.now();
-    try (DbSession dbSession = dbClient.openSession(false)) {
-      // The components the issues live on, not the branch root: the tree updater recomputes upwards from the
-      // components it is given, so handing it only the root leaves every aggregate exactly as it was.
-      List<ComponentDto> touched = dbClient.componentDao().selectByUuids(dbSession, touchedComponentUuids);
-      if (touched.isEmpty()) {
-        return 0;
-      }
-      issueChangePostProcessor.process(dbSession, List.of(), touched, false);
-      dbSession.commit();
+  private static List<DefaultIssue> changedIssuesOf(String branchUuid, @Nullable String resolvedKey,
+    @Nullable String resolution) {
+    if (resolvedKey == null || resolution == null) {
+      return List.of();
     }
-    return system2.now() - startedAt;
+    DefaultIssue issue = new DefaultIssue();
+    issue.setKey(resolvedKey);
+    issue.setProjectUuid(branchUuid);
+    issue.setStatus(STATUS_RESOLVED);
+    issue.setResolution(resolution);
+    return List.of(issue);
   }
 
   /**
-   * The same rows as {@link #writeChangelog}, but built by the database from the issues themselves rather than
-   * sent a row at a time. Runs before the update, because the diff row records the status the update overwrites.
+   * One statement per partition rather than one insert per row, built by the database from the issues themselves.
+   * Runs before the update, because the diff row records the status the update overwrites.
    */
-  private void writeChangelogSetBased(DbSession dbSession, List<String> movableKeys, String resolution,
-    String branchUuid, @Nullable String changeAuthor, @Nullable String comment, long now) {
+  private void writeChangelog(DbSession dbSession, List<String> movableKeys, String resolution,
+    @Nullable ExceptionFields exception, String branchUuid, @Nullable String changeAuthor, @Nullable String comment,
+    long now) {
     dbClient.issueChangeDao().insertTransitionDiffs(dbSession, movableKeys, resolution,
       RESOLUTION_TO_ISSUE_STATUS.get(resolution), branchUuid, changeAuthor, now, uuidFactory);
+    if (exception != null) {
+      List<String> withReason = movableKeys.stream().filter(exception.reason()::containsKey).toList();
+      keysByValue(exception.reason(), withReason).forEach((reason, keys) -> dbClient.issueChangeDao()
+        .insertTransitionExceptionReasons(dbSession, keys, reason, branchUuid, changeAuthor, now, uuidFactory));
+    }
     if (comment != null) {
       dbClient.issueChangeDao().insertTransitionComments(dbSession, movableKeys, comment, branchUuid, changeAuthor,
         now, uuidFactory);
     }
   }
 
-  /**
-   * {@link IssueChangeDto#of(String, FieldDiffs, String)} builds the encoded change data, so a row written here is
-   * indistinguishable from one a manual bulk change would have written. It leaves the uuid unset, as every other
-   * caller does, so the uuid is assigned here.
-   */
-  private void writeChangelog(DbSession dbSession, List<IssueKeyStatusDto> movable, String resolution,
-    String branchUuid, @Nullable String changeAuthor, @Nullable String comment, long now) {
-    String issueStatus = RESOLUTION_TO_ISSUE_STATUS.get(resolution);
-    Date changeDate = new Date(now);
-    int sinceFlush = 0;
-    for (IssueKeyStatusDto issue : movable) {
-      FieldDiffs diffs = new FieldDiffs()
-        .setUserUuid(changeAuthor)
-        .setCreationDate(changeDate)
-        .setIssueKey(issue.getKee())
-        .setDiff(RESOLUTION, null, resolution)
-        .setDiff(STATUS, issue.getStatus(), Issue.STATUS_RESOLVED)
-        .setDiff(ISSUE_STATUS, statusOf(issue.getStatus()), issueStatus);
-      IssueChangeDto diffRow = IssueChangeDto.of(issue.getKee(), diffs, branchUuid);
-      diffRow.setUuid(uuidFactory.create());
-      dbClient.issueChangeDao().insert(dbSession, diffRow);
-      if (comment != null) {
-        dbClient.issueChangeDao().insert(dbSession, commentRow(issue.getKee(), branchUuid, changeAuthor, comment, now));
-      }
-      // Send the accumulated batch to the driver periodically. Without this a 25,000-issue chunk holds 50,000
-      // pending inserts in the web JVM before the commit. Flushing is not committing, so the chunk stays atomic.
-      if (++sinceFlush >= CHANGELOG_FLUSH_EVERY) {
-        dbSession.flushStatements();
-        sinceFlush = 0;
-      }
-    }
-  }
-
-  private IssueChangeDto commentRow(String issueKey, String projectUuid, @Nullable String userUuid, String comment,
-    long now) {
-    return new IssueChangeDto()
-      .setUuid(uuidFactory.create())
-      .setKey(uuidFactory.create())
-      .setIssueKey(issueKey)
-      .setChangeType(IssueChangeDto.TYPE_COMMENT)
-      .setChangeData(comment)
-      .setUserUuid(userUuid)
-      .setProjectUuid(projectUuid)
-      .setIssueChangeCreationDate(now)
-      .setCreatedAt(now)
-      .setUpdatedAt(now);
-  }
-
-  /** An unresolved issue's issue-status is its status, which is what the changelog records as the old value. */
-  private static String statusOf(String status) {
-    return Issue.STATUS_REOPENED.equals(status) ? Issue.STATUS_OPEN : status;
-  }
-
   private record Result(List<String> transitioned, List<String> notTransitioned) {
+  }
+
+  /**
+   * Per movable issue with a source to copy from: {@code expiresAt} holds each of them, with a null value for an
+   * exception that never expires; {@code reason} holds only the issues whose source has one.
+   */
+  private record ExceptionFields(Map<String, Long> expiresAt, Map<String, String> reason) {
   }
 }

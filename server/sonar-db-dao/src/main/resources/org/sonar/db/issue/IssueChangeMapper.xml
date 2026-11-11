@@ -51,10 +51,9 @@
       #{now,jdbcType=BIGINT},
       #{branchUuid,jdbcType=VARCHAR}
     FROM issues i
-    WHERE i.status in ('OPEN', 'REOPENED', 'CONFIRMED')
-      AND i.issue_type &lt;&gt; 4
-      AND i.kee in
-      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+    WHERE <include refid="org.sonar.db.issue.IssueMapper.transitionablePredicate">
+            <property name="alias" value="i."/>
+          </include>
   </insert>
 
   <insert id="insertTransitionDiffs" databaseId="mssql" parameterType="map">
@@ -82,9 +81,15 @@
     manual bulk change wrote: fields comma-separated, old and new separated by a pipe, and a null old value
     written as the new value alone. An unresolved issue's issue-status is its status, except REOPENED, which
     presents as OPEN.
+
+    The transition unassigns the issue, as UnsetAssignee does on the same transitions run one at a time, so an
+    assigned issue carries that change too. Its old value is empty rather than the previous assignee, because
+    IssueFieldsSetter records the field with UNUSED as the old value, which is what lets this stay set-based:
+    the statement never has to know who the assignee was.
   -->
   <sql id="transitionChangeData">
     'resolution=' || #{resolution,jdbcType=VARCHAR}
+      || (case when i.assignee is not null then ',assignee=|' else '' end)
       || ',status=' || i.status || '|RESOLVED'
       || ',issueStatus=' || (case when i.status = 'REOPENED' then 'OPEN' else i.status end)
       || '|' || #{issueStatus,jdbcType=VARCHAR}
@@ -109,17 +114,16 @@
       #{keePrefix,jdbcType=VARCHAR} || row_number() over (order by i.kee),
       i.kee,
       #{changeAuthor,jdbcType=VARCHAR},
-      'comment',
+      #{changeType,jdbcType=VARCHAR},
       #{comment,jdbcType=VARCHAR},
       #{now,jdbcType=BIGINT},
       #{now,jdbcType=BIGINT},
       #{now,jdbcType=BIGINT},
       #{branchUuid,jdbcType=VARCHAR}
     FROM issues i
-    WHERE i.status in ('OPEN', 'REOPENED', 'CONFIRMED')
-      AND i.issue_type &lt;&gt; 4
-      AND i.kee in
-      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+    WHERE <include refid="org.sonar.db.issue.IssueMapper.transitionablePredicate">
+            <property name="alias" value="i."/>
+          </include>
   </insert>
 
   <insert id="insertTransitionComments" databaseId="mssql" parameterType="map">

@@ -1,0 +1,127 @@
+{
+  "shell-command-constructed-from-input": {
+    "cvssScore": "7.3",
+    "baseScore": "7.7",
+    "temporalScore": "6.9",
+    "environmentalScore": "7.3",
+    "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:L/E:P/RL:O/RC:C/MAV:N/MAC:H/MPR:N/MUI:N/MS:U/MC:H/MI:H/MA:L/CR:H/IR:H/AR:M",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Library input can come from a remote caller of a consuming application."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "High (H)",
+          "justification": "Exploitation depends on how consuming applications pass input to the library."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "No privileges are needed once a consuming application forwards input."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No victim action is needed once input reaches the library."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "Commands run with the process privileges on the same host."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Arbitrary commands can read any file the process can access."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "High (H)",
+          "justification": "Arbitrary commands can modify files, data and application code."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "Low (L)",
+          "justification": "Impact on availability is limited because exploitation depends on the consuming application."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "The vulnerability class is well documented and proof-of-concept exploits exist."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "The rule description documents the secure coding fix."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The issue is identified by data-flow analysis from source to sink."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Same as the base metric: library input can come from a remote caller of a consuming application."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: exploitation depends on how consuming applications pass input to the library."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no privileges are needed once a consuming application forwards input."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no victim action is needed once input reaches the library."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "Same as the base metric: commands run with the process privileges on the same host."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: arbitrary commands can read any file the process can access."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: arbitrary commands can modify files, data and application code."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: impact on availability is limited because exploitation depends on the consuming application."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Protecting application data and secrets is critical."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Integrity of data and code is critical."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Availability matters but short disruptions are tolerable."
+        }
+      ]
+    }
+  }
+}

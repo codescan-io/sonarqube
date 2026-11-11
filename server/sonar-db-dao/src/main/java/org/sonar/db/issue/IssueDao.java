@@ -259,20 +259,39 @@ public class IssueDao implements Dao {
    * transaction as {@link #bulkTransition} and under the same predicate, so the caller can write the changelog
    * from this result instead of reading the issues back afterwards.
    */
-  public List<IssueKeyStatusDto> selectTransitionable(DbSession session, Collection<String> keys) {
-    return executeLargeInputs(keys, mapper(session)::selectTransitionable);
+  public List<IssueKeyStatusDto> selectTransitionable(DbSession session, Collection<String> keys,
+    String branchUuid) {
+    return executeLargeInputs(keys, partition -> mapper(session).selectTransitionable(partition, branchUuid));
   }
 
   /**
-   * CodeScan: resolves a whole chunk of issues in one statement per partition rather than one per issue. Only
-   * issues the workflow would actually move are touched, so the count matches {@link #selectTransitionable}.
-   *
-   * @return how many issues were resolved
+   * CodeScan: for each of {@code keys} that the resolution transfer {@code transferUuid} paired with a source issue
+   * that is still an exception and has not expired at {@code now}, that source and its expiry. A key paired with
+   * several such sources appears once per source; a key with none is left out.
    */
-  public int bulkTransition(DbSession session, Collection<String> keys, String resolution, long now) {
-    AtomicInteger updated = new AtomicInteger();
-    executeLargeUpdates(keys, partition -> updated.addAndGet(mapper(session).bulkTransition(partition, resolution, now)));
-    return updated.get();
+  public List<IssueExceptionSourceDto> selectExceptionSourcesOfTransfer(DbSession session, String transferUuid,
+    Collection<String> keys, long now) {
+    return executeLargeInputs(keys, partition -> mapper(session).selectExceptionSourcesOfTransfer(transferUuid,
+      partition, now));
+  }
+
+  /**
+   * CodeScan: resolves a whole chunk of issues in one statement per partition rather than one per issue, under the
+   * same predicate as {@link #selectTransitionable}. {@code expiresAt} is written as the exception expiry; null
+   * clears it, as the workflow does for any other resolution.
+   *
+   * <p>No row count is returned, and none can be: the caller runs this in a batch session so the chunk and its
+   * changelog commit together, and a batched statement has not executed when the call returns - MyBatis answers
+   * with {@code Integer.MIN_VALUE}, its batch sentinel, not a count. Reading the rows back to count them is the
+   * round trip this whole path exists to avoid.
+   *
+   * <p>No row lock is held between the select and this update either, so a concurrent writer can leave the two
+   * disagreeing. See BulkTransitionAction for what that costs and why it is accepted.
+   */
+  public void bulkTransition(DbSession session, Collection<String> keys, String branchUuid, String resolution,
+    @Nullable Long expiresAt, long now) {
+    executeLargeUpdates(keys,
+      partition -> mapper(session).bulkTransition(partition, branchUuid, resolution, expiresAt, now));
   }
 
 
