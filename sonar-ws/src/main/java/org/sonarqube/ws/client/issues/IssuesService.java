@@ -116,7 +116,8 @@ public class IssuesService extends BaseService {
         .setParam("sendNotifications", request.getSendNotifications())
         .setParam("set_severity", request.getSetSeverity() == null ? null : request.getSetSeverity().stream().collect(Collectors.joining(",")))
         .setParam("set_type", request.getSetType() == null ? null : request.getSetType().stream().collect(Collectors.joining(",")))
-        .setParam("changeAuthor", request.getChangeAuthor()),
+        .setParam("changeAuthor", request.getChangeAuthor())
+        .setParam("proliferate", request.getProliferate()),
       BulkChangeWsResponse.parser());
   }
 

@@ -43,6 +43,7 @@ import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.exceptions.UnauthorizedException;
 import org.sonar.server.issue.CodeIssueExceptionExpiryService;
 import org.sonar.server.issue.IssueFieldsSetter;
+import org.sonar.server.issue.IssueProliferationSubmitter;
 import org.sonar.server.issue.IssueFinder;
 import org.sonar.server.issue.TestIssueChangePostProcessor;
 import org.sonar.server.issue.TransitionService;
@@ -116,8 +117,9 @@ public class DoTransitionActionIT {
   private final IssueFieldsSetter issueFieldsSetter = mock(IssueFieldsSetter.class);
   private final CodeIssueExceptionExpiryService codeIssueExceptionExpiryService = new CodeIssueExceptionExpiryService(system2, mapSettings.asConfig());
 
+  private final IssueProliferationSubmitter proliferationService = mock(IssueProliferationSubmitter.class);
   private WsAction underTest = new DoTransitionAction(dbClient, userSession, issueChangeEventService,
-    new IssueFinder(dbClient, userSession), issueUpdater, transitionService, responseWriter, system2, codeIssueExceptionExpiryService, issueFieldsSetter);
+    new IssueFinder(dbClient, userSession), issueUpdater, transitionService, responseWriter, system2, codeIssueExceptionExpiryService, issueFieldsSetter, proliferationService);
   private WsActionTester tester = new WsActionTester(underTest);
 
   @Before
