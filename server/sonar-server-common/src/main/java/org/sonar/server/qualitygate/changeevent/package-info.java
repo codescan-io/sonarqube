@@ -17,26 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.server.measure.live;
+@ParametersAreNonnullByDefault
+package org.sonar.server.qualitygate.changeevent;
 
-import java.util.Set;
-import org.sonar.api.config.Configuration;
-import org.sonar.api.server.ServerSide;
-import org.sonar.db.DbSession;
-import org.sonar.db.component.BranchDto;
-import org.sonar.db.component.ComponentDto;
-import org.sonar.db.organization.OrganizationDto;
-import org.sonar.db.project.ProjectDto;
-import org.sonar.server.qualitygate.EvaluatedQualityGate;
-import org.sonar.server.qualitygate.QualityGate;
-
-@ServerSide
-public interface LiveQualityGateComputer {
-
-  QualityGate loadQualityGate(DbSession dbSession, OrganizationDto organization, ProjectDto project, BranchDto branch);
-
-  EvaluatedQualityGate refreshGateStatus(ComponentDto project, QualityGate gate, MeasureMatrix measureMatrix, Configuration configuration);
-
-  Set<String> getMetricsRelatedTo(QualityGate gate);
-
-}
+import javax.annotation.ParametersAreNonnullByDefault;

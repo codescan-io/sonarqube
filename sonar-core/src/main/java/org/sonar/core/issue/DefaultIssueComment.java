@@ -41,13 +41,22 @@ public class DefaultIssueComment implements Serializable {
   private boolean isNew;
 
   public static DefaultIssueComment create(String issueKey, @Nullable String userUuid, String markdownText) {
+    return create(issueKey, userUuid, markdownText, new Date());
+  }
+
+  /**
+   * Variant that stamps the comment with an explicit date rather than "now". Used when a comment records something
+   * that happened at a known earlier moment - a resolution proliferated to another branch carries the date of the
+   * marking it came from, so the status change and its explanatory comments share one timestamp in the activity
+   * feed instead of drifting apart by the time the proliferation took.
+   */
+  public static DefaultIssueComment create(String issueKey, @Nullable String userUuid, String markdownText, Date createdAt) {
     DefaultIssueComment comment = new DefaultIssueComment();
     comment.setIssueKey(issueKey);
     comment.setKey(Uuids.create());
-    Date now = new Date();
     comment.setUserUuid(userUuid);
     comment.setMarkdownText(markdownText);
-    comment.setCreatedAt(now).setUpdatedAt(now);
+    comment.setCreatedAt(createdAt).setUpdatedAt(createdAt);
     comment.setNew(true);
     return comment;
   }

@@ -57,6 +57,7 @@ import org.sonar.ce.task.projectanalysis.issue.AdHocRuleCreator;
 import org.sonar.ce.task.projectanalysis.notification.ReportAnalysisFailureNotificationModule;
 import org.sonar.ce.task.projectanalysis.taskprocessor.AuditPurgeTaskModule;
 import org.sonar.ce.task.projectanalysis.taskprocessor.IssueSyncTaskModule;
+import org.sonar.ce.task.projectanalysis.taskprocessor.ResolutionProliferationTaskModule;
 import org.sonar.ce.taskprocessor.CeProcessingScheduler;
 import org.sonar.ce.taskprocessor.CeTaskProcessorModule;
 import org.sonar.core.config.CorePropertyDefinitions;
@@ -108,6 +109,7 @@ import org.sonar.server.issue.workflow.IssueWorkflow;
 import org.sonar.server.l18n.ServerI18n;
 import org.sonar.server.log.ServerLogging;
 import org.sonar.server.measure.index.ProjectMeasuresIndexer;
+import org.sonar.server.measure.live.LiveMeasureModule;
 import org.sonar.server.metric.IssueCountMetrics;
 import org.sonar.server.metric.UnanalyzedLanguageMetrics;
 import org.sonar.server.notification.DefaultNotificationManager;
@@ -136,6 +138,7 @@ import org.sonar.server.project.DefaultBranchNameResolver;
 import org.sonar.server.project.VisibilityService;
 import org.sonar.server.property.InternalPropertiesImpl;
 import org.sonar.server.qualitygate.QualityGateEvaluatorImpl;
+import org.sonar.server.qualitygate.QualityGateFallbackManager;
 import org.sonar.server.qualitygate.QualityGateFinder;
 import org.sonar.server.qualitygate.notification.QGChangeEmailTemplate;
 import org.sonar.server.qualitygate.notification.QGChangeNotificationHandler;
@@ -146,6 +149,7 @@ import org.sonar.server.rule.index.RuleIndex;
 import org.sonar.server.rule.index.RuleIndexer;
 import org.sonar.server.setting.DatabaseSettingLoader;
 import org.sonar.server.setting.DatabaseSettingsEnabler;
+import org.sonar.server.setting.ProjectConfigurationLoaderImpl;
 import org.sonar.server.setting.ThreadLocalSettings;
 import org.sonar.server.util.OkHttpClientProvider;
 import org.sonar.server.util.Paths2Impl;
@@ -436,6 +440,7 @@ public class ComputeEngineContainerImpl implements ComputeEngineContainer {
       new ProjectAnalysisTaskModule(),
       new IssueSyncTaskModule(),
       new AuditPurgeTaskModule(),
+      new ResolutionProliferationTaskModule(),
       new CeTaskProcessorModule(),
       OfficialDistribution.class,
 
@@ -449,6 +454,14 @@ public class ComputeEngineContainerImpl implements ComputeEngineContainer {
 
       QualityGateFinder.class,
       QualityGateEvaluatorImpl.class,
+      // QualityGateEvaluatorImpl has always been registered here but was never instantiated: the container is
+      // lazy, and nothing in the compute engine asked for it until the live measure refresh below did.
+      QualityGateFallbackManager.class,
+
+      // Codescan customization: resolution proliferation writes issues outside an analysis, so the compute
+      // engine needs the same live measure refresh the web server runs after a manual transition.
+      ProjectConfigurationLoaderImpl.class,
+      new LiveMeasureModule(),
 
       new AnalysisCacheCleaningModule()
 

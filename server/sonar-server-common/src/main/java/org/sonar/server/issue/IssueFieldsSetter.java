@@ -391,7 +391,21 @@ public class IssueFieldsSetter {
   }
 
   public void addComment(DefaultIssue issue, String text, IssueChangeContext context) {
+    // Deliberately not delegating to the overload with context.date(): this method is on the analysis path
+    // (IssueLifecycle#addComment, for anticipated transitions) and stamping the comment with the analysis date
+    // instead of now would change what that path has always written. Proliferation asks for its date explicitly.
     issue.addComment(DefaultIssueComment.create(issue.key(), context.userUuid(), text));
+    issue.setUpdateDate(context.date());
+    issue.setChanged(true);
+  }
+
+  /**
+   * Adds a comment stamped with an explicit date instead of "now". {@code commentDate} flows through
+   * {@code IssueChangeDto.of(comment, ...)} into {@code issue_change_creation_date}, which is the value the activity
+   * feed renders, so a proliferated resolution can carry the timestamp of the marking it was copied from.
+   */
+  public void addComment(DefaultIssue issue, String text, IssueChangeContext context, Date commentDate) {
+    issue.addComment(DefaultIssueComment.create(issue.key(), context.userUuid(), text, commentDate));
     issue.setUpdateDate(context.date());
     issue.setChanged(true);
   }
