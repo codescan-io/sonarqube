@@ -922,6 +922,7 @@ export interface OrganizationBase {
   url?: string;
   inviteUsersEnabled: boolean;
   aiCustomRulesEnabled?: boolean;
+  retainIssueHistoryEnabled?: boolean;
 }
 
 export interface OrganizationBillingDetails {

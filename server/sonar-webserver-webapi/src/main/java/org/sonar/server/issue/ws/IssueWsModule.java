@@ -30,6 +30,8 @@ import org.sonar.server.issue.TextRangeResponseFormatter;
 import org.sonar.server.issue.TransitionService;
 import org.sonar.server.issue.WebIssueStorage;
 import org.sonar.server.issue.index.IssueQueryFactory;
+import org.sonar.server.issue.retain.IssueResolutionListeners;
+import org.sonar.server.issue.retain.RetainIssueResolutionListener;
 import org.sonar.server.issue.workflow.FunctionExecutor;
 import org.sonar.server.issue.workflow.IssueWorkflow;
 import org.sonar.server.issue.ws.anticipatedtransition.AnticipatedTransitionHandler;
@@ -49,6 +51,8 @@ public class IssueWsModule extends Module {
       IssueFinder.class,
       TransitionService.class,
       WebIssueStorage.class,
+      IssueResolutionListeners.class,
+      RetainIssueResolutionListener.class,
       IssueFieldsSetter.class,
       FunctionExecutor.class,
       IssueWorkflow.class,

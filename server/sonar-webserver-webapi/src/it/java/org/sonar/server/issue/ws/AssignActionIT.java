@@ -43,6 +43,7 @@ import org.sonar.server.issue.index.IssueIndexer;
 import org.sonar.server.issue.index.IssueIteratorFactory;
 import org.sonar.server.issue.notification.IssuesChangesNotification;
 import org.sonar.server.issue.notification.IssuesChangesNotificationSerializer;
+import org.sonar.server.issue.retain.IssueResolutionListeners;
 import org.sonar.server.notification.NotificationManager;
 import org.sonar.server.rule.DefaultRuleFinder;
 import org.sonar.server.rule.RuleDescriptionFormatter;
@@ -87,7 +88,7 @@ public class AssignActionIT {
   private IssuesChangesNotificationSerializer issuesChangesSerializer = new IssuesChangesNotificationSerializer();
   private AssignAction underTest = new AssignAction(system2, userSession, dbClient, new IssueFinder(dbClient, userSession), new IssueFieldsSetter(),
     new IssueUpdater(dbClient,
-      new WebIssueStorage(system2, dbClient, new DefaultRuleFinder(dbClient, mock(RuleDescriptionFormatter.class)), issueIndexer, new SequenceUuidFactory()),
+      new WebIssueStorage(system2, dbClient, new DefaultRuleFinder(dbClient, mock(RuleDescriptionFormatter.class)), issueIndexer, new SequenceUuidFactory(), new IssueResolutionListeners()),
       notificationManager, issueChangePostProcessor, issuesChangesSerializer),
     responseWriter);
   private WsActionTester ws = new WsActionTester(underTest);

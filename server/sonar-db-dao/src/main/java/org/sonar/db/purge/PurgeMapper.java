@@ -38,6 +38,8 @@ public interface PurgeMapper {
 
   Set<String> selectDisabledComponentsWithUnresolvedIssues(@Param("branchUuid") String branchUuid);
 
+  List<String> selectUnresolvedIssueKeysOfDisabledComponents(@Param("branchUuid") String branchUuid);
+
   Set<String> selectDisabledComponentsWithMeasures(@Param("branchUuid") String branchUuid);
 
   void deleteAnalyses(@Param("analysisUuids") List<String> analysisUuids);

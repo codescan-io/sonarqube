@@ -59,6 +59,7 @@ import org.sonar.server.issue.notification.IssuesChangesNotificationBuilder;
 import org.sonar.server.issue.notification.IssuesChangesNotificationBuilder.ChangedIssue;
 import org.sonar.server.issue.notification.IssuesChangesNotificationBuilder.UserChange;
 import org.sonar.server.issue.notification.IssuesChangesNotificationSerializer;
+import org.sonar.server.issue.retain.IssueResolutionListeners;
 import org.sonar.server.issue.workflow.FunctionExecutor;
 import org.sonar.server.issue.workflow.IssueWorkflow;
 import org.sonar.server.notification.NotificationManager;
@@ -127,7 +128,7 @@ public class BulkChangeActionIT {
   private IssueWorkflow issueWorkflow = new IssueWorkflow(new FunctionExecutor(issueFieldsSetter), issueFieldsSetter);
   private WebIssueStorage issueStorage = new WebIssueStorage(system2, dbClient,
     new DefaultRuleFinder(dbClient, mock(RuleDescriptionFormatter.class)),
-    new IssueIndexer(es.client(), dbClient, new IssueIteratorFactory(dbClient), null), new SequenceUuidFactory());
+    new IssueIndexer(es.client(), dbClient, new IssueIteratorFactory(dbClient), null), new SequenceUuidFactory(), new IssueResolutionListeners());
   private NotificationManager notificationManager = mock(NotificationManager.class);
   private TestIssueChangePostProcessor issueChangePostProcessor = new TestIssueChangePostProcessor();
   private IssuesChangesNotificationSerializer issuesChangesSerializer = new IssuesChangesNotificationSerializer();

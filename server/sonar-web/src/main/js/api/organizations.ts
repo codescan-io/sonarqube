@@ -74,6 +74,10 @@ export function toggleAiCustomRulesEnabled(key: string, aiCustomRulesEnabled: bo
   return axios.patch(`/_codescan/organizations/${key}/update_ai_custom_rules?aiCustomRulesEnabled=${aiCustomRulesEnabled}`).catch(throwGlobalError);
 }
 
+export function toggleRetainIssueHistory(key: string, retainIssueHistoryEnabled: boolean){
+  return axios.patch(`/_codescan/organizations/${key}/update_retain_issue_history?retainIssueHistoryEnabled=${retainIssueHistoryEnabled}`).catch(throwGlobalError);
+}
+
 interface GetOrganizationNavigation {
   adminPages: Extension[];
   alm?: { key: string; membersSync: boolean; personal: boolean; url: string };
