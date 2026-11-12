@@ -41,6 +41,7 @@ import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.server.issue.index.IssueIndexer;
+import org.sonar.server.issue.retain.IssueResolutionListeners;
 import org.sonar.server.rule.DefaultRuleFinder;
 import org.sonar.server.rule.RuleDescriptionFormatter;
 
@@ -63,7 +64,7 @@ public class WebIssueStorageIT {
   private final DbClient dbClient = db.getDbClient();
   private final IssueIndexer issueIndexer = mock(IssueIndexer.class);
   private final WebIssueStorage underTest = new WebIssueStorage(system2, dbClient, new DefaultRuleFinder(db.getDbClient(), mock(RuleDescriptionFormatter.class)), issueIndexer,
-    new SequenceUuidFactory());
+    new SequenceUuidFactory(), new IssueResolutionListeners());
 
   @Test
   public void load_component_id_from_db() {

@@ -24,8 +24,11 @@ import com.google.common.collect.Lists;
 import java.util.Collection;
 import java.util.List;
 import javax.annotation.Nullable;
+import org.sonar.api.issue.IssueStatus;
 import org.sonar.api.utils.System2;
 import org.sonar.db.DbSession;
+import org.sonar.db.issue.RetainBranchContextDto;
+import org.sonar.db.issue.RetainedIssueDao;
 
 import static org.sonar.db.DatabaseUtils.executeLargeInputs;
 
@@ -39,16 +42,18 @@ class PurgeCommands {
   private final PurgeMapper purgeMapper;
   private final PurgeProfiler profiler;
   private final System2 system2;
+  private final RetainedIssueDao retainedIssueDao;
 
-  PurgeCommands(DbSession session, PurgeMapper purgeMapper, PurgeProfiler profiler, System2 system2) {
+  PurgeCommands(DbSession session, PurgeMapper purgeMapper, PurgeProfiler profiler, System2 system2, RetainedIssueDao retainedIssueDao) {
     this.session = session;
     this.purgeMapper = purgeMapper;
     this.profiler = profiler;
     this.system2 = system2;
+    this.retainedIssueDao = retainedIssueDao;
   }
 
-  PurgeCommands(DbSession session, PurgeProfiler profiler, System2 system2) {
-    this(session, session.getMapper(PurgeMapper.class), profiler, system2);
+  PurgeCommands(DbSession session, PurgeProfiler profiler, System2 system2, RetainedIssueDao retainedIssueDao) {
+    this(session, session.getMapper(PurgeMapper.class), profiler, system2, retainedIssueDao);
   }
 
   List<String> selectSnapshotUuids(PurgeSnapshotQuery query) {
@@ -150,12 +155,22 @@ class PurgeCommands {
     profiler.stop();
 
     profiler.start("purgeDisabledComponents (unresolved_issues)");
-      executeLargeInputs(
-        purgeMapper.selectDisabledComponentsWithUnresolvedIssues(rootComponentUuid),
-        input -> {
-          purgeMapper.resolveComponentIssuesNotAlreadyResolved(input, system2.now());
-          return input;
-        });
+    // CLOSED/REMOVED is Fixed, and this update bypasses the issue workflow and its listeners; the keys are only
+    // collected when the organization retains Fixed issues
+    boolean retainEnabled = retainedIssueDao.selectBranchContext(session, rootComponentUuid)
+      .filter(RetainBranchContextDto::isRetainEnabled)
+      .isPresent();
+    List<String> issueKeysClosedByPurge = retainEnabled
+      ? purgeMapper.selectUnresolvedIssueKeysOfDisabledComponents(rootComponentUuid)
+      : List.of();
+    long closedAt = system2.now();
+    executeLargeInputs(
+      purgeMapper.selectDisabledComponentsWithUnresolvedIssues(rootComponentUuid),
+      input -> {
+        purgeMapper.resolveComponentIssuesNotAlreadyResolved(input, closedAt);
+        return input;
+      });
+    retainedIssueDao.insertIssuesOfBranch(session, rootComponentUuid, IssueStatus.FIXED, null, closedAt, issueKeysClosedByPurge);
     profiler.stop();
 
     profiler.start("purgeDisabledComponents (measures)");
@@ -207,6 +222,21 @@ class PurgeCommands {
 
     profiler.start("deleteIssues (issues)");
     purgeMapper.deleteIssuesByProjectUuid(rootUuid);
+    session.commit();
+    profiler.stop();
+  }
+
+  /** Keeps the comments of the branch's retained issues, which go with the 'issue_changes' rows. */
+  void copyRetainedIssueComments(String branchUuid) {
+    profiler.start("copyRetainedIssueComments (cs_retain_issue_comments)");
+    retainedIssueDao.copyCommentsOfBranch(session, branchUuid);
+    session.commit();
+    profiler.stop();
+  }
+
+  void deleteRetainedIssues(String projectUuid) {
+    profiler.start("deleteRetainedIssues (cs_retain_details, cs_issue_track_for_retain, cs_retain_issue_comments)");
+    retainedIssueDao.deleteByProjectUuid(session, projectUuid);
     session.commit();
     profiler.stop();
   }

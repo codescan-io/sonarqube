@@ -20,39 +20,30 @@
 package org.sonar.db.issue;
 
 import java.util.Collection;
-import java.util.List;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.session.ResultHandler;
 
 public interface RetainedIssueMapper {
 
   @CheckForNull
-  RetainDetailsDto selectBranch(@Param("branchUuid") String branchUuid);
+  RetainBranchContextDto selectBranchContext(@Param("branchUuid") String branchUuid);
 
   void insertBranch(@Param("dto") RetainDetailsDto dto);
 
   void updateBranch(@Param("dto") RetainDetailsDto dto);
 
-  List<RetainedBranchDto> selectBranchesByProjectUuid(@Param("projectUuid") String projectUuid);
-
-  List<String> selectRetainedIssueKeys(@Param("retainedStatus") String retainedStatus, @Param("issueKeys") Collection<String> issueKeys);
-
-  void insertIssue(@Param("dto") IssueTrackForRetainDto dto);
+  /**
+   * @param issueKeys keys of issues of {@code branchUuid}, at most one partition of
+   *                  {@link org.sonar.db.DatabaseUtils#PARTITION_SIZE_FOR_ORACLE}
+   */
+  void insertIssuesFromIssues(@Param("branchUuid") String branchUuid, @Param("retainedStatus") String retainedStatus,
+    @Nullable @Param("statusMarkedByUuid") String statusMarkedByUuid, @Param("now") long now,
+    @Param("issueKeys") Collection<String> issueKeys, @Param("excludedIssueType") int excludedIssueType);
 
   void deleteRetainedIssues(@Param("retainedStatus") String retainedStatus, @Param("issueKeys") Collection<String> issueKeys);
 
-  void scrollIssuesByProjectUuid(@Param("projectUuid") String projectUuid, @Param("retainedStatus") String retainedStatus,
-    @Nullable @Param("branchUuids") Collection<String> branchUuids, ResultHandler<IssueTrackForRetainDto> handler);
-
-  long countIssuesByProjectUuid(@Param("projectUuid") String projectUuid);
-
-  void copyCommentsOfIssueKeys(@Param("issueKeys") Collection<String> issueKeys);
-
   void copyCommentsOfBranch(@Param("branchUuid") String branchUuid);
-
-  List<RetainIssueCommentDto> selectCommentsByIssueKeys(@Param("issueKeys") Collection<String> issueKeys);
 
   void deleteCommentsByProjectUuid(@Param("projectUuid") String projectUuid);
 

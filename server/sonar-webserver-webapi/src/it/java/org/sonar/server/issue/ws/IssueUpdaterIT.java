@@ -46,6 +46,7 @@ import org.sonar.server.issue.notification.IssuesChangesNotificationBuilder;
 import org.sonar.server.issue.notification.IssuesChangesNotificationBuilder.ChangedIssue;
 import org.sonar.server.issue.notification.IssuesChangesNotificationBuilder.UserChange;
 import org.sonar.server.issue.notification.IssuesChangesNotificationSerializer;
+import org.sonar.server.issue.retain.IssueResolutionListeners;
 import org.sonar.server.notification.NotificationManager;
 import org.sonar.server.rule.DefaultRuleFinder;
 import org.sonar.server.rule.RuleDescriptionFormatter;
@@ -86,7 +87,7 @@ public class IssueUpdaterIT {
   private TestIssueChangePostProcessor issueChangePostProcessor = new TestIssueChangePostProcessor();
   private IssuesChangesNotificationSerializer issuesChangesSerializer = new IssuesChangesNotificationSerializer();
   private IssueUpdater underTest = new IssueUpdater(dbClient,
-    new WebIssueStorage(system2, dbClient, new DefaultRuleFinder(dbClient, mock(RuleDescriptionFormatter.class)), issueIndexer, new SequenceUuidFactory()), notificationManager,
+    new WebIssueStorage(system2, dbClient, new DefaultRuleFinder(dbClient, mock(RuleDescriptionFormatter.class)), issueIndexer, new SequenceUuidFactory(), new IssueResolutionListeners()), notificationManager,
     issueChangePostProcessor, issuesChangesSerializer);
 
   @Test

@@ -155,6 +155,8 @@ import org.sonar.ce.task.taskprocessor.MutableTaskResultHolderImpl;
 import org.sonar.core.issue.tracking.Tracker;
 import org.sonar.core.platform.ContainerPopulator;
 import org.sonar.server.issue.TaintChecker;
+import org.sonar.server.issue.retain.IssueResolutionListeners;
+import org.sonar.server.issue.retain.RetainIssueResolutionListener;
 import org.sonar.server.setting.ProjectConfigurationLoaderImpl;
 import org.sonar.server.view.index.ViewIndex;
 
@@ -300,6 +302,8 @@ public final class ProjectAnalysisTaskContainerPopulator implements ContainerPop
       MeasureComputersVisitor.class,
       TargetBranchComponentUuids.class,
       UpdateConflictResolver.class,
+      IssueResolutionListeners.class,
+      RetainIssueResolutionListener.class,
       TrackerBaseInputFactory.class,
       TrackerTargetBranchInputFactory.class,
       TrackerRawInputFactory.class,

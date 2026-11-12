@@ -28,6 +28,7 @@ import static java.sql.Types.BIGINT;
 import static java.sql.Types.CLOB;
 import static java.sql.Types.VARCHAR;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.sonar.server.platform.db.migration.version.v108.CreateRetainIssueCommentsTable.ISSUE_INDEX_NAME;
 import static org.sonar.server.platform.db.migration.version.v108.CreateRetainIssueCommentsTable.CHANGE_DATA_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateRetainIssueCommentsTable.ISSUE_CHANGE_CREATION_DATE_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateRetainIssueCommentsTable.ISSUE_KEE_COLUMN;
@@ -50,6 +51,7 @@ class CreateRetainIssueCommentsTableTest {
 
     db.assertTableExists(TABLE_NAME);
     db.assertPrimaryKey(TABLE_NAME, "pk_cs_retain_issue_comments", UUID_COLUMN);
+    db.assertIndex(TABLE_NAME, ISSUE_INDEX_NAME, "issue_kee");
     db.assertColumnDefinition(TABLE_NAME, UUID_COLUMN, VARCHAR, 40, false);
     db.assertColumnDefinition(TABLE_NAME, ISSUE_KEE_COLUMN, VARCHAR, 50, false);
     db.assertColumnDefinition(TABLE_NAME, CHANGE_DATA_COLUMN, CLOB, null, true);

@@ -21,6 +21,7 @@ package org.sonar.server.platform.db.migration.version.v108;
 
 import java.sql.SQLException;
 import org.sonar.db.Database;
+import org.sonar.server.platform.db.migration.sql.CreateIndexBuilder;
 import org.sonar.server.platform.db.migration.sql.CreateTableBuilder;
 import org.sonar.server.platform.db.migration.step.CreateTableChange;
 
@@ -39,6 +40,8 @@ public class CreateRetainDetailsTable extends CreateTableChange {
   static final String BRANCH_KEY_COLUMN = "branch_key";
   static final String BRANCH_TYPE_COLUMN = "branch_type";
   static final String TARGET_BRANCH_KEY_COLUMN = "target_branch_key";
+  /** Lists a project's branches for the CSV export and finds them when the project is deleted. */
+  static final String PROJECT_INDEX_NAME = "ix_cs_retain_details_project";
 
   private static final int ENTITY_UUID_SIZE = 50;
   private static final int BRANCH_KEY_SIZE = 255;
@@ -56,6 +59,11 @@ public class CreateRetainDetailsTable extends CreateTableChange {
       .addColumn(newVarcharColumnDefBuilder().setColumnName(BRANCH_KEY_COLUMN).setIsNullable(false).setLimit(BRANCH_KEY_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(BRANCH_TYPE_COLUMN).setIsNullable(false).setLimit(BRANCH_TYPE_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(TARGET_BRANCH_KEY_COLUMN).setIsNullable(true).setLimit(BRANCH_KEY_SIZE).build())
+      .build());
+    context.execute(new CreateIndexBuilder(getDialect())
+      .setTable(tableName)
+      .setName(PROJECT_INDEX_NAME)
+      .addColumn(PROJECT_UUID_COLUMN, false)
       .build());
   }
 }

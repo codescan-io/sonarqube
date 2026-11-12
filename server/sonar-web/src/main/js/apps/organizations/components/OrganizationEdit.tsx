@@ -23,7 +23,11 @@ import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
 import InstanceMessage from 'src/main/js/components/common/InstanceMessage';
 import { addGlobalSuccessMessage, Card, Switch } from '~design-system';
-import { toggleInviteUsersVisibility, updateOrganization } from '../../../api/organizations';
+import {
+  toggleInviteUsersVisibility,
+  toggleRetainIssueHistory,
+  updateOrganization,
+} from '../../../api/organizations';
 import { whenLoggedIn } from '../../../components/hoc/whenLoggedIn';
 import { translate } from '../../../helpers/l10n';
 import { Organization } from '../../../types/types';
@@ -55,6 +59,7 @@ interface State {
   kee: String;
   inviteUsersEnabled: boolean;
   aiCustomRulesEnabled: boolean;
+  retainIssueHistoryEnabled: boolean;
 }
 
 export class OrganizationEdit extends React.PureComponent<Props, State> {
@@ -72,6 +77,7 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
       kee: props.organization.kee,
       inviteUsersEnabled: props.organization.inviteUsersEnabled,
       aiCustomRulesEnabled: props.organization.aiCustomRulesEnabled || false,
+      retainIssueHistoryEnabled: props.organization.retainIssueHistoryEnabled || false,
     };
     this.changeAvatarImage = debounce(this.changeAvatarImage, 500);
   }
@@ -174,6 +180,24 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
     } catch (error) {
     }
   };
+  handleRetainIssueHistorySwitchChange = () => {
+    this.setState(
+      (prevState) => ({ retainIssueHistoryEnabled: !prevState.retainIssueHistoryEnabled }),
+      () => {
+        this.apiCallToToggleRetainIssueHistory(
+          this.props.organization.kee,
+          this.state.retainIssueHistoryEnabled,
+        );
+      },
+    );
+  };
+
+  apiCallToToggleRetainIssueHistory = async (kee: string, retainIssueHistoryEnabled: boolean) => {
+    try {
+      await toggleRetainIssueHistory(kee, retainIssueHistoryEnabled);
+      window.location.reload();
+    } catch (error) {}
+  };
 
   render() {
     const { organization } = this.props;
@@ -273,7 +297,28 @@ export class OrganizationEdit extends React.PureComponent<Props, State> {
           </div>
         </Card>
         )}
-
+        {organization.actions?.admin && (
+          <Card className="sw-mt-4 sw-mb-4">
+            <div className="boxed-group boxed-group-inner">
+              <h2 className="boxed-title">{translate('organization.retain_fixed_issues')}</h2>
+              <p className="big-spacer-bottom width-50 sw-my-8">
+                {translate('organization.retain_fixed_issues.description')}
+              </p>
+              <div className="sw-flex sw-items-center sw-gap-2">
+                <Switch
+                  ariaDescribedby="retain-fixed-issues-info"
+                  name="retainIssueHistoryEnabled"
+                  onChange={() => this.handleRetainIssueHistorySwitchChange()}
+                  value={this.state.retainIssueHistoryEnabled}
+                />
+                <span>{translate('organization.retain_fixed_issues.switch')}</span>
+              </div>
+              <p className="width-50 sw-mt-4" id="retain-fixed-issues-info">
+                {translate('organization.retain_fixed_issues.info')}
+              </p>
+            </div>
+          </Card>
+        )}
 
         {showDelete && <OrganizationArchive />}
       </div>

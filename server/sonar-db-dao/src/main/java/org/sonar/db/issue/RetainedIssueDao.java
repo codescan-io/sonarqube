@@ -20,18 +20,14 @@
 package org.sonar.db.issue;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Objects;
-import java.util.Set;
+import java.util.Optional;
 import javax.annotation.Nullable;
-import org.apache.ibatis.session.ResultHandler;
 import org.sonar.api.issue.IssueStatus;
+import org.sonar.api.rules.RuleType;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
 
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptySet;
-import static org.sonar.db.DatabaseUtils.executeLargeInputs;
 import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
 
 /**
@@ -41,43 +37,67 @@ import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
  */
 public class RetainedIssueDao implements Dao {
 
+  /** The branch, its organization's toggle and its retained branch row, or empty when the branch does not exist. */
+  public Optional<RetainBranchContextDto> selectBranchContext(DbSession dbSession, String branchUuid) {
+    return Optional.ofNullable(mapper(dbSession).selectBranchContext(branchUuid));
+  }
+
   /**
-   * Writes the branch row, or refreshes its name and target if it exists, so a renamed branch keeps its latest name.
-   * Select-then-write rather than an update count, because a batch session does not report update counts.
+   * Writes the branch row, or refreshes its name and target if they changed, so a renamed branch keeps its latest name
+   * once deleted. Call it once per branch before its issues are retained.
    */
-  public void upsertBranch(DbSession dbSession, RetainDetailsDto dto) {
+  public void writeBranch(DbSession dbSession, RetainBranchContextDto branch) {
     RetainedIssueMapper mapper = mapper(dbSession);
-    RetainDetailsDto existing = mapper.selectBranch(dto.getBranchUuid());
-    if (existing == null) {
-      mapper.insertBranch(dto);
-    } else if (!Objects.equals(existing.getBranchKey(), dto.getBranchKey())
-      || !Objects.equals(existing.getTargetBranchKey(), dto.getTargetBranchKey())) {
-      mapper.updateBranch(dto);
+    if (branch.getRetainedBranchUuid() == null) {
+      mapper.insertBranch(branch.toRetainDetails());
+    } else if (!Objects.equals(branch.getRetainedBranchKey(), branch.getBranchKey())
+      || !Objects.equals(branch.getRetainedTargetBranchKey(), branch.getTargetBranchKey())) {
+      mapper.updateBranch(branch.toRetainDetails());
     }
-  }
-
-  /** Every branch and pull request of the project that holds retained issues, deleted ones included. */
-  public List<RetainedBranchDto> selectBranches(DbSession dbSession, String projectUuid) {
-    return mapper(dbSession).selectBranchesByProjectUuid(projectUuid);
   }
 
   /**
-   * Of {@code issueKeys}, those already retained in this status. One indexed query per partition, so callers check a
-   * whole batch before inserting: a unique-key violation inside a batch session aborts the batch.
+   * Retains issues of one branch that entered {@code retainedStatus}, copying their columns from 'issues' in one
+   * statement per partition of keys. The issue rows must already be written in {@code dbSession}. Issues already
+   * retained in that status keep their row, so the first time they entered it is kept; security hotspots and, for
+   * FIXED, issues whose row is not Fixed are skipped. The caller checks the toggle and writes the branch row.
+   *
+   * @param statusMarkedByUuid the user who made the change, null when the analysis or the purge made it
+   * @param now                when the change was made; used for issues without a close date, such as those a user
+   *                           resolved
    */
-  public Set<String> selectRetainedIssueKeys(DbSession dbSession, IssueStatus retainedStatus, Collection<String> issueKeys) {
+  public void insertIssues(DbSession dbSession, String branchUuid, IssueStatus retainedStatus,
+    @Nullable String statusMarkedByUuid, long now, Collection<String> issueKeys) {
     if (issueKeys.isEmpty()) {
-      return emptySet();
+      return;
     }
-    return Set.copyOf(executeLargeInputs(issueKeys,
-      partition -> mapper(dbSession).selectRetainedIssueKeys(retainedStatus.name(), partition)));
+    RetainedIssueMapper mapper = mapper(dbSession);
+    int hotspot = RuleType.SECURITY_HOTSPOT.getDbConstant();
+    executeLargeUpdates(issueKeys, partition -> mapper.insertIssuesFromIssues(branchUuid, retainedStatus.name(),
+      statusMarkedByUuid, now, partition, hotspot));
   }
 
-  public void insertIssue(DbSession dbSession, IssueTrackForRetainDto dto) {
-    mapper(dbSession).insertIssue(dto);
+  /**
+   * Retains one set of issues of a branch when its organization has the toggle on: reads the branch, writes its row and
+   * inserts. For callers that retain once, such as the purge; callers that retain repeatedly read the branch once.
+   */
+  public void insertIssuesOfBranch(DbSession dbSession, String branchUuid, IssueStatus retainedStatus,
+    @Nullable String statusMarkedByUuid, long now, Collection<String> issueKeys) {
+    if (issueKeys.isEmpty()) {
+      return;
+    }
+    Optional<RetainBranchContextDto> branch = selectBranchContext(dbSession, branchUuid);
+    if (branch.isEmpty() || !branch.get().isRetainEnabled()) {
+      return;
+    }
+    writeBranch(dbSession, branch.get());
+    insertIssues(dbSession, branchUuid, retainedStatus, statusMarkedByUuid, now, issueKeys);
   }
 
-  /** Drops the rows of issues that left {@code retainedStatus}: an issue that reopens was not fixed. */
+  /**
+   * Drops the rows of issues that left {@code retainedStatus}: an issue that reopens was not fixed. For FIXED, a row
+   * whose issue is still Fixed is kept.
+   */
   public void deleteRetainedIssues(DbSession dbSession, IssueStatus retainedStatus, Collection<String> issueKeys) {
     if (issueKeys.isEmpty()) {
       return;
@@ -85,40 +105,9 @@ public class RetainedIssueDao implements Dao {
     executeLargeUpdates(issueKeys, partition -> mapper(dbSession).deleteRetainedIssues(retainedStatus.name(), partition));
   }
 
-  /**
-   * Streams the project's retained issues in fix order. A null or empty {@code branchUuids} streams every branch and
-   * pull request the project ever had.
-   */
-  public void scrollIssues(DbSession dbSession, String projectUuid, IssueStatus retainedStatus,
-    @Nullable Collection<String> branchUuids, ResultHandler<IssueTrackForRetainDto> handler) {
-    mapper(dbSession).scrollIssuesByProjectUuid(projectUuid, retainedStatus.name(), branchUuids, handler);
-  }
-
-  public long countIssues(DbSession dbSession, String projectUuid) {
-    return mapper(dbSession).countIssuesByProjectUuid(projectUuid);
-  }
-
-  /**
-   * Copies the comments of those {@code issueKeys} that are retained. Call it before the issues are deleted; a
-   * comment already copied is skipped.
-   */
-  public void copyCommentsOfIssues(DbSession dbSession, Collection<String> issueKeys) {
-    if (issueKeys.isEmpty()) {
-      return;
-    }
-    executeLargeUpdates(issueKeys, partition -> mapper(dbSession).copyCommentsOfIssueKeys(partition));
-  }
-
   /** Copies the comments of every retained issue of the branch. Call it before the branch is deleted. */
   public void copyCommentsOfBranch(DbSession dbSession, String branchUuid) {
     mapper(dbSession).copyCommentsOfBranch(branchUuid);
-  }
-
-  public List<RetainIssueCommentDto> selectComments(DbSession dbSession, Collection<String> issueKeys) {
-    if (issueKeys.isEmpty()) {
-      return emptyList();
-    }
-    return executeLargeInputs(issueKeys, partition -> mapper(dbSession).selectCommentsByIssueKeys(partition));
   }
 
   /**

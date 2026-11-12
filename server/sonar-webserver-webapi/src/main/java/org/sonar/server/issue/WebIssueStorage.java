@@ -41,6 +41,7 @@ import org.sonar.db.issue.IssueChangeMapper;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.server.issue.index.IssueIndexer;
+import org.sonar.server.issue.retain.IssueResolutionListeners;
 import org.sonar.server.rule.ServerRuleFinder;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
@@ -61,13 +62,16 @@ public class WebIssueStorage extends IssueStorage {
   private final DbClient dbClient;
   private final IssueIndexer indexer;
   private final UuidFactory uuidFactory;
+  private final IssueResolutionListeners issueResolutionListeners;
 
-  public WebIssueStorage(System2 system2, DbClient dbClient, ServerRuleFinder ruleFinder, IssueIndexer indexer, UuidFactory uuidFactory) {
+  public WebIssueStorage(System2 system2, DbClient dbClient, ServerRuleFinder ruleFinder, IssueIndexer indexer, UuidFactory uuidFactory,
+    IssueResolutionListeners issueResolutionListeners) {
     this.system2 = system2;
     this.dbClient = dbClient;
     this.ruleFinder = ruleFinder;
     this.indexer = indexer;
     this.uuidFactory = uuidFactory;
+    this.issueResolutionListeners = issueResolutionListeners;
   }
 
   protected DbClient getDbClient() {
@@ -84,6 +88,7 @@ public class WebIssueStorage extends IssueStorage {
     List<DefaultIssue> issuesToUpdate = firstNonNull(issuesNewOrUpdated.get(false), emptyList());
 
     Collection<IssueDto> inserted = insert(dbSession, issuesToInsert, now);
+    issueResolutionListeners.onIssuesPersisted(dbSession, issuesToInsert, now);
     Collection<IssueDto> updated = update(issuesToUpdate, now);
 
     doAfterSave(dbSession, Stream.concat(inserted.stream(), updated.stream())
@@ -153,6 +158,7 @@ public class WebIssueStorage extends IssueStorage {
           updated.add(issueDto);
           insertChanges(issueChangeMapper, issue, uuidFactory);
         }
+        issueResolutionListeners.onIssuesPersisted(dbSession, issuesToUpdate, now);
         dbSession.commit();
       }
     }
