@@ -24,6 +24,7 @@ import javax.annotation.CheckForNull;
 public class IpAllowlistRangeDto {
   private String organizationUuid;
   private boolean appliesToAdmins;
+  private boolean allowsMcp;
   private String cidr;
 
   public String getOrganizationUuid() {
@@ -41,6 +42,16 @@ public class IpAllowlistRangeDto {
 
   public IpAllowlistRangeDto setAppliesToAdmins(boolean appliesToAdmins) {
     this.appliesToAdmins = appliesToAdmins;
+    return this;
+  }
+
+  /** False means requests through the hosted MCP server are refused, whatever their address. */
+  public boolean isAllowsMcp() {
+    return allowsMcp;
+  }
+
+  public IpAllowlistRangeDto setAllowsMcp(boolean allowsMcp) {
+    this.allowsMcp = allowsMcp;
     return this;
   }
 

@@ -78,6 +78,8 @@ public class DbVersion108 implements DbVersion {
         AddIpAllowlistColumnsToOrganizationsTable.class)
       .add(10_8_035, "Create 'cs_ip_allowlist_range' table", CreateIpAllowlistRangeTable.class)
       .add(10_8_036, "Create indexes on 'cs_ip_allowlist_range' table", CreateIndexesOnIpAllowlistRangeTable.class)
+      .add(10_8_037, "Add 'ip_allowlist_allows_mcp' column to 'organizations' table",
+        AddIpAllowlistAllowsMcpColumnToOrganizationsTable.class)
     ;
   }
 
