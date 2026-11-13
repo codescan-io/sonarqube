@@ -22,14 +22,12 @@ package org.sonar.db.issue;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 
-/**
- * CodeScan: an issue a resolution transfer paired with a source exception, and that exception's expiry. The expiry
- * is null for an exception that never expires.
- */
+/** CodeScan: the source a transfer paired an issue with, and the resolution and expiry that source carries now. */
 public class IssueExceptionSourceDto {
 
   private String issueKey;
   private String sourceKey;
+  private String resolution;
   private Long expiresAt;
 
   public String getIssueKey() {
@@ -47,6 +45,16 @@ public class IssueExceptionSourceDto {
 
   public IssueExceptionSourceDto setSourceKey(String sourceKey) {
     this.sourceKey = sourceKey;
+    return this;
+  }
+
+  @CheckForNull
+  public String getResolution() {
+    return resolution;
+  }
+
+  public IssueExceptionSourceDto setResolution(@Nullable String resolution) {
+    this.resolution = resolution;
     return this;
   }
 

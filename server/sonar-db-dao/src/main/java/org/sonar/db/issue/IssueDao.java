@@ -270,9 +270,9 @@ public class IssueDao implements Dao {
    * several such sources appears once per source; a key with none is left out.
    */
   public List<IssueExceptionSourceDto> selectExceptionSourcesOfTransfer(DbSession session, String transferUuid,
-    Collection<String> keys, long now) {
+    Collection<String> keys) {
     return executeLargeInputs(keys, partition -> mapper(session).selectExceptionSourcesOfTransfer(transferUuid,
-      partition, now));
+      partition));
   }
 
   /**
