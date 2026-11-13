@@ -23,6 +23,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Properties;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -82,7 +83,11 @@ public class UserSessionInitializerIT {
 
   private OrganizationIpAccess ipAccess = mock(OrganizationIpAccess.class);
 
-  private UserSessionInitializer underTest = new UserSessionInitializer(settings.asConfig(), threadLocalSession, authenticationEvent, authenticator, ipAccess);
+  private static final String MCP_KEY = "m".repeat(40);
+  private HostedMcpRequest hostedMcpRequest = new HostedMcpRequest(mcpKeys(MCP_KEY));
+
+  private UserSessionInitializer underTest = new UserSessionInitializer(settings.asConfig(), threadLocalSession, authenticationEvent, authenticator, ipAccess,
+    hostedMcpRequest);
 
   @Before
   public void setUp() {
@@ -269,7 +274,7 @@ public class UserSessionInitializerIT {
 
     assertThat(underTest.initUserSession(jakartaRequest, response)).isTrue();
 
-    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", "org-key");
+    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", "org-key", false);
     verify(threadLocalSession).set(session);
   }
 
@@ -280,7 +285,7 @@ public class UserSessionInitializerIT {
 
     underTest.initUserSession(jakartaRequest, response);
 
-    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null);
+    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null, false);
   }
 
   @Test
@@ -290,7 +295,7 @@ public class UserSessionInitializerIT {
 
     underTest.initUserSession(jakartaRequest, response);
 
-    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null);
+    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null, false);
   }
 
   @Test
@@ -298,12 +303,12 @@ public class UserSessionInitializerIT {
     JakartaHttpRequest jakartaRequest = jakartaRequest("/api/issues/search", "10.0.0.5", true, " ");
     ServerUserSession session = loggedInServerSession(jakartaRequest);
     underTest.initUserSession(jakartaRequest, response);
-    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null);
+    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null, false);
 
     JakartaHttpRequest numberOrgRequest = jakartaRequest("/api/issues/search", "10.0.0.5", true, 42);
     ServerUserSession other = loggedInServerSession(numberOrgRequest);
     underTest.initUserSession(numberOrgRequest, response);
-    verify(other).withIpAllowlist(ipAccess, "10.0.0.5", null);
+    verify(other).withIpAllowlist(ipAccess, "10.0.0.5", null, false);
   }
 
   @Test
@@ -313,7 +318,7 @@ public class UserSessionInitializerIT {
 
     underTest.initUserSession(request, response);
 
-    verify(session).withIpAllowlist(ipAccess, "192.0.2.1", null);
+    verify(session).withIpAllowlist(ipAccess, "192.0.2.1", null, false);
   }
 
   @Test
@@ -323,7 +328,47 @@ public class UserSessionInitializerIT {
 
     underTest.initUserSession(request, response);
 
-    verify(session).withIpAllowlist(ipAccess, null, null);
+    verify(session).withIpAllowlist(ipAccess, null, null, false);
+  }
+
+  @Test
+  public void request_with_a_configured_mcp_key_is_marked_as_coming_through_the_hosted_mcp_server() {
+    when(request.getRemoteAddr()).thenReturn("10.0.0.5");
+    when(request.getHeader(HostedMcpRequest.MCP_KEY_HEADER)).thenReturn(MCP_KEY);
+    ServerUserSession session = loggedInServerSession(request);
+
+    assertThat(underTest.initUserSession(request, response)).isTrue();
+
+    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null, true);
+    verify(threadLocalSession).set(session);
+  }
+
+  @Test
+  public void request_with_an_unknown_mcp_key_is_checked_by_its_address() {
+    when(request.getRemoteAddr()).thenReturn("10.0.0.5");
+    when(request.getHeader(HostedMcpRequest.MCP_KEY_HEADER)).thenReturn("x".repeat(40));
+    ServerUserSession session = loggedInServerSession(request);
+
+    underTest.initUserSession(request, response);
+
+    verify(session).withIpAllowlist(ipAccess, "10.0.0.5", null, false);
+  }
+
+  @Test
+  public void real_session_knows_whether_the_request_came_through_the_hosted_mcp_server() {
+    UserDto user = user("member");
+    ServerUserSession throughMcp = new ServerUserSession(dbTester.getDbClient(), user, false);
+    when(authenticator.authenticate(request, response)).thenReturn(throughMcp);
+    when(request.getHeader(HostedMcpRequest.MCP_KEY_HEADER)).thenReturn(MCP_KEY);
+    underTest.initUserSession(request, response);
+
+    ServerUserSession direct = new ServerUserSession(dbTester.getDbClient(), user, false);
+    when(authenticator.authenticate(request, response)).thenReturn(direct);
+    when(request.getHeader(HostedMcpRequest.MCP_KEY_HEADER)).thenReturn(null);
+    underTest.initUserSession(request, response);
+
+    assertThat(throughMcp.isHostedMcpRequest()).isTrue();
+    assertThat(direct.isHostedMcpRequest()).isFalse();
   }
 
   @Test
@@ -420,6 +465,12 @@ public class UserSessionInitializerIT {
 
   private void insertMembership(UserDto user) {
     dbTester.executeInsert("organization_members", "organization_uuid", ORG_UUID, "user_uuid", user.getUuid(), "type", "STANDARD");
+  }
+
+  private static Properties mcpKeys(String keys) {
+    Properties properties = new Properties();
+    properties.setProperty(HostedMcpRequest.KEYS_PROPERTY, keys);
+    return properties;
   }
 
   private ServerUserSession loggedInServerSession(HttpRequest forRequest) {

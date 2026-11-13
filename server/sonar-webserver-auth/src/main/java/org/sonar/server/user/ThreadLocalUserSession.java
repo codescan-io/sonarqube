@@ -284,4 +284,9 @@ public class ThreadLocalUserSession implements UserSession {
     return get().getClientIp();
   }
 
+  @Override
+  public boolean isHostedMcpRequest() {
+    return get().isHostedMcpRequest();
+  }
+
 }

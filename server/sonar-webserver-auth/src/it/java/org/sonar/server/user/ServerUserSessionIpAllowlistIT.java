@@ -651,6 +651,113 @@ public class ServerUserSessionIpAllowlistIT {
     assertThat(session.hasEntityPermission(UserRole.USER, project.getProjectDto())).isFalse();
   }
 
+  // ---- requests through the hosted MCP server ----
+
+  /**
+   * The request carries the hosted MCP server's address, so the address rule and its admin exemption do not apply:
+   * the organization's MCP choice decides, for admins too.
+   */
+  @Test
+  public void hosted_mcp_request_follows_the_mcp_choice_even_for_an_exempt_org_admin() {
+    UserDto admin = insertMember("u1");
+    insertOrgPermission(admin, OrganizationPermission.ADMINISTER);
+    blockUnlessAdmin(ORG);
+    when(ipAccess.isBlockedForHostedMcp(ORG)).thenReturn(true);
+
+    ServerUserSession session = hostedMcpSession(admin, OUTSIDE_IP);
+
+    assertThat(session.isHostedMcpRequest()).isTrue();
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isTrue();
+    assertThat(session.hasMembership(org())).isFalse();
+    assertThat(session.hasPermission(OrganizationPermission.ADMINISTER, ORG)).isFalse();
+  }
+
+  @Test
+  public void hosted_mcp_request_is_let_in_whatever_the_address_when_the_org_allows_it() {
+    UserDto user = insertMember("u1");
+    insertOrgPermission(user, OrganizationPermission.SCAN);
+    blockEveryone(ORG);
+    when(ipAccess.isBlockedForHostedMcp(ORG)).thenReturn(false);
+
+    ServerUserSession session = hostedMcpSession(user, OUTSIDE_IP);
+
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isFalse();
+    assertThat(session.hasMembership(org())).isTrue();
+    assertThat(session.hasPermission(OrganizationPermission.SCAN, ORG)).isTrue();
+    verify(ipAccess, never()).isBlocked(any(), any(), any());
+  }
+
+  @Test
+  public void hosted_mcp_request_hides_the_organizations_that_refuse_it_from_search() {
+    insertOrg();
+    insertOrg(OTHER_ORG, OTHER_ORG_KEY);
+    when(ipAccess.hostedMcpBlockedOrganizationUuids()).thenReturn(Set.of(ORG));
+    when(ipAccess.isBlockedForHostedMcp(ORG)).thenReturn(true);
+
+    ServerUserSession session = hostedMcpSession(user("u1"), OUTSIDE_IP);
+
+    assertThat(session.mayBeBlockedByIpAllowlist()).isTrue();
+    assertThat(session.getIpBlockedOrganizationUuids()).containsExactly(ORG);
+    verify(ipAccess, never()).blockedOrganizationUuids(any());
+  }
+
+  @Test
+  public void hosted_mcp_request_may_not_be_blocked_when_every_org_allows_it() {
+    when(ipAccess.hostedMcpBlockedOrganizationUuids()).thenReturn(Set.of());
+    when(ipAccess.blockedOrganizationUuids(OUTSIDE_IP)).thenReturn(Set.of(ORG));
+
+    assertThat(hostedMcpSession(user("u1"), OUTSIDE_IP).mayBeBlockedByIpAllowlist()).isFalse();
+  }
+
+  @Test
+  public void root_is_never_blocked_through_the_hosted_mcp_server() {
+    UserDto root = user("root-uuid");
+    root.setRoot(true);
+    insertOrg();
+    when(ipAccess.isBlockedForHostedMcp(ORG)).thenReturn(true);
+    when(ipAccess.hostedMcpBlockedOrganizationUuids()).thenReturn(Set.of(ORG));
+
+    ServerUserSession session = hostedMcpSession(root, OUTSIDE_IP);
+
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isFalse();
+    assertThat(session.hasMembership(org())).isTrue();
+    assertThat(session.getIpBlockedOrganizationUuids()).isEmpty();
+    verifyNoInteractions(ipAccess);
+  }
+
+  @Test
+  public void service_login_exemption_comes_before_the_mcp_choice() {
+    UserDto job = insertMember("job");
+    when(ipAccess.isInternalServiceAddress(INTERNAL_IP)).thenReturn(true);
+    when(ipAccess.isBlockedForHostedMcp(ORG)).thenReturn(true);
+
+    ServerUserSession session = new ServerUserSession(db.getDbClient(), job, false).withIpAllowlist(ipAccess, INTERNAL_IP, ORG_KEY, true);
+
+    assertThat(session.isBlockedByIpAllowlist(ORG)).isFalse();
+    assertThat(session.hasMembership(ORG_KEY)).isTrue();
+  }
+
+  @Test
+  public void request_without_the_mcp_key_is_not_a_hosted_mcp_request() {
+    assertThat(session(user("u1"), OUTSIDE_IP).isHostedMcpRequest()).isFalse();
+    assertThat(new ServerUserSession(db.getDbClient(), user("u1"), false).isHostedMcpRequest()).isFalse();
+  }
+
+  @Test
+  public void hosted_mcp_request_fails_with_503_when_the_allowlist_cannot_be_read() {
+    insertMember("u1");
+    OrganizationIpAccessUnavailableException failure = new OrganizationIpAccessUnavailableException("Cannot read the IP allowlist",
+      new IllegalStateException("connection refused to db-host:5432"));
+    when(ipAccess.isBlockedForHostedMcp(ORG)).thenThrow(failure);
+    when(ipAccess.hostedMcpBlockedOrganizationUuids()).thenThrow(failure);
+    ServerUserSession session = hostedMcpSession(user("u1"), OUTSIDE_IP);
+
+    assertUnavailable(() -> session.isBlockedByIpAllowlist(ORG), failure);
+    assertUnavailable(() -> session.hasMembership(org()), failure);
+    assertUnavailable(session::mayBeBlockedByIpAllowlist, failure);
+    assertUnavailable(session::getIpBlockedOrganizationUuids, failure);
+  }
+
   private static void assertUnavailable(ThrowingCallable call, OrganizationIpAccessUnavailableException cause) {
     assertThatThrownBy(call)
       .isInstanceOfSatisfying(ServerException.class, e -> {
@@ -698,6 +805,10 @@ public class ServerUserSessionIpAllowlistIT {
 
   private ServerUserSession session(@Nullable UserDto user, @Nullable String ip) {
     return new ServerUserSession(db.getDbClient(), user, false).withIpAllowlist(ipAccess, ip, null);
+  }
+
+  private ServerUserSession hostedMcpSession(UserDto user, String ip) {
+    return new ServerUserSession(db.getDbClient(), user, false).withIpAllowlist(ipAccess, ip, null, true);
   }
 
   private static UserDto user(String uuid) {

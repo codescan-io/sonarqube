@@ -314,6 +314,15 @@ public interface UserSession {
   }
 
   /**
+   * True when the request came through CodeScan's hosted MCP server, recognised by the key it carries. Its address is
+   * then the hosted server's, so each organization's choice about the hosted MCP server applies instead of the
+   * address rule.
+   */
+  default boolean isHostedMcpRequest() {
+    return false;
+  }
+
+  /**
    * Ensures that {@link #hasMembership(OrganizationDto)} is {@code true},
    * otherwise throws a {@link org.sonar.server.exceptions.ForbiddenException}.
    */

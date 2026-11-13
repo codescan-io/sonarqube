@@ -153,6 +153,11 @@ public class UserSessionRule implements TestRule, UserSession, BeforeTestExecuti
     return this;
   }
 
+  public UserSessionRule setHostedMcpRequest(boolean hostedMcpRequest) {
+    ensureAbstractMockUserSession().setHostedMcpRequest(hostedMcpRequest);
+    return this;
+  }
+
   public UserSessionRule setExternalIdentity(IdentityProvider identityProvider, ExternalIdentity externalIdentity) {
     ensureMockUserSession().setExternalIdentity(identityProvider, externalIdentity);
     return this;
@@ -506,6 +511,11 @@ public class UserSessionRule implements TestRule, UserSession, BeforeTestExecuti
   @CheckForNull
   public String getClientIp() {
     return currentUserSession.getClientIp();
+  }
+
+  @Override
+  public boolean isHostedMcpRequest() {
+    return currentUserSession.isHostedMcpRequest();
   }
 
   public void flagSessionAsGui() {
