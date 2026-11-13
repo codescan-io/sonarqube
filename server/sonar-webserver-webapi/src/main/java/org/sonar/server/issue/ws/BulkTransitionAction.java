@@ -221,17 +221,20 @@ public class BulkTransitionAction implements IssuesWsAction {
 
   /**
    * The expiry and reason each movable issue takes from the source exception the transfer paired it with, read in
-   * the chunk's session. An issue paired with several sources takes the one with the lowest key, so the choice does
-   * not depend on row order. An issue with no source that is still an unexpired exception is left out of both maps,
-   * and one whose source's latest reason is blank gets no reason.
+   * the chunk's session; sources no longer unexpired exceptions are dropped here, not by the read. An issue
+   * paired with several sources takes the one with the lowest key, so the choice does not depend on row order. An
+   * issue with no source that is still an unexpired exception is left out of both maps, and one whose source's
+   * latest reason is blank gets no reason.
    */
   private ExceptionFields exceptionFields(DbSession dbSession, List<String> movableKeys, String transferUuid,
     long now) {
     Map<String, IssueExceptionSourceDto> sourceByIssue = new HashMap<>();
     for (IssueExceptionSourceDto source : dbClient.issueDao().selectExceptionSourcesOfTransfer(dbSession,
-      transferUuid, movableKeys, now)) {
-      sourceByIssue.merge(source.getIssueKey(), source,
-        (kept, other) -> kept.getSourceKey().compareTo(other.getSourceKey()) <= 0 ? kept : other);
+      transferUuid, movableKeys)) {
+      if (isUnexpiredException(source, now)) {
+        sourceByIssue.merge(source.getIssueKey(), source,
+          (kept, other) -> kept.getSourceKey().compareTo(other.getSourceKey()) <= 0 ? kept : other);
+      }
     }
     Set<String> sourceKeys = sourceByIssue.values().stream().map(IssueExceptionSourceDto::getSourceKey)
       .collect(Collectors.toSet());
@@ -254,6 +257,12 @@ public class BulkTransitionAction implements IssuesWsAction {
       }
     }
     return new ExceptionFields(expiresAt, reason);
+  }
+
+  /** The judgement the read leaves to us: still an exception, and not yet expired. */
+  private static boolean isUnexpiredException(IssueExceptionSourceDto source, long now) {
+    return Issue.RESOLUTION_EXCEPTION.equals(source.getResolution())
+      && (source.getExpiresAt() == null || source.getExpiresAt() > now);
   }
 
   /** Keys sharing a value, in the order they came, so one statement per distinct value writes them all. */
