@@ -248,14 +248,14 @@
     where <include refid="transitionablePredicate"><property name="alias" value="i."/></include>
   </select>
 
-  <!-- cs_resolution_transfer_issue is CodeScan's resolution transfer report, in the same schema. -->
+  <!-- CodeScan's transfer report, same schema. Every predicate is on it: a predicate on issues.resolution reads
+       as matching nothing and flips the planner onto issues. -->
   <select id="selectExceptionSourcesOfTransfer" parameterType="map" resultType="org.sonar.db.issue.IssueExceptionSourceDto">
-    select r.destination_issue_key as issueKey, s.kee as sourceKey, s.issue_resolution_expires_at as expiresAt
+    select r.destination_issue_key as issueKey, s.kee as sourceKey, s.resolution as resolution,
+      s.issue_resolution_expires_at as expiresAt
     from cs_resolution_transfer_issue r
     inner join issues s on s.kee = r.issue_key
     where r.transfer_uuid = #{transferUuid,jdbcType=VARCHAR}
-      and s.resolution = 'EXCEPTION'
-      and (s.issue_resolution_expires_at is null or s.issue_resolution_expires_at &gt; #{now,jdbcType=BIGINT})
       and r.destination_issue_key in
       <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
   </select>
