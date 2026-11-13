@@ -94,6 +94,7 @@ public class BulkTransitionAction implements IssuesWsAction {
   private static final String PARAM_CHANGE_AUTHOR = "changeAuthor";
   private static final String PARAM_COMMENT = "comment";
   private static final String PARAM_REFRESH_MEASURES = "refreshMeasures";
+  private static final String PARAM_BROADCAST_ONLY = "broadcastOnly";
   private static final String PARAM_BRANCH_UUID = "branchUuid";
   private static final String PARAM_TRANSFER_UUID = "transferUuid";
 
@@ -170,6 +171,13 @@ public class BulkTransitionAction implements IssuesWsAction {
         + "avoid, but skipping it entirely would leave the project's counts and gate stale until its next analysis.")
       .setBooleanPossibleValues()
       .setDefaultValue("false");
+    action.createParam(PARAM_BROADCAST_ONLY)
+      .setDescription("Recompute only: the named issue is carried to the quality-gate listeners, which drop the "
+        + "broadcast when a call carries none, and nothing is transitioned. A caller that owes the recomputation "
+        + "has already resolved what it meant to, so a request that could still transition would be resending "
+        + "work it cannot know the outcome of.")
+      .setBooleanPossibleValues()
+      .setDefaultValue("false");
   }
 
   @Override
@@ -182,6 +190,9 @@ public class BulkTransitionAction implements IssuesWsAction {
     String changeAuthor = request.param(PARAM_CHANGE_AUTHOR);
     String comment = request.param(PARAM_COMMENT);
     boolean refreshMeasures = request.mandatoryParamAsBoolean(PARAM_REFRESH_MEASURES);
+    boolean broadcastOnly = request.mandatoryParamAsBoolean(PARAM_BROADCAST_ONLY);
+    checkArgument(!broadcastOnly || refreshMeasures, "'%s' applies only with '%s'", PARAM_BROADCAST_ONLY,
+      PARAM_REFRESH_MEASURES);
     String resolution = null;
     if (issueKeys.isEmpty()) {
       checkArgument(refreshMeasures, "%s is required unless %s is true", PARAM_ISSUES, PARAM_REFRESH_MEASURES);
@@ -193,7 +204,8 @@ public class BulkTransitionAction implements IssuesWsAction {
 
     String transferUuid = transferUuid(request, resolution);
 
-    Result result = apply(issueKeys, resolution, transferUuid, branchUuid, changeAuthor, comment, refreshMeasures);
+    Result result = apply(issueKeys, resolution, transferUuid, branchUuid, changeAuthor, comment, refreshMeasures,
+      broadcastOnly);
 
     try (JsonWriter json = response.newJsonWriter()) {
       json.beginObject()
@@ -221,17 +233,20 @@ public class BulkTransitionAction implements IssuesWsAction {
 
   /**
    * The expiry and reason each movable issue takes from the source exception the transfer paired it with, read in
-   * the chunk's session. An issue paired with several sources takes the one with the lowest key, so the choice does
-   * not depend on row order. An issue with no source that is still an unexpired exception is left out of both maps,
-   * and one whose source's latest reason is blank gets no reason.
+   * the chunk's session; sources no longer unexpired exceptions are dropped here, not by the read. An issue
+   * paired with several sources takes the one with the lowest key, so the choice does not depend on row order. An
+   * issue with no source that is still an unexpired exception is left out of both maps, and one whose source's
+   * latest reason is blank gets no reason.
    */
   private ExceptionFields exceptionFields(DbSession dbSession, List<String> movableKeys, String transferUuid,
     long now) {
     Map<String, IssueExceptionSourceDto> sourceByIssue = new HashMap<>();
     for (IssueExceptionSourceDto source : dbClient.issueDao().selectExceptionSourcesOfTransfer(dbSession,
-      transferUuid, movableKeys, now)) {
-      sourceByIssue.merge(source.getIssueKey(), source,
-        (kept, other) -> kept.getSourceKey().compareTo(other.getSourceKey()) <= 0 ? kept : other);
+      transferUuid, movableKeys)) {
+      if (isUnexpiredException(source, now)) {
+        sourceByIssue.merge(source.getIssueKey(), source,
+          (kept, other) -> kept.getSourceKey().compareTo(other.getSourceKey()) <= 0 ? kept : other);
+      }
     }
     Set<String> sourceKeys = sourceByIssue.values().stream().map(IssueExceptionSourceDto::getSourceKey)
       .collect(Collectors.toSet());
@@ -256,6 +271,12 @@ public class BulkTransitionAction implements IssuesWsAction {
     return new ExceptionFields(expiresAt, reason);
   }
 
+  /** The judgement the read leaves to us: still an exception, and not yet expired. */
+  private static boolean isUnexpiredException(IssueExceptionSourceDto source, long now) {
+    return Issue.RESOLUTION_EXCEPTION.equals(source.getResolution())
+      && (source.getExpiresAt() == null || source.getExpiresAt() > now);
+  }
+
   /** Keys sharing a value, in the order they came, so one statement per distinct value writes them all. */
   private static <V> Map<V, List<String>> keysByValue(Map<String, V> valueByKey, List<String> keys) {
     Map<V, List<String>> grouped = new LinkedHashMap<>();
@@ -266,7 +287,16 @@ public class BulkTransitionAction implements IssuesWsAction {
   }
 
   private Result apply(List<String> issueKeys, @Nullable String resolution, @Nullable String transferUuid,
-    String branchUuid, @Nullable String changeAuthor, @Nullable String comment, boolean refreshMeasures) {
+    String branchUuid, @Nullable String changeAuthor, @Nullable String comment, boolean refreshMeasures,
+    boolean broadcastOnly) {
+    if (broadcastOnly && !issueKeys.isEmpty()) {
+      // The named issue reaches the listeners and nothing else happens to it: no read of what is transitionable,
+      // no changelog, no update. Whatever state it is in by now - reopened by an analysis, changed by hand - is
+      // left alone, and a resend can only recompute what an earlier attempt already did.
+      LOG.info("bulk_transition broadcast only on branch {}: measures={}ms", branchUuid,
+        refreshMeasuresOfBranch(branchUuid, issueKeys.get(0), resolution));
+      return new Result(List.of(), List.of());
+    }
     if (issueKeys.isEmpty()) {
       // A caller asking only for the recomputation its run owes: a run that was stopped, failed, or never got an
       // answer for the chunk that was going to carry it. Nothing is read or written, so no session is opened.
