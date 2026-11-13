@@ -79,6 +79,41 @@ public class IpAllowlistRequestCheckTest {
     verify(ipAccess).logBlocked("acme", OUTSIDE_IP, "jdoe");
   }
 
+  /**
+   * The address is the hosted MCP server's, not the person's, so it is left out; the sentence keeps the marker the
+   * hosted MCP server looks for before showing the message to the person.
+   */
+  @Test
+  public void member_blocked_through_the_hosted_mcp_server_is_told_so_without_an_address() {
+    userSession.logIn("jdoe").setIpBlockedOrganizations(ACME).setClientIp(OUTSIDE_IP).setHostedMcpRequest(true);
+    listAsMember(userSession.getUuid());
+
+    assertThatThrownBy(() -> underTest.checkOrganizationKey("acme"))
+      .isInstanceOf(IpAllowlistBlockedException.class)
+      .hasMessage("Access to organization 'acme' through the hosted MCP server is blocked by its IP allowlist.")
+      .hasMessageContaining(IpAllowlistBlockedException.MESSAGE_MARKER)
+      .hasMessageNotContaining(OUTSIDE_IP);
+    verify(ipAccess).logBlocked("acme", "hosted-mcp", "jdoe");
+  }
+
+  @Test
+  public void member_blocked_through_the_hosted_mcp_server_by_uuid_gets_the_same_message() {
+    userSession.logIn("jdoe").setIpBlockedOrganizationUuids("org-1").setClientIp(OUTSIDE_IP).setHostedMcpRequest(true);
+    listAsMember(userSession.getUuid());
+
+    assertThatThrownBy(() -> underTest.checkOrganizationUuid("org-1"))
+      .isInstanceOf(IpAllowlistBlockedException.class)
+      .hasMessage("Access to organization 'acme' through the hosted MCP server is blocked by its IP allowlist.");
+    verify(ipAccess).logBlocked("acme", "hosted-mcp", "jdoe");
+  }
+
+  @Test
+  public void hosted_mcp_block_answers_403_like_an_address_block() {
+    assertThat(IpAllowlistBlockedException.forHostedMcp("acme").httpCode())
+      .isEqualTo(new IpAllowlistBlockedException("acme", OUTSIDE_IP).httpCode())
+      .isEqualTo(403);
+  }
+
   @Test
   public void organization_that_does_not_block_the_request_is_let_through_without_a_lookup() {
     userSession.logIn("jdoe").setClientIp(OUTSIDE_IP);

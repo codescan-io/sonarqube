@@ -34,7 +34,19 @@ public class IpAllowlistBlockedException extends ForbiddenException {
    * @param clientIp shown as "unknown" when missing or blank; such a request is blocked by every allowlist
    */
   public IpAllowlistBlockedException(String organizationKey, @Nullable String clientIp) {
-    super("Access to organization '" + organizationKey + "' " + MESSAGE_MARKER + ". Your IP address is "
+    this("Access to organization '" + organizationKey + "' " + MESSAGE_MARKER + ". Your IP address is "
       + (clientIp == null || clientIp.isBlank() ? "unknown" : clientIp) + ".");
+  }
+
+  private IpAllowlistBlockedException(String message) {
+    super(message);
+  }
+
+  /**
+   * For a request through CodeScan's hosted MCP server. Its address is the hosted server's, so it is not shown. The
+   * hosted MCP server shows this message to the person only because it contains {@link #MESSAGE_MARKER}.
+   */
+  public static IpAllowlistBlockedException forHostedMcp(String organizationKey) {
+    return new IpAllowlistBlockedException("Access to organization '" + organizationKey + "' through the hosted MCP server " + MESSAGE_MARKER + ".");
   }
 }

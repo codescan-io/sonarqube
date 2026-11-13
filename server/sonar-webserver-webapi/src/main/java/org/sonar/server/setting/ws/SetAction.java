@@ -52,6 +52,7 @@ import org.sonar.db.property.PropertyDto;
 import org.sonar.db.user.TokenType;
 import org.sonar.db.user.UserTokenDto;
 import org.sonar.scanner.protocol.GsonHelper;
+import org.sonar.server.authentication.HostedMcpRequest;
 import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.organization.OrganizationIpAccess;
@@ -173,9 +174,13 @@ public class SetAction implements SettingsWsAction {
     }
   }
 
-  /** Saved in the database, these settings would be ignored, so an admin would see a value that is not in use. */
+  /**
+   * Saved in the database, these settings would be ignored, so an admin would see a value that is not in use. The hosted
+   * MCP keys would also be returned by api/settings/values to any logged-in user.
+   */
   private static void throwIfStartupOnlyKey(String key) {
-    if (OrganizationIpAccess.STARTUP_ONLY_PROPERTIES.stream().anyMatch(key::equalsIgnoreCase)) {
+    if (OrganizationIpAccess.STARTUP_ONLY_PROPERTIES.stream().anyMatch(key::equalsIgnoreCase)
+      || HostedMcpRequest.KEYS_PROPERTY.equalsIgnoreCase(key)) {
       throw new IllegalArgumentException(format("Setting '%s' can only be set in the web server's startup properties", key));
     }
   }

@@ -90,6 +90,7 @@ public class ServerUserSession extends AbstractUserSession {
   private String clientIp;
   @CheckForNull
   private String serviceLoginOrganizationKey;
+  private boolean hostedMcp;
   // the organization the service login is exempt for, looked up once per request; null when there is none
   private boolean exemptServiceOrganizationLookedUp;
   @CheckForNull
@@ -116,9 +117,20 @@ public class ServerUserSession extends AbstractUserSession {
    *        for any other login
    */
   public ServerUserSession withIpAllowlist(OrganizationIpAccess ipAccess, @Nullable String clientIp, @Nullable String serviceLoginOrganizationKey) {
+    return withIpAllowlist(ipAccess, clientIp, serviceLoginOrganizationKey, false);
+  }
+
+  /**
+   * @param hostedMcp whether the request came through CodeScan's hosted MCP server. Its address is then the hosted
+   *        server's, so each organization's choice about that server decides instead of the address rule, and the
+   *        organization admin exemption does not apply. Root and the service login exemption come first either way.
+   */
+  public ServerUserSession withIpAllowlist(OrganizationIpAccess ipAccess, @Nullable String clientIp, @Nullable String serviceLoginOrganizationKey,
+    boolean hostedMcp) {
     this.ipAccess = requireNonNull(ipAccess);
     this.clientIp = clientIp;
     this.serviceLoginOrganizationKey = serviceLoginOrganizationKey;
+    this.hostedMcp = hostedMcp;
     return this;
   }
 
@@ -126,6 +138,11 @@ public class ServerUserSession extends AbstractUserSession {
   @CheckForNull
   public String getClientIp() {
     return clientIp;
+  }
+
+  @Override
+  public boolean isHostedMcpRequest() {
+    return hostedMcp;
   }
 
   @Override
@@ -137,10 +154,17 @@ public class ServerUserSession extends AbstractUserSession {
     // decided once per organization per request; a failed read throws and is not remembered
     try {
       return ipBlockedByOrganizationUuid.computeIfAbsent(organizationUuid,
-        uuid -> !isExemptServiceLogin(access, uuid) && access.isBlocked(uuid, clientIp, () -> isOrganizationAdmin(uuid)));
+        uuid -> !isExemptServiceLogin(access, uuid) && isBlockedForThisRequest(access, uuid));
     } catch (OrganizationIpAccessUnavailableException e) {
       throw IP_ALLOWLIST_UNAVAILABLE.unavailable(e);
     }
+  }
+
+  private boolean isBlockedForThisRequest(OrganizationIpAccess access, String organizationUuid) {
+    if (hostedMcp) {
+      return access.isBlockedForHostedMcp(organizationUuid);
+    }
+    return access.isBlocked(organizationUuid, clientIp, () -> isOrganizationAdmin(organizationUuid));
   }
 
   @Override
@@ -173,8 +197,9 @@ public class ServerUserSession extends AbstractUserSession {
   }
 
   /**
-   * Organizations whose allowlist leaves this address out, exemptions not applied: read from the policies alone, so
-   * no permission lookup. Read once per request; a failed read throws and is not remembered.
+   * Organizations whose allowlist leaves this address out, or for a hosted MCP request those that refuse the hosted MCP
+   * server, exemptions not applied: read from the policies alone, so no permission lookup. Read once per request; a
+   * failed read throws and is not remembered.
    */
   private Set<String> ipAllowlistCandidateUuids() {
     OrganizationIpAccess access = ipAccess;
@@ -183,7 +208,7 @@ public class ServerUserSession extends AbstractUserSession {
     }
     if (ipAllowlistCandidateUuids == null) {
       try {
-        ipAllowlistCandidateUuids = Set.copyOf(access.blockedOrganizationUuids(clientIp));
+        ipAllowlistCandidateUuids = Set.copyOf(hostedMcp ? access.hostedMcpBlockedOrganizationUuids() : access.blockedOrganizationUuids(clientIp));
       } catch (OrganizationIpAccessUnavailableException e) {
         throw IP_ALLOWLIST_UNAVAILABLE.unavailable(e);
       }

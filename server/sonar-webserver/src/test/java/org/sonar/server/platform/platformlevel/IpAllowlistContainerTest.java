@@ -23,10 +23,12 @@ import java.util.List;
 import java.util.Properties;
 import org.junit.Test;
 import org.sonar.api.config.internal.MapSettings;
+import org.sonar.api.server.http.HttpRequest;
 import org.sonar.api.utils.System2;
 import org.sonar.core.platform.SpringComponentContainer;
 import org.sonar.db.DbClient;
 import org.sonar.db.organization.IpAllowlistDao;
+import org.sonar.server.authentication.HostedMcpRequest;
 import org.sonar.server.authentication.RequestAuthenticator;
 import org.sonar.server.authentication.UserSessionInitializer;
 import org.sonar.server.authentication.event.AuthenticationEvent;
@@ -44,6 +46,7 @@ import org.sonar.server.user.UserSessionFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * The web server's container builds each component through its constructors, and a component it cannot build stops
@@ -56,6 +59,7 @@ public class IpAllowlistContainerTest {
   private static final List<Class<?>> COMPONENTS = List.of(
     IpAllowlistDao.class,
     OrganizationIpAccess.class,
+    HostedMcpRequest.class,
     UserSessionInitializer.class,
     IpAllowlistRequestCheck.class,
     IpAllowlistActionInterceptor.class,
@@ -129,6 +133,46 @@ public class IpAllowlistContainerTest {
       assertThat(ipAccess.isInternalServiceAddress("203.0.113.9")).isFalse();
     } finally {
       parent.stopComponents();
+    }
+  }
+
+  /**
+   * A key saved in the database could be set through the settings web service, and a request carrying it would skip
+   * the address check of every organization that allows the hosted MCP server. Only a key in the startup properties
+   * counts.
+   */
+  @Test
+  public void hosted_mcp_keys_are_read_from_the_process_properties_only() {
+    String key = "k".repeat(40);
+    HttpRequest request = mock(HttpRequest.class);
+    when(request.getHeader(HostedMcpRequest.MCP_KEY_HEADER)).thenReturn(key);
+    MapSettings configurationWithDatabaseValues = new MapSettings().setProperty(HostedMcpRequest.KEYS_PROPERTY, key);
+    SpringComponentContainer container = new SpringComponentContainer();
+    try {
+      container.add(configurationWithDatabaseValues.asConfig(), new Properties(), HostedMcpRequest.class);
+      container.startComponents();
+
+      assertThat(container.getComponentByType(HostedMcpRequest.class).isHostedMcp(request)).isFalse();
+    } finally {
+      container.stopComponents();
+    }
+  }
+
+  @Test
+  public void hosted_mcp_keys_set_in_the_process_properties_are_used() {
+    String key = "k".repeat(40);
+    HttpRequest request = mock(HttpRequest.class);
+    when(request.getHeader(HostedMcpRequest.MCP_KEY_HEADER)).thenReturn(key);
+    Properties processProperties = new Properties();
+    processProperties.setProperty(HostedMcpRequest.KEYS_PROPERTY, "o".repeat(40) + "," + key);
+    SpringComponentContainer container = new SpringComponentContainer();
+    try {
+      container.add(new MapSettings().asConfig(), processProperties, HostedMcpRequest.class);
+      container.startComponents();
+
+      assertThat(container.getComponentByType(HostedMcpRequest.class).isHostedMcp(request)).isTrue();
+    } finally {
+      container.stopComponents();
     }
   }
 

@@ -192,6 +192,80 @@ public class OrganizationIpAccessTest {
     assertThat(underTest.blockedOrganizationUuids("garbage")).containsExactlyInAnyOrder("org-a", "org-admins", "org-empty");
   }
 
+  // ---- requests through the hosted MCP server ----
+
+  @Test
+  public void hosted_mcp_is_blocked_unless_the_org_allows_it() {
+    stubAnOrgThatAllowsMcp();
+
+    assertThat(underTest.isBlockedForHostedMcp("org-a")).isTrue();
+    assertThat(underTest.isBlockedForHostedMcp("org-admins")).isTrue();
+    assertThat(underTest.isBlockedForHostedMcp("org-empty")).isTrue();
+    assertThat(underTest.isBlockedForHostedMcp("org-mcp")).isFalse();
+  }
+
+  @Test
+  public void hosted_mcp_is_not_blocked_for_an_org_without_a_list_or_a_null_uuid() {
+    stubAnOrgThatAllowsMcp();
+
+    assertThat(underTest.isBlockedForHostedMcp("org-off")).isFalse();
+    assertThat(underTest.isBlockedForHostedMcp(null)).isFalse();
+  }
+
+  @Test
+  public void hosted_mcp_blocked_set_lists_enabled_orgs_that_refuse_mcp() {
+    stubAnOrgThatAllowsMcp();
+
+    assertThat(underTest.hostedMcpBlockedOrganizationUuids()).containsExactlyInAnyOrder("org-a", "org-admins", "org-empty");
+  }
+
+  /** The hosted MCP server's own address is never on a customer's list, so only the org's MCP choice counts. */
+  @Test
+  public void hosted_mcp_choice_does_not_depend_on_the_address() {
+    stubAnOrgThatAllowsMcp();
+    OrganizationIpAccess untrusted = untrustedAccess(null);
+
+    assertThat(untrusted.isBlockedForHostedMcp("org-mcp")).isFalse();
+    assertThat(untrusted.isBlockedForHostedMcp("org-a")).isTrue();
+    assertThat(untrusted.hostedMcpBlockedOrganizationUuids()).containsExactlyInAnyOrder("org-a", "org-admins", "org-empty");
+  }
+
+  @Test
+  public void flag_off_blocks_no_organization_for_hosted_mcp() {
+    stubAnOrgThatAllowsMcp();
+    setFeatureFlag("false");
+
+    assertThat(underTest.isBlockedForHostedMcp("org-a")).isFalse();
+    assertThat(underTest.hostedMcpBlockedOrganizationUuids()).isEmpty();
+  }
+
+  @Test
+  public void failed_flag_read_before_any_successful_read_never_lets_a_hosted_mcp_request_in() {
+    when(dao.selectGlobalPropertyValues(any(), eq(FEATURE_FLAG))).thenThrow(new IllegalStateException("db down"));
+
+    assertThatThrownBy(() -> underTest.isBlockedForHostedMcp("org-a")).isInstanceOf(OrganizationIpAccessUnavailableException.class);
+    assertThatThrownBy(() -> underTest.hostedMcpBlockedOrganizationUuids()).isInstanceOf(OrganizationIpAccessUnavailableException.class);
+  }
+
+  @Test
+  public void failed_flag_read_after_the_flag_was_last_read_as_off_keeps_hosted_mcp_unblocked() {
+    setFeatureFlag("false");
+    assertThat(underTest.isBlockedForHostedMcp("org-a")).isFalse();
+    when(dao.selectGlobalPropertyValues(any(), eq(FEATURE_FLAG))).thenThrow(new IllegalStateException("db down"));
+
+    clock.set(1_000_000L + OrganizationIpAccess.MAX_STALE_MS);
+    assertThat(underTest.isBlockedForHostedMcp("org-a")).isFalse();
+    assertThat(underTest.hostedMcpBlockedOrganizationUuids()).isEmpty();
+  }
+
+  @Test
+  public void failed_allowlist_read_never_lets_a_hosted_mcp_request_in() {
+    when(dao.selectEnabledRanges(any())).thenThrow(new IllegalStateException("db down"));
+
+    assertThatThrownBy(() -> underTest.isBlockedForHostedMcp("org-mcp")).isInstanceOf(OrganizationIpAccessUnavailableException.class);
+    assertThatThrownBy(() -> underTest.hostedMcpBlockedOrganizationUuids()).isInstanceOf(OrganizationIpAccessUnavailableException.class);
+  }
+
   @Test
   public void snapshot_is_reused_for_30_seconds_then_reloaded() {
     underTest.isBlocked("org-a", "192.0.2.1", () -> false);
@@ -1719,6 +1793,18 @@ public class OrganizationIpAccessTest {
   }
 
   private static IpAllowlistRangeDto range(String org, boolean appliesToAdmins, String cidr) {
-    return new IpAllowlistRangeDto().setOrganizationUuid(org).setAppliesToAdmins(appliesToAdmins).setCidr(cidr);
+    return range(org, appliesToAdmins, cidr, false);
+  }
+
+  private static IpAllowlistRangeDto range(String org, boolean appliesToAdmins, String cidr, boolean allowsMcp) {
+    return new IpAllowlistRangeDto().setOrganizationUuid(org).setAppliesToAdmins(appliesToAdmins).setCidr(cidr).setAllowsMcp(allowsMcp);
+  }
+
+  private void stubAnOrgThatAllowsMcp() {
+    when(dao.selectEnabledRanges(any())).thenReturn(List.of(
+      range("org-a", false, "203.0.113.0/24"),
+      range("org-admins", true, "198.51.100.7/32"),
+      range("org-empty", false, null),
+      range("org-mcp", false, "203.0.113.0/24", true)));
   }
 }

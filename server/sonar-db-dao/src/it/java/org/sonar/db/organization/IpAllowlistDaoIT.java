@@ -55,6 +55,31 @@ class IpAllowlistDaoIT {
   }
 
   @Test
+  void selectEnabledRanges_returns_the_mcp_choice() {
+    insertOrg("org-mcp", true, false, true);
+    insertRange("org-mcp", "203.0.113.0/24");
+    insertOrg("org-nomcp", true, false, false);
+    insertRange("org-nomcp", "198.51.100.0/24");
+
+    assertThat(underTest.selectEnabledRanges(db.getSession()))
+      .extracting(IpAllowlistRangeDto::getOrganizationUuid, IpAllowlistRangeDto::isAllowsMcp)
+      .containsExactlyInAnyOrder(tuple("org-mcp", true), tuple("org-nomcp", false));
+  }
+
+  @Test
+  void selectEnabledRanges_reports_mcp_as_refused_when_the_choice_was_never_made() {
+    db.executeInsert("organizations",
+      "uuid", "org-d", "kee", "org-d", "name", "org-d", "default_quality_gate_uuid", "qg",
+      "new_project_private", false, "subscription", "FREE", "created_at", 1L, "updated_at", 1L,
+      "ip_allowlist_enabled", true);
+    insertRange("org-d", "203.0.113.0/24");
+
+    assertThat(underTest.selectEnabledRanges(db.getSession()))
+      .extracting(IpAllowlistRangeDto::getOrganizationUuid, IpAllowlistRangeDto::isAllowsMcp)
+      .containsExactly(tuple("org-d", false));
+  }
+
+  @Test
   void selectEnabledRanges_has_a_statement_timeout_so_a_stuck_read_gives_up() {
     Integer timeoutSeconds = db.getSession().getConfiguration()
       .getMappedStatement("org.sonar.db.organization.IpAllowlistMapper.selectEnabledRanges").getTimeout();
@@ -145,10 +170,14 @@ class IpAllowlistDaoIT {
   }
 
   private void insertOrg(String uuid, boolean enabled, boolean appliesToAdmins) {
+    insertOrg(uuid, enabled, appliesToAdmins, false);
+  }
+
+  private void insertOrg(String uuid, boolean enabled, boolean appliesToAdmins, boolean allowsMcp) {
     db.executeInsert("organizations",
       "uuid", uuid, "kee", uuid, "name", uuid, "default_quality_gate_uuid", "qg",
       "new_project_private", false, "subscription", "FREE", "created_at", 1L, "updated_at", 1L,
-      "ip_allowlist_enabled", enabled, "ip_allowlist_applies_to_admins", appliesToAdmins);
+      "ip_allowlist_enabled", enabled, "ip_allowlist_applies_to_admins", appliesToAdmins, "ip_allowlist_allows_mcp", allowsMcp);
   }
 
   private void insertProperty(String key, @Nullable String entityUuid, @Nullable String userUuid, String value) {

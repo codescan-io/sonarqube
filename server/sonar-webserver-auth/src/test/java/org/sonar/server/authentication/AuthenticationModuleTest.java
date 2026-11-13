@@ -39,4 +39,11 @@ public class AuthenticationModuleTest {
     new AuthenticationModule().configure(container);
     assertThat(container.getAddedObjects()).contains(OrganizationIpAccess.class);
   }
+
+  @Test
+  public void registers_hosted_mcp_request() {
+    ListContainer container = new ListContainer();
+    new AuthenticationModule().configure(container);
+    assertThat(container.getAddedObjects()).contains(HostedMcpRequest.class);
+  }
 }

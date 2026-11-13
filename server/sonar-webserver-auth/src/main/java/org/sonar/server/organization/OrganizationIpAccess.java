@@ -205,6 +205,36 @@ public class OrganizationIpAccess {
   }
 
   /**
+   * For a request through the hosted MCP server. Such a request carries that server's address, never the person's,
+   * so the ranges and the admin exemption do not apply: an organization with the allowlist on blocks it unless it
+   * allows the hosted MCP server.
+   *
+   * @return false for a null organization, as for one without an allowlist
+   * @throws OrganizationIpAccessUnavailableException when the allowlist cannot be read, for example when the
+   *         database is unavailable
+   */
+  public boolean isBlockedForHostedMcp(@Nullable String organizationUuid) {
+    if (organizationUuid == null) {
+      return false;
+    }
+    Policy policy = policies().get(organizationUuid);
+    return policy != null && !policy.allowsMcp();
+  }
+
+  /**
+   * Organizations whose allowlist is on and does not allow the hosted MCP server.
+   *
+   * @throws OrganizationIpAccessUnavailableException when the allowlist cannot be read, for example when the
+   *         database is unavailable
+   */
+  public Set<String> hostedMcpBlockedOrganizationUuids() {
+    return policies().entrySet().stream()
+      .filter(e -> !e.getValue().allowsMcp())
+      .map(Map.Entry::getKey)
+      .collect(toSet());
+  }
+
+  /**
    * True when {@code clientIp} is a literal address inside {@value #INTERNAL_CIDR_PROPERTY}. Same rules as
    * codescanng's {@code ServiceLoginDetector}: a host name is never resolved, an address with an IPv6 zone
    * ({@code %}) is not internal, an IPv6 address is never inside an IPv4 range and the reverse, and an address
@@ -405,10 +435,10 @@ public class OrganizationIpAccess {
       }
       throw e;
     }
-    Map<String, Boolean> appliesToAdmins = new HashMap<>();
+    Map<String, IpAllowlistRangeDto> settings = new HashMap<>();
     Map<String, List<IpRangeMatcher>> ranges = new HashMap<>();
     for (IpAllowlistRangeDto row : rows) {
-      appliesToAdmins.put(row.getOrganizationUuid(), row.isAppliesToAdmins());
+      settings.put(row.getOrganizationUuid(), row);
       List<IpRangeMatcher> orgRanges = ranges.computeIfAbsent(row.getOrganizationUuid(), k -> new ArrayList<>());
       String cidr = row.getCidr();
       if (cidr != null) {
@@ -421,7 +451,7 @@ public class OrganizationIpAccess {
       }
     }
     Map<String, Policy> result = new HashMap<>();
-    appliesToAdmins.forEach((org, applies) -> result.put(org, new Policy(applies, List.copyOf(ranges.get(org)))));
+    settings.forEach((org, row) -> result.put(org, new Policy(row.isAppliesToAdmins(), row.isAllowsMcp(), List.copyOf(ranges.get(org)))));
     return Map.copyOf(result);
   }
 
@@ -530,7 +560,7 @@ public class OrganizationIpAccess {
     }
   }
 
-  private record Policy(boolean appliesToAdmins, List<IpRangeMatcher> ranges) {
+  private record Policy(boolean appliesToAdmins, boolean allowsMcp, List<IpRangeMatcher> ranges) {
     boolean allows(@Nullable String clientIp) {
       return ranges.stream().anyMatch(r -> r.contains(clientIp));
     }

@@ -67,6 +67,7 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
   private final Set<String> ipBlockedOrganizationKeys = new HashSet<>();
   @CheckForNull
   private String clientIp;
+  private boolean hostedMcpRequest;
 
   protected AbstractMockUserSession(Class<T> clazz) {
     this.clazz = clazz;
@@ -303,6 +304,11 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
     return clazz.cast(this);
   }
 
+  public T setHostedMcpRequest(boolean hostedMcpRequest) {
+    this.hostedMcpRequest = hostedMcpRequest;
+    return clazz.cast(this);
+  }
+
   @Override
   public boolean isBlockedByIpAllowlist(@Nullable String organizationUuid) {
     return organizationUuid != null && ipBlockedOrganizationUuids.contains(organizationUuid);
@@ -338,6 +344,11 @@ public abstract class AbstractMockUserSession<T extends AbstractMockUserSession>
   @CheckForNull
   public String getClientIp() {
     return clientIp;
+  }
+
+  @Override
+  public boolean isHostedMcpRequest() {
+    return hostedMcpRequest;
   }
 
   public abstract void flagAsBrowserSession();

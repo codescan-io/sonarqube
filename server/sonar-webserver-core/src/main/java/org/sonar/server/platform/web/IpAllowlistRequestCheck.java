@@ -40,6 +40,9 @@ import org.sonar.server.user.UserSession;
 @ServerSide
 public class IpAllowlistRequestCheck {
 
+  /** Logged in place of the address for a hosted MCP request, whose address is the hosted server's own. */
+  static final String HOSTED_MCP_LOGGED_ADDRESS = "hosted-mcp";
+
   private final DbClient dbClient;
   private final UserSession userSession;
   private final OrganizationIpAccess ipAccess;
@@ -109,6 +112,10 @@ public class IpAllowlistRequestCheck {
   }
 
   private void refuse(OrganizationDto organization) {
+    if (userSession.isHostedMcpRequest()) {
+      ipAccess.logBlocked(organization.getKey(), HOSTED_MCP_LOGGED_ADDRESS, userSession.getLogin());
+      throw IpAllowlistBlockedException.forHostedMcp(organization.getKey());
+    }
     String clientIp = userSession.getClientIp();
     ipAccess.logBlocked(organization.getKey(), clientIp, userSession.getLogin());
     throw new IpAllowlistBlockedException(organization.getKey(), clientIp);

@@ -7,6 +7,7 @@
     select
       org.uuid as "organizationUuid",
       org.ip_allowlist_applies_to_admins as "appliesToAdmins",
+      org.ip_allowlist_allows_mcp as "allowsMcp",
       r.cidr as "cidr"
     from organizations org
     left join cs_ip_allowlist_range r on r.organization_uuid = org.uuid

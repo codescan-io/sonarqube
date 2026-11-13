@@ -849,6 +849,24 @@ public class SetActionIT {
   }
 
   @Test
+  public void hosted_mcp_keys_cannot_be_saved_in_the_database() {
+    String key = "m".repeat(40);
+
+    assertThatThrownBy(() -> callForGlobalSetting("sonar.codescan.mcpKeys", key))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.codescan.mcpKeys' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("sonar.codescan.mcpKeys")).isNull();
+  }
+
+  @Test
+  public void hosted_mcp_keys_are_refused_whatever_the_case_of_the_key() {
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting("SONAR.CODESCAN.MCPKEYS", List.of("m".repeat(40))))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'SONAR.CODESCAN.MCPKEYS' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("SONAR.CODESCAN.MCPKEYS")).isNull();
+  }
+
+  @Test
   public void startup_only_settings_cannot_be_saved_on_a_project() {
     ProjectDto project = db.components().insertPrivateProject().getProjectDto();
     logInAsProjectAdministrator(project);

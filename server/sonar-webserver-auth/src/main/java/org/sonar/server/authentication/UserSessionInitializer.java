@@ -117,14 +117,16 @@ public class UserSessionInitializer {
   private final AuthenticationEvent authenticationEvent;
   private final RequestAuthenticator requestAuthenticator;
   private final OrganizationIpAccess organizationIpAccess;
+  private final HostedMcpRequest hostedMcpRequest;
 
   public UserSessionInitializer(Configuration config, ThreadLocalUserSession threadLocalSession, AuthenticationEvent authenticationEvent,
-    RequestAuthenticator requestAuthenticator, OrganizationIpAccess organizationIpAccess) {
+    RequestAuthenticator requestAuthenticator, OrganizationIpAccess organizationIpAccess, HostedMcpRequest hostedMcpRequest) {
     this.config = config;
     this.threadLocalSession = threadLocalSession;
     this.authenticationEvent = authenticationEvent;
     this.requestAuthenticator = requestAuthenticator;
     this.organizationIpAccess = organizationIpAccess;
+    this.hostedMcpRequest = hostedMcpRequest;
   }
 
   public boolean initUserSession(HttpRequest request, HttpResponse response) {
@@ -187,7 +189,8 @@ public class UserSessionInitializer {
     UserSession session = requestAuthenticator.authenticate(request, response);
     if (session instanceof ServerUserSession serverUserSession) {
       // covers anonymous and token sessions too; must happen before the session is used below
-      serverUserSession.withIpAllowlist(organizationIpAccess, request.getRemoteAddr(), serviceLoginOrganization(request));
+      serverUserSession.withIpAllowlist(organizationIpAccess, request.getRemoteAddr(), serviceLoginOrganization(request),
+        hostedMcpRequest.isHostedMcp(request));
     }
     if (!session.isLoggedIn() && !urlSupportsSystemPasscode && config.getBoolean(CORE_FORCE_AUTHENTICATION_PROPERTY).orElse(CORE_FORCE_AUTHENTICATION_DEFAULT_VALUE)) {
       // authentication is required
