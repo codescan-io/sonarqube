@@ -1,0 +1,127 @@
+{
+  "server-crash": {
+    "cvssScore": "8.4",
+    "baseScore": "7.5",
+    "temporalScore": "6.7",
+    "environmentalScore": "8.4",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:N/MI:N/MA:H/CR:L/IR:M/AR:H",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "The crash is triggered by a request."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Sending input that makes the callback throw is enough."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "No account is needed to send the request."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No user action is needed."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact stays within the vulnerable server."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "None (N)",
+          "justification": "No data is disclosed."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "None (N)",
+          "justification": "No data is changed."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "High (H)",
+          "justification": "The whole server process terminates."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "The vulnerability class is well documented and proof-of-concept exploits exist."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "The rule description documents the secure coding fix."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The issue is identified by data-flow analysis from source to sink."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Same as the base metric: the crash is triggered by a request."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: sending input that makes the callback throw is enough."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no account is needed to send the request."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no user action is needed."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "Same as the base metric: the impact stays within the vulnerable server."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no data is disclosed."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no data is changed."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: the whole server process terminates."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "Low (L)",
+          "justification": "Data exposure is a minor concern."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Data integrity matters but is not critical."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Availability of the service is critical."
+        }
+      ]
+    }
+  }
+}

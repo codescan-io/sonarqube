@@ -1,0 +1,127 @@
+{
+  "clear-text-storage-of-sensitive-data": {
+    "cvssScore": "6.9",
+    "baseScore": "5.9",
+    "temporalScore": "5.3",
+    "environmentalScore": "6.9",
+    "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N/E:P/RL:O/RC:C/MAV:N/MAC:H/MPR:N/MUI:N/MS:U/MC:H/MI:N/MA:N/CR:H/IR:M/AR:L",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "The stored data is reachable through the user's browser storage or a compromised data store."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "High (H)",
+          "justification": "The attacker first needs access to the storage, such as the end-user machine or a database copy."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "No application account is needed once the storage is reachable."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No user action is needed to read the stored data."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "Only data held by the vulnerable application is exposed."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Passwords, tokens or personal data are disclosed in clear text."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "None (N)",
+          "justification": "Reading the data does not change it."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "None (N)",
+          "justification": "Service availability is not affected."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "The vulnerability class is well documented and proof-of-concept exploits exist."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "The rule description documents the secure coding fix."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The issue is identified by data-flow analysis from source to sink."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Same as the base metric: the stored data is reachable through the user's browser storage or a compromised data store."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: the attacker first needs access to the storage, such as the end-user machine or a database copy."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no application account is needed once the storage is reachable."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no user action is needed to read the stored data."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "Same as the base metric: only data held by the vulnerable application is exposed."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: passwords, tokens or personal data are disclosed in clear text."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "None (N)",
+          "justification": "Same as the base metric: reading the data does not change it."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "None (N)",
+          "justification": "Same as the base metric: service availability is not affected."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Protecting application data and secrets is critical."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Data integrity matters but is not critical."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Low (L)",
+          "justification": "Availability is not the primary concern."
+        }
+      ]
+    }
+  }
+}

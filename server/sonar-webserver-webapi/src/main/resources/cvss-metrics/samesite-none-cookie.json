@@ -1,0 +1,127 @@
+{
+  "samesite-none-cookie": {
+    "cvssScore": "6.4",
+    "baseScore": "5.3",
+    "temporalScore": "4.8",
+    "environmentalScore": "6.4",
+    "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:N/I:H/A:N/E:P/RL:O/RC:C/MAV:N/MAC:H/MPR:N/MUI:R/MS:U/MC:N/MI:H/MA:N/CR:M/IR:H/AR:L",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "The cross-site request is sent from another web site over the network."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "High (H)",
+          "justification": "The attack only works when no other CSRF protection is in place."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "No account is needed to host the attacking page."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "Required (R)",
+          "justification": "The victim must visit the attacker page while logged in."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact stays within the vulnerable application."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "None (N)",
+          "justification": "The attacker cannot read the response."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "High (H)",
+          "justification": "The attacker can perform actions on behalf of the victim."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "None (N)",
+          "justification": "Service availability is not affected."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "The vulnerability class is well documented and proof-of-concept exploits exist."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "The rule description documents the secure coding fix."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The issue is identified by static analysis of the vulnerable code pattern."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Same as the base metric: the cross-site request is sent from another web site over the network."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: the attack only works when no other CSRF protection is in place."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no account is needed to host the attacking page."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "Required (R)",
+          "justification": "Same as the base metric: the victim must visit the attacker page while logged in."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "Same as the base metric: the impact stays within the vulnerable application."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "None (N)",
+          "justification": "Same as the base metric: the attacker cannot read the response."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: the attacker can perform actions on behalf of the victim."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "None (N)",
+          "justification": "Same as the base metric: service availability is not affected."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Data exposure is relevant but not the main concern."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Integrity of data and code is critical."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Low (L)",
+          "justification": "Availability is not the primary concern."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "insecure-download": {
+    "cvssScore": "6.7",
+    "baseScore": "7.5",
+    "temporalScore": "6.7",
+    "environmentalScore": "6.7",
+    "vectorString": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H/E:P/RL:O/RC:C/MAV:A/MAC:H/MPR:N/MUI:N/MS:U/MC:H/MI:H/MA:H/CR:H/IR:H/AR:M",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Adjacent Network (A)",
+          "justification": "The attacker must be on the network path to intercept the download."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "High (H)",
+          "justification": "A man-in-the-middle position is needed at the time of the download."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "No account is needed to tamper with the traffic."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No user action is needed."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact stays on the host that downloads the file."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "A replaced executable can read any data on the host."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "High (H)",
+          "justification": "A replaced executable can change data and code on the host."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "High (H)",
+          "justification": "A replaced executable can disable the host."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "The vulnerability class is well documented and proof-of-concept exploits exist."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "The rule description documents the secure coding fix."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The issue is identified by data-flow analysis from source to sink."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Adjacent Network (A)",
+          "justification": "Same as the base metric: the attacker must be on the network path to intercept the download."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: a man-in-the-middle position is needed at the time of the download."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no account is needed to tamper with the traffic."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no user action is needed."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "Same as the base metric: the impact stays on the host that downloads the file."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: a replaced executable can read any data on the host."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: a replaced executable can change data and code on the host."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: a replaced executable can disable the host."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Protecting application data and secrets is critical."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Integrity of data and code is critical."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Availability matters but short disruptions are tolerable."
+        }
+      ]
+    }
+  }
+}
