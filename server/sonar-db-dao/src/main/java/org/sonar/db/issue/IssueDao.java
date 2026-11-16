@@ -264,11 +264,8 @@ public class IssueDao implements Dao {
     return executeLargeInputs(keys, partition -> mapper(session).selectTransitionable(partition, branchUuid));
   }
 
-  /**
-   * CodeScan: for each of {@code keys} that the resolution transfer {@code transferUuid} paired with a source issue
-   * that is still an exception and has not expired at {@code now}, that source and its expiry. A key paired with
-   * several such sources appears once per source; a key with none is left out.
-   */
+  /** CodeScan: the source {@code transferUuid} paired each of {@code keys} with, and the resolution and expiry
+   * it carries now; the caller judges whether that is still an unexpired exception. One row per source. */
   public List<IssueExceptionSourceDto> selectExceptionSourcesOfTransfer(DbSession session, String transferUuid,
     Collection<String> keys) {
     return executeLargeInputs(keys, partition -> mapper(session).selectExceptionSourcesOfTransfer(transferUuid,
