@@ -1,10 +1,10 @@
 {
   "clear-text-storage-of-sensitive-data": {
-    "cvssScore": "6.9",
-    "baseScore": "5.9",
-    "temporalScore": "5.3",
-    "environmentalScore": "6.9",
-    "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N/E:P/RL:O/RC:C/MAV:N/MAC:H/MPR:N/MUI:N/MS:U/MC:H/MI:N/MA:N/CR:H/IR:M/AR:L",
+    "cvssScore": "8.4",
+    "baseScore": "7.5",
+    "temporalScore": "6.7",
+    "environmentalScore": "8.4",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:H/MI:N/MA:N/CR:H/IR:M/AR:L",
     "metrics": {
       "BASE": [
         {
@@ -14,8 +14,8 @@
         },
         {
           "name": "ATTACK_COMPLEXITY",
-          "value": "High (H)",
-          "justification": "The attacker first needs access to the storage, such as the end-user machine or a database copy."
+          "value": "Low (L)",
+          "justification": "No special conditions are needed: data stored in clear text can be read directly wherever the storage is reachable, such as browser storage read by any script on the page."
         },
         {
           "name": "PRIVILEGES_REQUIRED",
@@ -73,8 +73,8 @@
         },
         {
           "name": "MODIFIED_ATTACK_COMPLEXITY",
-          "value": "High (H)",
-          "justification": "Same as the base metric: the attacker first needs access to the storage, such as the end-user machine or a database copy."
+          "value": "Low (L)",
+          "justification": "Same as the base metric: no special conditions are needed: data stored in clear text can be read directly wherever the storage is reachable, such as browser storage read by any script on the page."
         },
         {
           "name": "MODIFIED_PRIVILEGES_REQUIRED",

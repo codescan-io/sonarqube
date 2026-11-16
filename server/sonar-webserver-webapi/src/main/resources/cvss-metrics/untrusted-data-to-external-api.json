@@ -1,10 +1,10 @@
 {
   "untrusted-data-to-external-api": {
-    "cvssScore": "5.1",
-    "baseScore": "5.6",
-    "temporalScore": "5.1",
-    "environmentalScore": "5.1",
-    "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:L/E:P/RL:O/RC:C/MAV:N/MAC:H/MPR:N/MUI:N/MS:U/MC:L/MI:L/MA:L/CR:M/IR:M/AR:M",
+    "cvssScore": "7.3",
+    "baseScore": "7.3",
+    "temporalScore": "6.6",
+    "environmentalScore": "7.3",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:L/MI:L/MA:L/CR:H/IR:H/AR:M",
     "metrics": {
       "BASE": [
         {
@@ -14,8 +14,8 @@
         },
         {
           "name": "ATTACK_COMPLEXITY",
-          "value": "High (H)",
-          "justification": "The impact depends on how the external API handles the data."
+          "value": "Low (L)",
+          "justification": "No special conditions are needed: the untrusted value reaches the external API without any sanitization."
         },
         {
           "name": "PRIVILEGES_REQUIRED",
@@ -73,8 +73,8 @@
         },
         {
           "name": "MODIFIED_ATTACK_COMPLEXITY",
-          "value": "High (H)",
-          "justification": "Same as the base metric: the impact depends on how the external API handles the data."
+          "value": "Low (L)",
+          "justification": "Same as the base metric: no special conditions are needed: the untrusted value reaches the external API without any sanitization."
         },
         {
           "name": "MODIFIED_PRIVILEGES_REQUIRED",
@@ -108,13 +108,13 @@
         },
         {
           "name": "CONFIDENTIALITY_REQUIREMENT",
-          "value": "Medium (M)",
-          "justification": "Data exposure is relevant but not the main concern."
+          "value": "High (H)",
+          "justification": "Protecting application data and secrets is critical."
         },
         {
           "name": "INTEGRITY_REQUIREMENT",
-          "value": "Medium (M)",
-          "justification": "Data integrity matters but is not critical."
+          "value": "High (H)",
+          "justification": "Integrity of data and code is critical."
         },
         {
           "name": "AVAILABILITY_REQUIREMENT",

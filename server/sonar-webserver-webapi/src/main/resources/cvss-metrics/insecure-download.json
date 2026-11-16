@@ -1,16 +1,16 @@
 {
   "insecure-download": {
-    "cvssScore": "6.7",
-    "baseScore": "7.5",
-    "temporalScore": "6.7",
-    "environmentalScore": "6.7",
-    "vectorString": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H/E:P/RL:O/RC:C/MAV:A/MAC:H/MPR:N/MUI:N/MS:U/MC:H/MI:H/MA:H/CR:H/IR:H/AR:M",
+    "cvssScore": "7.3",
+    "baseScore": "8.1",
+    "temporalScore": "7.3",
+    "environmentalScore": "7.3",
+    "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H/E:P/RL:O/RC:C/MAV:N/MAC:H/MPR:N/MUI:N/MS:U/MC:H/MI:H/MA:H/CR:H/IR:H/AR:M",
     "metrics": {
       "BASE": [
         {
           "name": "ATTACK_VECTOR",
-          "value": "Adjacent Network (A)",
-          "justification": "The attacker must be on the network path to intercept the download."
+          "value": "Network (N)",
+          "justification": "The download can be intercepted anywhere on the network path, such as public Wi-Fi, a proxy or an upstream provider."
         },
         {
           "name": "ATTACK_COMPLEXITY",
@@ -68,8 +68,8 @@
       "ENVIRONMENTAL": [
         {
           "name": "MODIFIED_ATTACK_VECTOR",
-          "value": "Adjacent Network (A)",
-          "justification": "Same as the base metric: the attacker must be on the network path to intercept the download."
+          "value": "Network (N)",
+          "justification": "Same as the base metric: the download can be intercepted anywhere on the network path, such as public Wi-Fi, a proxy or an upstream provider."
         },
         {
           "name": "MODIFIED_ATTACK_COMPLEXITY",

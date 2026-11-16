@@ -1,10 +1,10 @@
 {
   "tainted-format-string": {
-    "cvssScore": "4.8",
-    "baseScore": "5.3",
-    "temporalScore": "4.8",
-    "environmentalScore": "4.8",
-    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:N/MI:L/MA:N/CR:L/IR:M/AR:L",
+    "cvssScore": "7.0",
+    "baseScore": "8.2",
+    "temporalScore": "7.4",
+    "environmentalScore": "7.0",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:H/A:N/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:L/MI:H/MA:N/CR:L/IR:M/AR:L",
     "metrics": {
       "BASE": [
         {
@@ -34,13 +34,13 @@
         },
         {
           "name": "CONFIDENTIALITY",
-          "value": "None (N)",
-          "justification": "No data is disclosed."
+          "value": "Low (L)",
+          "justification": "Format specifiers in the input can print the contents of other arguments, such as objects passed for logging."
         },
         {
           "name": "INTEGRITY",
-          "value": "Low (L)",
-          "justification": "The output can be garbled or misleading."
+          "value": "High (H)",
+          "justification": "The attacker can forge or corrupt log and message output, hiding or falsifying recorded events."
         },
         {
           "name": "AVAILABILITY",
@@ -93,13 +93,13 @@
         },
         {
           "name": "MODIFIED_CONFIDENTIALITY",
-          "value": "None (N)",
-          "justification": "Same as the base metric: no data is disclosed."
+          "value": "Low (L)",
+          "justification": "Same as the base metric: format specifiers in the input can print the contents of other arguments, such as objects passed for logging."
         },
         {
           "name": "MODIFIED_INTEGRITY",
-          "value": "Low (L)",
-          "justification": "Same as the base metric: the output can be garbled or misleading."
+          "value": "High (H)",
+          "justification": "Same as the base metric: the attacker can forge or corrupt log and message output, hiding or falsifying recorded events."
         },
         {
           "name": "MODIFIED_AVAILABILITY",

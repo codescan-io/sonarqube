@@ -1,10 +1,10 @@
 {
   "file-system-race": {
-    "cvssScore": "6.3",
-    "baseScore": "6.3",
-    "temporalScore": "5.7",
-    "environmentalScore": "6.3",
-    "vectorString": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:N/E:P/RL:O/RC:C/MAV:L/MAC:H/MPR:L/MUI:N/MS:U/MC:H/MI:H/MA:N/CR:H/IR:H/AR:L",
+    "cvssScore": "7.0",
+    "baseScore": "7.1",
+    "temporalScore": "6.4",
+    "environmentalScore": "7.0",
+    "vectorString": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N/E:P/RL:O/RC:C/MAV:L/MAC:L/MPR:L/MUI:N/MS:U/MC:H/MI:H/MA:N/CR:H/IR:H/AR:L",
     "metrics": {
       "BASE": [
         {
@@ -14,8 +14,8 @@
         },
         {
           "name": "ATTACK_COMPLEXITY",
-          "value": "High (H)",
-          "justification": "The attacker must win the timing window between the check and the use."
+          "value": "Low (L)",
+          "justification": "The check and the use are not atomic, so the attacker can repeat the attempt until the timing window is won."
         },
         {
           "name": "PRIVILEGES_REQUIRED",
@@ -73,8 +73,8 @@
         },
         {
           "name": "MODIFIED_ATTACK_COMPLEXITY",
-          "value": "High (H)",
-          "justification": "Same as the base metric: the attacker must win the timing window between the check and the use."
+          "value": "Low (L)",
+          "justification": "Same as the base metric: the check and the use are not atomic, so the attacker can repeat the attempt until the timing window is won."
         },
         {
           "name": "MODIFIED_PRIVILEGES_REQUIRED",

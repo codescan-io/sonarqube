@@ -1,10 +1,10 @@
 {
   "unvalidated-dynamic-method-call": {
-    "cvssScore": "5.9",
-    "baseScore": "6.5",
-    "temporalScore": "5.9",
-    "environmentalScore": "5.9",
-    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:N/MI:L/MA:L/CR:L/IR:M/AR:M",
+    "cvssScore": "7.4",
+    "baseScore": "8.2",
+    "temporalScore": "7.4",
+    "environmentalScore": "7.4",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:N/MI:L/MA:H/CR:L/IR:M/AR:M",
     "metrics": {
       "BASE": [
         {
@@ -44,8 +44,8 @@
         },
         {
           "name": "AVAILABILITY",
-          "value": "Low (L)",
-          "justification": "The call can throw an exception and fail the request."
+          "value": "High (H)",
+          "justification": "Calling a missing or non-function property throws an uncaught exception that can terminate the server process."
         }
       ],
       "TEMPORAL": [
@@ -103,8 +103,8 @@
         },
         {
           "name": "MODIFIED_AVAILABILITY",
-          "value": "Low (L)",
-          "justification": "Same as the base metric: the call can throw an exception and fail the request."
+          "value": "High (H)",
+          "justification": "Same as the base metric: calling a missing or non-function property throws an uncaught exception that can terminate the server process."
         },
         {
           "name": "CONFIDENTIALITY_REQUIREMENT",
