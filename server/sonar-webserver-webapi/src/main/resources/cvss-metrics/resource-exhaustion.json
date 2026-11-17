@@ -1,0 +1,127 @@
+{
+  "resource-exhaustion": {
+    "cvssScore": "8.4",
+    "baseScore": "7.5",
+    "temporalScore": "6.7",
+    "environmentalScore": "8.4",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:N/MI:N/MA:H/CR:L/IR:L/AR:H",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "The size or duration value is sent in an HTTP request over the network."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "A single request with a very large value is enough."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "The attacker needs no account to send the request."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No victim action is needed."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact stays within the vulnerable application."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "None (N)",
+          "justification": "No data is disclosed."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "None (N)",
+          "justification": "No data is modified."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "High (H)",
+          "justification": "Very large allocations or long-lived timers exhaust memory and can crash the application."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "The vulnerability class is well documented and proof-of-concept exploits exist."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "The rule description documents the secure coding fix."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The issue is identified by data-flow analysis from source to sink."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Same as the base metric: the size or duration value is sent in an HTTP request over the network."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: a single request with a very large value is enough."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "Same as the base metric: the attacker needs no account to send the request."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no victim action is needed."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "Same as the base metric: the impact stays within the vulnerable application."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no data is disclosed."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no data is modified."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: very large allocations or long-lived timers exhaust memory and can crash the application."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "Low (L)",
+          "justification": "Data exposure is a minor concern."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "Low (L)",
+          "justification": "Integrity impact is a minor concern."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Availability of the service is critical."
+        }
+      ]
+    }
+  }
+}
