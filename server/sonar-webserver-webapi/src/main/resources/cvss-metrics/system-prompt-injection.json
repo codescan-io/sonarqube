@@ -1,10 +1,10 @@
 {
   "system-prompt-injection": {
-    "cvssScore": "8.6",
-    "baseScore": "8.2",
-    "temporalScore": "7.4",
-    "environmentalScore": "8.6",
-    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:H/MI:L/MA:N/CR:H/IR:M/AR:L",
+    "cvssScore": "6.3",
+    "baseScore": "6.5",
+    "temporalScore": "5.9",
+    "environmentalScore": "6.3",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:L/MI:L/MA:N/CR:H/IR:M/AR:L",
     "metrics": {
       "BASE": [
         {
@@ -34,8 +34,8 @@
         },
         {
           "name": "CONFIDENTIALITY",
-          "value": "High (H)",
-          "justification": "Overridden instructions can make the model reveal system prompts, context data or secrets."
+          "value": "Low (L)",
+          "justification": "Overridden instructions can make the model reveal its system prompt or context data, but only what the model itself has been given."
         },
         {
           "name": "INTEGRITY",
@@ -93,8 +93,8 @@
         },
         {
           "name": "MODIFIED_CONFIDENTIALITY",
-          "value": "High (H)",
-          "justification": "Same as the base metric: overridden instructions can make the model reveal system prompts, context data or secrets."
+          "value": "Low (L)",
+          "justification": "Same as the base metric: overridden instructions can make the model reveal its system prompt or context data, but only what the model itself has been given."
         },
         {
           "name": "MODIFIED_INTEGRITY",

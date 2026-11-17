@@ -1,10 +1,10 @@
 {
   "indirect-command-line-injection": {
-    "cvssScore": "4.1",
-    "baseScore": "4.5",
-    "temporalScore": "4.1",
-    "environmentalScore": "4.1",
-    "vectorString": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:L/E:P/RL:O/RC:C/MAV:L/MAC:H/MPR:L/MUI:N/MS:U/MC:L/MI:L/MA:L/CR:M/IR:M/AR:M",
+    "cvssScore": "3.3",
+    "baseScore": "3.6",
+    "temporalScore": "3.3",
+    "environmentalScore": "3.3",
+    "vectorString": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:N/E:P/RL:O/RC:C/MAV:L/MAC:H/MPR:L/MUI:N/MS:U/MC:L/MI:L/MA:N/CR:M/IR:M/AR:M",
     "metrics": {
       "BASE": [
         {
@@ -44,8 +44,8 @@
         },
         {
           "name": "AVAILABILITY",
-          "value": "Low (L)",
-          "justification": "Impact is limited because the attacker already controls the parent process input."
+          "value": "None (N)",
+          "justification": "The injected command runs inside a single local invocation of the tool, so there is no direct impact on availability."
         }
       ],
       "TEMPORAL": [
@@ -103,8 +103,8 @@
         },
         {
           "name": "MODIFIED_AVAILABILITY",
-          "value": "Low (L)",
-          "justification": "Same as the base metric: impact is limited because the attacker already controls the parent process input."
+          "value": "None (N)",
+          "justification": "Same as the base metric: the injected command runs inside a single local invocation of the tool, so there is no direct impact on availability."
         },
         {
           "name": "CONFIDENTIALITY_REQUIREMENT",
