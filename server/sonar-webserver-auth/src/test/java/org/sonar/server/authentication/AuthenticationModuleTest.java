@@ -46,4 +46,11 @@ public class AuthenticationModuleTest {
     new AuthenticationModule().configure(container);
     assertThat(container.getAddedObjects()).contains(HostedMcpRequest.class);
   }
+
+  @Test
+  public void registers_arm_request() {
+    ListContainer container = new ListContainer();
+    new AuthenticationModule().configure(container);
+    assertThat(container.getAddedObjects()).contains(ArmRequest.class);
+  }
 }

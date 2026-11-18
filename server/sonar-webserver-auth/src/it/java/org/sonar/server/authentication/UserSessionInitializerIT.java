@@ -24,16 +24,20 @@ import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Properties;
+import java.util.Set;
+import org.assertj.core.api.SoftAssertions;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.MDC;
+import org.slf4j.event.Level;
 import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.server.authentication.BaseIdentityProvider;
 import org.sonar.api.server.http.Cookie;
 import org.sonar.api.server.http.HttpRequest;
 import org.sonar.api.server.http.HttpResponse;
+import org.sonar.api.testfixtures.log.LogTester;
 import org.sonar.api.utils.System2;
 import org.sonar.db.DbTester;
 import org.sonar.db.user.UserDto;
@@ -73,6 +77,9 @@ public class UserSessionInitializerIT {
   @Rule
   public DbTester dbTester = DbTester.create(System2.INSTANCE);
 
+  @Rule
+  public LogTester logTester = new LogTester().setLevel(Level.INFO);
+
   private ThreadLocalUserSession threadLocalSession = mock(ThreadLocalUserSession.class);
   private HttpRequest request = mock(HttpRequest.class);
   private HttpResponse response = mock(HttpResponse.class);
@@ -86,8 +93,11 @@ public class UserSessionInitializerIT {
   private static final String MCP_KEY = "m".repeat(40);
   private HostedMcpRequest hostedMcpRequest = new HostedMcpRequest(mcpKeys(MCP_KEY));
 
+  private static final String ARM_KEY = "a".repeat(40);
+  private ArmRequest armRequest = new ArmRequest(armKeys(ARM_KEY));
+
   private UserSessionInitializer underTest = new UserSessionInitializer(settings.asConfig(), threadLocalSession, authenticationEvent, authenticator, ipAccess,
-    hostedMcpRequest);
+    hostedMcpRequest, armRequest);
 
   @Before
   public void setUp() {
@@ -372,6 +382,187 @@ public class UserSessionInitializerIT {
   }
 
   @Test
+  public void armRequest_onProjectsCreate_sessionHasNoIpAllowlist() {
+    assertArmKeySkipsAllowlistOn("/api/projects/create");
+  }
+
+  @Test
+  public void armRequest_onCeTask_sessionHasNoIpAllowlist() {
+    assertArmKeySkipsAllowlistOn("/api/ce/task");
+  }
+
+  @Test
+  public void armRequest_onWebhooksCreate_sessionHasNoIpAllowlist() {
+    assertArmKeySkipsAllowlistOn("/api/webhooks/create");
+  }
+
+  @Test
+  public void armRequest_onAnArmRoute_isMatchedWithTheContextPathLeftOut() {
+    when(request.getContextPath()).thenReturn("/sonar");
+
+    assertArmKeySkipsAllowlistOn("/sonar/api/projects/create");
+  }
+
+  @Test
+  public void armRequest_onAnArmRoute_logsPathAndUserUuidOnly() {
+    insertOrganization();
+    UserDto member = user("member");
+    insertMembership(member);
+    realServerSession(member, BLOCKED_IP, "/api/ce/task");
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
+
+    underTest.initUserSession(request, response);
+
+    assertThat(logTester.logs(Level.INFO))
+      .contains("Request let past the IP allowlist by the ARM key: path=/api/ce/task, user=member");
+    assertThat(logTester.logs()).noneMatch(line -> line.contains("login-member") || line.contains(ARM_KEY));
+  }
+
+  @Test
+  public void armRequest_onAnArmRoute_withoutAUser_logsAnonymous() {
+    settings.setProperty("sonar.forceAuthentication", false);
+    when(request.getRequestURI()).thenReturn("/api/webhooks/create");
+    when(request.getRemoteAddr()).thenReturn(BLOCKED_IP);
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
+    when(authenticator.authenticate(request, response)).thenReturn(new ServerUserSession(dbTester.getDbClient(), null, false));
+
+    underTest.initUserSession(request, response);
+
+    assertThat(logTester.logs(Level.INFO))
+      .contains("Request let past the IP allowlist by the ARM key: path=/api/webhooks/create, user=anonymous");
+  }
+
+  @Test
+  public void armKey_onAnyOtherPath_allowlistApplies() {
+    assertArmKeyDoesNotSkipAllowlistOn("/api/settings/set");
+    assertArmKeyDoesNotSkipAllowlistOn("/api/issues/search");
+    assertArmKeyDoesNotSkipAllowlistOn("/api/organizations/search");
+    assertArmKeyDoesNotSkipAllowlistOn("/measures");
+  }
+
+  @Test
+  public void armKey_onNearMissPaths_allowlistApplies() {
+    assertArmKeyDoesNotSkipAllowlistOn("/api/ce/task_x");
+    assertArmKeyDoesNotSkipAllowlistOn("/api/ce/tasks");
+    assertArmKeyDoesNotSkipAllowlistOn("/api/ce/task/");
+    assertArmKeyDoesNotSkipAllowlistOn("/api/projects/create/x");
+    assertArmKeyDoesNotSkipAllowlistOn("/api/projects/created");
+    assertArmKeyDoesNotSkipAllowlistOn("/api/webhooks/create/x");
+    assertArmKeyDoesNotSkipAllowlistOn("/x/api/projects/create");
+    assertArmKeyDoesNotSkipAllowlistOn("/API/PROJECTS/CREATE");
+  }
+
+  @Test
+  public void armKey_onAnyOtherPath_logsNothing() {
+    assertArmKeyDoesNotSkipAllowlistOn("/api/issues/search");
+
+    assertThat(logTester.logs()).isEmpty();
+  }
+
+  @Test
+  public void armAndMcpKeys_onAnArmRoute_armWins() {
+    insertOrganization();
+    UserDto member = user("member");
+    insertMembership(member);
+    ServerUserSession session = realServerSession(member, BLOCKED_IP, "/api/projects/create");
+    when(ipAccess.isBlockedForHostedMcp(ORG_UUID)).thenReturn(true);
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
+    when(request.getHeader(HostedMcpRequest.MCP_KEY_HEADER)).thenReturn(MCP_KEY);
+
+    assertThat(underTest.initUserSession(request, response)).isTrue();
+
+    assertThat(session.isBlockedByIpAllowlist(ORG_UUID)).isFalse();
+    assertThat(session.isHostedMcpRequest()).isFalse();
+    assertThat(session.getClientIp()).isNull();
+    verifyNoInteractions(ipAccess);
+  }
+
+  @Test
+  public void wrongArmKey_onAnArmRoute_allowlistApplies() {
+    insertOrganization();
+    UserDto member = user("member");
+    insertMembership(member);
+    ServerUserSession session = realServerSession(member, BLOCKED_IP, "/api/projects/create");
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn("x".repeat(40));
+
+    assertThat(underTest.initUserSession(request, response)).isTrue();
+
+    assertThat(session.isBlockedByIpAllowlist(ORG_UUID)).isTrue();
+    assertThat(session.getClientIp()).isEqualTo(BLOCKED_IP);
+  }
+
+  @Test
+  public void armKey_onAnOrganizationUrl_doesNotLetANonMemberIn() {
+    insertOrganization();
+    UserDto outsider = user("outsider");
+    realServerSessionOnOrganizationUrl(outsider, BLOCKED_IP);
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
+    ArgumentCaptor<AuthenticationException> exceptionCaptor = ArgumentCaptor.forClass(AuthenticationException.class);
+
+    assertThat(underTest.initUserSession(request, response)).isFalse();
+
+    verify(response).setStatus(401);
+    verify(authenticationEvent).loginFailure(eq(request), exceptionCaptor.capture());
+    assertThat(exceptionCaptor.getValue().getMessage()).isEqualTo("Insufficient Privileges");
+    verify(threadLocalSession, never()).set(any());
+  }
+
+  @Test
+  public void armKey_onAnArmRoute_doesNotLetAnUnauthenticatedRequestPastForcedAuthentication() {
+    when(request.getRequestURI()).thenReturn("/api/projects/create");
+    when(request.getRemoteAddr()).thenReturn(BLOCKED_IP);
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
+    when(authenticator.authenticate(request, response)).thenReturn(new ServerUserSession(dbTester.getDbClient(), null, false));
+    ArgumentCaptor<AuthenticationException> exceptionCaptor = ArgumentCaptor.forClass(AuthenticationException.class);
+
+    underTest.initUserSession(request, response);
+
+    verify(authenticationEvent).loginFailure(eq(request), exceptionCaptor.capture());
+    assertThat(exceptionCaptor.getValue().getMessage()).isEqualTo("User must be authenticated");
+    verify(threadLocalSession, never()).set(any());
+  }
+
+  private void assertArmKeySkipsAllowlistOn(String path) {
+    insertOrganization();
+    UserDto member = user("member");
+    insertMembership(member);
+    ServerUserSession session = realServerSession(member, BLOCKED_IP, path);
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
+
+    assertThat(underTest.initUserSession(request, response)).isTrue();
+
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(session.isBlockedByIpAllowlist(ORG_UUID)).as(path + " isBlockedByIpAllowlist").isFalse();
+      softly.assertThat(session.isBlockedByIpAllowlistForKey(ORG_KEY)).as(path + " isBlockedByIpAllowlistForKey").isFalse();
+      softly.assertThat(session.mayBeBlockedByIpAllowlist()).as(path + " mayBeBlockedByIpAllowlist").isFalse();
+      softly.assertThat(session.getIpBlockedOrganizationUuids()).as(path + " getIpBlockedOrganizationUuids").isEmpty();
+      softly.assertThat(session.getClientIp()).as(path + " getClientIp").isNull();
+    });
+    verify(threadLocalSession).set(session);
+    verifyNoInteractions(ipAccess);
+  }
+
+  /** Same session and key as {@link #assertArmKeySkipsAllowlistOn}, but the allowlist must apply as without the key. */
+  private void assertArmKeyDoesNotSkipAllowlistOn(String path) {
+    reset(ipAccess, threadLocalSession);
+    dbTester.executeUpdateSql("delete from organization_members");
+    dbTester.executeUpdateSql("delete from organizations");
+    insertOrganization();
+    UserDto member = user("member");
+    insertMembership(member);
+    ServerUserSession session = realServerSession(member, BLOCKED_IP, path);
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
+
+    underTest.initUserSession(request, response);
+
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(session.isBlockedByIpAllowlist(ORG_UUID)).as(path + " isBlockedByIpAllowlist").isTrue();
+      softly.assertThat(session.getIpBlockedOrganizationUuids()).as(path + " getIpBlockedOrganizationUuids").containsExactly(ORG_UUID);
+      softly.assertThat(session.getClientIp()).as(path + " getClientIp").isEqualTo(BLOCKED_IP);
+    });
+  }
+
+  @Test
   public void blocked_member_on_an_organization_url_is_not_logged_out() {
     insertOrganization();
     UserDto member = user("member");
@@ -443,9 +634,14 @@ public class UserSessionInitializerIT {
 
   /** A real session, so membership comes from the members table and the allowlist decision from the mocked access. */
   private ServerUserSession realServerSessionOnOrganizationUrl(UserDto user, String clientIp) {
+    return realServerSession(user, clientIp, "/api/organizations/search");
+  }
+
+  private ServerUserSession realServerSession(UserDto user, String clientIp, String path) {
     when(ipAccess.isBlocked(eq(ORG_UUID), eq(BLOCKED_IP), any())).thenReturn(true);
+    when(ipAccess.blockedOrganizationUuids(BLOCKED_IP)).thenReturn(Set.of(ORG_UUID));
     when(ipAccess.isBlocked(eq(ORG_UUID), eq(ALLOWED_IP), any())).thenReturn(false);
-    when(request.getRequestURI()).thenReturn("/api/organizations/search");
+    when(request.getRequestURI()).thenReturn(path);
     when(request.getParameterValues("organization")).thenReturn(new String[] {ORG_KEY});
     when(request.getRemoteAddr()).thenReturn(clientIp);
     ServerUserSession session = new ServerUserSession(dbTester.getDbClient(), user, false);
@@ -465,6 +661,12 @@ public class UserSessionInitializerIT {
 
   private void insertMembership(UserDto user) {
     dbTester.executeInsert("organization_members", "organization_uuid", ORG_UUID, "user_uuid", user.getUuid(), "type", "STANDARD");
+  }
+
+  private static Properties armKeys(String keys) {
+    Properties properties = new Properties();
+    properties.setProperty(ArmRequest.KEYS_PROPERTY, keys);
+    return properties;
   }
 
   private static Properties mcpKeys(String keys) {

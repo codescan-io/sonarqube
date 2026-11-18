@@ -867,6 +867,24 @@ public class SetActionIT {
   }
 
   @Test
+  public void fail_when_setting_arm_keys() {
+    String key = "a".repeat(40);
+
+    assertThatThrownBy(() -> callForGlobalSetting("sonar.codescan.armKeys", key))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.codescan.armKeys' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("sonar.codescan.armKeys")).isNull();
+  }
+
+  @Test
+  public void fail_when_setting_arm_keys_whatever_the_case_of_the_key() {
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting("SONAR.CODESCAN.ARMKEYS", List.of("a".repeat(40))))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'SONAR.CODESCAN.ARMKEYS' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("SONAR.CODESCAN.ARMKEYS")).isNull();
+  }
+
+  @Test
   public void startup_only_settings_cannot_be_saved_on_a_project() {
     ProjectDto project = db.components().insertPrivateProject().getProjectDto();
     logInAsProjectAdministrator(project);

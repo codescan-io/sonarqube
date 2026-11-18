@@ -29,6 +29,7 @@ public class AuthenticationModule extends Module {
   @Override
   protected void configureModule() {
     add(
+      ArmRequest.class,
       AuthenticationEventImpl.class,
       BaseContextFactory.class,
       BasicAuthentication.class,
