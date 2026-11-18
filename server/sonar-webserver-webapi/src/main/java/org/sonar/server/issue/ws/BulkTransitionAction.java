@@ -38,16 +38,15 @@ import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.utils.System2;
-import org.sonar.core.issue.DefaultIssue;
 import org.sonar.api.utils.text.JsonWriter;
+import org.sonar.ce.queue.MeasureRecomputeSubmitter;
 import org.sonar.core.util.UuidFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
-import org.sonar.db.component.ComponentDto;
+import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.issue.IssueChangeDto;
 import org.sonar.db.issue.IssueExceptionSourceDto;
 import org.sonar.db.issue.IssueKeyStatusDto;
-import org.sonar.server.issue.IssueChangePostProcessor;
 import org.sonar.server.issue.index.IssueIndexer;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.MediaTypes;
@@ -55,7 +54,6 @@ import org.sonarqube.ws.MediaTypes;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.trimToNull;
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.sonar.api.issue.Issue.STATUS_RESOLVED;
 
 /**
  * CodeScan: resolves a large set of issues in one request, for callers that have already decided which issues to
@@ -122,16 +120,16 @@ public class BulkTransitionAction implements IssuesWsAction {
   private final IssueIndexer issueIndexer;
   private final UuidFactory uuidFactory;
   private final System2 system2;
-  private final IssueChangePostProcessor issueChangePostProcessor;
+  private final MeasureRecomputeSubmitter measureRecomputeSubmitter;
 
   public BulkTransitionAction(DbClient dbClient, UserSession userSession, IssueIndexer issueIndexer,
-    UuidFactory uuidFactory, System2 system2, IssueChangePostProcessor issueChangePostProcessor) {
+    UuidFactory uuidFactory, System2 system2, MeasureRecomputeSubmitter measureRecomputeSubmitter) {
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.issueIndexer = issueIndexer;
     this.uuidFactory = uuidFactory;
     this.system2 = system2;
-    this.issueChangePostProcessor = issueChangePostProcessor;
+    this.measureRecomputeSubmitter = measureRecomputeSubmitter;
   }
 
   @Override
@@ -168,14 +166,18 @@ public class BulkTransitionAction implements IssuesWsAction {
     action.createParam(PARAM_REFRESH_MEASURES)
       .setDescription("Recompute the branch's live measures and quality gate once this chunk is written. The "
         + "caller sets it on its last chunk only: doing it per chunk is the per-call cost this action exists to "
-        + "avoid, but skipping it entirely would leave the project's counts and gate stale until its next analysis.")
+        + "avoid, but skipping it entirely would leave the project's counts and gate stale until its next analysis. "
+        + "The recomputation runs as a '" + CeTaskTypes.MEASURE_RECOMPUTE + "' background task, whose id the "
+        + "response carries as 'ceTaskId': on a large branch it runs for minutes, longer than a connection through "
+        + "a load balancer or NAT gateway stays open without traffic. A call for a branch whose task is still "
+        + "pending returns that task instead of queuing another.")
       .setBooleanPossibleValues()
       .setDefaultValue("false");
     action.createParam(PARAM_BROADCAST_ONLY)
       .setDescription("Recompute only: the named issue is carried to the quality-gate listeners, which drop the "
         + "broadcast when a call carries none, and nothing is transitioned. A caller that owes the recomputation "
         + "has already resolved what it meant to, so a request that could still transition would be resending "
-        + "work it cannot know the outcome of.")
+        + "work it cannot know the outcome of. The named issue is what the background task carries.")
       .setBooleanPossibleValues()
       .setDefaultValue("false");
   }
@@ -212,6 +214,9 @@ public class BulkTransitionAction implements IssuesWsAction {
         .prop("requested", issueKeys.size())
         .prop("transitioned", result.transitioned.size());
       json.name("notTransitioned").beginArray().values(result.notTransitioned).endArray();
+      if (result.ceTaskId != null) {
+        json.prop("ceTaskId", result.ceTaskId);
+      }
       json.endObject();
     }
     response.stream().setMediaType(MediaTypes.JSON);
@@ -293,16 +298,13 @@ public class BulkTransitionAction implements IssuesWsAction {
       // The named issue reaches the listeners and nothing else happens to it: no read of what is transitionable,
       // no changelog, no update. Whatever state it is in by now - reopened by an analysis, changed by hand - is
       // left alone, and a resend can only recompute what an earlier attempt already did.
-      LOG.info("bulk_transition broadcast only on branch {}: measures={}ms", branchUuid,
-        refreshMeasuresOfBranch(branchUuid, issueKeys.get(0), resolution));
-      return new Result(List.of(), List.of());
+      return new Result(List.of(), List.of(), queueRecomputation(branchUuid, issueKeys.get(0), resolution));
     }
     if (issueKeys.isEmpty()) {
       // A caller asking only for the recomputation its run owes: a run that was stopped, failed, or never got an
-      // answer for the chunk that was going to carry it. Nothing is read or written, so no session is opened.
+      // answer for the chunk that was going to carry it. No issue is read or written.
       // No key is named, so there is no issue to carry to the quality-gate listeners and they are not reached.
-      LOG.info("bulk_transition refresh only: measures={}ms", refreshMeasuresOfBranch(branchUuid, null, null));
-      return new Result(List.of(), List.of());
+      return new Result(List.of(), List.of(), queueRecomputation(branchUuid, null, null));
     }
     long startedAt = system2.now();
     long now = startedAt;
@@ -344,65 +346,31 @@ public class BulkTransitionAction implements IssuesWsAction {
     if (transitioned.isEmpty()) {
       // The caller may still be asking for the recomputation its run owes: a run that was stopped or failed asks
       // this way, naming keys it has already resolved.
-      long onlyMeasuresMs = refreshMeasures
-        ? refreshMeasuresOfBranch(branchUuid, issueKeys.get(0), resolution)
-        : 0;
-      LOG.info("bulk_transition 0 issues on branch {}: measures={}ms", branchUuid, onlyMeasuresMs);
-      return new Result(List.of(), issueKeys);
+      LOG.info("bulk_transition 0 issues on branch {}", branchUuid);
+      return new Result(List.of(), issueKeys,
+        refreshMeasures ? queueRecomputation(branchUuid, issueKeys.get(0), resolution) : null);
     }
 
-    long measuresMs = refreshMeasures ? refreshMeasuresOfBranch(branchUuid, transitioned.get(0), resolution) : 0;
-    LOG.info("bulk_transition {} issue(s) on branch {}: total={}ms measures={}ms",
-      transitioned.size(), branchUuid, system2.now() - startedAt, measuresMs);
+    LOG.info("bulk_transition {} issue(s) on branch {}: total={}ms", transitioned.size(), branchUuid,
+      system2.now() - startedAt);
+    String ceTaskId = refreshMeasures ? queueRecomputation(branchUuid, transitioned.get(0), resolution) : null;
 
     Set<String> movedKeys = new HashSet<>(transitioned);
     List<String> notTransitioned = issueKeys.stream().filter(key -> !movedKeys.contains(key)).toList();
-    return new Result(transitioned, notTransitioned);
+    return new Result(transitioned, notTransitioned, ceTaskId);
   }
 
   /**
-   * Recomputes the whole branch. A run sends one chunk per transition-and-author group and only its last chunk asks
-   * for this, so scoping the refresh to that chunk's components would leave every file the earlier chunks resolved
-   * carrying its pre-transfer counts, and the project total summing them. It costs around half as much again as a
-   * chunk-scoped refresh on a project of 6,000 files, and a run pays it once.
-   */
-  private long refreshMeasuresOfBranch(String branchUuid, @Nullable String resolvedKey, @Nullable String resolution) {
-    long startedAt = system2.now();
-    // A batch session: the refresh writes a measure row for nearly every component of the branch, and only a batch
-    // session sends those writes as JDBC batches rather than one round trip each.
-    try (DbSession dbSession = dbClient.openSession(true)) {
-      List<ComponentDto> components = dbClient.componentDao().selectByBranchUuid(branchUuid, dbSession);
-      if (components.isEmpty()) {
-        return 0;
-      }
-      issueChangePostProcessor.process(dbSession, changedIssuesOf(branchUuid, resolvedKey, resolution), components,
-        false);
-      dbSession.commit();
-    }
-    return system2.now() - startedAt;
-  }
-
-  /**
-   * One issue, not every issue the run resolved. QGChangeEventListenersImpl drops the whole broadcast when this
-   * list is empty, then indexes it by branch and hands the listeners a set neither of them reads - both work from
-   * the QGChangeEvent alone. A call carries one branch, so one entry reaches every listener that a thousand
-   * would, without building a DefaultIssue and a ChangedIssueImpl per resolved issue.
+   * Queues the recomputation of the whole branch. A run sends one chunk per transition-and-author group and only its
+   * last chunk asks for this, so scoping the refresh to that chunk's components would leave every file the earlier
+   * chunks resolved carrying its pre-transfer counts, and the project total summing them.
    *
-   * <p>It carries the four fields anything on that path looks at: the branch it belongs to, a key the run really
-   * resolved, and the status and resolution it was moved to. Type, severity and impacts are left unset because
-   * nothing reads them; a listener that starts to would need the issues loaded properly rather than this.
+   * @return the id of the background task that will recompute the branch
    */
-  private static List<DefaultIssue> changedIssuesOf(String branchUuid, @Nullable String resolvedKey,
-    @Nullable String resolution) {
-    if (resolvedKey == null || resolution == null) {
-      return List.of();
-    }
-    DefaultIssue issue = new DefaultIssue();
-    issue.setKey(resolvedKey);
-    issue.setProjectUuid(branchUuid);
-    issue.setStatus(STATUS_RESOLVED);
-    issue.setResolution(resolution);
-    return List.of(issue);
+  private String queueRecomputation(String branchUuid, @Nullable String resolvedKey, @Nullable String resolution) {
+    String ceTaskId = measureRecomputeSubmitter.submit(branchUuid, resolvedKey, resolution, userSession.getUuid());
+    LOG.info("bulk_transition measure recomputation of branch {}: task {}", branchUuid, ceTaskId);
+    return ceTaskId;
   }
 
   /**
@@ -425,7 +393,7 @@ public class BulkTransitionAction implements IssuesWsAction {
     }
   }
 
-  private record Result(List<String> transitioned, List<String> notTransitioned) {
+  private record Result(List<String> transitioned, List<String> notTransitioned, @Nullable String ceTaskId) {
   }
 
   /**
