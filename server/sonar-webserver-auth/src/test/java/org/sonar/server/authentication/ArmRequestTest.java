@@ -129,8 +129,27 @@ public class ArmRequestTest {
   }
 
   @Test
+  public void startup_logs_how_many_keys_are_configured_and_no_key() {
+    underTest(KEY + "," + OTHER_KEY);
+
+    assertThat(logTester.logs(Level.INFO)).containsExactly("ARM keys configured: 2");
+    assertThat(logTester.logs()).noneMatch(line -> line.contains(KEY) || line.contains(OTHER_KEY));
+  }
+
+  @Test
+  public void startup_count_leaves_out_keys_that_are_ignored_and_says_zero_when_there_are_none() {
+    underTest("tiny-key," + KEY);
+    assertThat(logTester.logs(Level.INFO)).containsExactly("ARM keys configured: 1");
+
+    logTester.clear();
+    new ArmRequest(new Properties());
+    assertThat(logTester.logs(Level.INFO)).containsExactly("ARM keys configured: 0");
+  }
+
+  @Test
   public void checking_a_request_logs_neither_the_presented_nor_the_configured_key() {
     ArmRequest check = underTest(KEY);
+    logTester.clear();
     presentKey(OTHER_KEY);
     check.isArm(request);
     presentKey(KEY);

@@ -23,6 +23,7 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.server.ServerSide;
@@ -31,8 +32,9 @@ import org.sonar.api.server.http.HttpRequest;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
- * Recognises requests from AutoRABIT ARM: they carry a key that only ARM holds. A request with a matching key skips
- * the organizations' IP allowlists altogether; authentication and permissions are not affected. Several keys may be
+ * Recognises requests from AutoRABIT ARM: they carry a key that only ARM holds. A request with a matching key to one of
+ * the {@link #ARM_ROUTES} skips the organizations' IP allowlists altogether; on any other path the key changes
+ * nothing. Authentication and permissions are not affected. Several keys may be
  * configured, comma-separated, so one can be replaced without downtime. Neither the configured keys nor the presented
  * header value is ever logged.
  */
@@ -42,6 +44,9 @@ public class ArmRequest {
   public static final String ARM_KEY_HEADER = "X-CodeScan-ARM-Key";
   public static final String KEYS_PROPERTY = "sonar.codescan.armKeys";
   static final int MIN_KEY_LENGTH = 32;
+
+  // CSN-314: the only routes ARM calls; matched exactly on the path without the context path
+  static final Set<String> ARM_ROUTES = Set.of("/api/projects/create", "/api/ce/task", "/api/webhooks/create");
 
   private static final Logger LOG = LoggerFactory.getLogger(ArmRequest.class);
 
@@ -59,6 +64,12 @@ public class ArmRequest {
     if (keys.size() < nonBlank.size()) {
       LOG.warn("Ignoring {} ARM key(s) shorter than {} characters", nonBlank.size() - keys.size(), MIN_KEY_LENGTH);
     }
+    LOG.info("ARM keys configured: {}", keys.size());
+  }
+
+  /** @param path the request path without the context path and the query string */
+  public static boolean isArmRoute(String path) {
+    return ARM_ROUTES.contains(path);
   }
 
   /**
