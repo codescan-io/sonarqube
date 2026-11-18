@@ -106,6 +106,67 @@ class MeasureDaoIT {
   }
 
   @Test
+  void insertOrUpdate_of_several_inserts_the_new_and_merges_into_the_existing() {
+    Double kept = getDoubleValue();
+    MeasureDto existing = newMeasure();
+    existing.getMetricValues().clear();
+    existing.addValue("key1", getDoubleValue()).addValue("key2", kept);
+    underTest.insert(db.getSession(), existing);
+
+    Double updated = getDoubleValue();
+    MeasureDto update = new MeasureDto().setComponentUuid(existing.getComponentUuid())
+      .setBranchUuid(existing.getBranchUuid()).addValue("key1", updated);
+    MeasureDto added = newMeasure();
+    underTest.insertOrUpdate(db.getSession(), List.of(update, added));
+
+    verifyTableSize(2);
+    verifyPersisted(added);
+    assertThat(underTest.selectByComponentUuid(db.getSession(), existing.getComponentUuid()))
+      .hasValueSatisfying(selected -> {
+        assertThat(selected.getMetricValues()).containsOnly(entry("key1", updated), entry("key2", kept));
+        assertThat(selected.getJsonValueHash()).isEqualTo(update.computeJsonValueHash());
+      });
+  }
+
+  @Test
+  void insertOrUpdate_of_several_in_a_batch_session_writes_every_row_across_partitions_and_flushes() {
+    // 2,500 rows: three read partitions of up to 1,000, and ten batch flushes of 250 statements.
+    int existingCount = 1_250;
+    int addedCount = 1_250;
+    String branchUuid = "branch-uuid";
+    try (DbSession batchSession = db.getDbClient().openSession(true)) {
+      for (int i = 0; i < existingCount; i++) {
+        underTest.insert(batchSession, new MeasureDto().setComponentUuid("existing-" + i).setBranchUuid(branchUuid)
+          .addValue("kept", (double) i).addValue("changed", 0.0d));
+      }
+      batchSession.commit();
+    }
+
+    List<MeasureDto> writes = new ArrayList<>();
+    for (int i = 0; i < existingCount; i++) {
+      writes.add(new MeasureDto().setComponentUuid("existing-" + i).setBranchUuid(branchUuid)
+        .addValue("changed", (double) i + 1));
+    }
+    for (int i = 0; i < addedCount; i++) {
+      writes.add(new MeasureDto().setComponentUuid("added-" + i).setBranchUuid(branchUuid).addValue("changed", 7.0d));
+    }
+    try (DbSession batchSession = db.getDbClient().openSession(true)) {
+      underTest.insertOrUpdate(batchSession, writes);
+      batchSession.commit();
+    }
+
+    verifyTableSize(existingCount + addedCount);
+    for (int i = 0; i < existingCount; i++) {
+      assertThat(underTest.selectByComponentUuid(db.getSession(), "existing-" + i).orElseThrow().getMetricValues())
+        .containsOnly(entry("kept", (double) i), entry("changed", (double) i + 1));
+    }
+    for (int i = 0; i < addedCount; i++) {
+      assertThat(underTest.selectByComponentUuid(db.getSession(), "added-" + i).orElseThrow().getMetricValues())
+        .containsOnly(entry("changed", 7.0d));
+    }
+  }
+
+  @Test
   void insertOrUpdate_merges_measures() {
     // insert
     Double value2 = getDoubleValue();

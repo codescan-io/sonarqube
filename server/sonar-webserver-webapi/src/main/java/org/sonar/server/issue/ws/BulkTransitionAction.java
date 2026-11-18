@@ -368,7 +368,9 @@ public class BulkTransitionAction implements IssuesWsAction {
    */
   private long refreshMeasuresOfBranch(String branchUuid, @Nullable String resolvedKey, @Nullable String resolution) {
     long startedAt = system2.now();
-    try (DbSession dbSession = dbClient.openSession(false)) {
+    // A batch session: the refresh writes a measure row for nearly every component of the branch, and only a batch
+    // session sends those writes as JDBC batches rather than one round trip each.
+    try (DbSession dbSession = dbClient.openSession(true)) {
       List<ComponentDto> components = dbClient.componentDao().selectByBranchUuid(branchUuid, dbSession);
       if (components.isEmpty()) {
         return 0;
