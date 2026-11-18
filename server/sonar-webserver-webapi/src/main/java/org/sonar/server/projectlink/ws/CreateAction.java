@@ -19,6 +19,7 @@
  */
 package org.sonar.server.projectlink.ws;
 
+import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService;
@@ -29,15 +30,19 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.ProjectLinkDto;
 import org.sonar.db.project.ProjectDto;
+import org.sonar.server.common.text.EncodedParameters;
 import org.sonar.server.component.ComponentFinder;
 import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.ProjectLinks;
 import org.sonarqube.ws.ProjectLinks.CreateWsResponse;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.String.format;
 import static org.sonar.core.util.Slug.slugify;
 import static org.sonar.core.util.Uuids.UUID_EXAMPLE_01;
 import static org.sonar.server.projectlink.ws.ProjectLinksWsParameters.ACTION_CREATE;
+import static org.sonar.server.projectlink.ws.ProjectLinksWsParameters.PARAM_ENCODED_URL;
 import static org.sonar.server.projectlink.ws.ProjectLinksWsParameters.PARAM_NAME;
 import static org.sonar.server.projectlink.ws.ProjectLinksWsParameters.PARAM_PROJECT_ID;
 import static org.sonar.server.projectlink.ws.ProjectLinksWsParameters.PARAM_PROJECT_KEY;
@@ -71,7 +76,9 @@ public class CreateAction implements ProjectLinksWsAction {
       .setHandler(this)
       .setPost(true)
       .setResponseExample(getClass().getResource("create-example.json"))
-      .setSince("6.1");
+      .setSince("6.1")
+      .setChangelog(
+        new Change("24.12", format("Add parameter '%s'. Parameter '%s' is no longer required when '%s' is set.", PARAM_ENCODED_URL, PARAM_URL, PARAM_ENCODED_URL)));
 
     action.createParam(PARAM_PROJECT_ID)
       .setDescription("Project id")
@@ -88,10 +95,17 @@ public class CreateAction implements ProjectLinksWsAction {
       .setExampleValue("Custom");
 
     action.createParam(PARAM_URL)
-      .setRequired(true)
       .setMaximumLength(LINK_URL_MAX_LENGTH)
-      .setDescription("Link url")
+      .setDescription(format("Link url. Required unless '%s' is set.", PARAM_ENCODED_URL))
       .setExampleValue("http://example.com");
+
+    // A URL path can contain '../', which matches the path traversal signature of a WAF body inspection; the web UI
+    // sends it base64url-encoded in this parameter so that the request body carries only [A-Za-z0-9_-].
+    action.createParam(PARAM_ENCODED_URL)
+      .setDescription(format("Same content as '%s', base64url-encoded (RFC 4648 §5, padding optional) from UTF-8. " +
+        "When set, it is used instead of '%s'.", PARAM_URL, PARAM_URL))
+      .setExampleValue("aHR0cDovL2V4YW1wbGUuY29t")
+      .setSince("24.12");
   }
 
   @Override
@@ -148,7 +162,18 @@ public class CreateAction implements ProjectLinksWsAction {
       .setProjectId(request.param(PARAM_PROJECT_ID))
       .setProjectKey(request.param(PARAM_PROJECT_KEY))
       .setName(request.mandatoryParam(PARAM_NAME))
-      .setUrl(request.mandatoryParam(PARAM_URL));
+      .setUrl(readUrl(request));
+  }
+
+  private static String readUrl(Request request) {
+    String encodedUrl = request.param(PARAM_ENCODED_URL);
+    if (encodedUrl == null || encodedUrl.isEmpty()) {
+      return request.mandatoryParam(PARAM_URL);
+    }
+    String url = EncodedParameters.decode(encodedUrl, PARAM_ENCODED_URL);
+    checkArgument(url.length() <= LINK_URL_MAX_LENGTH, "'%s' length (%s) is longer than the maximum authorized (%s)",
+      PARAM_URL, url.length(), LINK_URL_MAX_LENGTH);
+    return url;
   }
 
   private static String nameToType(String name) {

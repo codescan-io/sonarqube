@@ -29,6 +29,20 @@ public interface IssueChangeMapper {
 
   void insert(IssueChangeDto dto);
 
+  /**
+   * Writes the diff rows of a bulk transition in one statement. Runs before the update, which overwrites the
+   * status the diff records as the old value.
+   */
+  void insertTransitionDiffs(@Param("keys") List<String> keys, @Param("resolution") String resolution,
+    @Param("issueStatus") String issueStatus, @Param("branchUuid") String branchUuid,
+    @Param("changeAuthor") String changeAuthor, @Param("now") long now, @Param("uuidPrefix") String uuidPrefix);
+
+  /** Writes one comment-like row (a comment or an exception reason) per transitioned issue in one statement. */
+  void insertTransitionComments(@Param("keys") List<String> keys, @Param("changeType") String changeType,
+    @Param("comment") String comment,
+    @Param("branchUuid") String branchUuid, @Param("changeAuthor") String changeAuthor, @Param("now") long now,
+    @Param("uuidPrefix") String uuidPrefix, @Param("keePrefix") String keePrefix);
+
   int delete(String key);
 
   void deleteByUuids(@Param("changeUuids") Collection<String> uuids);
