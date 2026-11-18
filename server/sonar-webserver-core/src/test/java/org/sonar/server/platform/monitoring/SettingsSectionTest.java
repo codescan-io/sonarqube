@@ -31,6 +31,7 @@ import org.sonar.api.utils.System2;
 import org.sonar.db.DbTester;
 import org.sonar.db.newcodeperiod.NewCodePeriodType;
 import org.sonar.process.systeminfo.protobuf.ProtobufSystemInfo;
+import org.sonar.server.authentication.ArmRequest;
 import org.sonar.server.authentication.HostedMcpRequest;
 import org.sonar.server.platform.NodeInformation;
 
@@ -151,6 +152,12 @@ public class SettingsSectionTest {
   @Test
   public void hosted_mcp_keys_are_obfuscated() {
     verifyObfuscated(HostedMcpRequest.KEYS_PROPERTY);
+  }
+
+  /** ARM's keys let a request past the address check, so system administrators see them masked. */
+  @Test
+  public void arm_keys_are_masked() {
+    verifyObfuscated(ArmRequest.KEYS_PROPERTY);
   }
 
   private void verifyObfuscated(String key) {

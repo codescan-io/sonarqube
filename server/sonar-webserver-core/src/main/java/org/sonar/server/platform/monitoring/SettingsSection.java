@@ -37,6 +37,7 @@ import org.sonar.process.systeminfo.Global;
 import org.sonar.process.systeminfo.SystemInfoSection;
 import org.sonar.process.systeminfo.protobuf.ProtobufSystemInfo;
 import org.sonar.process.systeminfo.protobuf.ProtobufSystemInfo.Section.Builder;
+import org.sonar.server.authentication.ArmRequest;
 import org.sonar.server.authentication.HostedMcpRequest;
 import org.sonar.server.platform.NodeInformation;
 
@@ -112,7 +113,8 @@ public class SettingsSection implements SystemInfoSection, Global {
       containsIgnoreCase(key, "password") ||
       containsIgnoreCase(key, "passcode") ||
       AUTH_JWT_SECRET.getKey().equals(key) ||
-      HostedMcpRequest.KEYS_PROPERTY.equals(key)) {
+      HostedMcpRequest.KEYS_PROPERTY.equals(key) ||
+      ArmRequest.KEYS_PROPERTY.equals(key)) {
       return PASSWORD_VALUE;
     }
     return value;
