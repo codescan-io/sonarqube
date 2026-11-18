@@ -24,6 +24,8 @@ import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Properties;
+import java.util.Set;
+import org.assertj.core.api.SoftAssertions;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -384,8 +386,13 @@ public class UserSessionInitializerIT {
 
     assertThat(underTest.initUserSession(request, response)).isTrue();
 
-    assertThat(session.isBlockedByIpAllowlist(ORG_UUID)).isFalse();
-    assertThat(session.getClientIp()).isNull();
+    SoftAssertions.assertSoftly(softly -> {
+      softly.assertThat(session.isBlockedByIpAllowlist(ORG_UUID)).as("isBlockedByIpAllowlist").isFalse();
+      softly.assertThat(session.isBlockedByIpAllowlistForKey(ORG_KEY)).as("isBlockedByIpAllowlistForKey").isFalse();
+      softly.assertThat(session.mayBeBlockedByIpAllowlist()).as("mayBeBlockedByIpAllowlist").isFalse();
+      softly.assertThat(session.getIpBlockedOrganizationUuids()).as("getIpBlockedOrganizationUuids").isEmpty();
+      softly.assertThat(session.getClientIp()).as("getClientIp").isNull();
+    });
     verify(threadLocalSession).set(session);
     verifyNoInteractions(ipAccess);
   }
@@ -423,16 +430,33 @@ public class UserSessionInitializerIT {
   }
 
   @Test
-  public void armKey_withoutLogin_getsNoSpecialAccess() {
+  public void armKey_doesNotLetANonMemberIntoAnOrganization() {
+    insertOrganization();
+    UserDto outsider = user("outsider");
+    realServerSessionOnOrganizationUrl(outsider, BLOCKED_IP);
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
+    ArgumentCaptor<AuthenticationException> exceptionCaptor = ArgumentCaptor.forClass(AuthenticationException.class);
+
+    assertThat(underTest.initUserSession(request, response)).isFalse();
+
+    verify(response).setStatus(401);
+    verify(authenticationEvent).loginFailure(eq(request), exceptionCaptor.capture());
+    assertThat(exceptionCaptor.getValue().getMessage()).isEqualTo("Insufficient Privileges");
+    verify(threadLocalSession, never()).set(any());
+  }
+
+  @Test
+  public void armKey_doesNotLetAnUnauthenticatedRequestPastForcedAuthentication() {
     when(request.getRemoteAddr()).thenReturn(BLOCKED_IP);
     when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
-    ServerUserSession anonymous = new ServerUserSession(dbTester.getDbClient(), null, false);
-    when(authenticator.authenticate(request, response)).thenReturn(anonymous);
+    when(authenticator.authenticate(request, response)).thenReturn(new ServerUserSession(dbTester.getDbClient(), null, false));
+    ArgumentCaptor<AuthenticationException> exceptionCaptor = ArgumentCaptor.forClass(AuthenticationException.class);
 
     underTest.initUserSession(request, response);
 
-    assertThat(anonymous.isLoggedIn()).isFalse();
-    assertThat(anonymous.hasMembership(ORG_KEY)).isFalse();
+    verify(authenticationEvent).loginFailure(eq(request), exceptionCaptor.capture());
+    assertThat(exceptionCaptor.getValue().getMessage()).isEqualTo("User must be authenticated");
+    verify(threadLocalSession, never()).set(any());
   }
 
   @Test
@@ -508,6 +532,7 @@ public class UserSessionInitializerIT {
   /** A real session, so membership comes from the members table and the allowlist decision from the mocked access. */
   private ServerUserSession realServerSessionOnOrganizationUrl(UserDto user, String clientIp) {
     when(ipAccess.isBlocked(eq(ORG_UUID), eq(BLOCKED_IP), any())).thenReturn(true);
+    when(ipAccess.blockedOrganizationUuids(BLOCKED_IP)).thenReturn(Set.of(ORG_UUID));
     when(ipAccess.isBlocked(eq(ORG_UUID), eq(ALLOWED_IP), any())).thenReturn(false);
     when(request.getRequestURI()).thenReturn("/api/organizations/search");
     when(request.getParameterValues("organization")).thenReturn(new String[] {ORG_KEY});
