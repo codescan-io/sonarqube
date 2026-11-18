@@ -118,15 +118,18 @@ public class UserSessionInitializer {
   private final RequestAuthenticator requestAuthenticator;
   private final OrganizationIpAccess organizationIpAccess;
   private final HostedMcpRequest hostedMcpRequest;
+  private final ArmRequest armRequest;
 
   public UserSessionInitializer(Configuration config, ThreadLocalUserSession threadLocalSession, AuthenticationEvent authenticationEvent,
-    RequestAuthenticator requestAuthenticator, OrganizationIpAccess organizationIpAccess, HostedMcpRequest hostedMcpRequest) {
+    RequestAuthenticator requestAuthenticator, OrganizationIpAccess organizationIpAccess, HostedMcpRequest hostedMcpRequest,
+    ArmRequest armRequest) {
     this.config = config;
     this.threadLocalSession = threadLocalSession;
     this.authenticationEvent = authenticationEvent;
     this.requestAuthenticator = requestAuthenticator;
     this.organizationIpAccess = organizationIpAccess;
     this.hostedMcpRequest = hostedMcpRequest;
+    this.armRequest = armRequest;
   }
 
   public boolean initUserSession(HttpRequest request, HttpResponse response) {
@@ -187,7 +190,8 @@ public class UserSessionInitializer {
 
   private void loadUserSession(HttpRequest request, HttpResponse response, boolean urlSupportsSystemPasscode, String path) {
     UserSession session = requestAuthenticator.authenticate(request, response);
-    if (session instanceof ServerUserSession serverUserSession) {
+    // a session withIpAllowlist is never called on is not restricted, so an ARM request skips the allowlist this way
+    if (session instanceof ServerUserSession serverUserSession && !armRequest.isArm(request)) {
       // covers anonymous and token sessions too; must happen before the session is used below
       serverUserSession.withIpAllowlist(organizationIpAccess, request.getRemoteAddr(), serviceLoginOrganization(request),
         hostedMcpRequest.isHostedMcp(request));

@@ -86,8 +86,11 @@ public class UserSessionInitializerIT {
   private static final String MCP_KEY = "m".repeat(40);
   private HostedMcpRequest hostedMcpRequest = new HostedMcpRequest(mcpKeys(MCP_KEY));
 
+  private static final String ARM_KEY = "a".repeat(40);
+  private ArmRequest armRequest = new ArmRequest(armKeys(ARM_KEY));
+
   private UserSessionInitializer underTest = new UserSessionInitializer(settings.asConfig(), threadLocalSession, authenticationEvent, authenticator, ipAccess,
-    hostedMcpRequest);
+    hostedMcpRequest, armRequest);
 
   @Before
   public void setUp() {
@@ -372,6 +375,67 @@ public class UserSessionInitializerIT {
   }
 
   @Test
+  public void armRequest_sessionHasNoIpAllowlist() {
+    insertOrganization();
+    UserDto member = user("member");
+    insertMembership(member);
+    ServerUserSession session = realServerSessionOnOrganizationUrl(member, BLOCKED_IP);
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
+
+    assertThat(underTest.initUserSession(request, response)).isTrue();
+
+    assertThat(session.isBlockedByIpAllowlist(ORG_UUID)).isFalse();
+    assertThat(session.getClientIp()).isNull();
+    verify(threadLocalSession).set(session);
+    verifyNoInteractions(ipAccess);
+  }
+
+  @Test
+  public void armAndMcpKeys_armWins() {
+    insertOrganization();
+    UserDto member = user("member");
+    insertMembership(member);
+    ServerUserSession session = realServerSessionOnOrganizationUrl(member, BLOCKED_IP);
+    when(ipAccess.isBlockedForHostedMcp(ORG_UUID)).thenReturn(true);
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
+    when(request.getHeader(HostedMcpRequest.MCP_KEY_HEADER)).thenReturn(MCP_KEY);
+
+    assertThat(underTest.initUserSession(request, response)).isTrue();
+
+    assertThat(session.isBlockedByIpAllowlist(ORG_UUID)).isFalse();
+    assertThat(session.isHostedMcpRequest()).isFalse();
+    assertThat(session.getClientIp()).isNull();
+    verifyNoInteractions(ipAccess);
+  }
+
+  @Test
+  public void wrongArmKey_allowlistApplies() {
+    insertOrganization();
+    UserDto member = user("member");
+    insertMembership(member);
+    ServerUserSession session = realServerSessionOnOrganizationUrl(member, BLOCKED_IP);
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn("x".repeat(40));
+
+    assertThat(underTest.initUserSession(request, response)).isTrue();
+
+    assertThat(session.isBlockedByIpAllowlist(ORG_UUID)).isTrue();
+    assertThat(session.getClientIp()).isEqualTo(BLOCKED_IP);
+  }
+
+  @Test
+  public void armKey_withoutLogin_getsNoSpecialAccess() {
+    when(request.getRemoteAddr()).thenReturn(BLOCKED_IP);
+    when(request.getHeader(ArmRequest.ARM_KEY_HEADER)).thenReturn(ARM_KEY);
+    ServerUserSession anonymous = new ServerUserSession(dbTester.getDbClient(), null, false);
+    when(authenticator.authenticate(request, response)).thenReturn(anonymous);
+
+    underTest.initUserSession(request, response);
+
+    assertThat(anonymous.isLoggedIn()).isFalse();
+    assertThat(anonymous.hasMembership(ORG_KEY)).isFalse();
+  }
+
+  @Test
   public void blocked_member_on_an_organization_url_is_not_logged_out() {
     insertOrganization();
     UserDto member = user("member");
@@ -465,6 +529,12 @@ public class UserSessionInitializerIT {
 
   private void insertMembership(UserDto user) {
     dbTester.executeInsert("organization_members", "organization_uuid", ORG_UUID, "user_uuid", user.getUuid(), "type", "STANDARD");
+  }
+
+  private static Properties armKeys(String keys) {
+    Properties properties = new Properties();
+    properties.setProperty(ArmRequest.KEYS_PROPERTY, keys);
+    return properties;
   }
 
   private static Properties mcpKeys(String keys) {
