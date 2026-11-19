@@ -117,4 +117,98 @@
       and c.change_data like '%resolution=%'
   </select>
 
+  <sql id="auditChangeColumns">
+    c.uuid as uuid,
+    c.issue_key as issueKey,
+    c.change_type as changeType,
+    c.change_data as changeData,
+    coalesce(c.issue_change_creation_date, c.created_at) as changedAt,
+    c.user_login as userUuid,
+    i.issue_type as issueType,
+    i.severity as severity,
+    r.plugin_name as ruleRepository,
+    r.plugin_rule_key as ruleKey,
+    r.name as ruleName,
+    p.kee as projectKey,
+    p.name as projectName,
+    comp.path as filePath
+  </sql>
+
+  <sql id="auditChangesFromWhere">
+    from issue_changes c
+    inner join issues i on i.kee = c.issue_key
+    inner join project_branches pb on pb.uuid = c.project_uuid and pb.is_main = ${_true}
+    inner join projects p on p.uuid = pb.project_uuid
+    inner join rules r on r.uuid = i.rule_uuid
+    left outer join components comp on comp.uuid = i.component_uuid
+    where
+      p.organization_uuid = #{query.organizationUuid,jdbcType=VARCHAR}
+      and c.created_at &gt;= #{query.minCreatedAt,jdbcType=BIGINT}
+      and coalesce(c.issue_change_creation_date, c.created_at) &gt;= #{query.fromDate,jdbcType=BIGINT}
+      and coalesce(c.issue_change_creation_date, c.created_at) &lt; #{query.toDate,jdbcType=BIGINT}
+      and (
+      <foreach collection="query.categories" item="category" separator=" or ">
+        <choose>
+          <when test="category == 'STATUS'">
+            (c.change_type = 'diff' and (c.change_data like '%resolution=%' or c.change_data like '%status=%'))
+          </when>
+          <when test="category == 'SEVERITY'">
+            (c.change_type = 'diff' and c.change_data like '%severity=%')
+          </when>
+          <when test="category == 'COMMENT'">
+            c.change_type = 'comment'
+          </when>
+          <otherwise>
+            c.change_type = 'exception_reason'
+          </otherwise>
+        </choose>
+      </foreach>
+      )
+      <if test="!query.includeAnalysisChanges">
+        and c.user_login is not null
+      </if>
+      <if test="query.userUuid != null">
+        and c.user_login = #{query.userUuid,jdbcType=VARCHAR}
+      </if>
+      <if test="query.projectUuid != null">
+        and p.uuid = #{query.projectUuid,jdbcType=VARCHAR}
+      </if>
+  </sql>
+
+  <select id="selectAuditChangesForOrganization" parameterType="map" resultType="org.sonar.db.issue.IssueAuditChangeDto">
+    select <include refid="auditChangeColumns"/>
+    <include refid="auditChangesFromWhere"/>
+    order by coalesce(c.issue_change_creation_date, c.created_at) desc, c.uuid
+    <include refid="org.sonar.db.common.Common.pagination"/>
+  </select>
+
+  <select id="countAuditChangesForOrganization" parameterType="map" resultType="int">
+    select count(1)
+    <include refid="auditChangesFromWhere"/>
+  </select>
+
+  <select id="scrollAuditChangesForOrganization" parameterType="map" resultType="org.sonar.db.issue.IssueAuditChangeDto"
+          fetchSize="${_scrollFetchSize}" resultSetType="FORWARD_ONLY">
+    select <include refid="auditChangeColumns"/>
+    <include refid="auditChangesFromWhere"/>
+  </select>
+
+  <select id="selectResolutionAndSeverityChangesOnBranch" parameterType="map" resultType="org.sonar.db.issue.IssueAuditChangeDto">
+    select <include refid="auditChangeColumns"/>
+    from issue_changes c
+    inner join issues i on i.kee = c.issue_key and i.issue_type &lt;&gt; 4
+    inner join project_branches pb on pb.uuid = c.project_uuid
+    inner join projects p on p.uuid = pb.project_uuid
+    inner join rules r on r.uuid = i.rule_uuid
+    left outer join components comp on comp.uuid = i.component_uuid
+    where
+      c.project_uuid = #{branchUuid,jdbcType=VARCHAR}
+      and c.change_type = 'diff'
+      and c.created_at &gt;= #{minCreatedAt,jdbcType=BIGINT}
+      and coalesce(c.issue_change_creation_date, c.created_at) &gt; #{fromDate,jdbcType=BIGINT}
+      and coalesce(c.issue_change_creation_date, c.created_at) &lt;= #{toDate,jdbcType=BIGINT}
+      and (c.change_data like '%resolution=%' or c.change_data like '%severity=%')
+    order by coalesce(c.issue_change_creation_date, c.created_at), c.uuid
+  </select>
+
 </mapper>

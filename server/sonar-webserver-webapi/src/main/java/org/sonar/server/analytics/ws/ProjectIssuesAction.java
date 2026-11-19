@@ -40,6 +40,8 @@ import static org.sonar.server.analytics.ws.AnalyticsWsSupport.PARAM_ORGANIZATIO
  */
 public class ProjectIssuesAction implements AnalyticsWsAction {
 
+  static final String PARAM_INCLUDE_HOTSPOTS = "includeHotspots";
+
   private final DbClient dbClient;
   private final IssueIndex issueIndex;
   private final AnalyticsWsSupport support;
@@ -54,14 +56,19 @@ public class ProjectIssuesAction implements AnalyticsWsAction {
   public void define(WebService.NewController controller) {
     WebService.NewAction action = controller.createAction("project_issues")
       .setDescription("Unresolved issues on the main branch of every project of the organization the user can browse, counted by " +
-        "type and severity, with the estimated time to fix them. Security hotspots are left out, and so are projects with no " +
-        "unresolved issue.<br/>" +
+        "type and severity, with the estimated time to fix them. Security hotspots are left out unless '" + PARAM_INCLUDE_HOTSPOTS +
+        "' is set, in which case those to review count under SECURITY_HOTSPOT. Projects with no unresolved issue are left out.<br/>" +
         "Requires 'Administer' permission on the organization.")
       .setSince("10.8")
       .setInternal(true)
       .setResponseExample(getClass().getResource("project_issues-example.json"))
       .setHandler(this);
     AnalyticsWsSupport.defineOrganizationParam(action);
+    action.createParam(PARAM_INCLUDE_HOTSPOTS)
+      .setDescription("Whether to count the security hotspots to review")
+      .setBooleanPossibleValues()
+      .setDefaultValue(false)
+      .setSince("10.8");
   }
 
   @Override
@@ -70,7 +77,7 @@ public class ProjectIssuesAction implements AnalyticsWsAction {
       OrganizationDto organization = support.checkCanViewAnalytics(dbSession, request.mandatoryParam(PARAM_ORGANIZATION));
 
       Map<String, ProjectIssues> byProjectUuid = new HashMap<>();
-      issueIndex.countUnresolvedByProjectTypeAndSeverity(organization.getUuid(), count -> {
+      issueIndex.countUnresolvedByProjectTypeAndSeverity(organization.getUuid(), request.mandatoryParamAsBoolean(PARAM_INCLUDE_HOTSPOTS), count -> {
         ProjectIssues project = byProjectUuid.computeIfAbsent(count.projectUuid(), k -> new ProjectIssues());
         project.counts.computeIfAbsent(count.type(), k -> new TreeMap<>()).put(count.severity(), count.count());
         project.effortMinutes += count.effortMinutes();

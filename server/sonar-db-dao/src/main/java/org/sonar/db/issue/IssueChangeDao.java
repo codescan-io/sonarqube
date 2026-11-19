@@ -27,6 +27,7 @@ import org.apache.ibatis.session.ResultHandler;
 import org.sonar.core.issue.FieldDiffs;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
+import org.sonar.db.Pagination;
 
 import static java.util.Collections.singletonList;
 import static org.sonar.db.DatabaseUtils.executeLargeInputs;
@@ -87,6 +88,26 @@ public class IssueChangeDao implements Dao {
   public boolean update(DbSession dbSession, IssueChangeDto change) {
     int count = mapper(dbSession).update(change);
     return count == 1;
+  }
+
+  /** Changes of the organization's main branch issues and hotspots that the query selects, the most recent first. */
+  public List<IssueAuditChangeDto> selectAuditChangesForOrganization(DbSession dbSession, IssueAuditQuery query, Pagination pagination) {
+    return mapper(dbSession).selectAuditChangesForOrganization(query, pagination);
+  }
+
+  public int countAuditChangesForOrganization(DbSession dbSession, IssueAuditQuery query) {
+    return mapper(dbSession).countAuditChangesForOrganization(query);
+  }
+
+  /** Streams every change the query selects, in no particular order. */
+  public void scrollAuditChangesForOrganization(DbSession dbSession, IssueAuditQuery query, ResultHandler<IssueAuditChangeDto> handler) {
+    mapper(dbSession).scrollAuditChangesForOrganization(query, handler);
+  }
+
+  /** Changes of the resolution or severity of the issues (not hotspots) of a branch made in ({@code fromDate}, {@code toDate}], oldest first. */
+  public List<IssueAuditChangeDto> selectResolutionAndSeverityChangesOnBranch(DbSession dbSession, String branchUuid, long fromDate,
+    long toDate) {
+    return mapper(dbSession).selectResolutionAndSeverityChangesOnBranch(branchUuid, fromDate, toDate, fromDate - CREATED_AT_MARGIN_MS);
   }
 
   private static IssueChangeMapper mapper(DbSession session) {

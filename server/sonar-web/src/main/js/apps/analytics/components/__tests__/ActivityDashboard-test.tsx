@@ -139,7 +139,7 @@ beforeEach(() => {
 });
 
 it('shows headline figures compared with the previous period', async () => {
-  renderComponent(<ActivityDashboard organization="my-org" />);
+  renderComponent(<ActivityDashboard organization="my-org" period={30} />);
 
   expect(await screen.findByText('analytics.activity.analyses')).toBeInTheDocument();
   expect(getOrganizationActivity).toHaveBeenCalledWith(
@@ -164,7 +164,7 @@ it('shows headline figures compared with the previous period', async () => {
 });
 
 it('shows the breakdowns by target and task type', async () => {
-  renderComponent(<ActivityDashboard organization="my-org" />);
+  renderComponent(<ActivityDashboard organization="my-org" period={30} />);
 
   expect(await screen.findByText('analytics.activity.target.MAIN')).toBeInTheDocument();
   expect(screen.getByText('analytics.activity.target.PULL_REQUEST')).toBeInTheDocument();
@@ -173,12 +173,9 @@ it('shows the breakdowns by target and task type', async () => {
   expect(screen.getByLabelText(/Oct 14: 40/)).toBeInTheDocument();
 });
 
-it('reloads with weekly buckets for a 90 day period', async () => {
-  const user = userEvent.setup();
-  renderComponent(<ActivityDashboard organization="my-org" />);
+it('loads weekly buckets for a 90 day period', async () => {
+  renderComponent(<ActivityDashboard organization="my-org" period={90} />);
   await screen.findByText('analytics.activity.analyses');
-
-  await user.click(screen.getByRole('radio', { name: 'analytics.filter.date.90' }));
 
   expect(getOrganizationActivity).toHaveBeenLastCalledWith(
     expect.objectContaining({ interval: 'week' }),
@@ -200,7 +197,7 @@ it('says when nothing ran', async () => {
     targets: [],
     timeline: [{ date: '2026-10-14', total: 0, success: 0, failed: 0, canceled: 0 }],
   });
-  renderComponent(<ActivityDashboard organization="my-org" />);
+  renderComponent(<ActivityDashboard organization="my-org" period={30} />);
 
   expect(await screen.findAllByText('analytics.activity.no_analyses')).toHaveLength(2);
   expect(screen.getByText('analytics.activity.no_tasks')).toBeInTheDocument();
@@ -208,7 +205,7 @@ it('says when nothing ran', async () => {
 
 it('shows an error when loading fails', async () => {
   jest.mocked(getOrganizationActivity).mockRejectedValue(new Error('boom'));
-  renderComponent(<ActivityDashboard organization="my-org" />);
+  renderComponent(<ActivityDashboard organization="my-org" period={30} />);
 
   expect(await screen.findByText('analytics.load_error')).toBeInTheDocument();
 });
@@ -234,7 +231,7 @@ function expectTile(
 
 it('lists the failed analyses behind the success rate', async () => {
   const user = userEvent.setup();
-  renderComponent(<ActivityDashboard organization="my-org" />);
+  renderComponent(<ActivityDashboard organization="my-org" period={30} />);
   await screen.findByText('analytics.activity.analyses');
 
   await user.click(tileButton('analytics.activity.success_rate'));
@@ -263,7 +260,7 @@ it.each([
   ['analytics.activity.queue_time', { s: 'queueTime' }],
 ])('sorts and filters the tasks behind %s', async (label, query) => {
   const user = userEvent.setup();
-  renderComponent(<ActivityDashboard organization="my-org" />);
+  renderComponent(<ActivityDashboard organization="my-org" period={30} />);
   await screen.findByText('analytics.activity.analyses');
 
   await user.click(tileButton(label));
@@ -273,7 +270,7 @@ it.each([
 
 it('lists the tasks waiting in the queue now', async () => {
   const user = userEvent.setup();
-  renderComponent(<ActivityDashboard organization="my-org" />);
+  renderComponent(<ActivityDashboard organization="my-org" period={30} />);
   await screen.findByText('analytics.activity.analyses');
 
   await user.click(tileButton('analytics.activity.queued_now'));
@@ -287,7 +284,7 @@ it('lists the tasks waiting in the queue now', async () => {
 
 it('lists analyzed projects and the ones that were not', async () => {
   const user = userEvent.setup();
-  renderComponent(<ActivityDashboard organization="my-org" />);
+  renderComponent(<ActivityDashboard organization="my-org" period={30} />);
   await screen.findByText('analytics.activity.analyses');
 
   await user.click(tileButton('analytics.activity.projects_analyzed'));
@@ -317,7 +314,7 @@ it('loads more rows on demand', async () => {
       paging: { pageIndex: 2, pageSize: 20, total: 2 },
       tasks: [task('2')],
     });
-  renderComponent(<ActivityDashboard organization="my-org" />);
+  renderComponent(<ActivityDashboard organization="my-org" period={30} />);
   await screen.findByText('analytics.activity.analyses');
   await user.click(tileButton('analytics.activity.analyses'));
   const panel = within(

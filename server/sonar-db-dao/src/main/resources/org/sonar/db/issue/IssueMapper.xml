@@ -1030,4 +1030,181 @@
       and i.resolution is null
   </select>
 
+  <sql id="analyticsIssueColumns">
+    i.kee as issueKey,
+    i.rule_uuid as ruleUuid,
+    i.issue_type as issueType,
+    i.severity as severity,
+    i.status as status,
+    i.resolution as resolution,
+    r.plugin_name as ruleRepository,
+    r.plugin_rule_key as ruleKey,
+    r.name as ruleName,
+    p.kee as projectKey,
+    p.name as projectName,
+    c.path as filePath,
+    i.line as line,
+    i.issue_creation_date as creationDate,
+    i.issue_close_date as closeDate,
+    i.issue_resolution_expires_at as resolutionExpiresAt
+  </sql>
+
+  <sql id="analyticsIssueJoins">
+    inner join project_branches pb on pb.uuid = i.project_uuid
+    inner join projects p on p.uuid = pb.project_uuid
+    inner join rules r on r.uuid = i.rule_uuid
+    left outer join components c on c.uuid = i.component_uuid
+  </sql>
+
+  <sql id="exceptionsWhere">
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+      and pb.is_main = ${_true}
+      and i.issue_type &lt;&gt; 4
+      and i.resolution in
+      <foreach collection="resolutions" open="(" close=")" item="resolution" separator=",">
+        #{resolution,jdbcType=VARCHAR}
+      </foreach>
+      <if test="projectUuid != null">
+        and p.uuid = #{projectUuid,jdbcType=VARCHAR}
+      </if>
+  </sql>
+
+  <select id="selectExceptionsForOrganization" parameterType="map" resultType="org.sonar.db.issue.AnalyticsIssueDto">
+    select <include refid="analyticsIssueColumns"/>
+    from issues i
+    <include refid="analyticsIssueJoins"/>
+    <include refid="exceptionsWhere"/>
+    order by i.updated_at desc, i.kee
+    <include refid="org.sonar.db.common.Common.pagination"/>
+  </select>
+
+  <select id="countExceptionsForOrganization" parameterType="map" resultType="int">
+    select count(1)
+    from issues i
+    inner join project_branches pb on pb.uuid = i.project_uuid
+    inner join projects p on p.uuid = pb.project_uuid
+    <include refid="exceptionsWhere"/>
+  </select>
+
+  <!-- groupKey: NONE without an expiry date, EXPIRED, SOON when it expires before 'soon', LATER otherwise -->
+  <select id="countExceptionsByExpiryForOrganization" parameterType="map" resultType="org.sonar.db.issue.IssueGroupCountDto">
+    select t.resolution as resolution, t.expiry as groupKey, count(1) as count
+    from (
+      select
+        i.resolution as resolution,
+        case
+          when i.issue_resolution_expires_at is null then 'NONE'
+          when i.issue_resolution_expires_at &lt;= #{now,jdbcType=BIGINT} then 'EXPIRED'
+          when i.issue_resolution_expires_at &lt; #{soon,jdbcType=BIGINT} then 'SOON'
+          else 'LATER'
+        end as expiry
+      from issues i
+      inner join project_branches pb on pb.uuid = i.project_uuid and pb.is_main = ${_true}
+      inner join projects p on p.uuid = pb.project_uuid
+      where
+        p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+        and i.issue_type &lt;&gt; 4
+        and i.resolution in ('WONTFIX', 'FALSE-POSITIVE')
+    ) t
+    group by t.resolution, t.expiry
+  </select>
+
+  <select id="countHotspotsToReviewForOrganization" parameterType="map" resultType="int">
+    select count(1)
+    from issues i
+    inner join project_branches pb on pb.uuid = i.project_uuid and pb.is_main = ${_true}
+    inner join projects p on p.uuid = pb.project_uuid
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+      and i.issue_type = 4
+      and i.status = 'TO_REVIEW'
+  </select>
+
+  <!-- issues (not hotspots) whose row was created in [fromDate, toDate), that is by the analyses processed in between -->
+  <sql id="createdOnBranchWhere">
+    where
+      i.project_uuid = #{branchUuid,jdbcType=VARCHAR}
+      and i.issue_type &lt;&gt; 4
+      and i.created_at &gt;= #{fromDate,jdbcType=BIGINT}
+      <if test="toDate != null">
+        and i.created_at &lt; #{toDate,jdbcType=BIGINT}
+      </if>
+  </sql>
+
+  <select id="selectIssuesCreatedOnBranch" parameterType="map" resultType="org.sonar.db.issue.AnalyticsIssueDto">
+    select <include refid="analyticsIssueColumns"/>
+    from issues i
+    <include refid="analyticsIssueJoins"/>
+    <include refid="createdOnBranchWhere"/>
+    order by i.created_at desc, i.kee
+    <include refid="org.sonar.db.common.Common.pagination"/>
+  </select>
+
+  <select id="countIssuesCreatedOnBranch" parameterType="map" resultType="org.sonar.db.issue.IssueGroupCountDto">
+    select i.issue_type as issueType, i.severity as severity, i.resolution as resolution, count(1) as count
+    from issues i
+    <include refid="createdOnBranchWhere"/>
+    group by i.issue_type, i.severity, i.resolution
+  </select>
+
+  <!-- issues (not hotspots) fixed or removed by an analysis dated in (fromDate, toDate]; closed issues are deleted after the
+       closed issues retention period -->
+  <sql id="closedOnBranchWhere">
+    where
+      i.project_uuid = #{branchUuid,jdbcType=VARCHAR}
+      and i.issue_type &lt;&gt; 4
+      and i.status = 'CLOSED'
+      and i.resolution in ('FIXED', 'REMOVED')
+      and i.issue_close_date &gt; #{fromDate,jdbcType=BIGINT}
+      and i.issue_close_date &lt;= #{toDate,jdbcType=BIGINT}
+  </sql>
+
+  <select id="selectIssuesClosedOnBranch" parameterType="map" resultType="org.sonar.db.issue.AnalyticsIssueDto">
+    select <include refid="analyticsIssueColumns"/>
+    from issues i
+    <include refid="analyticsIssueJoins"/>
+    <include refid="closedOnBranchWhere"/>
+    order by i.issue_close_date desc, i.kee
+    <include refid="org.sonar.db.common.Common.pagination"/>
+  </select>
+
+  <select id="countIssuesClosedOnBranch" parameterType="map" resultType="org.sonar.db.issue.IssueGroupCountDto">
+    select i.issue_type as issueType, i.severity as severity, i.resolution as resolution, count(1) as count
+    from issues i
+    <include refid="closedOnBranchWhere"/>
+    group by i.issue_type, i.severity, i.resolution
+  </select>
+
+  <sql id="customRuleIssuesOfOrganization">
+    from issues i
+    inner join rules r on r.uuid = i.rule_uuid and r.template_uuid is not null
+    inner join project_branches pb on pb.uuid = i.project_uuid and pb.is_main = ${_true}
+    inner join projects p on p.uuid = pb.project_uuid
+    where
+      p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+  </sql>
+
+  <!-- groupKey: the rule uuid -->
+  <select id="countCustomRuleIssuesForOrganization" parameterType="map" resultType="org.sonar.db.issue.IssueGroupCountDto">
+    select i.rule_uuid as groupKey, i.issue_type as issueType, i.severity as severity, i.resolution as resolution, count(1) as count
+    <include refid="customRuleIssuesOfOrganization"/>
+    group by i.rule_uuid, i.issue_type, i.severity, i.resolution
+  </select>
+
+  <select id="scrollCustomRuleIssuesForOrganization" parameterType="map" resultType="org.sonar.db.issue.AnalyticsIssueDto"
+          fetchSize="${_scrollFetchSize}" resultSetType="FORWARD_ONLY">
+    select
+      i.kee as issueKey,
+      i.rule_uuid as ruleUuid,
+      i.resolution as resolution,
+      i.issue_creation_date as creationDate,
+      i.issue_close_date as closeDate
+    <include refid="customRuleIssuesOfOrganization"/>
+      and (
+        (i.issue_creation_date &gt;= #{fromDate,jdbcType=BIGINT} and i.issue_creation_date &lt; #{toDate,jdbcType=BIGINT})
+        or (i.issue_close_date &gt;= #{fromDate,jdbcType=BIGINT} and i.issue_close_date &lt; #{toDate,jdbcType=BIGINT})
+      )
+  </select>
+
 </mapper>

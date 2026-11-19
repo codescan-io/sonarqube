@@ -1,0 +1,31 @@
+{
+  "period": {"from": "2026-10-05", "to": "2026-10-25", "timeZone": "Europe/Paris", "interval": "week"},
+  "rules": [
+    {
+      "key": "apex:no_hardcoded_ids",
+      "name": "Record IDs should not be hard-coded",
+      "language": "apex",
+      "template": "apex:XPathTemplateRule",
+      "severity": "MAJOR",
+      "type": "CODE_SMELL",
+      "status": "READY",
+      "createdAt": "2026-03-11T09:00:00+0000",
+      "issues": {
+        "total": 240,
+        "open": 182,
+        "accepted": 9,
+        "falsePositive": 31,
+        "fixed": 18,
+        "openBySeverity": {"MAJOR": 182}
+      },
+      "dismissalRate": 0.1667,
+      "timeline": [
+        {"date": "2026-10-05", "introduced": 12, "closed": 3},
+        {"date": "2026-10-12", "introduced": 7, "closed": 5},
+        {"date": "2026-10-19", "introduced": 4, "closed": 2}
+      ],
+      "introduced": 23,
+      "closed": 10
+    }
+  ]
+}

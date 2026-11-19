@@ -233,6 +233,73 @@ public class IssueDao implements Dao {
     mapper(session).scrollOpenSecurityIssuesForOrganization(organizationUuid, handler);
   }
 
+  /**
+   * Issues (not hotspots) of the organization's main branches with one of the given resolutions, the most recently updated
+   * first; only those of one project when {@code projectUuid} is set.
+   */
+  public List<AnalyticsIssueDto> selectExceptionsForOrganization(DbSession session, String organizationUuid, Collection<String> resolutions,
+    @Nullable String projectUuid, Pagination pagination) {
+    return mapper(session).selectExceptionsForOrganization(organizationUuid, resolutions, projectUuid, pagination);
+  }
+
+  public int countExceptionsForOrganization(DbSession session, String organizationUuid, Collection<String> resolutions,
+    @Nullable String projectUuid) {
+    return mapper(session).countExceptionsForOrganization(organizationUuid, resolutions, projectUuid);
+  }
+
+  /**
+   * Accepted and false-positive issues of the organization's main branches by resolution and expiry, the expiry being the group:
+   * {@code NONE} without an expiry date, {@code EXPIRED}, {@code SOON} when it expires before {@code soon}, {@code LATER} otherwise.
+   */
+  public List<IssueGroupCountDto> countExceptionsByExpiryForOrganization(DbSession session, String organizationUuid, long now, long soon) {
+    return mapper(session).countExceptionsByExpiryForOrganization(organizationUuid, now, soon);
+  }
+
+  /** Security hotspots of the organization's main branches that still have to be reviewed. */
+  public int countHotspotsToReviewForOrganization(DbSession session, String organizationUuid) {
+    return mapper(session).countHotspotsToReviewForOrganization(organizationUuid);
+  }
+
+  /**
+   * Issues (not hotspots) of a branch first raised by the analyses processed in [{@code fromDate}, {@code toDate}), the most recent
+   * first. No upper bound when {@code toDate} is null.
+   */
+  public List<AnalyticsIssueDto> selectIssuesCreatedOnBranch(DbSession session, String branchUuid, long fromDate, @Nullable Long toDate,
+    Pagination pagination) {
+    return mapper(session).selectIssuesCreatedOnBranch(branchUuid, fromDate, toDate, pagination);
+  }
+
+  public List<IssueGroupCountDto> countIssuesCreatedOnBranch(DbSession session, String branchUuid, long fromDate, @Nullable Long toDate) {
+    return mapper(session).countIssuesCreatedOnBranch(branchUuid, fromDate, toDate);
+  }
+
+  /**
+   * Issues (not hotspots) of a branch fixed or removed by an analysis dated in ({@code fromDate}, {@code toDate}], the most recent
+   * first. Closed issues are deleted after the closed issues retention period.
+   */
+  public List<AnalyticsIssueDto> selectIssuesClosedOnBranch(DbSession session, String branchUuid, long fromDate, long toDate,
+    Pagination pagination) {
+    return mapper(session).selectIssuesClosedOnBranch(branchUuid, fromDate, toDate, pagination);
+  }
+
+  public List<IssueGroupCountDto> countIssuesClosedOnBranch(DbSession session, String branchUuid, long fromDate, long toDate) {
+    return mapper(session).countIssuesClosedOnBranch(branchUuid, fromDate, toDate);
+  }
+
+  /** Issues raised by custom rules on the organization's main branches, by rule (the group), type, severity and resolution. */
+  public List<IssueGroupCountDto> countCustomRuleIssuesForOrganization(DbSession session, String organizationUuid) {
+    return mapper(session).countCustomRuleIssuesForOrganization(organizationUuid);
+  }
+
+  /**
+   * Streams the rule, resolution, creation and close dates of the issues raised by custom rules on the organization's main branches
+   * that were created or closed in [{@code fromDate}, {@code toDate}).
+   */
+  public void scrollCustomRuleIssuesForOrganization(DbSession session, String organizationUuid, long fromDate, long toDate,
+    ResultHandler<AnalyticsIssueDto> handler) {
+    mapper(session).scrollCustomRuleIssuesForOrganization(organizationUuid, fromDate, toDate, handler);
+  }
+
   private static IssueMapper mapper(DbSession session) {
     return session.getMapper(IssueMapper.class);
   }

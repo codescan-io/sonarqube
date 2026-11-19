@@ -19,7 +19,6 @@
  */
 
 import { screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import {
   getIssueResolutions,
   getOrganizationActivity,
@@ -172,13 +171,20 @@ beforeEach(() => {
     ],
   });
   jest.mocked(getProjectIssues).mockResolvedValue({
-    projects: [{ key: 'web', effortMinutes: 600, issues: { VULNERABILITY: { CRITICAL: 2 } } }],
+    // the same as the last point of the trend: 80 open issues, 5 vulnerabilities, 80 hours
+    projects: [
+      {
+        key: 'web',
+        effortMinutes: 4800,
+        issues: { VULNERABILITY: { CRITICAL: 2, MAJOR: 3 }, CODE_SMELL: { MINOR: 75 } },
+      },
+    ],
   });
   jest.mocked(getProjectTaskStatuses).mockResolvedValue({ projects: [] });
 });
 
 it('grades the organization and writes what changed', async () => {
-  renderComponent(<ExecutiveBrief organization="acme" />);
+  renderComponent(<ExecutiveBrief organization="acme" period={30} />);
 
   expect(await screen.findByText('analytics.health.title')).toBeInTheDocument();
   // gates 100, security 67, velocity 100, reliability 95, freshness 100
@@ -201,7 +207,7 @@ it('grades the organization and writes what changed', async () => {
 });
 
 it('lists where to act and the leading and lagging teams', async () => {
-  renderComponent(<ExecutiveBrief organization="acme" />);
+  renderComponent(<ExecutiveBrief organization="acme" period={30} />);
 
   // failing quality gate and 2 critical vulnerabilities
   expect(await screen.findByText('Web Portal')).toBeInTheDocument();
@@ -217,19 +223,16 @@ it('lists where to act and the leading and lagging teams', async () => {
 it('still writes the brief when CodeScan services do not answer', async () => {
   jest.mocked(getAiValue).mockRejectedValue(new Error('not deployed'));
   jest.mocked(getOrganizationHealth).mockRejectedValue(new Error('not deployed'));
-  renderComponent(<ExecutiveBrief organization="acme" />);
+  renderComponent(<ExecutiveBrief organization="acme" period={30} />);
 
   expect(await screen.findByText('analytics.brief.insight.past_sla.2.6')).toBeInTheDocument();
   expect(screen.getByText('analytics.roi.ai_unavailable')).toBeInTheDocument();
   expect(screen.queryByText(/gate_failures/)).not.toBeInTheDocument();
 });
 
-it('reloads for another period', async () => {
-  const user = userEvent.setup();
-  renderComponent(<ExecutiveBrief organization="acme" />);
+it('loads the period it is given', async () => {
+  renderComponent(<ExecutiveBrief organization="acme" period={90} />);
   await screen.findByText('analytics.health.title');
-
-  await user.click(screen.getByRole('radio', { name: 'analytics.quality.period.90' }));
 
   expect(getQualityTrend).toHaveBeenLastCalledWith(expect.objectContaining({ interval: 'week' }));
   expect(getAiValue).toHaveBeenLastCalledWith('acme', 90);

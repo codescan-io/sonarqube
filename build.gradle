@@ -304,7 +304,7 @@ subprojects {
       dependency 'org.sonarsource.javascript:sonar-javascript-plugin:10.18.0-CODESCAN'
       dependency 'org.sonarsource.php:sonar-php-plugin:3.53.0.15220'
       dependency 'org.sonarsource.plugins.cayc:sonar-cayc-plugin:2.4.0.2018'
-      dependency 'org.sonarsource.python:sonar-python-plugin:5.30-CODESCAN'
+      dependency 'org.sonarsource.python:sonar-python-plugin:5.29.0.35837'
       dependency 'org.sonarsource.kotlin:sonar-kotlin-plugin:2.21.0.5736'
       dependency "org.sonarsource.api.plugin:sonar-plugin-api:$pluginApiVersion"
       dependency "org.sonarsource.api.plugin:sonar-plugin-api-test-fixtures:$pluginApiVersion"
@@ -409,7 +409,7 @@ subprojects {
       dependency 'jakarta.mail:jakarta.mail-api:2.1.5'
       dependency 'jakarta.annotation:jakarta.annotation-api:3.0.0'
       dependency 'jakarta.inject:jakarta.inject-api:2.0.1'
-      dependency 'jakarta.xml.bind:jakarta.xml.bind-api:2.3.3'
+      dependency 'jakarta.xml.bind:jakarta.xml.bind-api:3.0.1'
       dependency 'jakarta.servlet:jakarta.servlet-api:6.1.0'
       dependency 'junit:junit:4.13.2'
       dependency 'org.xmlunit:xmlunit-core:2.10.0'

@@ -1,9 +1,9 @@
 {
   "period": {"from": "2026-09-14", "to": "2026-10-11", "timeZone": "Europe/Paris", "interval": "week"},
   "timeline": [
-    {"date": "2026-09-14", "projects": 410, "passed": 330, "failed": 80, "openIssues": 52310, "vulnerabilities": 412, "blockerIssues": 96, "remediationEffortMinutes": 1254000},
-    {"date": "2026-09-21", "projects": 412, "passed": 336, "failed": 76, "openIssues": 51980, "vulnerabilities": 398, "blockerIssues": 90, "remediationEffortMinutes": 1240500},
-    {"date": "2026-09-28", "projects": 415, "passed": 341, "failed": 74, "openIssues": 51022, "vulnerabilities": 371, "blockerIssues": 84, "remediationEffortMinutes": 1221300},
-    {"date": "2026-10-05", "projects": 418, "passed": 350, "failed": 68, "openIssues": 50510, "vulnerabilities": 360, "blockerIssues": 81, "remediationEffortMinutes": 1203900}
+    {"date": "2026-09-14", "projects": 410, "passed": 330, "failed": 80, "openIssues": 52310, "vulnerabilities": 412, "blockerIssues": 96, "remediationEffortMinutes": 1254000, "acceptedIssues": 1210, "falsePositiveIssues": 388, "bySeverity": {"BLOCKER": 96, "CRITICAL": 1830, "MAJOR": 20140, "MINOR": 24500, "INFO": 5744}, "byType": {"BUG": 2210, "VULNERABILITY": 412, "CODE_SMELL": 49688, "SECURITY_HOTSPOT": 640}},
+    {"date": "2026-09-21", "projects": 412, "passed": 336, "failed": 76, "openIssues": 51980, "vulnerabilities": 398, "blockerIssues": 90, "remediationEffortMinutes": 1240500, "acceptedIssues": 1224, "falsePositiveIssues": 393, "bySeverity": {"BLOCKER": 90, "CRITICAL": 1810, "MAJOR": 19990, "MINOR": 24300, "INFO": 5790}, "byType": {"BUG": 2180, "VULNERABILITY": 398, "CODE_SMELL": 49402, "SECURITY_HOTSPOT": 628}},
+    {"date": "2026-09-28", "projects": 415, "passed": 341, "failed": 74, "openIssues": 51022, "vulnerabilities": 371, "blockerIssues": 84, "remediationEffortMinutes": 1221300, "acceptedIssues": 1238, "falsePositiveIssues": 398, "bySeverity": {"BLOCKER": 84, "CRITICAL": 1790, "MAJOR": 19840, "MINOR": 24100, "INFO": 5208}, "byType": {"BUG": 2150, "VULNERABILITY": 371, "CODE_SMELL": 48501, "SECURITY_HOTSPOT": 616}},
+    {"date": "2026-10-05", "projects": 418, "passed": 350, "failed": 68, "openIssues": 50510, "vulnerabilities": 360, "blockerIssues": 81, "remediationEffortMinutes": 1203900, "acceptedIssues": 1252, "falsePositiveIssues": 403, "bySeverity": {"BLOCKER": 81, "CRITICAL": 1770, "MAJOR": 19690, "MINOR": 23900, "INFO": 5069}, "byType": {"BUG": 2120, "VULNERABILITY": 360, "CODE_SMELL": 48030, "SECURITY_HOTSPOT": 604}}
   ]
 }

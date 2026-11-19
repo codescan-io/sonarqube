@@ -25,19 +25,97 @@ import * as React from 'react';
 import { FlagMessage, Spinner } from '~design-system';
 import DateFormatter from '../../../components/intl/DateFormatter';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
+import { ReportGroup } from '../governance';
 import { downloadPdf } from '../pdf';
-import { ReportContext, ReportPeriod } from '../report';
+import { ANALYTICS_TABS, AnalyticsTab, FULL_REPORT, ReportContext, ReportKind } from '../report';
 import ActivityDashboard from './ActivityDashboard';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import ExecutiveBrief from './ExecutiveBrief';
+import GovernanceDashboard, { AdministrationReport, ComplianceReport } from './GovernanceDashboard';
 import QualityDashboard from './QualityDashboard';
+import { ScanSelection } from './ScanComparisonPanel';
 import ValueDashboard from './ValueDashboard';
 
 interface Props {
+  /** One tab, every tab, or one of the ready-made reports. */
+  kind: ReportKind;
   onDone: () => void;
   organization: string;
   organizationName: string;
-  period: ReportPeriod;
+  period: number;
+  /** The scan comparison to show, as picked on the page. */
+  scan?: ScanSelection;
+}
+
+interface ReportSection {
+  content: React.ReactNode;
+  key: string;
+  title: string;
+}
+
+/** The content of one tab, as on screen. */
+export function tabContent(
+  tab: AnalyticsTab,
+  organization: string,
+  period: number,
+  scan?: ScanSelection,
+): React.ReactNode {
+  switch (tab) {
+    case AnalyticsTab.Summary:
+      return <ExecutiveBrief organization={organization} period={period} />;
+    case AnalyticsTab.Projects:
+      return <AnalyticsDashboard organization={organization} />;
+    case AnalyticsTab.Risk:
+      return <QualityDashboard organization={organization} period={period} />;
+    case AnalyticsTab.Governance:
+      return <GovernanceDashboard organization={organization} period={period} scan={scan} />;
+    case AnalyticsTab.Activity:
+      return <ActivityDashboard organization={organization} period={period} />;
+    default:
+      return <ValueDashboard organization={organization} period={period} />;
+  }
+}
+
+function sectionsOf(
+  kind: ReportKind,
+  organization: string,
+  period: number,
+  scan?: ScanSelection,
+): ReportSection[] {
+  const tab = (key: AnalyticsTab) => ({
+    content: tabContent(key, organization, period, scan),
+    key,
+    title: translate('analytics.tab', key),
+  });
+  const group = (key: ReportGroup, content: React.ReactNode) => ({
+    content,
+    key,
+    title: translate('analytics.governance.group', key),
+  });
+  switch (kind) {
+    case FULL_REPORT:
+      return ANALYTICS_TABS.map(tab);
+    case ReportGroup.Compliance:
+      return [
+        group(kind, <ComplianceReport organization={organization} period={period} scan={scan} />),
+      ];
+    case ReportGroup.Security:
+      return [group(kind, tabContent(AnalyticsTab.Risk, organization, period))];
+    case ReportGroup.Admin:
+      return [group(kind, <AdministrationReport organization={organization} period={period} />)];
+    default:
+      return [tab(kind)];
+  }
+}
+
+function titleOf(kind: ReportKind) {
+  if (kind === FULL_REPORT) {
+    return translate('analytics.report.title');
+  }
+  const name = Object.values(ReportGroup).includes(kind as ReportGroup)
+    ? translate('analytics.governance.group', kind)
+    : translate('analytics.tab', kind);
+  return translateWithParameters('analytics.governance.report_title', name);
 }
 
 // Everything has loaded once nothing is busy for this long.
@@ -47,14 +125,16 @@ const READY_CHECKS = 3;
 const READY_TIMEOUT_MS = 120_000;
 
 /**
- * Every tab, one after another and over the same period, without their controls, downloaded as one PDF once every tab
- * has loaded. The page comes back when the file is saved.
+ * A tab, every tab one after another, or a ready-made report, over the period of the page and without controls,
+ * downloaded as one PDF once everything has loaded. The page comes back when the file is saved.
  */
 export default function AnalyticsReport({
+  kind,
   onDone,
   organization,
   organizationName,
   period,
+  scan,
 }: Readonly<Props>) {
   const root = React.useRef<HTMLDivElement>(null);
   const [now] = React.useState(() => new Date());
@@ -64,6 +144,8 @@ export default function AnalyticsReport({
   const [failed, setFailed] = React.useState(false);
   const [attempt, setAttempt] = React.useState(0);
   const periodLabel = translate('analytics.quality.period', String(period));
+  const title = titleOf(kind);
+  const filePrefix = kind === FULL_REPORT ? 'analytics-report' : `${kind}-report`;
 
   React.useEffect(() => {
     let quiet = 0;
@@ -91,8 +173,8 @@ export default function AnalyticsReport({
     setProgress(undefined);
     downloadPdf({
       cover,
-      fileName: `analytics-report-${organization}-${format(now, 'yyyy-MM-dd')}.pdf`,
-      header: `${translate('analytics.report.title')} · ${organizationName} · ${periodLabel}`,
+      fileName: `${filePrefix}-${organization}-${format(now, 'yyyy-MM-dd')}.pdf`,
+      header: `${title} · ${organizationName} · ${periodLabel}`,
       onProgress: (done, total) => active && setProgress({ done, total }),
       pageLabel: (page, pages) => translateWithParameters('analytics.report.page', page, pages),
       sections: Array.from(
@@ -105,35 +187,12 @@ export default function AnalyticsReport({
     return () => {
       active = false;
     };
-  }, [ready, attempt, onDone, organization, organizationName, periodLabel, now]);
+  }, [ready, attempt, onDone, organization, organizationName, periodLabel, now, title, filePrefix]);
 
-  const sections = [
-    {
-      key: 'brief',
-      title: translate('analytics.tab.brief'),
-      content: <ExecutiveBrief defaultPeriod={period} organization={organization} />,
-    },
-    {
-      key: 'overview',
-      title: translate('analytics.tab.overview'),
-      content: <AnalyticsDashboard organization={organization} />,
-    },
-    {
-      key: 'quality',
-      title: translate('analytics.tab.quality'),
-      content: <QualityDashboard defaultPeriod={period} organization={organization} />,
-    },
-    {
-      key: 'activity',
-      title: translate('analytics.tab.activity'),
-      content: <ActivityDashboard defaultPeriod={period} organization={organization} />,
-    },
-    {
-      key: 'value',
-      title: translate('analytics.tab.value'),
-      content: <ValueDashboard defaultPeriod={period} organization={organization} />,
-    },
-  ];
+  const sections = React.useMemo(
+    () => sectionsOf(kind, organization, period, scan),
+    [kind, organization, period, scan],
+  );
 
   let status = translate('analytics.report.preparing');
   if (failed) {
@@ -167,7 +226,7 @@ export default function AnalyticsReport({
       <ReportContext.Provider value>
         <ReportRoot ref={root}>
           <header className="sw-pb-4" data-report-cover>
-            <h1 className="sw-heading-xl">{translate('analytics.report.title')}</h1>
+            <h1 className="sw-heading-xl">{title}</h1>
             <Text as="p" className="sw-mt-2">
               {translateWithParameters('analytics.report.subtitle', organizationName, periodLabel)}
             </Text>

@@ -24,6 +24,7 @@ import java.util.List;
 import javax.annotation.CheckForNull;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.session.ResultHandler;
+import org.sonar.db.Pagination;
 
 public interface IssueChangeMapper {
 
@@ -56,4 +57,14 @@ public interface IssueChangeMapper {
 
   void scrollResolutionChangesForOrganization(@Param("organizationUuid") String organizationUuid, @Param("fromDate") long fromDate,
     @Param("toDate") long toDate, @Param("minCreatedAt") long minCreatedAt, ResultHandler<IssueResolutionChangeDto> handler);
+
+  List<IssueAuditChangeDto> selectAuditChangesForOrganization(@Param("query") IssueAuditQuery query,
+    @Param("pagination") Pagination pagination);
+
+  int countAuditChangesForOrganization(@Param("query") IssueAuditQuery query);
+
+  void scrollAuditChangesForOrganization(@Param("query") IssueAuditQuery query, ResultHandler<IssueAuditChangeDto> handler);
+
+  List<IssueAuditChangeDto> selectResolutionAndSeverityChangesOnBranch(@Param("branchUuid") String branchUuid,
+    @Param("fromDate") long fromDate, @Param("toDate") long toDate, @Param("minCreatedAt") long minCreatedAt);
 }

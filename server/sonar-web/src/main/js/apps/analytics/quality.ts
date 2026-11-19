@@ -23,10 +23,6 @@ import { parseDate } from '../../helpers/dates';
 import { TaskStatuses } from '../../types/tasks';
 import { AnalysisStatus, AnalyticsProject, IssueMatrix } from './utils';
 
-export const QUALITY_PERIODS = [30, 90, 180] as const;
-export type QualityPeriod = (typeof QUALITY_PERIODS)[number];
-export const DEFAULT_QUALITY_PERIOD: QualityPeriod = 90;
-
 export const IMPACT_SEVERITIES = ['BLOCKER', 'HIGH', 'MEDIUM', 'LOW', 'INFO'] as const;
 export type ImpactSeverity = (typeof IMPACT_SEVERITIES)[number];
 

@@ -1,0 +1,139 @@
+{
+  "project": {
+    "key": "payments",
+    "name": "Payments"
+  },
+  "base": {
+    "key": "AU-Tpxb--iU5OvuD2FLy",
+    "date": "2026-09-01T08:00:00+0000",
+    "projectVersion": "24.3"
+  },
+  "analysis": {
+    "key": "AU-TpxcA-iU5OvuD2FL0",
+    "date": "2026-10-30T08:00:00+0000",
+    "projectVersion": "24.4"
+  },
+  "measures": [
+    {
+      "metric": "alert_status",
+      "base": "ERROR",
+      "analysis": "OK"
+    },
+    {
+      "metric": "violations",
+      "base": 412,
+      "analysis": 371,
+      "change": -41
+    },
+    {
+      "metric": "bugs",
+      "base": 30,
+      "analysis": 22,
+      "change": -8
+    },
+    {
+      "metric": "vulnerabilities",
+      "base": 9,
+      "analysis": 4,
+      "change": -5
+    },
+    {
+      "metric": "code_smells",
+      "base": 373,
+      "analysis": 345,
+      "change": -28
+    },
+    {
+      "metric": "security_hotspots",
+      "base": 12,
+      "analysis": 10,
+      "change": -2
+    },
+    {
+      "metric": "blocker_violations",
+      "base": 3,
+      "analysis": 1,
+      "change": -2
+    },
+    {
+      "metric": "critical_violations",
+      "base": 11,
+      "analysis": 6,
+      "change": -5
+    },
+    {
+      "metric": "major_violations",
+      "base": 140,
+      "analysis": 128,
+      "change": -12
+    },
+    {
+      "metric": "minor_violations",
+      "base": 210,
+      "analysis": 196,
+      "change": -14
+    },
+    {
+      "metric": "info_violations",
+      "base": 48,
+      "analysis": 40,
+      "change": -8
+    },
+    {
+      "metric": "accepted_issues",
+      "base": 20,
+      "analysis": 26,
+      "change": 6
+    },
+    {
+      "metric": "false_positive_issues",
+      "base": 5,
+      "analysis": 7,
+      "change": 2
+    }
+  ],
+  "newIssues": {
+    "total": 14,
+    "open": 12,
+    "byType": {
+      "BUG": {
+        "MAJOR": 2
+      },
+      "CODE_SMELL": {
+        "MAJOR": 4,
+        "MINOR": 7
+      },
+      "VULNERABILITY": {
+        "CRITICAL": 1
+      }
+    }
+  },
+  "remediated": {
+    "complete": false,
+    "retentionDays": 30,
+    "total": 49,
+    "open": 0,
+    "byType": {
+      "BUG": {
+        "MAJOR": 10
+      },
+      "CODE_SMELL": {
+        "MAJOR": 14,
+        "MINOR": 19
+      },
+      "VULNERABILITY": {
+        "CRITICAL": 6
+      }
+    }
+  },
+  "severityChanges": {
+    "total": 1,
+    "raised": 1,
+    "lowered": 0
+  },
+  "exceptionChanges": {
+    "accepted": 6,
+    "falsePositive": 2,
+    "reopened": 1
+  }
+}

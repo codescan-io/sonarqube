@@ -21,8 +21,7 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
-  getExpiringExceptions,
-  getIssueResolutions,
+  getProjectIssues,
   getQualityTrend,
   getSecurityRemediation,
 } from '../../../../api/analytics';
@@ -32,8 +31,7 @@ import { renderComponent } from '../../../../helpers/testReactTestingUtils';
 import QualityDashboard from '../QualityDashboard';
 
 jest.mock('../../../../api/analytics', () => ({
-  getExpiringExceptions: jest.fn(),
-  getIssueResolutions: jest.fn(),
+  getProjectIssues: jest.fn(),
   getQualityTrend: jest.fn(),
   getSecurityRemediation: jest.fn(),
 }));
@@ -58,45 +56,21 @@ const issues = (facets: Record<string, Array<{ count: number; val: string }>>, e
   ...extra,
 });
 
-const resolutions = {
-  period: { from: '2026-07-17', to: '2026-10-14', timeZone: 'UTC', interval: 'week' as const },
-  retentionDays: 30,
-  completeFrom: '2026-09-14',
-  totals: {
-    introduced: 50,
-    fixed: 80,
-    removed: 2,
-    accepted: 6,
-    falsePositive: 3,
-    reopened: 1,
-    resolved: 91,
-    fixedByAnalysis: 78,
-    netChange: -40,
-  },
-  timeline: [
-    {
-      date: '2026-09-28',
-      introduced: 20,
-      fixed: 30,
-      removed: 0,
-      accepted: 2,
-      falsePositive: 1,
-      reopened: 0,
-    },
-    {
-      date: '2026-10-05',
-      introduced: 30,
-      fixed: 50,
-      removed: 2,
-      accepted: 4,
-      falsePositive: 2,
-      reopened: 1,
-    },
-  ],
-};
-
 beforeEach(() => {
-  jest.mocked(getIssueResolutions).mockResolvedValue(resolutions);
+  jest.mocked(getProjectIssues).mockResolvedValue({
+    projects: [
+      {
+        key: 'force-app',
+        effortMinutes: 4800,
+        issues: {
+          BUG: { BLOCKER: 2, MAJOR: 98 },
+          VULNERABILITY: { CRITICAL: 3, MAJOR: 7 },
+          CODE_SMELL: { MINOR: 690 },
+          SECURITY_HOTSPOT: { MAJOR: 4 },
+        },
+      },
+    ],
+  });
   jest.mocked(getOrganizationHealth).mockRejectedValue(new Error('not deployed'));
   jest.mocked(getQualityTrend).mockResolvedValue({
     period: { from: '2026-07-17', to: '2026-10-14', timeZone: 'UTC', interval: 'week' },
@@ -156,22 +130,6 @@ beforeEach(() => {
     ],
     timeline: [{ date: '2026-09-28', fixed: 40, fixedWithinSla: 30, medianTimeToFixMs: 10 * DAY }],
   });
-  jest.mocked(getExpiringExceptions).mockResolvedValue({
-    paging: { pageIndex: 1, pageSize: 10, total: 1 },
-    exceptions: [
-      {
-        issueKey: 'ISSUE-1',
-        issueStatus: 'ACCEPTED',
-        expiresAt: '2026-10-20T00:00:00+0000',
-        expired: false,
-        rule: 'apex:AvoidSoqlInLoops',
-        ruleName: 'SOQL queries should not be in loops',
-        projectKey: 'force-app',
-        projectName: 'Force App',
-        filePath: 'classes/AccountService.cls',
-      },
-    ],
-  });
   jest.mocked(searchIssues).mockImplementation(((query: Record<string, string>) => {
     switch (query.facets) {
       case 'createdAt':
@@ -209,55 +167,77 @@ beforeEach(() => {
   }) as typeof searchIssues);
 });
 
-it('shows quality headline figures', async () => {
-  renderComponent(<QualityDashboard organization="my-org" />);
+it('shows the open findings as they are now', async () => {
+  renderComponent(<QualityDashboard organization="my-org" period={30} />);
 
-  const passRate = within(
-    await screen.findByRole('group', { name: 'analytics.quality.pass_rate' }),
+  // the trend says 900 at the latest analyses; the issues now are 800
+  const open = within(
+    await screen.findByRole('button', { name: /^analytics\.quality\.open_issues/ }),
   );
-  expect(passRate.getByText('80%')).toBeInTheDocument();
-  expect(passRate.getByText('+20 pts')).toBeInTheDocument();
-  const open = within(screen.getByRole('button', { name: /^analytics\.quality\.open_issues/ }));
-  expect(open.getByText('900')).toBeInTheDocument();
-  expect(open.getByText('-25%')).toBeInTheDocument();
-  // 3 buckets past the SLA x 2 high severity issues
+  expect(open.getByText('800')).toBeInTheDocument();
+  expect(open.getByText('-33%')).toBeInTheDocument();
   expect(
-    within(screen.getByRole('button', { name: /^analytics\.quality\.past_sla/ })).getByText('6'),
+    within(screen.getByRole('button', { name: /^analytics\.quality\.vulnerabilities/ })).getByText(
+      '10',
+    ),
+  ).toBeInTheDocument();
+  // blocker bugs and critical vulnerabilities
+  expect(
+    within(screen.getByRole('button', { name: /^analytics\.risk\.high_severity/ })).getByText('5'),
   ).toBeInTheDocument();
   expect(
-    within(
-      screen.getByRole('button', { name: /^analytics\.quality\.expiring_exceptions/ }),
-    ).getByText('analytics.quality.exceptions_footnote.7.3'),
+    within(screen.getByRole('group', { name: 'analytics.risk.hotspots' })).getByText('4'),
+  ).toBeInTheDocument();
+  expect(getProjectIssues).toHaveBeenCalledWith('my-org', true);
+});
+
+it('breaks findings down by severity, then by type, and the other way round', async () => {
+  const user = userEvent.setup();
+  renderComponent(<QualityDashboard organization="my-org" period={30} />);
+
+  // the first severity with findings is broken down until another one is picked
+  expect(
+    await screen.findByRole('heading', {
+      name: 'analytics.governance.security.breakdown_of.severity.BLOCKER',
+    }),
+  ).toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: /^severity\.MAJOR/ }));
+  expect(
+    screen.getByRole('heading', {
+      name: 'analytics.governance.security.breakdown_of.severity.MAJOR',
+    }),
+  ).toBeInTheDocument();
+
+  await user.click(screen.getByRole('radio', { name: 'analytics.governance.security.by_type' }));
+  await user.click(screen.getByRole('button', { name: /^issue\.type\.SECURITY_HOTSPOT\.plural/ }));
+  expect(
+    screen.getByRole('heading', {
+      name: 'analytics.governance.security.breakdown_of.issue.type.SECURITY_HOTSPOT.plural',
+    }),
   ).toBeInTheDocument();
 });
 
-it('shows rules, technologies, security ages and expiring exceptions', async () => {
-  renderComponent(<QualityDashboard organization="my-org" />);
+it('shows rules, technologies and security ages', async () => {
+  renderComponent(<QualityDashboard organization="my-org" period={30} />);
 
-  expect(await screen.findAllByText('SOQL queries should not be in loops')).toHaveLength(2);
+  expect(await screen.findByText('SOQL queries should not be in loops')).toBeInTheDocument();
   expect(screen.getByText('Apex')).toBeInTheDocument();
   expect(
     screen.getByRole('link', { name: 'severity_impact.HIGH, analytics.quality.age.gt180: 2' }),
   ).toHaveAttribute('href', expect.stringContaining('impactSeverities=HIGH'));
-  expect(screen.getByRole('link', { name: 'Force App' })).toHaveAttribute(
-    'href',
-    expect.stringContaining('open=ISSUE-1'),
-  );
 });
 
-it('reloads for another period', async () => {
-  const user = userEvent.setup();
-  renderComponent(<QualityDashboard organization="my-org" />);
-  await screen.findByRole('group', { name: 'analytics.quality.pass_rate' });
+it('loads the period it is given', async () => {
+  renderComponent(<QualityDashboard organization="my-org" period={90} />);
+  await screen.findByRole('group', { name: 'analytics.risk.hotspots' });
 
-  await user.click(screen.getByRole('radio', { name: 'analytics.quality.period.30' }));
-
-  expect(getQualityTrend).toHaveBeenLastCalledWith(expect.objectContaining({ interval: 'day' }));
+  expect(getQualityTrend).toHaveBeenLastCalledWith(expect.objectContaining({ interval: 'week' }));
 });
 
 it('shows an error when loading fails', async () => {
   jest.mocked(getQualityTrend).mockRejectedValue(new Error('boom'));
-  renderComponent(<QualityDashboard organization="my-org" />);
+  renderComponent(<QualityDashboard organization="my-org" period={30} />);
 
   expect(await screen.findByText('analytics.load_error')).toBeInTheDocument();
 });
@@ -274,49 +254,21 @@ it('shows the top root causes from debt analysis when there are some', async () 
       },
     ],
   } as never);
-  renderComponent(<QualityDashboard organization="my-org" />);
+  renderComponent(<QualityDashboard organization="my-org" period={30} />);
 
   expect(await screen.findByText('SOQL inside loops')).toBeInTheDocument();
   expect(screen.getByText('analytics.quality.hours.5')).toBeInTheDocument();
 });
 
 it('hides root causes when CodeScan services do not answer', async () => {
-  renderComponent(<QualityDashboard organization="my-org" />);
-  await screen.findByRole('group', { name: 'analytics.quality.pass_rate' });
+  renderComponent(<QualityDashboard organization="my-org" period={30} />);
+  await screen.findByRole('group', { name: 'analytics.risk.hotspots' });
 
   expect(screen.queryByText('analytics.quality.root_causes')).not.toBeInTheDocument();
 });
 
-it('shows how many issues were introduced and resolved, and how', async () => {
-  renderComponent(<QualityDashboard organization="my-org" />);
-
-  const resolved = within(
-    await screen.findByRole('button', { name: /^analytics\.quality\.resolved/ }),
-  );
-  expect(resolved.getByText('91')).toBeInTheDocument();
-  expect(resolved.getByText('analytics.quality.resolved_footnote.50')).toBeInTheDocument();
-  expect(resolved.getByText('-40')).toBeInTheDocument();
-
-  await userEvent
-    .setup()
-    .click(screen.getByRole('button', { name: /^analytics\.quality\.resolved/ }));
-  expect(mockNavigate).toHaveBeenCalledWith(
-    expect.objectContaining({
-      search: expect.stringMatching(/issueStatuses=FIXED(,|%2C)ACCEPTED(,|%2C)FALSE_POSITIVE$/),
-    }),
-  );
-  expect(screen.getByText('analytics.quality.net_down.40')).toBeInTheDocument();
-  expect(
-    screen.getByText('analytics.quality.fixed_by_analysis.78.80 · analytics.quality.reopened.1'),
-  ).toBeInTheDocument();
-  // the period starts before the closed issues retention
-  expect(screen.getByText('analytics.quality.retention_note.2026-09-14.30')).toBeInTheDocument();
-  expect(screen.getByText('issue.issue_status.FIXED')).toBeInTheDocument();
-  expect(getIssueResolutions).toHaveBeenCalledWith(expect.objectContaining({ interval: 'week' }));
-});
-
 it('shows how fast security issues get fixed against their SLA', async () => {
-  renderComponent(<QualityDashboard organization="my-org" />);
+  renderComponent(<QualityDashboard organization="my-org" period={30} />);
 
   const mttr = within(await screen.findByRole('group', { name: 'analytics.security.mttr' }));
   expect(mttr.getByText('analytics.brief.days.10')).toBeInTheDocument();
@@ -334,32 +286,4 @@ it('shows how fast security issues get fixed against their SLA', async () => {
   );
   // the period starts before the closed issues retention
   expect(screen.getByText(/^analytics\.security\.retention_note\.30/)).toBeInTheDocument();
-});
-
-it('loads more expiring exceptions on demand', async () => {
-  const user = userEvent.setup();
-  jest.mocked(getExpiringExceptions).mockImplementation(({ p = 1 }) =>
-    Promise.resolve({
-      paging: { pageIndex: p, pageSize: 10, total: 2 },
-      exceptions: [
-        {
-          issueKey: `ISSUE-${p}`,
-          issueStatus: 'ACCEPTED',
-          expiresAt: '2026-10-20T00:00:00+0000',
-          expired: false,
-          rule: 'apex:Rule',
-          projectKey: `project-${p}`,
-          projectName: `Project ${p}`,
-        },
-      ],
-    }),
-  );
-  renderComponent(<QualityDashboard organization="my-org" />);
-  await screen.findByRole('link', { name: 'Project 1' });
-
-  await user.click(screen.getByRole('button', { name: 'show_more' }));
-
-  expect(await screen.findByRole('link', { name: 'Project 2' })).toBeInTheDocument();
-  expect(getExpiringExceptions).toHaveBeenLastCalledWith(expect.objectContaining({ p: 2 }));
-  expect(screen.queryByRole('button', { name: 'show_more' })).not.toBeInTheDocument();
 });

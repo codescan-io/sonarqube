@@ -26,6 +26,7 @@ import { AiValue } from '../../../api/codescan-analytics';
 import { parseDate } from '../../../helpers/dates';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { formatChange, getChange } from '../activity';
+import { fetchCurrentIssues, fromFirstAnalysis, periodStart, withCurrent } from '../period';
 import { formatHours, toHours } from '../roi';
 import ChartCard from './charts/ChartCard';
 import { MAGNITUDE_COLOR, STATUS_COLORS } from './charts/colors';
@@ -51,13 +52,16 @@ export default function EngineeringRoi({ ai, aiLoading, days, organization }: Re
   React.useEffect(() => {
     let active = true;
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    getQualityTrend({
-      organization,
-      from: format(subDays(new Date(), days - 1), 'yyyy-MM-dd'),
-      timeZone,
-      interval: days > 31 ? 'week' : 'day',
-    }).then(
-      (result) => active && setTrend(result.timeline),
+    Promise.all([
+      getQualityTrend({
+        organization,
+        from: format(subDays(new Date(), days - 1), 'yyyy-MM-dd'),
+        timeZone,
+        interval: days > 31 ? 'week' : 'day',
+      }),
+      fetchCurrentIssues(organization).catch(() => undefined),
+    ]).then(
+      ([result, current]) => active && setTrend(withCurrent(result.timeline, current)),
       () => active && setTrend([]),
     );
     return () => {
@@ -65,7 +69,7 @@ export default function EngineeringRoi({ ai, aiLoading, days, organization }: Re
     };
   }, [organization, days]);
 
-  const first = trend?.[0];
+  const first = trend && periodStart(trend);
   const last = trend?.[trend.length - 1];
   const backlog = last?.remediationEffortMinutes;
   const change =
@@ -113,7 +117,7 @@ export default function EngineeringRoi({ ai, aiLoading, days, organization }: Re
         </StatTile>
         <StatTile
           color={change !== undefined && change > 0 ? STATUS_COLORS.danger : STATUS_COLORS.success}
-          footnote={change === undefined ? undefined : sinceStart}
+          footnote={change === undefined ? translate('analytics.roi.no_period_start') : sinceStart}
           icon={<IconRocket />}
           label={translate(
             change !== undefined && change > 0
@@ -150,7 +154,7 @@ export default function EngineeringRoi({ ai, aiLoading, days, organization }: Re
         {trend && trend.some(({ projects }) => projects > 0) ? (
           <LineTimeline
             formatValue={(hours) => formatHours(hours * 60)}
-            points={trend.map((point) => ({
+            points={fromFirstAnalysis(trend).map((point) => ({
               key: point.date,
               label: format(parseDate(point.date), 'MMM d'),
               values: {

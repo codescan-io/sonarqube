@@ -42,6 +42,21 @@ export const RESOLUTION_COLORS = {
   removed: '#eda100',
 };
 
+/** Security hotspots next to the three issue types: slot 4 of the reference palette (yellow, under 3:1, values printed). */
+export const HOTSPOT_COLOR = '#eda100';
+
+/*
+ * Severities from most to least severe: the status reds and ambers for the two that block a release, then the
+ * reference blue and the neutral grey. Charts using them always carry a legend and printed values.
+ */
+export const SEVERITY_COLORS: Record<string, string> = {
+  BLOCKER: 'var(--echoes-color-icon-danger)',
+  CRITICAL: '#eb6834',
+  MAJOR: 'var(--echoes-color-icon-warning)',
+  MINOR: '#2a78d6',
+  INFO: 'var(--echoes-color-icon-disabled)',
+};
+
 // Magnitude-only bars (one series) use the product accent, so they never read as an issue type.
 export const MAGNITUDE_COLOR = 'var(--echoes-color-background-accent-default)';
 

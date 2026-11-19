@@ -30,7 +30,7 @@ import {
   Text,
 } from '@sonarsource/echoes-react';
 import * as React from 'react';
-import { Card, FlagMessage, Spinner, ToggleButton } from '~design-system';
+import { Card, FlagMessage, Spinner } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricType } from '~sonar-aligned/types/metrics';
 import {
@@ -44,7 +44,9 @@ import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { formatChange, getActivityRequest, getChange } from '../activity';
 import { BriefData, Insight, buildInsights, computeOrganizationHealth, formatDays } from '../brief';
 import { Health, share } from '../health';
-import { QUALITY_PERIODS, QualityPeriod, getFocusList } from '../quality';
+import { fetchCurrentIssues, periodStart, withCurrent } from '../period';
+import { getFocusList } from '../quality';
+import { AnalyticsTab } from '../report';
 import { formatHours } from '../roi';
 import { computeTeams, hasTeams } from '../teams';
 import { useOverviewData } from '../useOverviewData';
@@ -57,12 +59,12 @@ import HealthGrade, { GRADE_COLORS } from './HealthGrade';
 import StatTile from './StatTile';
 
 interface Props {
-  /** Period shown first; the report sets it for every tab. */
-  defaultPeriod?: QualityPeriod;
+  /** Opens the tab with the detail of a figure; figures are not clickable without it. */
+  onOpen?: (tab: AnalyticsTab) => void;
   organization: string;
+  period: number;
 }
 
-const DEFAULT_BRIEF_PERIOD: QualityPeriod = 30;
 const TOP_RISKS = 3;
 const TEAMS_SHOWN = 3;
 
@@ -70,8 +72,9 @@ const TEAMS_SHOWN = 3;
 async function fetchBrief(organization: string, days: number): Promise<BriefData> {
   const request = { organization, ...getActivityRequest(days, new Date()) };
   const optional = <T,>(promise: Promise<T>) => promise.catch(() => undefined);
-  const [trend, resolutions, security, activity, ai, health] = await Promise.all([
+  const [trend, current, resolutions, security, activity, ai, health] = await Promise.all([
     getQualityTrend(request),
+    optional(fetchCurrentIssues(organization)),
     optional(getIssueResolutions(request)),
     optional(getSecurityRemediation(request)),
     optional(getOrganizationActivity(request)),
@@ -84,7 +87,7 @@ async function fetchBrief(organization: string, days: number): Promise<BriefData
     qualityGateChanges: health?.qualityGateChanges,
     resolutions,
     security,
-    trend: trend.timeline,
+    trend: withCurrent(trend.timeline, current),
   };
 }
 
@@ -92,12 +95,8 @@ async function fetchBrief(organization: string, days: number): Promise<BriefData
  * One page for leadership: an organization health grade and what it is made of, the headline numbers with how they
  * moved, a written summary of what changed, and where to act. It prints to a clean PDF and copies as plain text.
  */
-export default function ExecutiveBrief({
-  defaultPeriod = DEFAULT_BRIEF_PERIOD,
-  organization,
-}: Readonly<Props>) {
+export default function ExecutiveBrief({ onOpen, organization, period }: Readonly<Props>) {
   const [now] = React.useState(() => new Date());
-  const [period, setPeriod] = React.useState<QualityPeriod>(defaultPeriod);
   const [data, setData] = React.useState<BriefData>();
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
@@ -134,18 +133,6 @@ export default function ExecutiveBrief({
 
   return (
     <div>
-      <div className="sw-mb-6">
-        <ToggleButton
-          label={translate('analytics.activity.period')}
-          onChange={(value) => setPeriod(value as QualityPeriod)}
-          options={QUALITY_PERIODS.map((days) => ({
-            label: translate('analytics.quality.period', String(days)),
-            value: days,
-          }))}
-          value={period}
-        />
-      </div>
-
       {error && (
         <FlagMessage className="sw-mb-4" variant="error">
           {translate('analytics.load_error')}
@@ -165,11 +152,17 @@ export default function ExecutiveBrief({
             <InsightsCard className="sw-col-span-7" insights={insights} />
           </div>
 
-          <Kpis data={data} />
+          <Kpis data={data} onOpen={onOpen} />
 
           <div className="sw-grid sw-grid-cols-12 sw-gap-6 sw-mb-6">
-            <TopRisks className="sw-col-span-7" now={now} overview={overview} />
-            <TeamsAtAGlance className="sw-col-span-5" now={now} overview={overview} />
+            {hasTeams(overview.projects) ? (
+              <>
+                <TopRisks className="sw-col-span-7" now={now} overview={overview} />
+                <TeamsAtAGlance className="sw-col-span-5" now={now} overview={overview} />
+              </>
+            ) : (
+              <TopRisks className="sw-col-span-12" now={now} overview={overview} />
+            )}
           </div>
 
           <Text as="p" isSubdued>
@@ -215,21 +208,21 @@ function HealthHero({
           <li
             className="sw-grid sw-items-center sw-gap-3"
             key={key}
-            style={{ gridTemplateColumns: '1fr 96px 40px' }}
+            style={{ gridTemplateColumns: '1fr 150px' }}
           >
             <Text>
               {translate(COMPONENT_LABELS[key])} <Text isSubdued>({weight}%)</Text>
             </Text>
-            <InlineBar
-              color={
-                value === undefined || value >= 80 ? STATUS_COLORS.success : STATUS_COLORS.warning
-              }
-              max={100}
-              value={value ?? 0}
-            />
-            <Text className="sw-text-right">
-              {value === undefined ? '-' : `${Math.round(value)}%`}
-            </Text>
+            {value === undefined ? (
+              <Text className="sw-text-right">-</Text>
+            ) : (
+              <InlineBar
+                color={value >= 80 ? STATUS_COLORS.success : STATUS_COLORS.warning}
+                max={100}
+                unit="%"
+                value={value}
+              />
+            )}
           </li>
         ))}
       </ul>
@@ -278,9 +271,13 @@ function InsightsCard({
   );
 }
 
-function Kpis({ data }: Readonly<{ data: BriefData }>) {
+function Kpis({
+  data,
+  onOpen,
+}: Readonly<{ data: BriefData; onOpen?: (tab: AnalyticsTab) => void }>) {
   const integer = (value: number) => formatMeasure(value, MetricType.Integer);
-  const first = data.trend[0];
+  const open = (tab: AnalyticsTab) => (onOpen ? () => onOpen(tab) : undefined);
+  const first = periodStart(data.trend);
   const last = data.trend[data.trend.length - 1];
   const sinceStart = translate('analytics.quality.since_period_start');
   const vsPrevious = translate('analytics.activity.vs_previous_period');
@@ -298,8 +295,9 @@ function Kpis({ data }: Readonly<{ data: BriefData }>) {
   const saved = data.ai?.fixJobs.effortSavedMinutes;
 
   return (
-    <div className="sw-grid sw-grid-cols-6 sw-gap-4 sw-mb-6">
+    <div className="sw-grid sw-grid-cols-3 sw-gap-4 sw-mb-6">
       <StatTile
+        onClick={open(AnalyticsTab.Governance)}
         color={STATUS_COLORS.success}
         delta={
           passNow === undefined || passThen === undefined
@@ -313,6 +311,7 @@ function Kpis({ data }: Readonly<{ data: BriefData }>) {
         {passNow === undefined ? '-' : `${Math.round(passNow)}%`}
       </StatTile>
       <StatTile
+        onClick={open(AnalyticsTab.Risk)}
         color={STATUS_COLORS.danger}
         delta={
           vulnerabilityChange === undefined
@@ -326,6 +325,7 @@ function Kpis({ data }: Readonly<{ data: BriefData }>) {
         {last ? integer(last.vulnerabilities) : '-'}
       </StatTile>
       <StatTile
+        onClick={open(AnalyticsTab.Risk)}
         color={STATUS_COLORS.info}
         delta={
           mttrChange === undefined
@@ -340,6 +340,7 @@ function Kpis({ data }: Readonly<{ data: BriefData }>) {
           : formatDays(security.totals.medianTimeToFixMs)}
       </StatTile>
       <StatTile
+        onClick={open(AnalyticsTab.Risk)}
         color={
           compliance === undefined || compliance >= 90
             ? STATUS_COLORS.success
@@ -359,6 +360,7 @@ function Kpis({ data }: Readonly<{ data: BriefData }>) {
         {compliance === undefined ? '-' : `${Math.round(compliance)}%`}
       </StatTile>
       <StatTile
+        onClick={open(AnalyticsTab.Value)}
         color={MAGNITUDE_COLOR}
         delta={
           backlogChange === undefined
@@ -376,6 +378,7 @@ function Kpis({ data }: Readonly<{ data: BriefData }>) {
         {last ? formatHours(last.remediationEffortMinutes) : '-'}
       </StatTile>
       <StatTile
+        onClick={open(AnalyticsTab.Value)}
         color={STATUS_COLORS.success}
         footnote={
           saved === undefined
@@ -457,13 +460,6 @@ function TeamsAtAGlance({
       }).filter(({ tag }) => tag !== UNTAGGED),
     [overview, now],
   );
-  if (!hasTeams(overview.projects)) {
-    return (
-      <ChartCard className={className} title={translate('analytics.teams.title')}>
-        <Text isSubdued>{translate('analytics.teams.no_tags')}</Text>
-      </ChartCard>
-    );
-  }
   const best = teams.slice(0, TEAMS_SHOWN);
   const worst = teams.length > TEAMS_SHOWN ? teams.slice(-TEAMS_SHOWN).reverse() : [];
   const row = (team: (typeof teams)[number]) => (

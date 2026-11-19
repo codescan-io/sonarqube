@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "accepted": 412,
+    "falsePositive": 138,
+    "withoutExpiry": 301,
+    "expired": 7,
+    "expiringSoon": 24,
+    "soonDays": 30,
+    "hotspotsToReview": 56
+  },
+  "paging": {"pageIndex": 1, "pageSize": 20, "total": 550},
+  "exceptions": [
+    {
+      "issueKey": "AZK3bqjM3vNDy5aD9Y1L",
+      "type": "VULNERABILITY",
+      "severity": "CRITICAL",
+      "status": "RESOLVED",
+      "resolution": "WONTFIX",
+      "rule": "apex:ApexSOQLInjection",
+      "ruleName": "SOQL queries should not be built from user input",
+      "projectKey": "payments",
+      "projectName": "Payments",
+      "filePath": "force-app/main/default/classes/PaymentQuery.cls",
+      "line": 42,
+      "createdAt": "2026-06-02T10:14:00+0000",
+      "issueStatus": "ACCEPTED",
+      "expiresAt": "2026-11-20T00:00:00+0000",
+      "expired": false,
+      "markedBy": {"login": "alice", "name": "Alice Martin", "active": true},
+      "markedAt": "2026-08-21T09:30:00+0000",
+      "rationale": {
+        "source": "EXCEPTION_REASON",
+        "text": "Input is validated by PaymentValidator.sanitize before reaching the query. Approved by AppSec (ticket SEC-118).",
+        "user": {"login": "alice", "name": "Alice Martin", "active": true},
+        "date": "2026-08-21T09:30:00+0000"
+      },
+      "comments": 2
+    }
+  ]
+}

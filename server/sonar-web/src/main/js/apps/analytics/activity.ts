@@ -21,10 +21,6 @@
 import { format, subDays } from 'date-fns';
 import { AnalysisStats, AnalyticsInterval, AnalyticsTaskSort } from '../../api/analytics';
 
-export const ACTIVITY_PERIODS = [7, 30, 90] as const;
-export type ActivityPeriod = (typeof ACTIVITY_PERIODS)[number];
-export const DEFAULT_ACTIVITY_PERIOD: ActivityPeriod = 30;
-
 /** Past this many days the timeline switches from daily to weekly buckets. */
 const MAX_DAILY_BUCKETS = 31;
 

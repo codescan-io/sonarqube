@@ -19,7 +19,6 @@
  */
 
 import { screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { getQualityTrend } from '../../../../api/analytics';
 import { getAiValue, getIdeAdoption } from '../../../../api/codescan-analytics';
 import { renderComponent } from '../../../../helpers/testReactTestingUtils';
@@ -92,7 +91,7 @@ function tile(label: string) {
 }
 
 it('shows what the AI add-ons and IDE plugins delivered', async () => {
-  renderComponent(<ValueDashboard organization="my-org" />);
+  renderComponent(<ValueDashboard organization="my-org" period={30} />);
 
   await screen.findByRole('group', { name: 'analytics.value.issues_resolved' });
   expect(tile('analytics.value.issues_resolved').getByText('30')).toBeInTheDocument();
@@ -110,12 +109,9 @@ it('shows what the AI add-ons and IDE plugins delivered', async () => {
   expect(screen.getByText('VSCode')).toBeInTheDocument();
 });
 
-it('reloads for another period', async () => {
-  const user = userEvent.setup();
-  renderComponent(<ValueDashboard organization="my-org" />);
+it('loads the period it is given', async () => {
+  renderComponent(<ValueDashboard organization="my-org" period={180} />);
   await screen.findByRole('group', { name: 'analytics.value.issues_resolved' });
-
-  await user.click(screen.getByRole('radio', { name: 'analytics.quality.period.180' }));
 
   expect(getAiValue).toHaveBeenLastCalledWith('my-org', 180);
   expect(getIdeAdoption).toHaveBeenLastCalledWith('my-org', 180);
@@ -123,13 +119,13 @@ it('reloads for another period', async () => {
 
 it('says when usage data cannot be loaded', async () => {
   jest.mocked(getAiValue).mockRejectedValue(new Error('boom'));
-  renderComponent(<ValueDashboard organization="my-org" />);
+  renderComponent(<ValueDashboard organization="my-org" period={30} />);
 
   expect(await screen.findByText('analytics.value.load_error')).toBeInTheDocument();
 });
 
 it('shows the remediation backlog and the engineering time AI saved', async () => {
-  renderComponent(<ValueDashboard organization="my-org" />);
+  renderComponent(<ValueDashboard organization="my-org" period={30} />);
 
   const backlog = within(await screen.findByRole('group', { name: 'analytics.roi.backlog' }));
   expect(await backlog.findByText('150 h')).toBeInTheDocument();
@@ -144,7 +140,7 @@ it('shows the remediation backlog and the engineering time AI saved', async () =
 
 it('still prices the backlog when AI usage cannot be loaded', async () => {
   jest.mocked(getAiValue).mockRejectedValue(new Error('boom'));
-  renderComponent(<ValueDashboard organization="my-org" />);
+  renderComponent(<ValueDashboard organization="my-org" period={30} />);
 
   const backlog = within(await screen.findByRole('group', { name: 'analytics.roi.backlog' }));
   expect(await backlog.findByText('150 h')).toBeInTheDocument();

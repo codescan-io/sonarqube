@@ -21,12 +21,14 @@ package org.sonar.server.analytics.ws;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.Test;
 import org.sonar.db.measure.MainBranchMeasureHistoryDto;
 import org.sonar.server.analytics.ws.AnalyticsPeriod.Interval;
 import org.sonar.server.analytics.ws.QualityTrendAggregator.Point;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 class QualityTrendAggregatorTest {
 
@@ -40,7 +42,7 @@ class QualityTrendAggregatorTest {
     underTest.add(number("p1", "2026-09-01", "violations", 10));
 
     assertThat(underTest.points()).hasSize(3)
-      .allSatisfy(point -> assertThat(point).isEqualTo(new Point(1, 1, 0, 10, 0, 0, 0)));
+      .allSatisfy(point -> assertThat(headline(point)).isEqualTo(tuple(1, 1, 0, 10L, 0L, 0L, 0L)));
   }
 
   @Test
@@ -53,10 +55,31 @@ class QualityTrendAggregatorTest {
     underTest.add(number("p1", "2026-10-13", "violations", 4));
     underTest.add(number("p2", "2026-10-14", "blocker_violations", 2));
 
-    assertThat(underTest.points()).containsExactly(
-      new Point(2, 1, 1, 10, 3, 0, 0),
-      new Point(2, 0, 2, 4, 3, 0, 0),
-      new Point(2, 0, 2, 4, 3, 2, 0));
+    assertThat(underTest.points()).extracting(QualityTrendAggregatorTest::headline).containsExactly(
+      tuple(2, 1, 1, 10L, 3L, 0L, 0L),
+      tuple(2, 0, 2, 4L, 3L, 0L, 0L),
+      tuple(2, 0, 2, 4L, 3L, 2L, 0L));
+  }
+
+  @Test
+  void counts_open_issues_by_severity_and_type_and_exceptions() {
+    underTest.add(number("p1", "2026-10-01", "critical_violations", 4));
+    underTest.add(number("p1", "2026-10-01", "info_violations", 1));
+    underTest.add(number("p1", "2026-10-01", "bugs", 2));
+    underTest.add(number("p1", "2026-10-01", "security_hotspots", 5));
+    underTest.add(number("p1", "2026-10-01", "accepted_issues", 3));
+    underTest.add(number("p2", "2026-10-13", "critical_violations", 1));
+    underTest.add(number("p2", "2026-10-13", "code_smells", 7));
+    underTest.add(number("p2", "2026-10-13", "false_positive_issues", 2));
+
+    Point first = underTest.points().get(0);
+    Point last = underTest.points().get(2);
+    assertThat(first.bySeverity()).containsExactly(0L, 4L, 0L, 0L, 1L);
+    assertThat(first.byType()).containsExactly(2L, 0L, 0L, 5L);
+    assertThat(last.bySeverity()).containsExactly(0L, 5L, 0L, 0L, 1L);
+    assertThat(last.byType()).containsExactly(2L, 0L, 7L, 5L);
+    assertThat(last.acceptedIssues()).isEqualTo(3);
+    assertThat(last.falsePositiveIssues()).isEqualTo(2);
   }
 
   @Test
@@ -72,7 +95,12 @@ class QualityTrendAggregatorTest {
 
   @Test
   void no_analysis_means_empty_points() {
-    assertThat(underTest.points()).containsOnly(new Point(0, 0, 0, 0, 0, 0, 0)).hasSize(3);
+    assertThat(underTest.points()).extracting(QualityTrendAggregatorTest::headline).containsOnly(tuple(0, 0, 0, 0L, 0L, 0L, 0L)).hasSize(3);
+  }
+
+  private static Tuple headline(Point point) {
+    return tuple(point.projects(), point.passed(), point.failed(), point.openIssues(), point.vulnerabilities(), point.blockerIssues(),
+      point.remediationEffortMinutes());
   }
 
   private static MainBranchMeasureHistoryDto gate(String project, String day, String status) {

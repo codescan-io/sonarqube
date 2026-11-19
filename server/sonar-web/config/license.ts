@@ -23,6 +23,8 @@ import { Dependency } from 'rollup-plugin-license';
 // To be always synced with https://saas-eu.whitesourcesoftware.com/Wss/WSS.html#!policyDetails;policy=3131;org=318388
 // Below is the list of approved front-end licenses extracted from Mend
 export const ALLOWED_LICENSES = [
+  '(MIT AND Zlib)', // Multiple permissive licenses. Added specifically for pako, which jspdf needs (through fast-png) for the analytics PDF
+  'MIT OR SEE LICENSE IN FEEL-FREE.md', // Used under MIT. Added specifically for rgbcolor, which jspdf needs (through canvg)
   '(MPL-2.0 OR Apache-2.0)', // Multiple licenses. Added specifically for dompurify as we have ignored this in Mend
   '0BSD',
   'Apache-2.0',

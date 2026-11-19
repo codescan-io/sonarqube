@@ -827,5 +827,36 @@
     </if>
   </sql>
 
+  <!-- custom rules of the organization, and shared ones that raised issues on its main branches -->
+  <select id="selectCustomRulesForOrganization" parameterType="map" resultType="org.sonar.db.rule.CustomRuleDto">
+    select
+      r.uuid as uuid,
+      r.plugin_name as repository,
+      r.plugin_rule_key as ruleKey,
+      r.name as name,
+      r.language as language,
+      r.priority as priority,
+      r.rule_type as ruleType,
+      r.status as status,
+      r.created_at as createdAt,
+      t.plugin_name as templateRepository,
+      t.plugin_rule_key as templateKey
+    from rules r
+    inner join rules t on t.uuid = r.template_uuid
+    where
+      r.status &lt;&gt; 'REMOVED'
+      and (
+        r.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+        or exists (
+          select 1
+          from issues i
+          inner join project_branches pb on pb.uuid = i.project_uuid and pb.is_main = ${_true}
+          inner join projects p on p.uuid = pb.project_uuid
+          where i.rule_uuid = r.uuid and p.organization_uuid = #{organizationUuid,jdbcType=VARCHAR}
+        )
+      )
+    order by r.name, r.uuid
+  </select>
+
 </mapper>
 

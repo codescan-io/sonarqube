@@ -27,7 +27,6 @@ import AnalyticsCharts, { ProjectDimension } from './AnalyticsCharts';
 import AnalyticsFilters from './AnalyticsFilters';
 import AnalyticsSummary from './AnalyticsSummary';
 import AnalyticsTable from './AnalyticsTable';
-import FocusList from './FocusList';
 import ProjectScorecard from './ProjectScorecard';
 import TeamLeaderboard from './TeamLeaderboard';
 
@@ -120,20 +119,12 @@ export default function AnalyticsDashboard({ organization }: Readonly<Props>) {
         taskStatuses={taskStatuses}
       />
 
-      <FocusList
-        loading={loadingIssues || loadingTasks}
-        matrices={matrices}
-        now={now}
-        onOpen={setScorecard}
-        projects={selectedProjects}
-        taskStatuses={taskStatuses}
-      />
-
       <AnalyticsTable
         filters={filters}
         loading={loadingIssues}
         matrices={matrices}
         onOpenScorecard={setScorecard}
+        organization={organization}
         projects={selectedProjects}
         taskStatuses={taskStatuses}
       />

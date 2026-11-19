@@ -331,6 +331,30 @@ Known limits:
 
 Wave 3 (digest and export, alerts, long-history rollup, benchmarks) is not started; see the open questions below.
 
+### 7.3 Governance and compliance reporting: built
+
+Reporting needs raised by enterprise customers, built for every organization. There is no separate reports screen: each need lives in the tab that owns its topic, so nothing is shown twice. The page has **one period** (7 / 30 / 90 / 180 days, kept in the URL) for every tab but Projects, which shows projects as they are now. Every table and chart that holds a list exports as CSV. **Download PDF** makes the current tab, every tab, or one of three ready-made reports built from the same sections: **Compliance**, **Security** (the Risk & Security tab) and **Administration** (audit trail and custom rules).
+
+Tabs: Summary, Projects, Risk & Security, Compliance & Governance, Activity & Performance, Value & Adoption. The old `?tab=reports` link opens Compliance & Governance.
+
+**Headline numbers are live.** The trend reads the measures saved by each analysis, so it misses what happened since a project's latest analysis (an issue accepted yesterday stays "open" until the next analysis). The last point of every trend is replaced with the issues as they are now (`project_issues`, the exception summary), so every tab agrees with the issues page. A change "since the start of the period" is only shown when the period starts with analyses; otherwise a first analysis would show its whole backlog as new.
+
+| # | Need | Where | Backend | Notes |
+|---|---|---|---|---|
+| 1 | Policy & trend: posture, compliance status, remediation progress, history | Compliance & Governance | `quality_trend` (now also `bySeverity`, `byType`, `acceptedIssues`, `falsePositiveIssues`), `issue_resolutions` | Compliance status = quality gate pass rate. Fixed issues are kept apart from accepted and false-positive ones |
+| 2 | Compare with any historical scan | Compliance & Governance | **new** `api/analytics/scan_comparison` | Net changes from both analyses' measures (exact); new issues = rows created by the analyses after the base one (`issues.created_at` vs `snapshots.analysis_date`); remediated = closed FIXED / REMOVED in between; severity and accepted / false-positive / reopened changes from the changelog |
+| 3 | Exception & false-positive governance | Compliance & Governance | **new** `api/analytics/exceptions` | Who marked it (last resolution change), rationale (latest `exception_reason`, else latest comment), expiry; summary by expiry; "awaiting review" = hotspots to review + expired exceptions |
+| 4 | Severity reporting, drill down to type | Risk & Security | `project_issues` (new `includeHotspots`), `quality_trend` | Heatmap + both drill-down directions, the first severity with findings broken down until another is picked; hotspots open the hotspots page, not the issues page |
+| 5 | Issue-type reporting, drill down to severity | Risk & Security | same | |
+| 6 | User attribution & audit trail | Compliance & Governance | **new** `api/analytics/issue_audit` | Status, severity, comment and exception-reason changes, paged, filtered by kind, user and project; per-user summary. Changes made by the analysis are left out unless `includeAnalysisChanges` |
+| 7 | Custom rule reporting | Compliance & Governance | **new** `api/analytics/custom_rules` | Custom rule = created from a template (`rules.template_uuid`), the org's own or any that raised issues in it. Open by severity, accepted / false positive / fixed, raised and closed per bucket; "needs tuning" at ≥ 30 % dismissed with ≥ 10 findings |
+| All | Download and export | every tab | n/a | CSV built in the browser (formula-safe, UTF-8 BOM); paged lists export every page up to 10,000 rows. PDF reuses `AnalyticsReport` |
+
+Known limits:
+- Same closed-issue retention as §7.2: remediated issue lists, audit entries of deleted issues, and custom-rule closures fade after `sonar.dbcleaner.daysBeforeDeletingClosedIssues`. Scan comparison counts stay exact since they come from measures, and the UI says when lists are incomplete.
+- Periods are capped at 180 days (`AnalyticsPeriod.MAX_DAYS`), so the audit trail looks back 180 days at most. Longer audit history needs the daily rollup (§6.3) or a dedicated audit store.
+- Hotspot severities are the legacy rule severities, as in the issues index.
+
 ## 8. Open questions
 
 1. **Definition of "analysis time":** is CE processing time (`EXECUTION_TIME_MS`) enough, or do we also want scanner-side time? Scanner-side time needs a scanner change.

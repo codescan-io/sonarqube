@@ -48,6 +48,7 @@ import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { getProjectUrl } from '../../../helpers/urls';
 import { TaskStatuses } from '../../../types/tasks';
 import TaskStatus from '../../background-tasks/components/TaskStatus';
+import { CsvTable, exportFileName } from '../csv';
 import { useIsReport } from '../report';
 import {
   AnalysisStatus,
@@ -57,6 +58,7 @@ import {
   IssueMatrix,
   countIssues,
 } from '../utils';
+import ExportCsvButton from './ExportCsvButton';
 import Pagination, { PAGE_SIZES } from './Pagination';
 
 interface Props {
@@ -64,6 +66,7 @@ interface Props {
   loading: boolean;
   matrices: Record<string, IssueMatrix>;
   onOpenScorecard: (project: AnalyticsProject) => void;
+  organization: string;
   projects: AnalyticsProject[];
   taskStatuses: Record<string, TaskStatuses>;
 }
@@ -90,7 +93,8 @@ const REPORT_ROWS = 100;
 
 export default function AnalyticsTable(props: Readonly<Props>) {
   const isReport = useIsReport();
-  const { filters, loading, matrices, onOpenScorecard, projects, taskStatuses } = props;
+  const { filters, loading, matrices, onOpenScorecard, organization, projects, taskStatuses } =
+    props;
   const [query, setQuery] = React.useState('');
   const [sort, setSort] = React.useState<{ asc: boolean; key: SortKey }>({
     key: 'issues',
@@ -191,6 +195,10 @@ export default function AnalyticsTable(props: Readonly<Props>) {
               value={query}
             />
           )}
+          <ExportCsvButton
+            fileName={exportFileName('projects', organization)}
+            getTable={() => projectsTable(rows, matrices, filters, taskStatuses)}
+          />
         </div>
       </div>
 
@@ -299,3 +307,36 @@ const SortButton = styled.button`
     text-decoration: underline;
   }
 `;
+
+/** Every project of the table, as filtered, searched and sorted on screen. */
+function projectsTable(
+  rows: AnalyticsProject[],
+  matrices: Record<string, IssueMatrix>,
+  filters: AnalyticsFilterState,
+  taskStatuses: Record<string, TaskStatuses>,
+): CsvTable {
+  return {
+    header: [
+      'Project key',
+      'Project',
+      'Tags',
+      'Quality gate',
+      'Last analysis',
+      'Latest background task',
+      ...ISSUE_TYPES.map((type) => translate('issue.type', type, 'plural')),
+      'Total issues',
+    ],
+    rows: rows.map((project) => [
+      project.key,
+      project.name,
+      project.tags.join(' '),
+      translate('analytics.status', project.status),
+      project.analysisDate,
+      taskStatuses[project.key],
+      ...ISSUE_TYPES.map((type) =>
+        countIssues(matrices[project.key], { type, severity: filters.severity }),
+      ),
+      countIssues(matrices[project.key], filters),
+    ]),
+  };
+}

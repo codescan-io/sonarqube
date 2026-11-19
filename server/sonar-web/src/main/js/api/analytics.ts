@@ -156,14 +156,20 @@ export function getProjectTaskStatuses(
  * Unresolved issues on the main branch of every project of the organization, by type and severity, with the
  * estimated time to fix them.
  */
-export function getProjectIssues(organization: string): Promise<{
+export function getProjectIssues(
+  organization: string,
+  includeHotspots = false,
+): Promise<{
   projects: Array<{
     effortMinutes: number;
     issues: Partial<Record<string, Partial<Record<string, number>>>>;
     key: string;
   }>;
 }> {
-  return getJSON('/api/analytics/project_issues', { organization });
+  return getJSON('/api/analytics/project_issues', {
+    organization,
+    ...(includeHotspots ? { includeHotspots: true } : {}),
+  });
 }
 
 /** Quality gate status of every project of the organization that has one, in one call. */
@@ -210,10 +216,17 @@ export function getSecurityRemediation(data: {
 }
 
 export interface QualityTrendPoint {
+  // acceptedIssues, bySeverity, byType and falsePositiveIssues are missing from servers older than the governance reports.
+  acceptedIssues?: number;
   blockerIssues: number;
+  /** Open issues by severity, BLOCKER to INFO. */
+  bySeverity?: Record<string, number>;
+  /** Open issues by type, security hotspots to review included. */
+  byType?: Record<string, number>;
   /** First day of the bucket, yyyy-MM-dd. */
   date: string;
   failed: number;
+  falsePositiveIssues?: number;
   openIssues: number;
   passed: number;
   projects: number;
@@ -279,4 +292,252 @@ export function getIssueResolutions(data: {
   to?: string;
 }): Promise<IssueResolutions> {
   return getJSON('/api/analytics/issue_resolutions', data);
+}
+
+/** Counts by type, then severity. */
+export type TypeSeverityCounts = Partial<Record<string, Partial<Record<string, number>>>>;
+
+export interface AnalyticsUser {
+  active?: boolean;
+  login: string;
+  name?: string;
+}
+
+export interface AnalyticsIssue {
+  closedAt?: string;
+  createdAt?: string;
+  filePath?: string;
+  issueKey: string;
+  line?: number;
+  projectKey: string;
+  projectName?: string;
+  resolution?: string;
+  rule: string;
+  ruleName?: string;
+  severity?: string;
+  status?: string;
+  type?: string;
+}
+
+export interface GovernedException extends AnalyticsIssue {
+  comments: number;
+  expired: boolean;
+  expiresAt?: string;
+  issueStatus: 'ACCEPTED' | 'FALSE_POSITIVE';
+  markedAt?: string;
+  markedBy?: AnalyticsUser;
+  rationale?: {
+    date?: string;
+    source: 'EXCEPTION_REASON' | 'COMMENT';
+    text?: string;
+    user?: AnalyticsUser;
+  };
+}
+
+export interface ExceptionSummary {
+  accepted: number;
+  expired: number;
+  expiringSoon: number;
+  falsePositive: number;
+  hotspotsToReview: number;
+  soonDays: number;
+  withoutExpiry: number;
+}
+
+export function getExceptions(data: {
+  organization: string;
+  p?: number;
+  project?: string;
+  ps?: number;
+  soonDays?: number;
+  statuses?: string;
+}): Promise<{
+  exceptions: GovernedException[];
+  paging: AnalyticsPaging;
+  summary: ExceptionSummary;
+}> {
+  return getJSON('/api/analytics/exceptions', data);
+}
+
+export type AuditCategory = 'STATUS' | 'SEVERITY' | 'COMMENT' | 'EXCEPTION_REASON';
+
+export type AuditAction =
+  | 'ACCEPTED'
+  | 'FALSE_POSITIVE'
+  | 'FIXED'
+  | 'REMOVED'
+  | 'SAFE'
+  | 'ACKNOWLEDGED'
+  | 'REOPENED'
+  | 'STATUS_CHANGED'
+  | 'SEVERITY_CHANGED'
+  | 'COMMENTED'
+  | 'EXCEPTION_REASON'
+  | 'OTHER';
+
+export interface AuditChange {
+  action: AuditAction;
+  date: string;
+  filePath?: string;
+  from?: string;
+  id: string;
+  issueKey: string;
+  projectKey: string;
+  projectName?: string;
+  rule: string;
+  ruleName?: string;
+  severity?: string;
+  text?: string;
+  to?: string;
+  type?: string;
+  /** Missing when the analysis made the change. */
+  user?: AnalyticsUser;
+}
+
+export interface AuditUserActivity {
+  /** Counts by lower-case action. */
+  actions: Partial<Record<string, number>>;
+  /** Missing for the changes made by the analysis. */
+  login?: string;
+  name?: string;
+  total: number;
+}
+
+export interface AuditRequest {
+  categories?: string;
+  from: string;
+  includeAnalysisChanges?: boolean;
+  organization: string;
+  p?: number;
+  project?: string;
+  ps?: number;
+  timeZone?: string;
+  to?: string;
+  user?: string;
+}
+
+export function getIssueAudit(data: AuditRequest): Promise<{
+  changes: AuditChange[];
+  paging: AnalyticsPaging;
+  period: { from: string; timeZone: string; to: string };
+  users: AuditUserActivity[];
+}> {
+  return getJSON('/api/analytics/issue_audit', data);
+}
+
+/** Issues counted by the scan comparison; the issues themselves are listed page by page. */
+export interface ScanIssueCounts {
+  byType: TypeSeverityCounts;
+  open: number;
+  total: number;
+}
+
+export interface ScanChange {
+  date: string;
+  filePath?: string;
+  from?: string;
+  issueKey: string;
+  outcome?: 'ACCEPTED' | 'FALSE_POSITIVE' | 'REOPENED';
+  rule: string;
+  ruleName?: string;
+  severity?: string;
+  to?: string;
+  type?: string;
+  user?: AnalyticsUser;
+}
+
+export interface ScanAnalysis {
+  date: string;
+  key: string;
+  projectVersion?: string;
+}
+
+export interface ScanComparison {
+  analysis: ScanAnalysis;
+  base: ScanAnalysis;
+  exceptionChanges: { accepted: number; falsePositive: number; reopened: number };
+  measures: Array<{
+    analysis?: number | string;
+    base?: number | string;
+    change?: number;
+    metric: string;
+  }>;
+  newIssues: ScanIssueCounts;
+  project: { key: string; name: string };
+  remediated: ScanIssueCounts & { complete: boolean; retentionDays: number };
+  severityChanges: { lowered: number; raised: number; total: number };
+}
+
+export interface ScanComparisonRequest {
+  analysis?: string;
+  baseAnalysis: string;
+  organization: string;
+  project: string;
+}
+
+export function getScanComparison(data: ScanComparisonRequest): Promise<ScanComparison> {
+  return getJSON('/api/analytics/scan_comparison', data);
+}
+
+export enum ScanList {
+  New = 'new',
+  Remediated = 'remediated',
+  SeverityChanges = 'severity_changes',
+  ExceptionChanges = 'exception_changes',
+}
+
+/** One page of the new or remediated issues of a scan comparison. */
+export function getScanComparisonIssues(
+  data: ScanComparisonRequest & {
+    list: ScanList.New | ScanList.Remediated;
+    p?: number;
+    ps?: number;
+  },
+): Promise<{ issues: AnalyticsIssue[]; paging: AnalyticsPaging }> {
+  return getJSON('/api/analytics/scan_comparison', data);
+}
+
+/** One page of the severity or exception changes of a scan comparison. */
+export function getScanComparisonChanges(
+  data: ScanComparisonRequest & {
+    list: ScanList.SeverityChanges | ScanList.ExceptionChanges;
+    p?: number;
+    ps?: number;
+  },
+): Promise<{ changes: ScanChange[]; paging: AnalyticsPaging }> {
+  return getJSON('/api/analytics/scan_comparison', data);
+}
+
+export interface CustomRuleStats {
+  closed: number;
+  createdAt?: string;
+  /** Share of the rule's issues accepted or marked as false positive; missing without issues. */
+  dismissalRate?: number;
+  introduced: number;
+  issues: {
+    accepted: number;
+    falsePositive: number;
+    fixed: number;
+    open: number;
+    openBySeverity: Partial<Record<string, number>>;
+    total: number;
+  };
+  key: string;
+  language?: string;
+  name?: string;
+  severity?: string;
+  status?: string;
+  template: string;
+  timeline: Array<{ closed: number; date: string; introduced: number }>;
+  type?: string;
+}
+
+export function getCustomRules(data: {
+  from: string;
+  interval?: AnalyticsInterval;
+  organization: string;
+  timeZone?: string;
+  to?: string;
+}): Promise<{ period: OrganizationActivity['period']; rules: CustomRuleStats[] }> {
+  return getJSON('/api/analytics/custom_rules', data);
 }

@@ -266,6 +266,11 @@ public class RuleDao implements Dao {
     }
   }
 
+  /** Rules created from a template that belong to the organization or raised issues on its main branches, by name. */
+  public List<CustomRuleDto> selectCustomRulesForOrganization(DbSession session, String organizationUuid) {
+    return mapper(session).selectCustomRulesForOrganization(organizationUuid);
+  }
+
   private static RuleMapper mapper(DbSession session) {
     return session.getMapper(RuleMapper.class);
   }

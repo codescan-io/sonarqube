@@ -1,0 +1,55 @@
+{
+  "period": {"from": "2026-10-01", "to": "2026-10-31", "timeZone": "Europe/Paris"},
+  "paging": {"pageIndex": 1, "pageSize": 20, "total": 87},
+  "changes": [
+    {
+      "id": "AZK4f1nM3vNDy5aD9Y2a",
+      "date": "2026-10-30T15:02:11+0100",
+      "user": {"login": "alice", "name": "Alice Martin", "active": true},
+      "action": "FALSE_POSITIVE",
+      "to": "FALSE-POSITIVE",
+      "issueKey": "AZK3bqjM3vNDy5aD9Y1M",
+      "type": "BUG",
+      "severity": "MAJOR",
+      "rule": "apex:ApexAvoidNullPointer",
+      "ruleName": "Null pointer dereferences should be avoided",
+      "projectKey": "payments",
+      "projectName": "Payments",
+      "filePath": "force-app/main/default/classes/Invoice.cls"
+    },
+    {
+      "id": "AZK4f1nM3vNDy5aD9Y2b",
+      "date": "2026-10-29T11:45:00+0100",
+      "user": {"login": "bob", "name": "Bob Lee", "active": true},
+      "action": "REOPENED",
+      "from": "WONTFIX",
+      "issueKey": "AZK3bqjM3vNDy5aD9Y1N",
+      "type": "CODE_SMELL",
+      "severity": "MINOR",
+      "rule": "apex:ApexDoc",
+      "ruleName": "Public methods should be documented",
+      "projectKey": "payments",
+      "projectName": "Payments",
+      "filePath": "force-app/main/default/classes/Invoice.cls"
+    },
+    {
+      "id": "AZK4f1nM3vNDy5aD9Y2c",
+      "date": "2026-10-29T11:40:00+0100",
+      "user": {"login": "bob", "name": "Bob Lee", "active": true},
+      "action": "COMMENTED",
+      "text": "Reopening: the exception was granted for the previous release only.",
+      "issueKey": "AZK3bqjM3vNDy5aD9Y1N",
+      "type": "CODE_SMELL",
+      "severity": "MINOR",
+      "rule": "apex:ApexDoc",
+      "ruleName": "Public methods should be documented",
+      "projectKey": "payments",
+      "projectName": "Payments",
+      "filePath": "force-app/main/default/classes/Invoice.cls"
+    }
+  ],
+  "users": [
+    {"login": "alice", "name": "Alice Martin", "total": 52, "actions": {"accepted": 18, "false_positive": 11, "commented": 20, "exception_reason": 3}},
+    {"login": "bob", "name": "Bob Lee", "total": 35, "actions": {"reopened": 4, "severity_changed": 6, "commented": 25}}
+  ]
+}

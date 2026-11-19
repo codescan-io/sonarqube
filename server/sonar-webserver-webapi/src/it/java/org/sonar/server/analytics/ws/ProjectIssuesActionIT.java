@@ -98,7 +98,7 @@ class ProjectIssuesActionIT {
     assertThat(def.key()).isEqualTo("project_issues");
     assertThat(def.isInternal()).isTrue();
     assertThat(def.responseExampleAsString()).isNotEmpty();
-    assertThat(def.params()).extracting(WebService.Param::key).containsOnly("organization");
+    assertThat(def.params()).extracting(WebService.Param::key).containsOnly("organization", "includeHotspots");
   }
 
   @Test
@@ -121,6 +121,22 @@ class ProjectIssuesActionIT {
     assertJson(json).isSimilarTo("{\"projects\": [{\"key\": \"" + project.projectKey() + "\", \"effortMinutes\": 40, \"issues\": {" +
       "\"BUG\": {\"MAJOR\": 2}, \"CODE_SMELL\": {\"MINOR\": 1}, \"VULNERABILITY\": {\"BLOCKER\": 1}}}]}");
     assertThat(json).doesNotContain("CRITICAL", "INFO");
+  }
+
+  @Test
+  void count_hotspots_to_review_when_asked() {
+    ProjectData project = insertBrowsableProject(organization);
+    ComponentDto file = insertFile(project.getMainBranchComponent());
+    insertIssue(project.getMainBranchComponent(), file, RuleType.BUG, "MAJOR");
+    RuleDto hotspotRule = db.rules().insertHotspotRule();
+    db.issues().insertHotspot(hotspotRule, project.getMainBranchComponent(), file, i -> i.setSeverity("CRITICAL").setEffort(0L));
+    db.issues().insertHotspot(hotspotRule, project.getMainBranchComponent(), file,
+      i -> i.setSeverity("CRITICAL").setStatus("REVIEWED").setResolution("SAFE"));
+    index();
+
+    assertThat(call().execute().getInput()).doesNotContain("SECURITY_HOTSPOT");
+    assertJson(call().setParam("includeHotspots", "true").execute().getInput()).isSimilarTo("{\"projects\": [{\"issues\": {" +
+      "\"BUG\": {\"MAJOR\": 1}, \"SECURITY_HOTSPOT\": {\"CRITICAL\": 1}}}]}");
   }
 
   @Test

@@ -107,4 +107,33 @@ public interface IssueMapper {
     @Param("toDate") long toDate, ResultHandler<SecurityIssueDatesDto> handler);
 
   void scrollOpenSecurityIssuesForOrganization(@Param("organizationUuid") String organizationUuid, ResultHandler<SecurityIssueDatesDto> handler);
+
+  List<AnalyticsIssueDto> selectExceptionsForOrganization(@Param("organizationUuid") String organizationUuid,
+    @Param("resolutions") Collection<String> resolutions, @Nullable @Param("projectUuid") String projectUuid,
+    @Param("pagination") Pagination pagination);
+
+  int countExceptionsForOrganization(@Param("organizationUuid") String organizationUuid, @Param("resolutions") Collection<String> resolutions,
+    @Nullable @Param("projectUuid") String projectUuid);
+
+  List<IssueGroupCountDto> countExceptionsByExpiryForOrganization(@Param("organizationUuid") String organizationUuid,
+    @Param("now") long now, @Param("soon") long soon);
+
+  int countHotspotsToReviewForOrganization(@Param("organizationUuid") String organizationUuid);
+
+  List<AnalyticsIssueDto> selectIssuesCreatedOnBranch(@Param("branchUuid") String branchUuid, @Param("fromDate") long fromDate,
+    @Nullable @Param("toDate") Long toDate, @Param("pagination") Pagination pagination);
+
+  List<IssueGroupCountDto> countIssuesCreatedOnBranch(@Param("branchUuid") String branchUuid, @Param("fromDate") long fromDate,
+    @Nullable @Param("toDate") Long toDate);
+
+  List<AnalyticsIssueDto> selectIssuesClosedOnBranch(@Param("branchUuid") String branchUuid, @Param("fromDate") long fromDate,
+    @Param("toDate") long toDate, @Param("pagination") Pagination pagination);
+
+  List<IssueGroupCountDto> countIssuesClosedOnBranch(@Param("branchUuid") String branchUuid, @Param("fromDate") long fromDate,
+    @Param("toDate") long toDate);
+
+  List<IssueGroupCountDto> countCustomRuleIssuesForOrganization(@Param("organizationUuid") String organizationUuid);
+
+  void scrollCustomRuleIssuesForOrganization(@Param("organizationUuid") String organizationUuid, @Param("fromDate") long fromDate,
+    @Param("toDate") long toDate, ResultHandler<AnalyticsIssueDto> handler);
 }

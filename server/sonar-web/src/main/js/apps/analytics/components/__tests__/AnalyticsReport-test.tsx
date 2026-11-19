@@ -21,8 +21,9 @@
 import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderComponent } from '../../../../helpers/testReactTestingUtils';
+import { ReportGroup } from '../../governance';
 import { downloadPdf } from '../../pdf';
-import { useIsReport } from '../../report';
+import { AnalyticsTab, FULL_REPORT, ReportKind, useIsReport } from '../../report';
 import AnalyticsReport from '../AnalyticsReport';
 
 // Each tab stands in for itself: it says which period it got, whether it knows it is in the report, and stays busy
@@ -30,11 +31,11 @@ import AnalyticsReport from '../AnalyticsReport';
 let mockLoaded = false;
 
 function mockTab(name: string) {
-  return function FakeTab({ defaultPeriod }: { defaultPeriod?: number }) {
+  return function FakeTab({ period }: { period?: number }) {
     const isReport = useIsReport();
     return (
       <div aria-busy={!mockLoaded}>
-        {name} {defaultPeriod ?? 'default'} {isReport ? 'report' : 'page'}
+        {name} {period ?? 'now'} {isReport ? 'report' : 'page'}
       </div>
     );
   };
@@ -45,6 +46,12 @@ jest.mock('../AnalyticsDashboard', () => ({ __esModule: true, default: mockTab('
 jest.mock('../QualityDashboard', () => ({ __esModule: true, default: mockTab('quality') }));
 jest.mock('../ActivityDashboard', () => ({ __esModule: true, default: mockTab('activity') }));
 jest.mock('../ValueDashboard', () => ({ __esModule: true, default: mockTab('value') }));
+jest.mock('../GovernanceDashboard', () => ({
+  __esModule: true,
+  default: mockTab('governance'),
+  ComplianceReport: mockTab('compliance'),
+  AdministrationReport: mockTab('admin'),
+}));
 jest.mock('../../pdf', () => ({ downloadPdf: jest.fn() }));
 
 beforeEach(() => {
@@ -58,9 +65,15 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-function renderReport(onDone = jest.fn()) {
+function renderReport(onDone = jest.fn(), kind: ReportKind = FULL_REPORT, period = 90) {
   renderComponent(
-    <AnalyticsReport onDone={onDone} organization="acme" organizationName="Acme" period={90} />,
+    <AnalyticsReport
+      kind={kind}
+      onDone={onDone}
+      organization="acme"
+      organizationName="Acme"
+      period={period}
+    />,
   );
   return onDone;
 }
@@ -80,9 +93,10 @@ it('renders every tab over the report period, in report mode', () => {
     screen.getByText('analytics.report.subtitle.Acme.analytics.quality.period.90'),
   ).toBeInTheDocument();
   expect(screen.getByText('brief 90 report')).toBeInTheDocument();
-  // the overview has no period
-  expect(screen.getByText('overview default report')).toBeInTheDocument();
+  // projects show as they are now
+  expect(screen.getByText('overview now report')).toBeInTheDocument();
   expect(screen.getByText('quality 90 report')).toBeInTheDocument();
+  expect(screen.getByText('governance 90 report')).toBeInTheDocument();
   expect(screen.getByText('activity 90 report')).toBeInTheDocument();
   expect(screen.getByText('value 90 report')).toBeInTheDocument();
   expect(
@@ -91,9 +105,49 @@ it('renders every tab over the report period, in report mode', () => {
     'analytics.tab.brief',
     'analytics.tab.overview',
     'analytics.tab.quality',
+    'analytics.tab.governance',
     'analytics.tab.activity',
     'analytics.tab.value',
   ]);
+});
+
+it('makes the PDF of one tab alone', () => {
+  renderReport(jest.fn(), AnalyticsTab.Activity, 7);
+
+  expect(
+    screen.getAllByRole('region').map((section) => section.getAttribute('aria-label')),
+  ).toEqual(['analytics.tab.activity']);
+  expect(screen.getByText('activity 7 report')).toBeInTheDocument();
+  expect(
+    screen.getByText('analytics.governance.report_title.analytics.tab.activity'),
+  ).toBeInTheDocument();
+});
+
+it.each([
+  [ReportGroup.Compliance, 'compliance 180 report'],
+  // the security report is the Risk & Security tab
+  [ReportGroup.Security, 'quality 180 report'],
+  [ReportGroup.Admin, 'admin 180 report'],
+])('makes the ready-made %s report', (group, content) => {
+  renderReport(jest.fn(), group, 180);
+
+  expect(
+    screen.getAllByRole('region').map((section) => section.getAttribute('aria-label')),
+  ).toEqual([`analytics.governance.group.${group}`]);
+  expect(screen.getByText(content)).toBeInTheDocument();
+});
+
+it('names the PDF of a ready-made report after it', async () => {
+  renderReport(jest.fn(), ReportGroup.Security, 180);
+
+  finishLoading();
+  await act(() => jest.advanceTimersByTimeAsync(2000));
+
+  const report = jest.mocked(downloadPdf).mock.calls[0][0];
+  expect(report.fileName).toMatch(/^security-report-acme-\d{4}-\d{2}-\d{2}\.pdf$/);
+  expect(report.header).toBe(
+    'analytics.governance.report_title.analytics.governance.group.security · Acme · analytics.quality.period.180',
+  );
 });
 
 it('downloads the PDF once every tab has loaded, then goes back', async () => {
@@ -115,6 +169,7 @@ it('downloads the PDF once every tab has loaded, then goes back', async () => {
     'brief',
     'overview',
     'quality',
+    'governance',
     'activity',
     'value',
   ]);

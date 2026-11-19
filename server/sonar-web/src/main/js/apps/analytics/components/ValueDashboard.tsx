@@ -26,12 +26,11 @@ import {
   Text,
 } from '@sonarsource/echoes-react';
 import * as React from 'react';
-import { FlagMessage, Spinner, ToggleButton } from '~design-system';
+import { FlagMessage, Spinner } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricType } from '~sonar-aligned/types/metrics';
 import { AiValue, IdeAdoption, getAiValue, getIdeAdoption } from '../../../api/codescan-analytics';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
-import { DEFAULT_QUALITY_PERIOD, QUALITY_PERIODS, QualityPeriod } from '../quality';
 import BarList from './charts/BarList';
 import ChartCard from './charts/ChartCard';
 import { MAGNITUDE_COLOR, STATUS_COLORS } from './charts/colors';
@@ -40,20 +39,15 @@ import EngineeringRoi from './EngineeringRoi';
 import StatTile from './StatTile';
 
 interface Props {
-  /** Period shown first; the report sets it for every tab. */
-  defaultPeriod?: QualityPeriod;
   organization: string;
+  period: number;
 }
 
 /**
  * What CodeScan delivered beyond analysis: AI fixes, the credits they used, and how many members bring
  * analysis into their IDE.
  */
-export default function ValueDashboard({
-  defaultPeriod = DEFAULT_QUALITY_PERIOD,
-  organization,
-}: Readonly<Props>) {
-  const [period, setPeriod] = React.useState<QualityPeriod>(defaultPeriod);
+export default function ValueDashboard({ organization, period }: Readonly<Props>) {
   const [ai, setAi] = React.useState<AiValue>();
   const [ide, setIde] = React.useState<IdeAdoption>();
   const [loading, setLoading] = React.useState(true);
@@ -87,18 +81,6 @@ export default function ValueDashboard({
 
   return (
     <>
-      <div className="sw-flex sw-items-center sw-gap-4 sw-mb-4">
-        <ToggleButton
-          label={translate('analytics.activity.period')}
-          onChange={(value) => setPeriod(value as QualityPeriod)}
-          options={QUALITY_PERIODS.map((days) => ({
-            label: translate('analytics.quality.period', String(days)),
-            value: days,
-          }))}
-          value={period}
-        />
-      </div>
-
       <EngineeringRoi ai={ai} aiLoading={loading} days={period} organization={organization} />
 
       {error && (

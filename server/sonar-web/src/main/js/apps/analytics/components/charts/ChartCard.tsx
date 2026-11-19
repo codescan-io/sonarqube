@@ -49,7 +49,7 @@ export default function ChartCard(props: Readonly<Props>) {
             </Text>
           )}
         </div>
-        {action}
+        {action && <div className="sw-shrink-0">{action}</div>}
       </div>
       <div
         aria-busy={loading}

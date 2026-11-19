@@ -19,86 +19,60 @@
  */
 
 import {
-  IconCheckCircle,
+  IconBug,
   IconError,
   IconSecurityFinding,
-  IconWarning,
+  IconVulnerability,
   LinkStandalone,
   Text,
 } from '@sonarsource/echoes-react';
-import { format, subDays } from 'date-fns';
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  ContentCell,
-  FlagMessage,
-  NumericalCell,
-  Spinner,
-  Table,
-  TableRow,
-  ToggleButton,
-} from '~design-system';
+import { ContentCell, FlagMessage, NumericalCell, Spinner, Table, TableRow } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricType } from '~sonar-aligned/types/metrics';
 import {
-  ExpiringException,
-  IssueResolutions,
   QualityTrendPoint,
   SecurityRemediation,
-  getExpiringExceptions,
-  getIssueResolutions,
+  TypeSeverityCounts,
   getQualityTrend,
   getSecurityRemediation,
 } from '../../../api/analytics';
 import { OrganizationHealth, getOrganizationHealth } from '../../../api/codescan-analytics';
 import { searchIssues } from '../../../api/issues';
-import ListFooter from '../../../components/controls/ListFooter';
-import DateFormatter from '../../../components/intl/DateFormatter';
-import { parseDate } from '../../../helpers/dates';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { getComponentIssuesUrl, getOrgIssuesUrl } from '../../../helpers/urls';
 import { formatChange, getChange } from '../activity';
-import {
-  AgeBucket,
-  DEFAULT_QUALITY_PERIOD,
-  IMPACT_SEVERITIES,
-  QUALITY_PERIODS,
-  QualityPeriod,
-  SLA_SEVERITIES,
-  getAgeBuckets,
-} from '../quality';
-import { useIsReport } from '../report';
+import { CsvTable, exportFileName } from '../csv';
+import { countOf } from '../governance';
+import { fetchCurrentIssues, periodStart, withCurrent } from '../period';
+import { AgeBucket, IMPACT_SEVERITIES, SLA_SEVERITIES, getAgeBuckets } from '../quality';
+import { periodRequest } from '../useLoaded';
 import BarList from './charts/BarList';
 import ChartCard from './charts/ChartCard';
-import { MAGNITUDE_COLOR, RESOLUTION_COLORS, STATUS_COLORS, tint } from './charts/colors';
-import ColumnTimeline from './charts/ColumnTimeline';
+import { HOTSPOT_COLOR, MAGNITUDE_COLOR, STATUS_COLORS, tint } from './charts/colors';
 import { toDelta } from './charts/Delta';
-import LineTimeline from './charts/LineTimeline';
+import ExportCsvButton from './ExportCsvButton';
+import FindingsBreakdown from './FindingsBreakdown';
 import SecurityRemediationPanel from './SecurityRemediationPanel';
 import StatTile from './StatTile';
 
 interface Props {
-  /** Period shown first; the report sets it for every tab. */
-  defaultPeriod?: QualityPeriod;
   organization: string;
+  period: number;
 }
 
 const OPEN = 'OPEN,CONFIRMED';
-// The issues the "Issues Resolved" tile opens: everything acted on, not only fixed issues.
-const RESOLVED_TILE_STATUSES = 'FIXED,ACCEPTED,FALSE_POSITIVE';
 const TOP_RULES = 10;
-const EXPIRING_WITHIN_DAYS = 30;
-const EXPIRING_SHOWN = 10;
 
-interface QualityData {
+interface RiskData {
   ageMatrix: Array<{ bucket: AgeBucket; counts: Record<string, number> }>;
-  expiring: { exceptions: ExpiringException[]; total: number };
-  /** Issues of every branch by status, now. */
-  issueStatuses: Record<string, number>;
   languages: Array<{ count: number; key: string; name: string }>;
-  resolutions: IssueResolutions;
+  /** Unresolved issues of main branches now, security hotspots to review included. */
+  matrix: TypeSeverityCounts;
   rules: Array<{ count: number; key: string; name: string }>;
   security: SecurityRemediation;
+  /** Main branches over the period, the last point being now. */
   trend: QualityTrendPoint[];
 }
 
@@ -109,40 +83,33 @@ function facetOf(response: Awaited<ReturnType<typeof searchIssues>> | undefined,
   return response.facets.find((facet) => facet.property === property)?.values ?? [];
 }
 
-async function fetchQualityData(organization: string, days: QualityPeriod): Promise<QualityData> {
-  const now = new Date();
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const from = format(subDays(now, days - 1), 'yyyy-MM-dd');
-  const buckets = getAgeBuckets(now);
+async function fetchRiskData(organization: string, days: number): Promise<RiskData> {
+  const request = { organization, ...periodRequest(days) };
+  const buckets = getAgeBuckets(new Date());
 
-  const interval = days > 31 ? 'week' : 'day';
-  const [trend, resolutions, security, rulesAndLanguages, statuses, expiring, ...ages] =
-    await Promise.all([
-      getQualityTrend({ organization, from, timeZone, interval }),
-      getIssueResolutions({ organization, from, timeZone, interval }),
-      getSecurityRemediation({ organization, from, timeZone, interval }),
+  const [trend, current, security, rulesAndLanguages, ...ages] = await Promise.all([
+    getQualityTrend(request),
+    fetchCurrentIssues(organization),
+    getSecurityRemediation(request),
+    searchIssues({
+      organization,
+      issueStatuses: OPEN,
+      facets: 'rules,languages',
+      additionalFields: 'rules,languages',
+      ps: 1,
+    }),
+    ...buckets.map((bucket) =>
       searchIssues({
         organization,
         issueStatuses: OPEN,
-        facets: 'rules,languages',
-        additionalFields: 'rules,languages',
+        impactSoftwareQualities: 'SECURITY',
+        facets: 'impactSeverities',
+        createdAfter: bucket.createdAfter,
+        createdBefore: bucket.createdBefore,
         ps: 1,
       }),
-      // every status, fixed ones included while the platform keeps them
-      searchIssues({ organization, facets: 'issueStatuses', ps: 1 }),
-      getExpiringExceptions({ organization, withinDays: EXPIRING_WITHIN_DAYS, ps: EXPIRING_SHOWN }),
-      ...buckets.map((bucket) =>
-        searchIssues({
-          organization,
-          issueStatuses: OPEN,
-          impactSoftwareQualities: 'SECURITY',
-          facets: 'impactSeverities',
-          createdAfter: bucket.createdAfter,
-          createdBefore: bucket.createdBefore,
-          ps: 1,
-        }),
-      ),
-    ]);
+    ),
+  ]);
 
   const ruleNames = new Map(
     ((rulesAndLanguages?.rules ?? []) as Array<{ key: string; name: string }>).map((r) => [
@@ -155,8 +122,8 @@ async function fetchQualityData(organization: string, days: QualityPeriod): Prom
   );
 
   return {
-    trend: trend.timeline,
-    resolutions,
+    trend: withCurrent(trend.timeline, current),
+    matrix: current.matrix,
     security,
     rules: facetOf(rulesAndLanguages, 'rules')
       .slice(0, TOP_RULES)
@@ -164,10 +131,6 @@ async function fetchQualityData(organization: string, days: QualityPeriod): Prom
     languages: facetOf(rulesAndLanguages, 'languages')
       .filter(({ count }) => count > 0)
       .map(({ val, count }) => ({ key: val, count, name: languageNames.get(val) ?? val })),
-    issueStatuses: Object.fromEntries(
-      facetOf(statuses, 'issueStatuses').map(({ val, count }) => [val, count]),
-    ),
-    expiring: { exceptions: expiring.exceptions, total: expiring.paging.total },
     ageMatrix: buckets.map((bucket, i) => ({
       bucket,
       counts: Object.fromEntries(
@@ -178,14 +141,11 @@ async function fetchQualityData(organization: string, days: QualityPeriod): Prom
 }
 
 /**
- * Is quality getting better, where is the security risk, and which accepted risks need a second look.
+ * Where the risk is: open findings by severity and type with their trends, how fast security issues get fixed against
+ * their SLA, how old the open ones are, and which rules and technologies raise the most issues.
  */
-export default function QualityDashboard({
-  defaultPeriod = DEFAULT_QUALITY_PERIOD,
-  organization,
-}: Readonly<Props>) {
-  const [period, setPeriod] = React.useState<QualityPeriod>(defaultPeriod);
-  const [data, setData] = React.useState<QualityData>();
+export default function QualityDashboard({ organization, period }: Readonly<Props>) {
+  const [data, setData] = React.useState<RiskData>();
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
 
@@ -193,7 +153,7 @@ export default function QualityDashboard({
     let active = true;
     setLoading(true);
     setError(false);
-    fetchQualityData(organization, period).then(
+    fetchRiskData(organization, period).then(
       (result) => {
         if (active) {
           setData(result);
@@ -214,19 +174,6 @@ export default function QualityDashboard({
 
   return (
     <>
-      <div className="sw-flex sw-items-center sw-gap-4 sw-mb-4">
-        <ToggleButton
-          label={translate('analytics.activity.period')}
-          onChange={(value) => setPeriod(value as QualityPeriod)}
-          options={QUALITY_PERIODS.map((days) => ({
-            label: translate('analytics.quality.period', String(days)),
-            value: days,
-          }))}
-          value={period}
-        />
-        <Text isSubdued>{translate('analytics.quality.main_branch_hint')}</Text>
-      </div>
-
       {error && (
         <FlagMessage className="sw-mb-4" variant="error">
           {translate('analytics.load_error')}
@@ -237,13 +184,19 @@ export default function QualityDashboard({
         <Spinner loading={loading} />
       ) : (
         <div aria-busy={loading} className={loading ? 'sw-opacity-50' : undefined}>
-          <QualityTiles data={data} organization={organization} />
+          <RiskTiles data={data} organization={organization} />
+          <FindingsBreakdown
+            matrix={data.matrix}
+            organization={organization}
+            trend={data.trend}
+            weekly={period > 31}
+          />
           <SecurityRemediationPanel
             data={data.security}
             organization={organization}
             weekly={period > 31}
           />
-          <QualityCharts data={data} organization={organization} weekly={period > 31} />
+          <RootCauseCharts data={data} organization={organization} />
           <RootCauses organization={organization} />
         </div>
       )}
@@ -251,225 +204,106 @@ export default function QualityDashboard({
   );
 }
 
-function passRate(point?: QualityTrendPoint) {
-  return point && point.passed + point.failed > 0
-    ? (point.passed / (point.passed + point.failed)) * 100
-    : undefined;
-}
-
-function QualityTiles({
-  data,
-  organization,
-}: Readonly<{ data: QualityData; organization: string }>) {
+function RiskTiles({ data, organization }: Readonly<{ data: RiskData; organization: string }>) {
   const navigate = useNavigate();
   const integer = (value: number) => formatMeasure(value, MetricType.Integer);
-  const first = data.trend[0];
+  const first = periodStart(data.trend);
   const last = data.trend[data.trend.length - 1];
-  const rateNow = passRate(last);
-  const rateThen = passRate(first);
-  const issuesChange = getChange(last?.openIssues, first?.openIssues);
-  const pastSla = data.ageMatrix
-    .filter(({ bucket }) => bucket.pastSla)
-    .reduce(
-      (sum, { counts }) => sum + SLA_SEVERITIES.reduce((s, sev) => s + (counts[sev] ?? 0), 0),
-      0,
-    );
-  const accepted = data.issueStatuses.ACCEPTED ?? 0;
-  const falsePositives = data.issueStatuses.FALSE_POSITIVE ?? 0;
-  const { totals } = data.resolutions;
   const sinceStart = translate('analytics.quality.since_period_start');
+  const change = (now?: number, then?: number) => {
+    const value = getChange(now, then);
+    return value === undefined
+      ? undefined
+      : toDelta(value, (r) => formatChange(r), false, sinceStart);
+  };
+  const highSeverity =
+    countOf(data.matrix, undefined, 'BLOCKER') +
+    countOf(data.matrix, undefined, 'CRITICAL') -
+    countOf(data.matrix, 'SECURITY_HOTSPOT', 'BLOCKER') -
+    countOf(data.matrix, 'SECURITY_HOTSPOT', 'CRITICAL');
+  const hotspots = countOf(data.matrix, 'SECURITY_HOTSPOT');
 
   return (
-    <div className="sw-grid sw-grid-cols-5 sw-gap-4 sw-mb-6">
-      <StatTile
-        color={STATUS_COLORS.success}
-        delta={toDelta(
-          totals.netChange,
-          (r) => formatChange(r, ''),
-          false,
-          translate('analytics.quality.net_change'),
-        )}
-        footnote={translateWithParameters(
-          'analytics.quality.resolved_footnote',
-          integer(totals.introduced),
-        )}
-        icon={<IconCheckCircle />}
-        label={translate('analytics.quality.resolved')}
-        trend={data.resolutions.timeline.map(
-          (b) => b.fixed + b.removed + b.accepted + b.falsePositive,
-        )}
-        onClick={() =>
-          navigate(getOrgIssuesUrl({ issueStatuses: RESOLVED_TILE_STATUSES }, organization))
-        }
-      >
-        {integer(totals.resolved)}
-      </StatTile>
-      <StatTile
-        color={STATUS_COLORS.success}
-        delta={
-          rateNow === undefined || rateThen === undefined
-            ? undefined
-            : toDelta(rateNow - rateThen, (r) => formatChange(r, ' pts'), true, sinceStart)
-        }
-        icon={<IconCheckCircle />}
-        label={translate('analytics.quality.pass_rate')}
-        trend={data.trend.map(passRate)}
-      >
-        {rateNow === undefined ? '-' : `${Math.round(rateNow)}%`}
-      </StatTile>
+    <div className="sw-grid sw-grid-cols-4 sw-gap-4 sw-mb-6">
       <StatTile
         color={MAGNITUDE_COLOR}
-        delta={
-          issuesChange === undefined
-            ? undefined
-            : toDelta(issuesChange, (r) => formatChange(r), false, sinceStart)
-        }
-        icon={<IconError />}
+        delta={change(last?.openIssues, first?.openIssues)}
+        icon={<IconBug />}
         label={translate('analytics.quality.open_issues')}
-        trend={data.trend.map(({ openIssues }) => openIssues)}
         onClick={() => navigate(getOrgIssuesUrl({ issueStatuses: OPEN }, organization))}
+        trend={data.trend.map(({ openIssues }) => openIssues)}
       >
         {last ? integer(last.openIssues) : '-'}
       </StatTile>
       <StatTile
-        color={pastSla > 0 ? STATUS_COLORS.danger : STATUS_COLORS.success}
-        footnote={translateWithParameters('analytics.quality.sla_rule', SLA_SEVERITIES.length)}
-        icon={<IconSecurityFinding />}
-        label={translate('analytics.quality.past_sla')}
+        color={STATUS_COLORS.danger}
+        delta={change(last?.vulnerabilities, first?.vulnerabilities)}
+        icon={<IconVulnerability />}
+        label={translate('analytics.quality.vulnerabilities')}
+        onClick={() =>
+          navigate(getOrgIssuesUrl({ issueStatuses: OPEN, types: 'VULNERABILITY' }, organization))
+        }
+        trend={data.trend.map(({ vulnerabilities }) => vulnerabilities)}
+      >
+        {last ? integer(last.vulnerabilities) : '-'}
+      </StatTile>
+      <StatTile
+        color={highSeverity > 0 ? STATUS_COLORS.danger : STATUS_COLORS.success}
+        footnote={translate('analytics.risk.high_severity.footnote')}
+        icon={<IconError />}
+        label={translate('analytics.risk.high_severity')}
         onClick={() =>
           navigate(
-            getOrgIssuesUrl(
-              {
-                issueStatuses: OPEN,
-                impactSoftwareQualities: 'SECURITY',
-                impactSeverities: SLA_SEVERITIES.join(),
-                createdBefore: getAgeBuckets(new Date())[1].createdBefore,
-              },
-              organization,
-            ),
+            getOrgIssuesUrl({ issueStatuses: OPEN, severities: 'BLOCKER,CRITICAL' }, organization),
           )
         }
       >
-        {integer(pastSla)}
+        {integer(highSeverity)}
       </StatTile>
       <StatTile
-        color={data.expiring.total > 0 ? STATUS_COLORS.warning : MAGNITUDE_COLOR}
-        footnote={translateWithParameters(
-          'analytics.quality.exceptions_footnote',
-          integer(accepted),
-          integer(falsePositives),
-        )}
-        icon={<IconWarning />}
-        label={translate('analytics.quality.expiring_exceptions')}
-        onClick={() =>
-          navigate(getOrgIssuesUrl({ issueStatuses: 'ACCEPTED,FALSE_POSITIVE' }, organization))
-        }
+        color={HOTSPOT_COLOR}
+        footnote={translate('analytics.risk.hotspots.footnote')}
+        icon={<IconSecurityFinding />}
+        label={translate('analytics.risk.hotspots')}
       >
-        {integer(data.expiring.total)}
+        {integer(hotspots)}
       </StatTile>
     </div>
   );
 }
 
-function QualityCharts({
+function ageTable(matrix: RiskData['ageMatrix']): CsvTable {
+  return {
+    header: [
+      translate('analytics.quality.severity'),
+      ...matrix.map(({ bucket }) => translate('analytics.quality.age', bucket.key)),
+    ],
+    rows: IMPACT_SEVERITIES.map((severity) => [
+      translate('severity_impact', severity),
+      ...matrix.map(({ counts }) => counts[severity] ?? 0),
+    ]),
+  };
+}
+
+function RootCauseCharts({
   data,
   organization,
-  weekly,
-}: Readonly<{ data: QualityData; organization: string; weekly: boolean }>) {
+}: Readonly<{ data: RiskData; organization: string }>) {
   const navigate = useNavigate();
-  const label = (date: string) =>
-    weekly
-      ? translateWithParameters('analytics.activity.week_of', format(parseDate(date), 'MMM d'))
-      : format(parseDate(date), 'MMM d');
-  const points = data.trend.map((point) => ({ key: point.date, label: label(point.date) }));
-  const hasHistory = data.trend.some(({ projects }) => projects > 0);
+  const counted = (items: RiskData['rules'], title: string): CsvTable => ({
+    header: [title, translate('analytics.quality.issues')],
+    rows: items.map(({ count, name }) => [name, count]),
+  });
 
   return (
     <div className="sw-grid sw-grid-cols-12 sw-gap-6 sw-mb-8">
       <ChartCard
-        className="sw-col-span-6"
-        description={translate('analytics.quality.pass_rate.description')}
-        title={translate('analytics.quality.pass_rate_trend')}
-      >
-        {hasHistory ? (
-          <LineTimeline
-            formatValue={(value) => `${Math.round(value)}%`}
-            points={data.trend.map((point, i) => ({
-              ...points[i],
-              values: { rate: passRate(point) },
-            }))}
-            series={[
-              {
-                color: STATUS_COLORS.success,
-                key: 'rate',
-                label: translate('analytics.quality.pass_rate'),
-              },
-            ]}
+        action={
+          <ExportCsvButton
+            fileName={exportFileName('open-security-issues-by-age', organization)}
+            getTable={() => ageTable(data.ageMatrix)}
           />
-        ) : (
-          <Text isSubdued>{translate('analytics.quality.no_history')}</Text>
-        )}
-      </ChartCard>
-
-      <ChartCard
-        className="sw-col-span-6"
-        description={translate('analytics.quality.open_issues.description')}
-        title={translate('analytics.quality.open_issues_trend')}
-      >
-        {hasHistory ? (
-          <LineTimeline
-            formatValue={(value) => formatMeasure(value, MetricType.ShortInteger)}
-            points={data.trend.map((point, i) => ({
-              ...points[i],
-              values: { issues: point.openIssues },
-            }))}
-            series={[
-              {
-                color: MAGNITUDE_COLOR,
-                key: 'issues',
-                label: translate('analytics.quality.open_issues'),
-              },
-            ]}
-          />
-        ) : (
-          <Text isSubdued>{translate('analytics.quality.no_history')}</Text>
-        )}
-      </ChartCard>
-
-      <ChartCard
-        className="sw-col-span-6"
-        description={translate('analytics.quality.risk.description')}
-        title={translate('analytics.quality.risk_trend')}
-      >
-        {hasHistory ? (
-          <LineTimeline
-            formatValue={(value) => formatMeasure(value, MetricType.ShortInteger)}
-            points={data.trend.map((point, i) => ({
-              ...points[i],
-              values: { vulnerabilities: point.vulnerabilities, blockers: point.blockerIssues },
-            }))}
-            series={[
-              {
-                color: STATUS_COLORS.danger,
-                key: 'vulnerabilities',
-                label: translate('analytics.quality.vulnerabilities'),
-              },
-              {
-                color: STATUS_COLORS.danger,
-                dashed: true,
-                key: 'blockers',
-                label: translate('analytics.quality.blocker_issues'),
-              },
-            ]}
-          />
-        ) : (
-          <Text isSubdued>{translate('analytics.quality.no_history')}</Text>
-        )}
-      </ChartCard>
-
-      <ResolutionCharts data={data} label={label} organization={organization} />
-
-      <ChartCard
+        }
         className="sw-col-span-12"
         description={translateWithParameters(
           'analytics.quality.security_age.description',
@@ -481,6 +315,12 @@ function QualityCharts({
       </ChartCard>
 
       <ChartCard
+        action={
+          <ExportCsvButton
+            fileName={exportFileName('most-frequent-rules', organization)}
+            getTable={() => counted(data.rules, translate('analytics.quality.rule'))}
+          />
+        }
         className="sw-col-span-7"
         description={translate('analytics.quality.top_rules.description')}
         title={translate('analytics.quality.top_rules')}
@@ -503,6 +343,12 @@ function QualityCharts({
       </ChartCard>
 
       <ChartCard
+        action={
+          <ExportCsvButton
+            fileName={exportFileName('open-issues-by-technology', organization)}
+            getTable={() => counted(data.languages, translate('analytics.risk.technology'))}
+          />
+        }
         className="sw-col-span-5"
         description={translate('analytics.quality.languages.description')}
         title={translate('analytics.quality.languages')}
@@ -523,17 +369,6 @@ function QualityCharts({
           <Text isSubdued>{translate('analytics.chart.no_issues')}</Text>
         )}
       </ChartCard>
-
-      <ChartCard
-        className="sw-col-span-12"
-        description={translateWithParameters(
-          'analytics.quality.expiring.description',
-          EXPIRING_WITHIN_DAYS,
-        )}
-        title={translate('analytics.quality.expiring_exceptions')}
-      >
-        <ExpiringTable expiring={data.expiring} organization={organization} />
-      </ChartCard>
     </div>
   );
 }
@@ -543,7 +378,7 @@ const AGE_COLUMNS = ['24%', '19%', '19%', '19%', '19%'];
 function SecurityAgeTable({
   matrix,
   organization,
-}: Readonly<{ matrix: QualityData['ageMatrix']; organization: string }>) {
+}: Readonly<{ matrix: RiskData['ageMatrix']; organization: string }>) {
   return (
     <Table
       columnCount={AGE_COLUMNS.length}
@@ -595,101 +430,6 @@ function SecurityAgeTable({
         </TableRow>
       ))}
     </Table>
-  );
-}
-
-const EXPIRING_COLUMNS = ['26%', '34%', '20%', '20%'];
-
-function ExpiringTable({
-  expiring: initial,
-  organization,
-}: Readonly<{ expiring: QualityData['expiring']; organization: string }>) {
-  const isReport = useIsReport();
-  const [expiring, setExpiring] = React.useState(initial);
-  const [page, setPage] = React.useState(1);
-  const [loading, setLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    setExpiring(initial);
-    setPage(1);
-  }, [initial]);
-
-  const loadMore = () => {
-    setLoading(true);
-    getExpiringExceptions({
-      organization,
-      p: page + 1,
-      ps: EXPIRING_SHOWN,
-      withinDays: EXPIRING_WITHIN_DAYS,
-    }).then(
-      (result) => {
-        setExpiring((current) => ({
-          exceptions: [...current.exceptions, ...result.exceptions],
-          total: result.paging.total,
-        }));
-        setPage(page + 1);
-        setLoading(false);
-      },
-      () => setLoading(false),
-    );
-  };
-
-  if (expiring.exceptions.length === 0) {
-    return <Text isSubdued>{translate('analytics.quality.no_expiring')}</Text>;
-  }
-  return (
-    <>
-      <Table
-        columnCount={EXPIRING_COLUMNS.length}
-        columnWidths={EXPIRING_COLUMNS}
-        header={
-          <TableRow>
-            <ContentCell>{translate('analytics.table.project')}</ContentCell>
-            <ContentCell>{translate('analytics.quality.rule')}</ContentCell>
-            <ContentCell>{translate('analytics.quality.exception')}</ContentCell>
-            <NumericalCell>{translate('analytics.quality.expires')}</NumericalCell>
-          </TableRow>
-        }
-      >
-        {expiring.exceptions.map((exception) => (
-          <TableRow key={exception.issueKey}>
-            <ContentCell>
-              <span className="sw-flex sw-flex-col sw-min-w-0">
-                <LinkStandalone
-                  to={getComponentIssuesUrl(exception.projectKey, {
-                    issues: exception.issueKey,
-                    open: exception.issueKey,
-                  })}
-                >
-                  {exception.projectName ?? exception.projectKey}
-                </LinkStandalone>
-                {exception.filePath && (
-                  <span className="sw-truncate" title={exception.filePath}>
-                    <Text isSubdued>{exception.filePath}</Text>
-                  </span>
-                )}
-              </span>
-            </ContentCell>
-            <ContentCell>{exception.ruleName ?? exception.rule}</ContentCell>
-            <ContentCell>{translate('issue.issue_status', exception.issueStatus)}</ContentCell>
-            <NumericalCell className="sw-whitespace-nowrap">
-              {exception.expired ? (
-                <Text>{translate('analytics.quality.expired')}</Text>
-              ) : (
-                <DateFormatter date={exception.expiresAt} long={false} />
-              )}
-            </NumericalCell>
-          </TableRow>
-        ))}
-      </Table>
-      <ListFooter
-        className="sw-mt-3"
-        loadMore={isReport ? undefined : loadMore}
-        count={expiring.exceptions.length}
-        loading={loading}
-        total={expiring.total}
-      />
-    </>
   );
 }
 
@@ -762,142 +502,3 @@ function RootCauses({ organization }: Readonly<{ organization: string }>) {
 }
 
 const ROOT_CAUSE_COLUMNS = ['46%', '26%', '14%', '14%'];
-
-const RESOLUTION_SERIES = [
-  { key: 'fixed', color: RESOLUTION_COLORS.fixed },
-  { key: 'accepted', color: RESOLUTION_COLORS.accepted },
-  { key: 'falsePositive', color: RESOLUTION_COLORS.falsePositive },
-  { key: 'removed', color: RESOLUTION_COLORS.removed },
-] as const;
-
-const STATUS_ORDER = ['OPEN', 'CONFIRMED', 'ACCEPTED', 'FALSE_POSITIVE', 'FIXED'];
-
-/**
- * Introduced versus resolved issues on main branches, how they got resolved, and every issue by status now.
- */
-function ResolutionCharts({
-  data,
-  label,
-  organization,
-}: Readonly<{ data: QualityData; label: (date: string) => string; organization: string }>) {
-  const navigate = useNavigate();
-  const { resolutions } = data;
-  const { totals } = resolutions;
-  // yyyy-MM-dd strings compare in date order
-  const incomplete = resolutions.period.from < resolutions.completeFrom;
-  const series = RESOLUTION_SERIES.map(({ color, key }) => ({
-    color,
-    key,
-    label: translate('analytics.quality.outcome', key),
-  }));
-  const integer = (value: number) => formatMeasure(value, MetricType.Integer);
-
-  return (
-    <>
-      <ChartCard
-        className="sw-col-span-6"
-        description={translate('analytics.quality.introduced_resolved.description')}
-        title={translate('analytics.quality.introduced_resolved')}
-      >
-        <LineTimeline
-          formatValue={(value) => formatMeasure(value, MetricType.ShortInteger)}
-          points={resolutions.timeline.map((bucket) => ({
-            key: bucket.date,
-            label: label(bucket.date),
-            values: {
-              resolved: bucket.fixed + bucket.removed + bucket.accepted + bucket.falsePositive,
-              introduced: bucket.introduced,
-            },
-          }))}
-          series={[
-            {
-              color: STATUS_COLORS.success,
-              key: 'resolved',
-              label: translate('analytics.quality.resolved_series'),
-            },
-            {
-              color: STATUS_COLORS.danger,
-              dashed: true,
-              key: 'introduced',
-              label: translate('analytics.quality.introduced_series'),
-            },
-          ]}
-        />
-        <Text as="p" className="sw-mt-3">
-          {translateWithParameters(
-            totals.netChange <= 0 ? 'analytics.quality.net_down' : 'analytics.quality.net_up',
-            integer(Math.abs(totals.netChange)),
-          )}
-        </Text>
-      </ChartCard>
-
-      <ChartCard
-        className="sw-col-span-6"
-        description={translate('analytics.quality.how_resolved.description')}
-        title={translate('analytics.quality.how_resolved')}
-      >
-        {totals.resolved > 0 ? (
-          <div className="sw-flex sw-flex-col sw-gap-4">
-            <ColumnTimeline
-              columns={resolutions.timeline.map((bucket) => ({
-                key: bucket.date,
-                label: label(bucket.date),
-                values: {
-                  fixed: bucket.fixed,
-                  accepted: bucket.accepted,
-                  falsePositive: bucket.falsePositive,
-                  removed: bucket.removed,
-                },
-              }))}
-              series={series}
-            />
-            <BarList
-              items={series.map(({ color, key, label: name }) => ({
-                color,
-                key,
-                label: name,
-                value: totals[key],
-              }))}
-            />
-            <Text isSubdued>
-              {translateWithParameters(
-                'analytics.quality.fixed_by_analysis',
-                integer(totals.fixedByAnalysis),
-                integer(totals.fixed),
-              )}
-              {totals.reopened > 0 &&
-                ` · ${translateWithParameters('analytics.quality.reopened', integer(totals.reopened))}`}
-            </Text>
-          </div>
-        ) : (
-          <Text isSubdued>{translate('analytics.quality.no_resolutions')}</Text>
-        )}
-        {incomplete && (
-          <FlagMessage className="sw-mt-4" variant="info">
-            {translateWithParameters(
-              'analytics.quality.retention_note',
-              resolutions.completeFrom,
-              resolutions.retentionDays,
-            )}
-          </FlagMessage>
-        )}
-      </ChartCard>
-
-      <ChartCard
-        className="sw-col-span-6"
-        description={translate('analytics.quality.by_status.description')}
-        title={translate('analytics.quality.by_status')}
-      >
-        <BarList
-          items={STATUS_ORDER.map((status) => ({
-            color: status === 'FIXED' ? RESOLUTION_COLORS.fixed : MAGNITUDE_COLOR,
-            key: status,
-            label: translate('issue.issue_status', status),
-            value: data.issueStatuses[status] ?? 0,
-          }))}
-          onSelect={(status) => navigate(getOrgIssuesUrl({ issueStatuses: status }, organization))}
-        />
-      </ChartCard>
-    </>
-  );
-}

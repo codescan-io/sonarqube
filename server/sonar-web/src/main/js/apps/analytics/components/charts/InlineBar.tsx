@@ -25,11 +25,13 @@ import { TRACK_COLOR } from './colors';
 interface Props {
   color: string;
   max: number;
+  /** Printed right after the value, e.g. "%". */
+  unit?: string;
   value: number;
 }
 
 /** A data bar inside a table cell: the number stays the primary reading, the bar lets a column be scanned at a glance. */
-export default function InlineBar({ color, max, value }: Readonly<Props>) {
+export default function InlineBar({ color, max, unit, value }: Readonly<Props>) {
   return (
     <span className="sw-flex sw-items-center sw-justify-end sw-gap-2 sw-w-full">
       <span
@@ -44,6 +46,7 @@ export default function InlineBar({ color, max, value }: Readonly<Props>) {
       </span>
       <span className="sw-typo-semibold sw-min-w-6 sw-text-right">
         {formatMeasure(value, MetricType.Integer)}
+        {unit}
       </span>
     </span>
   );

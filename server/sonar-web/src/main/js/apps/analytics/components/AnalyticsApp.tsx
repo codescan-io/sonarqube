@@ -18,7 +18,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { Button, DropdownMenu, DropdownMenuAlign, IconDownload } from '@sonarsource/echoes-react';
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuAlign,
+  IconDownload,
+  Text,
+} from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
@@ -34,26 +40,26 @@ import handleRequiredAuthorization from '../../../app/utils/handleRequiredAuthor
 import { translate } from '../../../helpers/l10n';
 import { Organization } from '../../../types/types';
 import { withOrganizationContext } from '../../organizations/OrganizationContext';
-import { REPORT_PERIODS, ReportPeriod } from '../report';
+import { REPORT_GROUPS } from '../governance';
+import { ANALYTICS_PERIODS, AnalyticsPeriod, parsePeriod } from '../period';
+import { ANALYTICS_TABS, AnalyticsTab, FULL_REPORT, ReportKind, hasPeriod } from '../report';
 import { canViewAnalytics } from '../utils';
-import ActivityDashboard from './ActivityDashboard';
-import AnalyticsDashboard from './AnalyticsDashboard';
-import AnalyticsReport from './AnalyticsReport';
+import AnalyticsReport, { tabContent } from './AnalyticsReport';
 import ExecutiveBrief from './ExecutiveBrief';
-import QualityDashboard from './QualityDashboard';
-import ValueDashboard from './ValueDashboard';
-
-enum AnalyticsTab {
-  Brief = 'brief',
-  Overview = 'overview',
-  Quality = 'quality',
-  Activity = 'activity',
-  Value = 'value',
-}
-
-const TABS = Object.values(AnalyticsTab);
+import GovernanceDashboard from './GovernanceDashboard';
+import { NO_SCAN_SELECTION, ScanSelection } from './ScanComparisonPanel';
 
 const TAB_PARAM = 'tab';
+const PERIOD_PARAM = 'period';
+// Links made before the governance reports joined the dashboard keep working.
+const LEGACY_TABS: Record<string, AnalyticsTab> = { reports: AnalyticsTab.Governance };
+
+/** What each tab says about its period, next to the period picker. */
+const PERIOD_HINTS: Partial<Record<AnalyticsTab, string>> = {
+  [AnalyticsTab.Risk]: 'analytics.quality.main_branch_hint',
+  [AnalyticsTab.Governance]: 'analytics.quality.main_branch_hint',
+  [AnalyticsTab.Activity]: 'analytics.activity.compared_hint',
+};
 
 interface Props {
   organization?: Organization;
@@ -62,24 +68,35 @@ interface Props {
 export function AnalyticsApp({ organization }: Readonly<Props>) {
   const allowed = canViewAnalytics(organization);
   const [searchParams, setSearchParams] = useSearchParams();
-  // The tab lives in the URL so a link to the Activity tab can be shared.
-  // The brief is the landing tab: the one-page summary first, the detail one click away.
-  const tab = TABS.find((value) => value === searchParams.get(TAB_PARAM)) ?? AnalyticsTab.Brief;
-  const changeTab = (value: AnalyticsTab) =>
+  // The tab and the period live in the URL, so a link shows the same page.
+  // The summary is the landing tab: the one-page overview first, the detail one click away.
+  const requested = searchParams.get(TAB_PARAM) ?? '';
+  const tab =
+    ANALYTICS_TABS.find((value) => value === requested) ??
+    LEGACY_TABS[requested] ??
+    AnalyticsTab.Summary;
+  const period = parsePeriod(searchParams.get(PERIOD_PARAM));
+
+  const setParam = (key: string, value: string | undefined) =>
     setSearchParams(
       (params) => {
-        if (value === AnalyticsTab.Brief) {
-          params.delete(TAB_PARAM);
+        if (value === undefined) {
+          params.delete(key);
         } else {
-          params.set(TAB_PARAM, value);
+          params.set(key, value);
         }
         return params;
       },
       { replace: true },
     );
+  const changeTab = (value: AnalyticsTab) =>
+    setParam(TAB_PARAM, value === AnalyticsTab.Summary ? undefined : value);
+  const changePeriod = (value: AnalyticsPeriod) => setParam(PERIOD_PARAM, String(value));
 
-  const [reportPeriod, setReportPeriod] = React.useState<ReportPeriod>();
-  const closeReport = React.useCallback(() => setReportPeriod(undefined), []);
+  const [report, setReport] = React.useState<ReportKind>();
+  const closeReport = React.useCallback(() => setReport(undefined), []);
+  // Kept by the page, so the comparison picked on screen is the one in the PDF.
+  const [scan, setScan] = React.useState<ScanSelection>(NO_SCAN_SELECTION);
 
   React.useEffect(() => {
     if (!allowed) {
@@ -91,56 +108,91 @@ export function AnalyticsApp({ organization }: Readonly<Props>) {
     return null;
   }
 
+  const hint = PERIOD_HINTS[tab];
+
   return (
     <LargeCenteredLayout id="analytics-page">
       <PageContentFontWrapper className="sw-my-4 sw-typo-default">
         <Helmet defer={false} title={translate('analytics.page')} />
         <header className="sw-mb-6 sw-flex sw-items-center sw-justify-between sw-gap-4">
-          <Title className="sw-mb-0">{translate('analytics.page')}</Title>
-          {reportPeriod === undefined && (
+          <Title className="sw-mb-0"></Title>
+          {report === undefined && (
             <span className="sw-flex sw-items-center sw-gap-4">
               <ToggleButton
                 onChange={changeTab}
-                options={[
-                  { label: translate('analytics.tab.brief'), value: AnalyticsTab.Brief },
-                  { label: translate('analytics.tab.overview'), value: AnalyticsTab.Overview },
-                  { label: translate('analytics.tab.quality'), value: AnalyticsTab.Quality },
-                  { label: translate('analytics.tab.activity'), value: AnalyticsTab.Activity },
-                  { label: translate('analytics.tab.value'), value: AnalyticsTab.Value },
-                ]}
+                options={ANALYTICS_TABS.map((value) => ({
+                  label: translate('analytics.tab', value),
+                  value,
+                }))}
                 role="tablist"
                 value={tab}
               />
               <DropdownMenu.Root
                 align={DropdownMenuAlign.End}
-                header={{ label: translate('analytics.report.download_period') }}
-                items={REPORT_PERIODS.map((days) => (
-                  <DropdownMenu.ItemButton key={days} onClick={() => setReportPeriod(days)}>
-                    {translate('analytics.quality.period', String(days))}
-                  </DropdownMenu.ItemButton>
-                ))}
+                items={
+                  <>
+                    <DropdownMenu.ItemButton onClick={() => setReport(tab)}>
+                      {translate('analytics.report.download.tab')}
+                    </DropdownMenu.ItemButton>
+                    <DropdownMenu.ItemButton onClick={() => setReport(FULL_REPORT)}>
+                      {translate('analytics.report.download.all')}
+                    </DropdownMenu.ItemButton>
+                    <DropdownMenu.Separator />
+                    <DropdownMenu.GroupLabel>
+                      {translate('analytics.report.download.reports')}
+                    </DropdownMenu.GroupLabel>
+                    {REPORT_GROUPS.map((group) => (
+                      <DropdownMenu.ItemButton key={group} onClick={() => setReport(group)}>
+                        {translate('analytics.governance.group', group)}
+                      </DropdownMenu.ItemButton>
+                    ))}
+                  </>
+                }
               >
                 <Button prefix={<IconDownload />}>{translate('analytics.report.download')}</Button>
               </DropdownMenu.Root>
             </span>
           )}
         </header>
-        {reportPeriod !== undefined ? (
+        {report !== undefined ? (
           <AnalyticsReport
+            kind={report}
             onDone={closeReport}
             organization={organization.kee}
             organizationName={organization.name}
-            period={reportPeriod}
+            period={period}
+            scan={scan}
           />
         ) : (
           <div aria-labelledby={getTabId(tab)} id={getTabPanelId(tab)} role="tabpanel">
-            {tab === AnalyticsTab.Brief && <ExecutiveBrief organization={organization.kee} />}
-            {tab === AnalyticsTab.Overview && (
-              <AnalyticsDashboard organization={organization.kee} />
+            {hasPeriod(tab) && (
+              <div className="sw-flex sw-items-center sw-gap-4 sw-mb-6">
+                <ToggleButton
+                  label={translate('analytics.activity.period')}
+                  onChange={changePeriod}
+                  options={ANALYTICS_PERIODS.map((days) => ({
+                    label: translate('analytics.quality.period', String(days)),
+                    value: days,
+                  }))}
+                  value={period}
+                />
+                {hint && <Text isSubdued>{translate(hint)}</Text>}
+              </div>
             )}
-            {tab === AnalyticsTab.Quality && <QualityDashboard organization={organization.kee} />}
-            {tab === AnalyticsTab.Activity && <ActivityDashboard organization={organization.kee} />}
-            {tab === AnalyticsTab.Value && <ValueDashboard organization={organization.kee} />}
+            {tab === AnalyticsTab.Summary && (
+              <ExecutiveBrief onOpen={changeTab} organization={organization.kee} period={period} />
+            )}
+            {tab === AnalyticsTab.Governance && (
+              <GovernanceDashboard
+                onScanChange={setScan}
+                organization={organization.kee}
+                period={period}
+                scan={scan}
+              />
+            )}
+            {tab !== AnalyticsTab.Summary &&
+              tab !== AnalyticsTab.Governance &&
+              tabContent(tab, organization.kee, period)}
           </div>
         )}
       </PageContentFontWrapper>

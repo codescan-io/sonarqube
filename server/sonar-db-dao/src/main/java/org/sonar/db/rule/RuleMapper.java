@@ -115,4 +115,6 @@ public interface RuleMapper {
   List<String> selectRules(@Param("query") RuleListQuery query, @Param("pagination") Pagination pagination);
 
   Long countByQuery(@Param("query") RuleListQuery query);
+
+  List<CustomRuleDto> selectCustomRulesForOrganization(@Param("organizationUuid") String organizationUuid);
 }

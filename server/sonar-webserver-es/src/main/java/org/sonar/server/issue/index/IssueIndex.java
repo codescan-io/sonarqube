@@ -1377,16 +1377,19 @@ public class IssueIndex {
 
   /**
    * Unresolved issues on the main branches of the organization's projects the user can browse, counted by project, type and
-   * severity. Security hotspots are left out. The counts are paged through a composite aggregation, so the number of projects
-   * is not bound by the search bucket limit.
+   * severity. Security hotspots are left out unless {@code includeHotspots} is set, in which case those still to review count.
+   * The counts are paged through a composite aggregation, so the number of projects is not bound by the search bucket limit.
    *
    * @param consumer called once for every project, type and severity that has issues
    */
-  public void countUnresolvedByProjectTypeAndSeverity(String organizationUuid, Consumer<ProjectIssueCount> consumer) {
+  public void countUnresolvedByProjectTypeAndSeverity(String organizationUuid, boolean includeHotspots, Consumer<ProjectIssueCount> consumer) {
+    List<String> types = includeHotspots
+      ? List.of(BUG.name(), CODE_SMELL.name(), VULNERABILITY.name(), SECURITY_HOTSPOT.name())
+      : List.of(BUG.name(), CODE_SMELL.name(), VULNERABILITY.name());
     BoolQueryBuilder query = boolQuery()
       .filter(termQuery(FIELD_ISSUE_ORGANIZATION_UUID, organizationUuid))
       .filter(termQuery(FIELD_ISSUE_IS_MAIN_BRANCH, Boolean.toString(true)))
-      .filter(termsQuery(FIELD_ISSUE_TYPE, BUG.name(), CODE_SMELL.name(), VULNERABILITY.name()))
+      .filter(termsQuery(FIELD_ISSUE_TYPE, types))
       .filter(createAuthorizationFilter())
       .mustNot(existsQuery(FIELD_ISSUE_RESOLUTION));
 

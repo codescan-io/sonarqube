@@ -167,9 +167,9 @@ function TeamRow({
             <InlineBar
               color={team.passRate >= 80 ? STATUS_COLORS.success : STATUS_COLORS.warning}
               max={100}
+              unit="%"
               value={team.passRate}
             />
-            <Text className="sw-whitespace-nowrap">{Math.round(team.passRate)}%</Text>
           </span>
         )}
       </ContentCell>

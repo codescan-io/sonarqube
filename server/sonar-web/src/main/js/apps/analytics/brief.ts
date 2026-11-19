@@ -28,6 +28,7 @@ import { AiValue, OrganizationHealth } from '../../api/codescan-analytics';
 import { translate, translateWithParameters } from '../../helpers/l10n';
 import { getChange, getSuccessRate } from './activity';
 import { Health, computeHealth, share } from './health';
+import { periodStart } from './period';
 import { formatHours } from './roi';
 import { AnalyticsProject, RecencyBucket, getRecencyBucket } from './utils';
 
@@ -126,7 +127,8 @@ const NAMED_PROJECTS = 3;
 export function buildInsights(data: BriefData, limit = MAX_INSIGHTS): Insight[] {
   const insights: Insight[] = [];
   const integer = (value: number) => new Intl.NumberFormat().format(Math.round(Math.abs(value)));
-  const first = data.trend[0];
+  // without an analysis at the start of the period, any change would only count first analyses
+  const first = periodStart(data.trend);
   const last = data.trend[data.trend.length - 1];
 
   if (first && last) {
@@ -250,7 +252,8 @@ export function buildInsights(data: BriefData, limit = MAX_INSIGHTS): Insight[] 
         ) / 2,
       text: translateWithParameters(
         `analytics.brief.insight.backlog_${shrinking ? 'shrinking' : 'growing'}`,
-        integer(resolutions.resolved),
+        integer(resolutions.fixed + resolutions.removed),
+        integer(resolutions.accepted + resolutions.falsePositive),
         integer(resolutions.introduced),
       ),
     });

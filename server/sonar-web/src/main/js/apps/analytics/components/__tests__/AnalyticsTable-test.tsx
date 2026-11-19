@@ -38,6 +38,7 @@ function renderTable() {
       filters={DEFAULT_FILTERS}
       loading={false}
       matrices={{}}
+      organization="my-org"
       onOpenScorecard={jest.fn()}
       projects={projects}
       taskStatuses={{}}
@@ -92,6 +93,7 @@ it('lists the projects without controls in the report', () => {
         filters={DEFAULT_FILTERS}
         loading={false}
         matrices={{}}
+        organization="my-org"
         onOpenScorecard={jest.fn()}
         projects={projects}
         taskStatuses={{}}

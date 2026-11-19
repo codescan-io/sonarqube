@@ -39,6 +39,10 @@ public class AnalyticsWsModule extends Module {
       SecurityRemediationAction.class,
       QualityTrendAction.class,
       ExceptionsAction.class,
-      IssueResolutionsAction.class);
+      IssueResolutionsAction.class,
+      ExceptionGovernanceAction.class,
+      IssueAuditAction.class,
+      ScanComparisonAction.class,
+      CustomRulesAction.class);
   }
 }

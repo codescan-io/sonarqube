@@ -27,6 +27,7 @@ import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ProjectData;
 import org.sonar.db.organization.OrganizationDto;
+import org.sonar.db.user.UserDto;
 
 /** Organizations, projects and CE tasks for the analytics web service tests. */
 class AnalyticsWsTesting {
@@ -85,5 +86,18 @@ class AnalyticsWsTesting {
     task.setStatus(status);
     db.getDbClient().ceQueueDao().insert(db.getSession(), task);
     db.commit();
+  }
+
+  /**
+   * The users mapper of the organization fork leaves out the root flag, which the table requires, so the user is inserted as a
+   * row and read back.
+   */
+  UserDto insertUser(String login) {
+    String uuid = Uuids.createFast();
+    db.executeInsert("users", "uuid", uuid, "login", login, "name", login + " name", "external_id", login, "external_login", login,
+      "external_identity_provider", "sonarqube", "is_root", false, "user_local", true, "onboarded", true, "reset_password", false,
+      "active", true, "created_at", 1L, "updated_at", 1L);
+    db.commit();
+    return db.getDbClient().userDao().selectByUuid(db.getSession(), uuid);
   }
 }

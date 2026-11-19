@@ -19,6 +19,7 @@
  */
 
 import * as React from 'react';
+import { ReportGroup } from './governance';
 
 /**
  * Set while the page renders the report of every tab for printing: controls are left out, lists are expanded and
@@ -30,6 +31,25 @@ export function useIsReport() {
   return React.useContext(ReportContext);
 }
 
-/** Periods every tab supports, offered for the report. */
-export const REPORT_PERIODS = [30, 90] as const;
-export type ReportPeriod = (typeof REPORT_PERIODS)[number];
+/** The tabs of the page; the values are what the URL keeps. */
+export enum AnalyticsTab {
+  Summary = 'brief',
+  Projects = 'overview',
+  Risk = 'quality',
+  Governance = 'governance',
+  Activity = 'activity',
+  Value = 'value',
+}
+
+export const ANALYTICS_TABS = Object.values(AnalyticsTab);
+
+/** Tabs that show a period. Projects shows each project as it is now. */
+export function hasPeriod(tab: AnalyticsTab) {
+  return tab !== AnalyticsTab.Projects;
+}
+
+/** Every tab in one PDF. */
+export const FULL_REPORT = 'all';
+
+/** What a PDF holds: one tab, every tab, or one of the ready-made reports. */
+export type ReportKind = AnalyticsTab | ReportGroup | typeof FULL_REPORT;

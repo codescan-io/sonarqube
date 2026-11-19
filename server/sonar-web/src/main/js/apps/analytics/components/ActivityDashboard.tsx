@@ -29,7 +29,7 @@ import {
 } from '@sonarsource/echoes-react';
 import { format as formatDate, parseISO } from 'date-fns';
 import * as React from 'react';
-import { FlagMessage, Spinner, ToggleButton } from '~design-system';
+import { FlagMessage, Spinner } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricType } from '~sonar-aligned/types/metrics';
 import {
@@ -41,9 +41,6 @@ import {
 } from '../../../api/analytics';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import {
-  ACTIVITY_PERIODS,
-  ActivityPeriod,
-  DEFAULT_ACTIVITY_PERIOD,
   ActivityDrilldown as Drilldown,
   SLOW_QUEUE_MS,
   formatChange,
@@ -64,9 +61,8 @@ import PullRequestsPanel from './PullRequestsPanel';
 import StatTile from './StatTile';
 
 interface Props {
-  /** Period shown first; the report sets it for every tab. */
-  defaultPeriod?: ActivityPeriod;
   organization: string;
+  period: number;
 }
 
 const TARGETS: AnalysisTarget[] = ['MAIN', 'BRANCH', 'PULL_REQUEST', 'UNKNOWN'];
@@ -94,12 +90,8 @@ const TIME_SERIES = [
  * How much the organization analyses and how long it takes, over the last 7, 30 or 90 days,
  * compared with the period just before.
  */
-export default function ActivityDashboard({
-  defaultPeriod = DEFAULT_ACTIVITY_PERIOD,
-  organization,
-}: Readonly<Props>) {
+export default function ActivityDashboard({ organization, period }: Readonly<Props>) {
   const isReport = useIsReport();
-  const [period, setPeriod] = React.useState<ActivityPeriod>(defaultPeriod);
   const [activity, setActivity] = React.useState<OrganizationActivity>();
   const [queue, setQueue] = React.useState<OrganizationQueue>();
   const [loading, setLoading] = React.useState(true);
@@ -139,19 +131,6 @@ export default function ActivityDashboard({
 
   return (
     <>
-      <div className="sw-flex sw-items-center sw-gap-4 sw-mb-4">
-        <ToggleButton
-          label={translate('analytics.activity.period')}
-          onChange={(value) => setPeriod(value as ActivityPeriod)}
-          options={ACTIVITY_PERIODS.map((days) => ({
-            label: translate('analytics.filter.date', String(days)),
-            value: days,
-          }))}
-          value={period}
-        />
-        <Text isSubdued>{translate('analytics.activity.compared_hint')}</Text>
-      </div>
-
       {error && (
         <FlagMessage className="sw-mb-4" variant="error">
           {translate('analytics.load_error')}
