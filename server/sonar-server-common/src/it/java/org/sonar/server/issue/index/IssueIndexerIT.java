@@ -396,6 +396,39 @@ public class IssueIndexerIT {
   }
 
   @Test
+  public void commitAndIndexIssueKeys_commits_db_transaction_and_adds_issues_to_index() {
+    RuleDto rule = db.rules().insert();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+
+    IssueDto issue1 = IssueTesting.newIssue(rule, project, file);
+    IssueDto issue2 = IssueTesting.newIssue(rule, project, file);
+    db.getDbClient().issueDao().insert(db.getSession(), issue1, issue2);
+
+    underTest.commitAndIndexIssueKeys(db.getSession(), asList(issue1.getKey(), issue2.getKey()),
+      project.branchUuid());
+
+    assertThatIndexHasOnly(issue1, issue2);
+    assertThatDbHasOnly(issue1, issue2);
+    assertThatEsQueueTableHasSize(0);
+  }
+
+  /**
+   * The es_queue rows are what makes a failed index recoverable, so they must be written by the caller's
+   * transaction rather than after it: a row left behind here is what the recovery daemon retries.
+   */
+  @Test
+  public void commitAndIndexIssueKeys_leaves_an_es_queue_row_when_the_index_cannot_be_written() {
+    IssueDto issue = db.issues().insert();
+    es.lockWrites(TYPE_ISSUE);
+
+    underTest.commitAndIndexIssueKeys(db.getSession(), asList(issue.getKey()), issue.getProjectUuid());
+
+    assertThatEsQueueTableHasSize(1);
+    es.unlockWrites(TYPE_ISSUE);
+  }
+
+  @Test
   public void commitAndIndexIssues_removes_issue_from_index_if_it_does_not_exist_in_db() {
     IssueDto issue1 = new IssueDto().setKee("I1").setProjectUuid("B1");
     addIssueToIndex("B1", issue1.getProjectUuid(), issue1.getKey());

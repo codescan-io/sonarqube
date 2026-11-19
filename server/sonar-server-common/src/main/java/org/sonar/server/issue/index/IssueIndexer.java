@@ -371,6 +371,23 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
     doIndexIssueItems(dbSession, itemsByIssueKey);
   }
 
+  /**
+   * Same contract as {@link #commitAndIndexIssues(DbSession, Collection)} for a caller that holds issue keys
+   * rather than loaded rows: the es_queue entries are written in the caller's transaction, so a failure to reach
+   * Elasticsearch leaves the recovery daemon something to retry instead of a silently stale index.
+   */
+  public void commitAndIndexIssueKeys(DbSession dbSession, Collection<String> issueKeys, String projectUuid) {
+    ListMultimap<String, EsQueueDto> itemsByIssueKey = ArrayListMultimap.create();
+    issueKeys.stream()
+      .map(issueKey -> createQueueDto(issueKey, ID_TYPE_ISSUE_KEY, projectUuid))
+      .forEach(i -> itemsByIssueKey.put(i.getDocId(), i));
+    dbClient.esQueueDao().insert(dbSession, itemsByIssueKey.values());
+
+    dbSession.commit();
+
+    doIndexIssueItems(dbSession, itemsByIssueKey);
+  }
+
   @Override
   public IndexingResult index(DbSession dbSession, Collection<EsQueueDto> items) {
     ListMultimap<String, EsQueueDto> itemsByIssueKey = ArrayListMultimap.create();

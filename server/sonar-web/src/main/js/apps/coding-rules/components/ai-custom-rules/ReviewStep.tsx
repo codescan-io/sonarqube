@@ -52,11 +52,21 @@ interface Props {
   onValidate?: (xpath: string) => void;
   loading: boolean;
   hasError: boolean;
+  regenerateFailed?: boolean;
 }
 
 export default function ReviewStep(props: Readonly<Props>) {
-  const { ruleData, organization, onBack, onRegenerate, onActivate, onValidate, loading, hasError } =
-    props;
+  const {
+    ruleData,
+    organization,
+    onBack,
+    onRegenerate,
+    onActivate,
+    onValidate,
+    loading,
+    hasError,
+    regenerateFailed,
+  } = props;
   const [xpathValue, setXpathValue] = useState(ruleData.generatedXPath);
   const [isEditing, setIsEditing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -141,7 +151,14 @@ export default function ReviewStep(props: Readonly<Props>) {
       {/* Scrollable content */}
       <div className="review-scrollable">
         {/* Success/Error Banner */}
-        {hasError ? (
+        {regenerateFailed && !hasError ? (
+          <div className="review-banner review-banner--error" role="alert">
+            <img src={XOrangeSvg} alt="" className="review-banner-icon" width="14" height="14" />
+            <span className="review-banner-text">
+              <strong>Regenerate failed.</strong>
+            </span>
+          </div>
+        ) : hasError ? (
           <div className="review-banner review-banner--error">
             <img src={XOrangeSvg} alt="" className="review-banner-icon" width="14" height="14" />
             <span className="review-banner-text">

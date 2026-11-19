@@ -24,6 +24,7 @@ import { RuleDetails } from '../../../types/types';
 import CustomRuleFormModal from './CustomRuleFormModal';
 import AIRuleWizard from './ai-custom-rules/AIRuleWizard';
 import CreateRuleSelectionModal from './ai-custom-rules/CreateRuleSelectionModal';
+import useAiCustomRulesInstanceEnabled from './ai-custom-rules/useAiCustomRulesInstanceEnabled';
 
 interface Props {
   children: (props: { onClick: () => void }) => React.ReactNode;
@@ -39,8 +40,10 @@ export default function CustomRuleButton(props: Props) {
   const [aiWizardOpen, setAiWizardOpen] = React.useState(false);
   const [aiCustomRulesEnabled, setAiCustomRulesEnabled] = React.useState(false);
 
-  // AI custom rules are only available for Salesforce Metadata (sfmeta) template rules
-  const isSfMetaRule = templateRule.repo?.includes('sfmeta') ?? false;
+  const aiInstanceEnabled = useAiCustomRulesInstanceEnabled();
+  // AI custom rules are only available for Salesforce Metadata (sfmeta) template rules, and not at all
+  // when the instance setting is off.
+  const isSfMetaRule = (templateRule.repo?.includes('sfmeta') ?? false) && aiInstanceEnabled;
 
   React.useEffect(() => {
     if (props.organization && isSfMetaRule) {

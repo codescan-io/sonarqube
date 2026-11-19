@@ -1,0 +1,127 @@
+{
+  "sql-injection": {
+    "cvssScore": "8.8",
+    "baseScore": "9.4",
+    "temporalScore": "8.4",
+    "environmentalScore": "8.8",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:L/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:H/MI:H/MA:L/CR:H/IR:H/AR:M",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Remote input is concatenated into a SQL or NoSQL query."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Quote or operator characters in the input are enough."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "The vulnerable endpoint is reachable without authentication."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "The attacker sends the request directly; no victim action is needed."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The query runs against the same application database."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Injected queries can read all data the database user can access."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "High (H)",
+          "justification": "Injected queries can insert, update or delete data."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "Low (L)",
+          "justification": "Expensive injected queries can degrade database performance."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "The vulnerability class is well documented and proof-of-concept exploits exist."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "The rule description documents the secure coding fix."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The issue is identified by data-flow analysis from source to sink."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Same as the base metric: remote input is concatenated into a SQL or NoSQL query."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: quote or operator characters in the input are enough."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "Same as the base metric: the vulnerable endpoint is reachable without authentication."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "Same as the base metric: the attacker sends the request directly; no victim action is needed."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "Same as the base metric: the query runs against the same application database."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: injected queries can read all data the database user can access."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "High (H)",
+          "justification": "Same as the base metric: injected queries can insert, update or delete data."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: expensive injected queries can degrade database performance."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Protecting application data and secrets is critical."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Integrity of data and code is critical."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Availability matters but short disruptions are tolerable."
+        }
+      ]
+    }
+  }
+}

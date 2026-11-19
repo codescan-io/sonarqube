@@ -19,6 +19,8 @@
  */
 package org.sonar.server.projectlink.ws;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Rule;
 import org.junit.Test;
@@ -37,6 +39,7 @@ import org.sonar.db.component.ProjectData;
 import org.sonar.db.component.ProjectLinkDto;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.server.component.TestComponentFinder;
+import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.ForbiddenException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.tester.UserSessionRule;
@@ -47,6 +50,7 @@ import org.sonarqube.ws.ProjectLinks;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.sonar.server.projectlink.ws.ProjectLinksWsParameters.PARAM_ENCODED_URL;
 import static org.sonar.server.projectlink.ws.ProjectLinksWsParameters.PARAM_NAME;
 import static org.sonar.server.projectlink.ws.ProjectLinksWsParameters.PARAM_PROJECT_ID;
 import static org.sonar.server.projectlink.ws.ProjectLinksWsParameters.PARAM_PROJECT_KEY;
@@ -110,6 +114,46 @@ public class CreateActionIT {
     String expectedType = StringUtils.leftPad("", 20, "a");
 
     createAndTest(project, longName, "http://example.org", expectedType);
+  }
+
+  @Test
+  public void create_link_from_encoded_url() {
+    ProjectDto project = db.components().insertPrivateProject().getProjectDto();
+    logInAsProjectAdministrator(project);
+    String url = "http://example.org/team/../apex";
+
+    ProjectLinks.CreateWsResponse response = ws.newRequest()
+      .setMethod("POST")
+      .setParam(PARAM_PROJECT_KEY, project.getKey())
+      .setParam(PARAM_NAME, "Custom")
+      .setParam(PARAM_ENCODED_URL, encode(url))
+      .executeProtobuf(ProjectLinks.CreateWsResponse.class);
+
+    ProjectLinkDto link = dbClient.projectLinkDao().selectByUuid(dbSession, response.getLink().getId());
+    assertThat(link.getHref()).isEqualTo(url);
+    assertThat(response.getLink().getUrl()).isEqualTo(url);
+  }
+
+  @Test
+  public void fail_if_encoded_url_is_not_base64url() {
+    TestRequest testRequest = ws.newRequest()
+      .setParam(PARAM_PROJECT_KEY, "unknown")
+      .setParam(PARAM_NAME, "Custom")
+      .setParam(PARAM_ENCODED_URL, "not+base64/");
+    assertThatThrownBy(testRequest::execute)
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(\"Parameter 'encodedUrl' is not valid base64url");
+  }
+
+  @Test
+  public void fail_if_decoded_url_is_too_long() {
+    TestRequest testRequest = ws.newRequest()
+      .setParam(PARAM_PROJECT_KEY, "unknown")
+      .setParam(PARAM_NAME, "Custom")
+      .setParam(PARAM_ENCODED_URL, encode("http://example.org/" + StringUtils.leftPad("", 2049, "a")));
+    assertThatThrownBy(testRequest::execute)
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("'url' length (2068) is longer than the maximum authorized (2048)");
   }
 
   @Test
@@ -251,7 +295,9 @@ public class CreateActionIT {
     assertThat(action.isPost()).isTrue();
     assertThat(action.handler()).isNotNull();
     assertThat(action.responseExampleAsString()).isNotEmpty();
-    assertThat(action.params()).hasSize(4);
+    assertThat(action.params()).extracting(WebService.Param::key)
+      .containsExactlyInAnyOrder("projectId", "projectKey", "name", "url", "encodedUrl");
+    assertThat(action.param(PARAM_URL).isRequired()).isFalse();
   }
 
   private void failIfNotAProjectWithKey(ProjectDto project, ComponentDto component) {
@@ -296,6 +342,10 @@ public class CreateActionIT {
 
   private void createAndTest(ProjectDto project) {
     createAndTest(project, "Custom", "http://example.org", "custom");
+  }
+
+  private static String encode(String value) {
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8));
   }
 
   private void logInAsProjectAdministrator(ProjectDto project) {
