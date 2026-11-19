@@ -27,6 +27,7 @@ import javax.annotation.Nullable;
 import org.junit.Rule;
 import org.junit.Test;
 import org.sonar.api.impl.utils.TestSystem2;
+import org.sonar.ce.queue.MeasureRecomputeSubmitter;
 import org.sonar.core.util.SequenceUuidFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
@@ -35,7 +36,6 @@ import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueChangeDto;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.rule.RuleDto;
-import org.sonar.server.issue.TestIssueChangePostProcessor;
 import org.sonar.server.issue.index.IssueIndexer;
 import org.sonar.server.tester.UserSessionRule;
 import org.sonar.server.ws.TestRequest;
@@ -77,7 +77,7 @@ public class BulkTransitionExceptionIT {
     return org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
   });
   private final WsActionTester ws = new WsActionTester(new BulkTransitionAction(dbClient, userSession, issueIndexer,
-    new SequenceUuidFactory(), new TestSystem2().setNow(NOW), new TestIssueChangePostProcessor()));
+    new SequenceUuidFactory(), new TestSystem2().setNow(NOW), mock(MeasureRecomputeSubmitter.class)));
 
   private final String transferUuid = UUID.randomUUID().toString();
   private ComponentDto project;
