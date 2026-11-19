@@ -1,0 +1,127 @@
+{
+  "untrusted-data-to-external-api": {
+    "cvssScore": "7.3",
+    "baseScore": "7.3",
+    "temporalScore": "6.6",
+    "environmentalScore": "7.3",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:N/MS:U/MC:L/MI:L/MA:L/CR:H/IR:H/AR:M",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "The untrusted data comes from a network request."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "No special conditions are needed: the untrusted value reaches the external API without any sanitization."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "No account is needed to send the data."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "No user action is needed."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "The impact stays within the application that calls the API."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "Low (L)",
+          "justification": "The API may expose limited data when given unexpected input."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "Low (L)",
+          "justification": "The API may change limited data when given unexpected input."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "Low (L)",
+          "justification": "The API may fail when given unexpected input."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "The vulnerability class is well documented and proof-of-concept exploits exist."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "The rule description documents the secure coding fix."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The issue is identified by data-flow analysis from source to sink."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Same as the base metric: the untrusted data comes from a network request."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: no special conditions are needed: the untrusted value reaches the external API without any sanitization."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no account is needed to send the data."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no user action is needed."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Unchanged (U)",
+          "justification": "Same as the base metric: the impact stays within the application that calls the API."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: the API may expose limited data when given unexpected input."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: the API may change limited data when given unexpected input."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: the API may fail when given unexpected input."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Protecting application data and secrets is critical."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "High (H)",
+          "justification": "Integrity of data and code is critical."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Availability matters but short disruptions are tolerable."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "client-side-unvalidated-url-redirection": {
+    "cvssScore": "5.5",
+    "baseScore": "6.1",
+    "temporalScore": "5.5",
+    "environmentalScore": "5.5",
+    "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N/E:P/RL:O/RC:C/MAV:N/MAC:L/MPR:N/MUI:R/MS:C/MC:L/MI:L/MA:N/CR:M/IR:M/AR:L",
+    "metrics": {
+      "BASE": [
+        {
+          "name": "ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "The redirect target is supplied through a URL or other client-side source."
+        },
+        {
+          "name": "ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Placing a URL in the link is enough; no special conditions are needed."
+        },
+        {
+          "name": "PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "No account is needed to craft the link."
+        },
+        {
+          "name": "USER_INTERACTION",
+          "value": "Required (R)",
+          "justification": "The victim must open the crafted link."
+        },
+        {
+          "name": "SCOPE",
+          "value": "Changed (C)",
+          "justification": "The victim is sent to an attacker site, or a javascript: URL runs script in the victim browser."
+        },
+        {
+          "name": "CONFIDENTIALITY",
+          "value": "Low (L)",
+          "justification": "Phishing or injected script can capture limited user data."
+        },
+        {
+          "name": "INTEGRITY",
+          "value": "Low (L)",
+          "justification": "The attacker can present misleading content to the user."
+        },
+        {
+          "name": "AVAILABILITY",
+          "value": "None (N)",
+          "justification": "Service availability is not affected."
+        }
+      ],
+      "TEMPORAL": [
+        {
+          "name": "EXPLOIT_CODE_MATURITY",
+          "value": "Proof-of-Concept (P)",
+          "justification": "The vulnerability class is well documented and proof-of-concept exploits exist."
+        },
+        {
+          "name": "REMEDIATION_LEVEL",
+          "value": "Official Fix (O)",
+          "justification": "The rule description documents the secure coding fix."
+        },
+        {
+          "name": "REPORT_CONFIDENCE",
+          "value": "Confirmed (C)",
+          "justification": "The issue is identified by data-flow analysis from source to sink."
+        }
+      ],
+      "ENVIRONMENTAL": [
+        {
+          "name": "MODIFIED_ATTACK_VECTOR",
+          "value": "Network (N)",
+          "justification": "Same as the base metric: the redirect target is supplied through a URL or other client-side source."
+        },
+        {
+          "name": "MODIFIED_ATTACK_COMPLEXITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: placing a URL in the link is enough; no special conditions are needed."
+        },
+        {
+          "name": "MODIFIED_PRIVILEGES_REQUIRED",
+          "value": "None (N)",
+          "justification": "Same as the base metric: no account is needed to craft the link."
+        },
+        {
+          "name": "MODIFIED_USER_INTERACTION",
+          "value": "Required (R)",
+          "justification": "Same as the base metric: the victim must open the crafted link."
+        },
+        {
+          "name": "MODIFIED_SCOPE",
+          "value": "Changed (C)",
+          "justification": "Same as the base metric: the victim is sent to an attacker site, or a javascript: URL runs script in the victim browser."
+        },
+        {
+          "name": "MODIFIED_CONFIDENTIALITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: phishing or injected script can capture limited user data."
+        },
+        {
+          "name": "MODIFIED_INTEGRITY",
+          "value": "Low (L)",
+          "justification": "Same as the base metric: the attacker can present misleading content to the user."
+        },
+        {
+          "name": "MODIFIED_AVAILABILITY",
+          "value": "None (N)",
+          "justification": "Same as the base metric: service availability is not affected."
+        },
+        {
+          "name": "CONFIDENTIALITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Data exposure is relevant but not the main concern."
+        },
+        {
+          "name": "INTEGRITY_REQUIREMENT",
+          "value": "Medium (M)",
+          "justification": "Data integrity matters but is not critical."
+        },
+        {
+          "name": "AVAILABILITY_REQUIREMENT",
+          "value": "Low (L)",
+          "justification": "Availability is not the primary concern."
+        }
+      ]
+    }
+  }
+}
