@@ -58,6 +58,7 @@ import org.sonar.ce.task.projectanalysis.notification.ReportAnalysisFailureNotif
 import org.sonar.ce.task.projectanalysis.taskprocessor.AuditPurgeTaskModule;
 import org.sonar.ce.task.projectanalysis.taskprocessor.IssueSyncTaskModule;
 import org.sonar.ce.task.projectanalysis.taskprocessor.ResolutionProliferationTaskModule;
+import org.sonar.ce.task.projectanalysis.taskprocessor.MeasureRecomputeTaskModule;
 import org.sonar.ce.taskprocessor.CeProcessingScheduler;
 import org.sonar.ce.taskprocessor.CeTaskProcessorModule;
 import org.sonar.core.config.CorePropertyDefinitions;
@@ -135,11 +136,13 @@ import org.sonar.server.platform.serverid.ServerIdChecksum;
 import org.sonar.server.plugins.InstalledPluginReferentialFactory;
 import org.sonar.server.plugins.ServerExtensionInstaller;
 import org.sonar.server.project.DefaultBranchNameResolver;
+import org.sonar.server.project.ProjectQGChangeEventListener;
 import org.sonar.server.project.VisibilityService;
 import org.sonar.server.property.InternalPropertiesImpl;
 import org.sonar.server.qualitygate.QualityGateEvaluatorImpl;
 import org.sonar.server.qualitygate.QualityGateFallbackManager;
 import org.sonar.server.qualitygate.QualityGateFinder;
+import org.sonar.server.qualitygate.changeevent.QGChangeEventListenersImpl;
 import org.sonar.server.qualitygate.notification.QGChangeEmailTemplate;
 import org.sonar.server.qualitygate.notification.QGChangeNotificationHandler;
 import org.sonar.server.qualityprofile.index.ActiveRuleIndexer;
@@ -156,6 +159,7 @@ import org.sonar.server.util.Paths2Impl;
 import org.sonar.server.view.index.ViewIndex;
 import org.sonar.server.view.index.ViewIndexer;
 import org.sonar.server.webhook.WebhookModule;
+import org.sonar.server.webhook.WebhookQGChangeEventListener;
 import org.sonarqube.ws.Rules;
 
 import static java.util.Objects.requireNonNull;
@@ -441,6 +445,7 @@ public class ComputeEngineContainerImpl implements ComputeEngineContainer {
       new IssueSyncTaskModule(),
       new AuditPurgeTaskModule(),
       new ResolutionProliferationTaskModule(),
+      new MeasureRecomputeTaskModule(),
       new CeTaskProcessorModule(),
       OfficialDistribution.class,
 
@@ -462,6 +467,15 @@ public class ComputeEngineContainerImpl implements ComputeEngineContainer {
       // engine needs the same live measure refresh the web server runs after a manual transition.
       ProjectConfigurationLoaderImpl.class,
       new LiveMeasureModule(),
+
+      // CodeScan: the measure recomputation task runs the live measure refresh the web server runs after a manual
+      // transition, and broadcasts its quality-gate changes to the same listeners.
+      QualityGateFallbackManager.class,
+      ProjectConfigurationLoaderImpl.class,
+      new LiveMeasureModule(),
+      QGChangeEventListenersImpl.class,
+      ProjectQGChangeEventListener.class,
+      WebhookQGChangeEventListener.class,
 
       new AnalysisCacheCleaningModule()
 

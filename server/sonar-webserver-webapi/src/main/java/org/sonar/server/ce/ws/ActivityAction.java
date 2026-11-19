@@ -95,6 +95,8 @@ public class ActivityAction implements CeWsAction {
       taskTypes.addAll(taskProcessor.getHandledCeTaskTypes());
     }
     taskTypes.add(CeTaskTypes.RESOLUTION_PROLIFERATION);
+    // CodeScan: run by the Compute Engine only, so no processor in the web server declares it.
+    taskTypes.add(CeTaskTypes.MEASURE_RECOMPUTE);
   }
 
   @Override

@@ -19,11 +19,15 @@
  */
 package org.sonar.db.measure;
 
+import com.google.common.collect.Lists;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.apache.ibatis.session.ResultHandler;
 import org.sonar.api.utils.System2;
 import org.sonar.db.Dao;
@@ -32,6 +36,7 @@ import org.sonar.db.component.ComponentDto;
 
 import static java.util.Collections.singletonList;
 import static org.sonar.api.measures.CoreMetrics.NCLOC_KEY;
+import static org.sonar.db.DatabaseUtils.PARTITION_SIZE_FOR_ORACLE;
 import static org.sonar.db.DatabaseUtils.executeLargeInputs;
 
 public class MeasureDao implements Dao {
@@ -70,6 +75,42 @@ public class MeasureDao implements Dao {
     } else {
       dto.computeJsonValueHash();
       return mapper(dbSession).insert(dto, now);
+    }
+  }
+
+  /**
+   * {@link #insertOrUpdate(DbSession, MeasureDto)} for many components: the existing rows are read in one statement
+   * per partition instead of one per component, and that partition's writes follow back to back, so a batch session
+   * sends them as JDBC batches. A refresh of a whole branch writes a row for nearly every component, and one read
+   * plus one write each is two round trips per file.
+   *
+   * <p>Each partition is read and then written before the next is read. Only one partition of existing rows, each
+   * holding every metric of its component, is on the heap at a time, and a row read here is written back within the
+   * same partition rather than after the whole tree has been read, which keeps short the window in which another
+   * writer's change to it would be overwritten by the merge.
+   */
+  public void insertOrUpdate(DbSession dbSession, Collection<MeasureDto> dtos) {
+    if (dtos.isEmpty()) {
+      return;
+    }
+    long now = system2.now();
+    MeasureMapper mapper = mapper(dbSession);
+    for (List<MeasureDto> partition : Lists.partition(List.copyOf(dtos), PARTITION_SIZE_FOR_ORACLE)) {
+      Map<String, MeasureDto> existingByComponent = mapper
+        .selectByComponentUuids(partition.stream().map(MeasureDto::getComponentUuid).toList()).stream()
+        .collect(Collectors.toMap(MeasureDto::getComponentUuid, Function.identity()));
+      for (MeasureDto dto : partition) {
+        MeasureDto existingDto = existingByComponent.get(dto.getComponentUuid());
+        if (existingDto == null) {
+          dto.computeJsonValueHash();
+          mapper.insert(dto, now);
+        } else {
+          existingDto.getMetricValues().putAll(dto.getMetricValues());
+          dto.getMetricValues().putAll(existingDto.getMetricValues());
+          dto.computeJsonValueHash();
+          mapper.update(dto, now);
+        }
+      }
     }
   }
 

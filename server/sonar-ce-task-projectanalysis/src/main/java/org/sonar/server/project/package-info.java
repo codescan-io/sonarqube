@@ -18,6 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 @ParametersAreNonnullByDefault
-package org.sonar.server.qualitygate.changeevent;
+package org.sonar.server.project;
 
 import javax.annotation.ParametersAreNonnullByDefault;
+
