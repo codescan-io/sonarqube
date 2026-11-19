@@ -32,6 +32,7 @@ import org.sonar.ce.queue.CeTaskSubmit;
 import org.sonar.core.issue.IssueChangeContext;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
+import org.sonar.db.MyBatis;
 import org.sonar.db.ce.CeTaskInputDao;
 import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.component.BranchDao;
@@ -61,6 +62,7 @@ public class IssueProliferationSubmitterTest {
 
   private final DbSession dbSession = mock(DbSession.class);
   private final DbClient dbClient = mock(DbClient.class);
+  private final MyBatis myBatis = mock(MyBatis.class);
   private final BranchDao branchDao = mock(BranchDao.class);
   private final CeTaskInputDao ceTaskInputDao = mock(CeTaskInputDao.class);
   private final CeQueue ceQueue = mock(CeQueue.class);
@@ -72,6 +74,7 @@ public class IssueProliferationSubmitterTest {
 
   @Before
   public void setUp() {
+    when(myBatis.openSession(false)).thenReturn(dbSession);
     when(dbClient.branchDao()).thenReturn(branchDao);
     when(dbClient.ceTaskInputDao()).thenReturn(ceTaskInputDao);
     when(branchDao.selectByUuid(dbSession, BRANCH_UUID)).thenReturn(Optional.of(branch()));
@@ -82,7 +85,8 @@ public class IssueProliferationSubmitterTest {
     when(proliferationService.isProliferable(DefaultTransitions.FALSE_POSITIVE)).thenReturn(true);
     enableProliferation(true);
 
-    underTest = new IssueProliferationSubmitter(dbClient, ceQueue, proliferationService, projectConfigurationLoader);
+    underTest = new IssueProliferationSubmitter(dbClient, myBatis, ceQueue, proliferationService,
+      projectConfigurationLoader);
   }
 
   @Test
@@ -109,7 +113,7 @@ public class IssueProliferationSubmitterTest {
 
   @Test
   public void leavesTheSubmitterNullWhenNoUserIsBehindTheChange() {
-    underTest.submit(dbSession, BRANCH_UUID, List.of("issue-1"),
+    underTest.submit(BRANCH_UUID, List.of("issue-1"),
       IssueChangeContext.issueChangeContextByScanBuilder(new Date()).build(),
       DefaultTransitions.ACCEPT, null, null);
 
@@ -182,8 +186,26 @@ public class IssueProliferationSubmitterTest {
     verify(ceQueue, never()).massSubmit(any());
   }
 
+
+  @Test
+  public void opensItsOwnConnectionAndClosesIt() {
+    submit(DefaultTransitions.ACCEPT, List.of("issue-1"));
+
+    verify(myBatis).openSession(false);
+    verify(dbSession).close();
+  }
+
+  @Test
+  public void closesItsSessionWhenQueuingFails() {
+    when(ceQueue.prepareSubmit()).thenThrow(new IllegalStateException("queue is down"));
+
+    submit(DefaultTransitions.ACCEPT, List.of("issue-1"));
+
+    verify(dbSession).close();
+  }
+
   private void submit(String transition, List<String> issueKeys) {
-    underTest.submit(dbSession, BRANCH_UUID, issueKeys, userContext(), transition, null, null);
+    underTest.submit(BRANCH_UUID, issueKeys, userContext(), transition, null, null);
   }
 
   private CeTaskSubmit captureSubmission() {

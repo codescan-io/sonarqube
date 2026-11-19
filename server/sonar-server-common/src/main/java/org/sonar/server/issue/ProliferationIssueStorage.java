@@ -138,6 +138,11 @@ public class ProliferationIssueStorage {
     indexer.indexOnAnalysis(branchUuid, issueKeys);
   }
 
+  public void queueBranchForRecovery(DbSession dbSession, String branchUuid) {
+    indexer.queueBranchForRecovery(dbSession, branchUuid);
+    dbSession.commit();
+  }
+
 
   private void writeSetBased(DbSession dbSession, SetBasedGroup group, List<String> keys,
     ProliferationChangeQuery shared) {
