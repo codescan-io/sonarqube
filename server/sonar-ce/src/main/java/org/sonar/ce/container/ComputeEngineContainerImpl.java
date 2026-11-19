@@ -463,14 +463,6 @@ public class ComputeEngineContainerImpl implements ComputeEngineContainer {
       // lazy, and nothing in the compute engine asked for it until the live measure refresh below did.
       QualityGateFallbackManager.class,
 
-      // Codescan customization: resolution proliferation writes issues outside an analysis, so the compute
-      // engine needs the same live measure refresh the web server runs after a manual transition.
-      ProjectConfigurationLoaderImpl.class,
-      new LiveMeasureModule(),
-
-      // CodeScan: the measure recomputation task runs the live measure refresh the web server runs after a manual
-      // transition, and broadcasts its quality-gate changes to the same listeners.
-      // QualityGateFallbackManager.class,
       ProjectConfigurationLoaderImpl.class,
       new LiveMeasureModule(),
       QGChangeEventListenersImpl.class,
