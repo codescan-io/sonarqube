@@ -61,6 +61,7 @@ import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -443,6 +444,44 @@ public class IssueMarkingProliferationServiceTest {
   }
 
   @Test
+  public void queuesTheBranchForReindexingWhenItCouldNotBeIndexed() {
+    IssueDto source = issue("AAA-111", SOURCE_BRANCH_UUID);
+    givenCandidates(issue("BBB-777", TARGET_BRANCH_UUID));
+    when(issueWorkflow.doManualTransition(any(DefaultIssue.class), anyString(), any())).thenReturn(true);
+    org.mockito.Mockito.doThrow(new IllegalStateException("es down")).when(issueStorage).indexBranch(any(), any());
+
+    proliferateOutcome(List.of(source), DefaultTransitions.ACCEPT, null, context());
+
+    verify(issueStorage).queueBranchForRecovery(dbSession, TARGET_BRANCH_UUID);
+  }
+
+  @Test
+  public void queuesNothingForReindexingWhenIndexingSucceeded() {
+    IssueDto source = issue("AAA-111", SOURCE_BRANCH_UUID);
+    givenCandidates(issue("BBB-777", TARGET_BRANCH_UUID));
+    when(issueWorkflow.doManualTransition(any(DefaultIssue.class), anyString(), any())).thenReturn(true);
+
+    proliferateOutcome(List.of(source), DefaultTransitions.ACCEPT, null, context());
+
+    verify(issueStorage, never()).queueBranchForRecovery(any(), anyString());
+  }
+
+  @Test
+  public void survivesAFailureToQueueTheBranchForReindexing() {
+    IssueDto source = issue("AAA-111", SOURCE_BRANCH_UUID);
+    givenCandidates(issue("BBB-777", TARGET_BRANCH_UUID));
+    when(issueWorkflow.doManualTransition(any(DefaultIssue.class), anyString(), any())).thenReturn(true);
+    org.mockito.Mockito.doThrow(new IllegalStateException("es down")).when(issueStorage).indexBranch(any(), any());
+    org.mockito.Mockito.doThrow(new IllegalStateException("db down")).when(issueStorage)
+      .queueBranchForRecovery(any(), anyString());
+
+    BranchOutcome outcome = proliferateOutcome(List.of(source), DefaultTransitions.ACCEPT, null, context());
+
+    assertThat(outcome.failures()).isEqualTo(1);
+    assertThat(outcome.writtenComponents()).containsExactly("component-BBB-777");
+  }
+
+  @Test
   public void keepsEachBranchesCandidatesApart() {
     IssueDto source = issue("AAA-111", SOURCE_BRANCH_UUID);
     IssueDto onTarget = issue("BBB-777", TARGET_BRANCH_UUID);
@@ -612,5 +651,65 @@ public class IssueMarkingProliferationServiceTest {
       Issue.RESOLUTION_FALSE_POSITIVE, DefaultTransitions.FALSE_POSITIVE)).isTrue();
     assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
       Issue.RESOLUTION_EXCEPTION, DefaultTransitions.EXCEPTION)).isTrue();
+  }
+
+  @Test
+  public void resolutionChangedInThisCall_isTrueWhenTheTransitionSetTheResolution() {
+    DefaultIssue issue = openIssue();
+
+    assertThat(new IssueFieldsSetter().setResolution(issue, Issue.RESOLUTION_FALSE_POSITIVE, changeContext())).isTrue();
+
+    assertThat(IssueMarkingProliferationService.resolutionChangedInThisCall(issue)).isTrue();
+  }
+
+  @Test
+  public void resolutionChangedInThisCall_isFalseWhenTheIssueAlreadyCarriedTheResolution() {
+    DefaultIssue issue = openIssue().setResolution(Issue.RESOLUTION_FALSE_POSITIVE);
+
+    assertThat(new IssueFieldsSetter().setResolution(issue, Issue.RESOLUTION_FALSE_POSITIVE, changeContext())).isFalse();
+
+    assertThat(IssueMarkingProliferationService.resolutionChangedInThisCall(issue)).isFalse();
+    // The resolution alone cannot tell the two apart, which is why both gates are applied.
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      issue.resolution(), DefaultTransitions.FALSE_POSITIVE)).isTrue();
+  }
+
+  /** A bulk change whose only successful action was a tag records a diff, but not for the resolution. */
+  @Test
+  public void resolutionChangedInThisCall_isFalseWhenOnlyOtherFieldsChanged() {
+    DefaultIssue issue = openIssue();
+
+    assertThat(new IssueFieldsSetter().setTags(issue, List.of("recheck"), changeContext())).isTrue();
+
+    assertThat(issue.currentChange()).isNotNull();
+    assertThat(IssueMarkingProliferationService.resolutionChangedInThisCall(issue)).isFalse();
+  }
+
+  /** Nothing changed at all, so there is no current change to read. */
+  @Test
+  public void resolutionChangedInThisCall_isFalseWhenNothingChanged() {
+    assertThat(openIssue().currentChange()).isNull();
+
+    assertThat(IssueMarkingProliferationService.resolutionChangedInThisCall(openIssue())).isFalse();
+  }
+
+
+  @Test
+  public void resolutionChangedInThisCall_isTrueForReopenSoCallersMustAlsoCheckTheResolution() {
+    DefaultIssue issue = openIssue().setResolution(Issue.RESOLUTION_WONT_FIX);
+
+    assertThat(new IssueFieldsSetter().setResolution(issue, null, changeContext())).isTrue();
+
+    assertThat(IssueMarkingProliferationService.resolutionChangedInThisCall(issue)).isTrue();
+    assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
+      issue.resolution(), DefaultTransitions.REOPEN)).isFalse();
+  }
+
+  private static DefaultIssue openIssue() {
+    return new DefaultIssue().setKey("issue-key").setStatus(Issue.STATUS_OPEN);
+  }
+
+  private static IssueChangeContext changeContext() {
+    return IssueChangeContext.issueChangeContextByUserBuilder(new Date(), "user-uuid").build();
   }
 }

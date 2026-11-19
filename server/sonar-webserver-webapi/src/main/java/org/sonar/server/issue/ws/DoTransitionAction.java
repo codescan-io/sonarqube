@@ -183,7 +183,7 @@ public class DoTransitionAction implements IssuesWsAction {
       BranchDto branch = issueUpdater.getBranch(session, defaultIssue);
       SearchResponseData response = issueUpdater.saveIssueAndPreloadSearchResponseData(session, issueDto, defaultIssue, context, branch);
 
-      proliferationSubmitter.submit(session, issueDto.getProjectUuid(), List.of(issueDto.getKey()), context,
+      proliferationSubmitter.submit(issueDto.getProjectUuid(), List.of(issueDto.getKey()), context,
         transitionKey, comment, exceptionReason);
 
       if (branch.getBranchType().equals(BRANCH) && response.getComponentByUuid(defaultIssue.projectUuid()) != null) {

@@ -38,6 +38,7 @@ import org.sonar.api.server.ServerSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.core.issue.DefaultIssue;
+import org.sonar.core.issue.FieldDiffs;
 import org.sonar.core.issue.IssueChangeContext;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
@@ -70,6 +71,7 @@ public class IssueMarkingProliferationService {
   private static final String STATUS_REOPENED = "REOPENED";
   private static final String RESOLUTION_FALSE_POSITIVE = "FALSE-POSITIVE";
   private static final String RESOLUTION_WONT_FIX = "WONTFIX";
+  private static final String FIELD_RESOLUTION = "resolution";
 
   /** Only these markings proliferate; the other transitions (reopen, confirm, resolve as fixed) are untouched. */
   private static final Set<String> PROLIFERABLE_TRANSITIONS = Set.of(
@@ -140,6 +142,12 @@ public class IssueMarkingProliferationService {
       failures++;
       LOG.error("Proliferated {} issue(s) on branch {} but could not index them", writer.written.size(),
         targetBranchUuid, e);
+
+      try {
+        issueStorage.queueBranchForRecovery(dbSession, targetBranchUuid);
+      } catch (RuntimeException queueFailure) {
+        LOG.error("Could not queue branch {} for reindexing after proliferation", targetBranchUuid, queueFailure);
+      }
     }
 
     if (!writer.written.isEmpty()) {
@@ -447,6 +455,12 @@ public class IssueMarkingProliferationService {
   /** Exposed for the callers that need to know whether to bother queueing anything. */
   public boolean isProliferable(String transitionKey) {
     return PROLIFERABLE_TRANSITIONS.contains(transitionKey);
+  }
+
+
+  public static boolean resolutionChangedInThisCall(DefaultIssue issue) {
+    FieldDiffs currentChange = issue.currentChange();
+    return currentChange != null && currentChange.get(FIELD_RESOLUTION) != null;
   }
 
   public static boolean carriesTransitionResolution(@Nullable String resolution, String transitionKey) {

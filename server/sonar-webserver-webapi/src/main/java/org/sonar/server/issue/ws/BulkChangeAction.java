@@ -355,7 +355,7 @@ public class BulkChangeAction implements IssuesWsAction {
       .filter(bulkChange(issueChangeContext, bulkChangeData, result))
       .toList();
     issueStorage.save(dbSession, defaultIssues);
-    proliferateMarkings(dbSession, request, bulkChangeData, issueChangeContext, defaultIssues);
+    proliferateMarkings(request, bulkChangeData, issueChangeContext, defaultIssues);
     refreshLiveMeasures(dbSession, bulkChangeData, result);
 
     Set<String> assigneeUuids = defaultIssues.stream().map(DefaultIssue::assignee).filter(Objects::nonNull).collect(Collectors.toSet());
@@ -370,7 +370,7 @@ public class BulkChangeAction implements IssuesWsAction {
   }
 
 
-  private void proliferateMarkings(DbSession dbSession, Request request, BulkChangeData bulkChangeData,
+  private void proliferateMarkings(Request request, BulkChangeData bulkChangeData,
     IssueChangeContext issueChangeContext, List<DefaultIssue> changedIssues) {
     if (!request.mandatoryParamAsBoolean(PARAM_PROLIFERATE)) {
       return;
@@ -391,9 +391,13 @@ public class BulkChangeAction implements IssuesWsAction {
     // mixing branches in one call, and a task carries the branch its issues came from.
     Map<String, List<String>> keysByBranch = changedIssues.stream()
       .filter(issue -> issue.projectUuid() != null)
+      // Both checks are needed: the first says a resolution change happened in this call - an issue whose
+      // transition was refused can still reach here on the strength of a tag that succeeded - and the second
+      // that the change is the one this transition produces, which reopen and resolve also record but do not.
+      .filter(IssueMarkingProliferationService::resolutionChangedInThisCall)
       .filter(issue -> IssueMarkingProliferationService.carriesTransitionResolution(issue.resolution(), transition))
       .collect(groupingBy(DefaultIssue::projectUuid, mapping(DefaultIssue::key, toList())));
-    keysByBranch.forEach((branchUuid, keys) -> proliferationSubmitter.submit(dbSession, branchUuid, keys,
+    keysByBranch.forEach((branchUuid, keys) -> proliferationSubmitter.submit(branchUuid, keys,
       issueChangeContext, transition, comment, exceptionReason));
   }
 
