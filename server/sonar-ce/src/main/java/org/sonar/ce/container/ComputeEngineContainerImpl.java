@@ -470,7 +470,7 @@ public class ComputeEngineContainerImpl implements ComputeEngineContainer {
 
       // CodeScan: the measure recomputation task runs the live measure refresh the web server runs after a manual
       // transition, and broadcasts its quality-gate changes to the same listeners.
-      QualityGateFallbackManager.class,
+      // QualityGateFallbackManager.class,
       ProjectConfigurationLoaderImpl.class,
       new LiveMeasureModule(),
       QGChangeEventListenersImpl.class,
