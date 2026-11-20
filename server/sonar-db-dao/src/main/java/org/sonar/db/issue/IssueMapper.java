@@ -68,6 +68,8 @@ public interface IssueMapper {
 
   int update(IssueDto issue);
 
+  int updateProliferated(@Param("dto") IssueDto issue, @Param("statuses") Collection<String> statuses);
+
   /**
    * CodeScan: the keys a bulk transition would actually move, with the status each is moving from, read in the
    * same transaction as {@link #bulkTransition} and under the same predicate - see IssueMapper.xml's
@@ -91,6 +93,9 @@ public interface IssueMapper {
   int bulkTransitionWithExpiry(@Param("keys") List<String> keys, @Param("resolution") String resolution,
     @Param("expiresAt") @Nullable Long expiresAt, @Param("markedAt") long markedAt, @Param("now") long now,
     @Param("statuses") Collection<String> statuses);
+
+
+  List<String> selectProliferatedKeys(@Param("keys") List<String> keys, @Param("now") long now);
 
   void insertAsNewCodeOnReferenceBranch(NewCodeReferenceIssueDto issue);
 

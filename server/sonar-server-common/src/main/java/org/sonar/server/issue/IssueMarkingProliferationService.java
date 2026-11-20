@@ -131,7 +131,18 @@ public class IssueMarkingProliferationService {
         }
       }
     }
-    writer.flush();
+    try {
+      writer.flush();
+    } catch (RuntimeException e) {
+      // The context the caller cannot reconstruct: which branch, and how many of its issues are already
+      // committed and out of the index. The exception itself is deliberately not logged here - it is rethrown,
+      // and ResolutionProliferationTaskProcessor#awaitAll logs it once, with its stack trace. Logging it in both
+      // places would put the same trace in ce.log twice, interleaved with the other branches' threads.
+      LOG.error("Proliferation failed partway through branch {}; {} issue(s) were already committed",
+        targetBranchUuid, writer.written.size());
+      queueBranchForRecovery(dbSession, targetBranchUuid);
+      throw e;
+    }
 
     int failures = writer.failures;
     // Once for the branch, after every batch is committed. Indexing per batch is what put two rows per issue
@@ -142,12 +153,7 @@ public class IssueMarkingProliferationService {
       failures++;
       LOG.error("Proliferated {} issue(s) on branch {} but could not index them", writer.written.size(),
         targetBranchUuid, e);
-
-      try {
-        issueStorage.queueBranchForRecovery(dbSession, targetBranchUuid);
-      } catch (RuntimeException queueFailure) {
-        LOG.error("Could not queue branch {} for reindexing after proliferation", targetBranchUuid, queueFailure);
-      }
+      queueBranchForRecovery(dbSession, targetBranchUuid);
     }
 
     if (!writer.written.isEmpty()) {
@@ -155,6 +161,15 @@ public class IssueMarkingProliferationService {
         marking.transitionKey(), marking.sourceBranchLabel(), writer.written.size(), targetBranchUuid);
     }
     return new BranchOutcome(writer.writtenComponents, failures);
+  }
+
+
+  private void queueBranchForRecovery(DbSession dbSession, String targetBranchUuid) {
+    try {
+      issueStorage.queueBranchForRecovery(dbSession, targetBranchUuid);
+    } catch (RuntimeException queueFailure) {
+      LOG.error("Could not queue branch {} for reindexing after proliferation", targetBranchUuid, queueFailure);
+    }
   }
 
   /**
@@ -452,8 +467,8 @@ public class IssueMarkingProliferationService {
     return branch.getBranchType() == BranchType.PULL_REQUEST ? "#" + branch.getKey() : branch.getKey();
   }
 
-  /** Exposed for the callers that need to know whether to bother queueing anything. */
-  public boolean isProliferable(String transitionKey) {
+
+  public static boolean isProliferable(String transitionKey) {
     return PROLIFERABLE_TRANSITIONS.contains(transitionKey);
   }
 

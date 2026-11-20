@@ -307,12 +307,22 @@ public class IssueDao implements Dao {
     return updated.get();
   }
 
+
+  public List<String> selectProliferatedKeys(DbSession session, Collection<String> keys, long now) {
+    return executeLargeInputs(keys, partition -> mapper(session).selectProliferatedKeys(partition, now));
+  }
+
   /**
    * Update issue without updating issue impacts. Used only in batch update.
    * Issue impacts should be updated separately.
    */
   public void updateWithoutIssueImpacts(DbSession session, IssueDto dto) {
     mapper(session).update(dto);
+  }
+
+
+  public int updateProliferated(DbSession session, IssueDto dto, Collection<String> statuses) {
+    return mapper(session).updateProliferated(dto, statuses);
   }
 
   public boolean updateIfBeforeSelectedDate(DbSession session, IssueDto dto) {
