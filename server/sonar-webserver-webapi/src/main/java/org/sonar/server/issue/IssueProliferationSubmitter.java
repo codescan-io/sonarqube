@@ -65,7 +65,22 @@ public class IssueProliferationSubmitter {
   }
 
 
-
+  /**
+   * Queues the proliferation of a marking that has just been applied to {@code issueKeys} on
+   * {@code sourceBranchUuid}. Does nothing if the transition is not one that proliferates, or if the feature is
+   * off for the project.
+   * <p>
+   * <b>The caller's own work must already be committed.</b> This method commits {@code dbSession} on success -
+   * the task input rows have to be visible before the queue rows are, or a worker could pick a task up and find
+   * nothing to read - and rolls it back if anything throws, so a half-written task is never left behind. Either
+   * way the session is no longer the caller's to finish: whatever is uncommitted on it when this is called is
+   * committed or discarded along with the queue rows. Both call sites, {@code DoTransitionAction} and
+   * {@code BulkChangeAction}, save and commit the issue change before reaching here, so the rollback can only
+   * ever discard rows this method wrote.
+   * <p>
+   * Proliferation is best-effort by design: a failure is logged and swallowed, because the user's own marking
+   * has already been applied and must not be reported back as failed.
+   */
   public void submit(DbSession dbSession, String sourceBranchUuid, Collection<String> issueKeys,
     IssueChangeContext context, String transitionKey, @Nullable String comment, @Nullable String exceptionReason) {
     if (issueKeys.isEmpty() || !IssueMarkingProliferationService.isProliferable(transitionKey)) {

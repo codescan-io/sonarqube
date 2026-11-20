@@ -26,9 +26,11 @@ import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.sonar.api.issue.Issue;
 import org.sonar.api.utils.System2;
 import org.sonar.core.issue.DefaultIssue;
+import org.sonar.core.issue.DefaultIssueComment;
 import org.sonar.core.issue.DefaultIssueExceptionReason;
 import org.sonar.core.issue.FieldDiffs;
 import org.sonar.core.util.SequenceUuidFactory;
@@ -45,6 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -269,6 +272,62 @@ public class ProliferationIssueStorageTest {
 
     verify(dbSession, never()).commit();
   }
+  /**
+   * The statement order is load-bearing, not a style choice. insertProliferationDiffs and
+   * insertProliferationComments are INSERT ... SELECT over issues, filtered on the same statuses the update is
+   * guarded on. Run them after the update and they select nothing, because it has just resolved every one of
+   * these issues - the marking lands with no changelog and no comment. A mock cannot see that, so this test
+   * pins the order instead.
+   */
+  @Test
+  public void writesTheChangelogAndCommentsBeforeTheUpdate() {
+    DefaultIssue issue = resolved("AAA-1", Issue.RESOLUTION_WONT_FIX);
+    issue.addComment(DefaultIssueComment.create("AAA-1", "user-uuid", "why"));
+
+    underTest.save(dbSession, List.of(issue), BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES);
+
+    InOrder inOrder = inOrder(issueChangeDao, issueDao);
+    inOrder.verify(issueChangeDao).insertProliferationDiffs(any(), any(), any());
+    inOrder.verify(issueChangeDao).insertProliferationComments(any(), any(), any());
+    inOrder.verify(issueDao).bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any());
+  }
+
+  /**
+   * The changelog statements take every key, because their own WHERE clause does the filtering: an issue that is
+   * no longer OPEN or REOPENED is passed over by the SELECT. Narrowing the key list here would be redundant, and
+   * - since the statements must run before the update - impossible to do correctly anyway.
+   */
+  @Test
+  public void passesEveryKeyToTheChangelogAndLetsItsPredicateFilter() {
+    List<DefaultIssue> issues = List.of(
+      resolved("AAA-1", Issue.RESOLUTION_WONT_FIX),
+      resolved("AAA-2", Issue.RESOLUTION_WONT_FIX));
+    when(issueDao.bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any())).thenReturn(1);
+    when(issueDao.selectProliferatedKeys(any(), any(), anyLong())).thenReturn(List.of("AAA-1"));
+
+    underTest.save(dbSession, issues, BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES);
+
+    ArgumentCaptor<ProliferationChangeQuery> diffs = ArgumentCaptor.forClass(ProliferationChangeQuery.class);
+    verify(issueChangeDao).insertProliferationDiffs(eq(dbSession), diffs.capture(), any());
+    assertThat(diffs.getValue().getKeys()).containsExactly("AAA-1", "AAA-2");
+    assertThat(diffs.getValue().getStatuses()).isEqualTo(STATUSES);
+  }
+
+  @Test
+  public void doesNotCountASetBasedIssueTheGuardRefused() {
+    List<DefaultIssue> issues = List.of(
+      resolved("AAA-1", Issue.RESOLUTION_WONT_FIX),
+      resolved("AAA-2", Issue.RESOLUTION_WONT_FIX));
+    // One of the two was marked or closed by someone else between the read and the write.
+    when(issueDao.bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any())).thenReturn(1);
+    when(issueDao.selectProliferatedKeys(eq(dbSession), eq(List.of("AAA-1", "AAA-2")), anyLong()))
+      .thenReturn(List.of("AAA-1"));
+
+    // The refused issue is neither reported as proliferated nor handed to the indexer.
+    assertThat(underTest.save(dbSession, issues, BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES))
+      .containsExactly("AAA-1");
+  }
+
   @Test
   public void doesNotQueryTheWrittenKeysWhenEveryIssueWasWritten() {
     List<DefaultIssue> issues = List.of(
@@ -283,40 +342,7 @@ public class ProliferationIssueStorageTest {
   }
 
   @Test
-  public void writesNoChangelogForASetBasedIssueTheGuardRefused() {
-    List<DefaultIssue> issues = List.of(
-      resolved("AAA-1", Issue.RESOLUTION_WONT_FIX),
-      resolved("AAA-2", Issue.RESOLUTION_WONT_FIX));
-    // One of the two was marked or closed by someone else between the read and the write.
-    when(issueDao.bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any())).thenReturn(1);
-    when(issueDao.selectProliferatedKeys(eq(dbSession), eq(List.of("AAA-1", "AAA-2")), anyLong()))
-      .thenReturn(List.of("AAA-1"));
-
-    assertThat(underTest.save(dbSession, issues, BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES))
-      .containsExactly("AAA-1");
-
-    ArgumentCaptor<ProliferationChangeQuery> diffs = ArgumentCaptor.forClass(ProliferationChangeQuery.class);
-    verify(issueChangeDao, times(1)).insertProliferationDiffs(eq(dbSession), diffs.capture(), any());
-    // The refused issue gets no "proliferated from" note for a marking it never received.
-    assertThat(diffs.getValue().getKeys()).containsExactly("AAA-1");
-  }
-
-  @Test
-  public void writesNoCommentForASetBasedIssueTheGuardRefused() {
-    DefaultIssue issue = resolved("AAA-1", Issue.RESOLUTION_WONT_FIX);
-    issue.addComment(new org.sonar.core.issue.DefaultIssueComment().setMarkdownText("why").setNew(true));
-    when(issueDao.bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any())).thenReturn(1);
-    when(issueDao.selectProliferatedKeys(any(), any(), anyLong())).thenReturn(List.of("AAA-1"));
-
-    underTest.save(dbSession, List.of(issue), BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES);
-
-    ArgumentCaptor<ProliferationChangeQuery> comments = ArgumentCaptor.forClass(ProliferationChangeQuery.class);
-    verify(issueChangeDao, times(1)).insertProliferationComments(eq(dbSession), comments.capture(), any());
-    assertThat(comments.getValue().getKeys()).containsExactly("AAA-1");
-  }
-
-  @Test
-  public void writesNothingAtAllWhenEverySetBasedIssueWasRefused() {
+  public void countsNothingWhenEverySetBasedIssueWasRefused() {
     List<DefaultIssue> issues = List.of(
       resolved("AAA-1", Issue.RESOLUTION_WONT_FIX),
       resolved("AAA-2", Issue.RESOLUTION_WONT_FIX));
@@ -324,8 +350,6 @@ public class ProliferationIssueStorageTest {
 
     assertThat(underTest.save(dbSession, issues, BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES)).isEmpty();
 
-    verify(issueChangeDao, never()).insertProliferationDiffs(any(), any(), any());
-    verify(issueChangeDao, never()).insertProliferationComments(any(), any(), any());
     // Nothing was written, so there is nothing to ask about.
     verify(issueDao, never()).selectProliferatedKeys(any(), any(), anyLong());
   }

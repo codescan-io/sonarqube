@@ -350,8 +350,16 @@
 
   <!--
     Which of these keys "bulkTransitionWithExpiry" just wrote. That statement reports a row count but not which
-    rows, and its status guard can refuse any of them. "now" is the caller's own timestamp, written to updated_at
-    by that statement and by nothing else in the same call, so these are exactly the rows the guard let through.
+    rows, and its status guard can refuse any of them.
+
+    The "kee in" list is what makes the answer exact: it is this group's own keys and nothing else, so no row
+    another group, another caller or another thread touched can come back. Within that list, "updated_at = now"
+    then separates the rows the guard let through from the ones it refused - a refused row still carries
+    whatever updated_at it had before.
+
+    "now" on its own would not be enough, and must not be relied on as if it were: it is the caller's single
+    timestamp for the whole save, shared by every set-based group and by the per-issue path, so on its own it
+    matches rows this statement never wrote. The key list is doing the isolating. Do not drop it as redundant.
   -->
   <select id="selectProliferatedKeys" parameterType="map" resultType="string">
     select kee from issues
