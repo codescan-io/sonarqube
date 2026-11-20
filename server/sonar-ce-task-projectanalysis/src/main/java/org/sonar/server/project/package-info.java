@@ -17,24 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.server.measure.live;
+@ParametersAreNonnullByDefault
+package org.sonar.server.project;
 
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import org.sonar.api.measures.Metric;
-import org.sonar.api.server.ServerSide;
+import javax.annotation.ParametersAreNonnullByDefault;
 
-@ServerSide
-public interface MeasureUpdateFormulaFactory {
-  List<MeasureUpdateFormula> getFormulas();
-
-  Set<Metric> getFormulaMetrics();
-
-  static Set<Metric> extractMetrics(List<MeasureUpdateFormula> formulas) {
-    return formulas.stream()
-      .flatMap(f -> Stream.concat(Stream.of(f.getMetric()), f.getDependentMetrics().stream()))
-      .collect(Collectors.toSet());
-  }
-}
