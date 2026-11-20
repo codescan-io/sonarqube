@@ -143,33 +143,44 @@ public class ProliferationIssueStorage {
     indexer.queueBranchForRecovery(dbSession, branchUuid);
     dbSession.commit();
   }
-
-
-
+  /**
+   * The set-based write: one statement for every issue of the group, for the markings it can express.
+   * <p>
+   * The changelog statements run first, and must. They are INSERT ... SELECT over {@code issues}, filtered by the
+   * same statuses the update is guarded on, so they read each row while it is still unresolved. Run after the
+   * update they would select nothing - it has just moved every one of these issues to RESOLVED - and the marking
+   * would land with no history at all. That shared predicate is also what keeps them honest: an issue a user
+   * marked or closed between the read and this write is passed over by the changelog and refused by the update
+   * alike, so neither can describe something that did not happen.
+   * <p>
+   * What the update adds is its row count - how many the guard let through - which is the one thing the statement
+   * order cannot tell the caller. A refused issue must not be counted or indexed as proliferated.
+   *
+   * @return the keys actually written, which is what the caller counts and indexes
+   */
   private List<String> writeSetBased(DbSession dbSession, SetBasedGroup group, List<String> keys,
     ProliferationChangeQuery shared, String branchUuid) {
 
-    int updated = dbClient.issueDao().bulkTransitionWithExpiry(dbSession, keys, group.resolution(),
-      group.expiresAt(), shared.getMarkedAt(), shared.getNow(), shared.getStatuses());
-
-    if (updated == 0) {
-      logSkipped(keys.size(), branchUuid);
-      return List.of();
-    }
-    List<String> written = updated == keys.size()
-      ? keys
-      : dbClient.issueDao().selectProliferatedKeys(dbSession, keys, shared.getNow());
-    logSkipped(keys.size() - written.size(), branchUuid);
-
-    dbClient.issueChangeDao().insertProliferationDiffs(dbSession, shared.copyFor(written)
+    dbClient.issueChangeDao().insertProliferationDiffs(dbSession, shared.copyFor(keys)
       .setResolution(group.resolution())
       .setIssueStatus(SET_BASED_ISSUE_STATUS.get(group.resolution())), uuidFactory);
 
     for (String comment : group.comments()) {
-      dbClient.issueChangeDao().insertProliferationComments(dbSession, shared.copyFor(written)
+      dbClient.issueChangeDao().insertProliferationComments(dbSession, shared.copyFor(keys)
         .setComment(comment)
         .setChangeType(IssueChangeDto.TYPE_COMMENT), uuidFactory);
     }
+
+    int updated = dbClient.issueDao().bulkTransitionWithExpiry(dbSession, keys, group.resolution(),
+      group.expiresAt(), shared.getMarkedAt(), shared.getNow(), shared.getStatuses());
+    if (updated == keys.size()) {
+      return keys;
+    }
+
+    List<String> written = updated == 0
+      ? List.of()
+      : dbClient.issueDao().selectProliferatedKeys(dbSession, keys, shared.getNow());
+    logSkipped(keys.size() - written.size(), branchUuid);
     return written;
   }
 
