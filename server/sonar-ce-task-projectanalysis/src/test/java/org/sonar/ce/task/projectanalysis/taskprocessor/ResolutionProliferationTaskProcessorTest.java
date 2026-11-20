@@ -34,8 +34,10 @@ import javax.annotation.Nullable;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.issue.DefaultTransitions;
+import org.sonar.api.issue.Issue;
 import org.sonar.api.utils.System2;
 import org.sonar.ce.task.CeTask;
 import org.sonar.db.DbClient;
@@ -91,7 +93,10 @@ public class ResolutionProliferationTaskProcessorTest {
 
   private ResolutionProliferationTaskProcessor underTest;
 
-  private final IssueDto source = new IssueDto().setKee(SOURCE_KEY).setProjectUuid(SOURCE_BRANCH);
+  // Carries the resolution the default task's transition produces: the processor re-checks the source before
+  // copying anything, so a source issue that is not actually marked is not a valid fixture.
+  private final IssueDto source = new IssueDto().setKee(SOURCE_KEY).setProjectUuid(SOURCE_BRANCH)
+    .setResolution(Issue.RESOLUTION_FALSE_POSITIVE);
   private final Signature signature = new Signature("rule", "src/A.cls", 1, "message");
 
   @Before
@@ -278,7 +283,14 @@ public class ResolutionProliferationTaskProcessorTest {
 
   @Test
   public void producesNoTaskResult() {
-    assertThat(underTest.process(taskWith(DefaultTransitions.ACCEPT))).isNull();
+    givenBranches("b1");
+    givenCandidates(Map.of("b1", oneMatch("b1")));
+    givenWrittenComponents("b1", Set.of("component"));
+
+    assertThat(underTest.process(task())).isNull();
+
+    // Ran the whole path rather than stopping at a guard, so the null is the result and not a short circuit.
+    verify(service).proliferateToBranch(any(), anyCollection(), any(), eq("b1"), any());
   }
 
   /**
@@ -365,6 +377,68 @@ public class ResolutionProliferationTaskProcessorTest {
     assertThat(underTest.process(taskWith(null))).isNull();
 
     verifyNoInteractions(service, liveMeasureComputer);
+  }
+
+  /**
+   * The window this closes: the task waits behind an analysis, the user reopens the issue in the meantime, and
+   * the marking the task carries no longer exists anywhere. Copying it then would put a False Positive on every
+   * other branch of a project where nothing is a False Positive.
+   */
+  @Test
+  public void doesNothingWhenTheSourceNoLongerCarriesTheMarking() {
+    givenBranches("b1");
+    when(issueDao.selectByKeys(any(), eq(List.of(SOURCE_KEY))))
+      .thenReturn(List.of(new IssueDto().setKee(SOURCE_KEY).setProjectUuid(SOURCE_BRANCH)
+        .setResolution(null).setStatus(Issue.STATUS_REOPENED)));
+
+    underTest.process(task());
+
+    verify(service, never()).proliferateToBranch(any(), anyCollection(), any(), anyString(), any());
+  }
+
+  /** Marked, then marked something else: the task's own transition is the one that must still hold. */
+  @Test
+  public void doesNothingWhenTheSourceCarriesADifferentMarking() {
+    givenBranches("b1");
+    when(issueDao.selectByKeys(any(), eq(List.of(SOURCE_KEY))))
+      .thenReturn(List.of(new IssueDto().setKee(SOURCE_KEY).setProjectUuid(SOURCE_BRANCH)
+        .setResolution(Issue.RESOLUTION_WONT_FIX)));
+
+    underTest.process(task());
+
+    verify(service, never()).proliferateToBranch(any(), anyCollection(), any(), anyString(), any());
+  }
+
+  /** One issue of a batch reopened must not cancel the rest: only that issue drops out. */
+  @Test
+  public void proliferatesOnlyTheSourcesThatStillCarryTheMarking() {
+    givenBranches("b1");
+    givenCandidates(Map.of("b1", oneMatch("b1")));
+    givenWrittenComponents("b1", Set.of("component"));
+    when(ceTaskInputDao.selectData(any(), eq("task"))).thenAnswer(invocation -> Optional.of(new DbInputStream(
+      mock(PreparedStatement.class), mock(ResultSet.class),
+      ProliferationTaskPayload.serialize(List.of(SOURCE_KEY, "OTHER-KEY"), null, null))));
+    IssueDto reopened = new IssueDto().setKee("OTHER-KEY").setProjectUuid(SOURCE_BRANCH).setResolution(null);
+    when(issueDao.selectByKeys(any(), eq(List.of(SOURCE_KEY, "OTHER-KEY"))))
+      .thenReturn(List.of(source, reopened));
+
+    underTest.process(task());
+
+    ArgumentCaptor<Collection<IssueDto>> captor = ArgumentCaptor.forClass(Collection.class);
+    verify(service).proliferateToBranch(any(), captor.capture(), any(), eq("b1"), any());
+    assertThat(captor.getValue()).extracting(IssueDto::getKey).containsExactly(SOURCE_KEY);
+  }
+
+  /** The re-check must not cost a second read: the resolution travels on the DTO already loaded. */
+  @Test
+  public void readsTheSourceIssuesOnlyOnce() {
+    givenBranches("b1");
+    givenCandidates(Map.of("b1", oneMatch("b1")));
+    givenWrittenComponents("b1", Set.of("component"));
+
+    underTest.process(task());
+
+    verify(issueDao, times(1)).selectByKeys(any(), eq(List.of(SOURCE_KEY)));
   }
 
   private void enableProliferation(boolean enabled) {

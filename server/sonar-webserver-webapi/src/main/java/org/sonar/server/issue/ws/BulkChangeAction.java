@@ -134,7 +134,6 @@ public class BulkChangeAction implements IssuesWsAction {
   // Codescan: uuid of the user to attribute the change (and its comment) to instead of the caller. Only honored for
   // system administrators. Used by the resolution-transfer feature to credit the original resolver.
   private static final String PARAM_CHANGE_AUTHOR = "changeAuthor";
-  private static final String PARAM_PROLIFERATE = "proliferate";
 
   private final System2 system2;
   private final UserSession userSession;
@@ -229,14 +228,6 @@ public class BulkChangeAction implements IssuesWsAction {
       .setDescription("Codescan customization: uuid of the user the change and its comment should be attributed to "
         + "instead of the caller. Only honored when the caller is a system administrator.")
       .setInternal(true)
-      .setRequired(false);
-    action.createParam(PARAM_PROLIFERATE)
-      .setDescription("Codescan customization: set to false to suppress cross-branch resolution proliferation for "
-        + "this call. Defaults to true. Used by Resolution Transfer, which proliferates in its own phase after the "
-        + "transfer rather than inside each batch.")
-      .setInternal(true)
-      .setBooleanPossibleValues()
-      .setDefaultValue("true")
       .setRequired(false);
   }
 
@@ -355,7 +346,7 @@ public class BulkChangeAction implements IssuesWsAction {
       .filter(bulkChange(issueChangeContext, bulkChangeData, result))
       .toList();
     issueStorage.save(dbSession, defaultIssues);
-    proliferateMarkings(request, bulkChangeData, issueChangeContext, defaultIssues);
+    proliferateMarkings(dbSession, bulkChangeData, issueChangeContext, defaultIssues);
     refreshLiveMeasures(dbSession, bulkChangeData, result);
 
     Set<String> assigneeUuids = defaultIssues.stream().map(DefaultIssue::assignee).filter(Objects::nonNull).collect(Collectors.toSet());
@@ -370,11 +361,8 @@ public class BulkChangeAction implements IssuesWsAction {
   }
 
 
-  private void proliferateMarkings(Request request, BulkChangeData bulkChangeData,
+  private void proliferateMarkings(DbSession dbSession, BulkChangeData bulkChangeData,
     IssueChangeContext issueChangeContext, List<DefaultIssue> changedIssues) {
-    if (!request.mandatoryParamAsBoolean(PARAM_PROLIFERATE)) {
-      return;
-    }
     Map<String, Object> transitionProperties = bulkChangeData.getProperties(DO_TRANSITION_KEY);
     if (transitionProperties == null) {
       return;
@@ -397,7 +385,7 @@ public class BulkChangeAction implements IssuesWsAction {
       .filter(IssueMarkingProliferationService::resolutionChangedInThisCall)
       .filter(issue -> IssueMarkingProliferationService.carriesTransitionResolution(issue.resolution(), transition))
       .collect(groupingBy(DefaultIssue::projectUuid, mapping(DefaultIssue::key, toList())));
-    keysByBranch.forEach((branchUuid, keys) -> proliferationSubmitter.submit(branchUuid, keys,
+    keysByBranch.forEach((branchUuid, keys) -> proliferationSubmitter.submit(dbSession, branchUuid, keys,
       issueChangeContext, transition, comment, exceptionReason));
   }
 

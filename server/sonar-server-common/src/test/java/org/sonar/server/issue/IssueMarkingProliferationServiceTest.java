@@ -51,6 +51,7 @@ import org.sonar.server.issue.IssueMarkingProliferationService.TargetIndex;
 import org.sonar.server.issue.workflow.IssueWorkflow;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -167,7 +168,17 @@ public class IssueMarkingProliferationServiceTest {
   /** The two phases as the task processor runs them: index every branch once, then write one branch from it. */
   private BranchOutcome proliferateOutcome(List<IssueDto> sources, String transition, @Nullable String comment,
     IssueChangeContext context) {
-    TargetIndex index = underTest.indexTargetsBySignature(dbSession, sources, List.of(TARGET_BRANCH_UUID));
+    return proliferateTo(indexOf(sources), sources, transition, comment, context);
+  }
+
+  /** The first phase on its own, so a test expecting the write to throw can build the index outside the assertion. */
+  private TargetIndex indexOf(List<IssueDto> sources) {
+    return underTest.indexTargetsBySignature(dbSession, sources, List.of(TARGET_BRANCH_UUID));
+  }
+
+  /** The second phase on its own: the single call an assertion about a failing write should be wrapped around. */
+  private BranchOutcome proliferateTo(TargetIndex index, List<IssueDto> sources, String transition,
+    @Nullable String comment, IssueChangeContext context) {
     return underTest.proliferateToBranch(dbSession, sources, index.of(TARGET_BRANCH_UUID), TARGET_BRANCH_UUID,
       new ProliferatedMarking(context, transition, comment, null, SOURCE_BRANCH_LABEL));
   }
@@ -455,6 +466,66 @@ public class IssueMarkingProliferationServiceTest {
     verify(issueStorage).queueBranchForRecovery(dbSession, TARGET_BRANCH_UUID);
   }
 
+  /**
+   * The write commits batch by batch, so a failure partway through leaves issues changed in the database and
+   * untouched in the index. Without the recovery row they stay that way: the issue page would read Accepted and
+   * the issue list, the counts and the quality gate Open, until that branch is next analysed.
+   */
+  @Test
+  public void queuesTheBranchForReindexingWhenTheWriteFailsPartway() {
+    IssueDto source = issue("AAA-111", SOURCE_BRANCH_UUID);
+    givenCandidates(issue("BBB-777", TARGET_BRANCH_UUID));
+    when(issueWorkflow.doManualTransition(any(DefaultIssue.class), anyString(), any())).thenReturn(true);
+    org.mockito.Mockito.doThrow(new IllegalStateException("write failed")).when(issueStorage)
+      .save(any(), any(), any(), anyLong(), any(), any());
+    List<IssueDto> sources = List.of(source);
+    TargetIndex index = indexOf(sources);
+    IssueChangeContext context = context();
+
+    assertThatThrownBy(() -> proliferateTo(index, sources, DefaultTransitions.ACCEPT, null, context))
+      .isInstanceOf(IllegalStateException.class);
+
+    verify(issueStorage).queueBranchForRecovery(dbSession, TARGET_BRANCH_UUID);
+  }
+
+  /** The caller counts the branch as failed, so the exception must still reach it. */
+  @Test
+  public void rethrowsAWriteFailureAfterQueueingTheBranch() {
+    IssueDto source = issue("AAA-111", SOURCE_BRANCH_UUID);
+    givenCandidates(issue("BBB-777", TARGET_BRANCH_UUID));
+    when(issueWorkflow.doManualTransition(any(DefaultIssue.class), anyString(), any())).thenReturn(true);
+    org.mockito.Mockito.doThrow(new IllegalStateException("write failed")).when(issueStorage)
+      .save(any(), any(), any(), anyLong(), any(), any());
+    List<IssueDto> sources = List.of(source);
+    TargetIndex index = indexOf(sources);
+    IssueChangeContext context = context();
+
+    assertThatThrownBy(() -> proliferateTo(index, sources, DefaultTransitions.ACCEPT, null, context))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessage("write failed");
+
+    verify(issueStorage, never()).indexBranch(any(), any());
+  }
+
+  /** A failure to queue the recovery row must not replace the write failure the caller needs to see. */
+  @Test
+  public void survivesAFailureToQueueTheBranchAfterAFailedWrite() {
+    IssueDto source = issue("AAA-111", SOURCE_BRANCH_UUID);
+    givenCandidates(issue("BBB-777", TARGET_BRANCH_UUID));
+    when(issueWorkflow.doManualTransition(any(DefaultIssue.class), anyString(), any())).thenReturn(true);
+    org.mockito.Mockito.doThrow(new IllegalStateException("write failed")).when(issueStorage)
+      .save(any(), any(), any(), anyLong(), any(), any());
+    org.mockito.Mockito.doThrow(new IllegalStateException("db down")).when(issueStorage)
+      .queueBranchForRecovery(any(), anyString());
+    List<IssueDto> sources = List.of(source);
+    TargetIndex index = indexOf(sources);
+    IssueChangeContext context = context();
+
+    assertThatThrownBy(() -> proliferateTo(index, sources, DefaultTransitions.ACCEPT, null, context))
+      .isInstanceOf(IllegalStateException.class)
+      .hasMessage("write failed");
+  }
+
   @Test
   public void queuesNothingForReindexingWhenIndexingSucceeded() {
     IssueDto source = issue("AAA-111", SOURCE_BRANCH_UUID);
@@ -638,10 +709,10 @@ public class IssueMarkingProliferationServiceTest {
   /** Every transition the service will queue must be one the gate can answer true for. */
   @Test
   public void carriesTransitionResolution_acceptsEveryProliferableTransition() {
-    assertThat(underTest.isProliferable(DefaultTransitions.ACCEPT)).isTrue();
-    assertThat(underTest.isProliferable(DefaultTransitions.WONT_FIX)).isTrue();
-    assertThat(underTest.isProliferable(DefaultTransitions.FALSE_POSITIVE)).isTrue();
-    assertThat(underTest.isProliferable(DefaultTransitions.EXCEPTION)).isTrue();
+    assertThat(IssueMarkingProliferationService.isProliferable(DefaultTransitions.ACCEPT)).isTrue();
+    assertThat(IssueMarkingProliferationService.isProliferable(DefaultTransitions.WONT_FIX)).isTrue();
+    assertThat(IssueMarkingProliferationService.isProliferable(DefaultTransitions.FALSE_POSITIVE)).isTrue();
+    assertThat(IssueMarkingProliferationService.isProliferable(DefaultTransitions.EXCEPTION)).isTrue();
 
     assertThat(IssueMarkingProliferationService.carriesTransitionResolution(
       Issue.RESOLUTION_WONT_FIX, DefaultTransitions.ACCEPT)).isTrue();

@@ -71,13 +71,17 @@ public record ProliferationTaskPayload(List<String> issueKeys, @CheckForNull Str
   }
 
   /**
-   * Reads a payload of either format. A payload with no marker is one written before this format existed: every
-   * line of it is a key. A payload whose header does not parse is read the same way rather than rejected - the
-   * keys are the part that matters, and losing a comment is better than losing the marking it belongs to.
+   * Reads a payload.
+   * <p>
+   * Every payload this class writes carries the marker, so a missing or unreadable header means a damaged blob
+   * rather than an older format - nothing has ever written one. Both cases are read as keys only rather than
+   * rejected: the keys are the part that matters, and losing a comment is better than losing the marking it
+   * belongs to.
    */
   public static ProliferationTaskPayload parse(byte[] raw) {
     int markerAt = indexOfMarkerLine(raw);
     if (markerAt < 0) {
+      // Damaged: the header is gone. Keep the keys.
       return new ProliferationTaskPayload(keysOf(raw, 0, raw.length), null, null);
     }
     try {
