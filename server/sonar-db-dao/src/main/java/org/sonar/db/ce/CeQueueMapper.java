@@ -38,7 +38,9 @@ public interface CeQueueMapper {
 
   Optional<CeTaskDtoLight> selectEligibleForPeek(@Param("pagination") Pagination pagination,
                                      @Param("excludeIndexationJob") boolean excludeIndexationJob,
-                                     @Param("excludeViewRefresh") boolean excludeViewRefresh);
+                                     @Param("excludeViewRefresh") boolean excludeViewRefresh,
+                                     @Param("proliferationTaskType") String proliferationTaskType,
+                                     @Param("proliferationDeferralDeadline") long proliferationDeferralDeadline);
 
   @CheckForNull
   CeQueueDto selectByUuid(@Param("uuid") String uuid);

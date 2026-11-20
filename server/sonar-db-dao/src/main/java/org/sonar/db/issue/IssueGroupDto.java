@@ -23,6 +23,7 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 
 public class IssueGroupDto {
+  private String componentUuid;
   private int ruleType;
   private String severity;
   @Nullable
@@ -107,6 +108,16 @@ public class IssueGroupDto {
 
   public IssueGroupDto setPrioritizedRule(long prioritizedRule) {
     this.prioritizedRule = prioritizedRule;
+    return this;
+  }
+
+  /** The component the group belongs to; set only by the statements that group several components at once. */
+  public String getComponentUuid() {
+    return componentUuid;
+  }
+
+  public IssueGroupDto setComponentUuid(String componentUuid) {
+    this.componentUuid = componentUuid;
     return this;
   }
 }

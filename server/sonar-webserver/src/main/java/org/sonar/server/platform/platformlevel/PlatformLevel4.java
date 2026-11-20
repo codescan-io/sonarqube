@@ -139,6 +139,7 @@ import org.sonar.server.hotspot.ws.HotspotsWsModule;
 import org.sonar.server.issue.AddTagsAction;
 import org.sonar.server.issue.AssignAction;
 import org.sonar.server.issue.CodeIssueExceptionExpiryService;
+import org.sonar.server.issue.IssueProliferationSubmitter;
 import org.sonar.server.issue.CommentAction;
 import org.sonar.server.issue.IssueChangePostProcessorImpl;
 import org.sonar.server.issue.PrioritizedRulesFeature;
@@ -532,6 +533,9 @@ public class PlatformLevel4 extends PlatformLevel {
       SetSeverityAction.class,
       CommentAction.class,
       CodeIssueExceptionExpiryService.class,
+      // ProliferationIssueStorage and IssueMarkingProliferationService live in the compute engine container only:
+      // the web server queues the task, it never performs the writes, and isProliferable is static.
+      IssueProliferationSubmitter.class,
       TransitionAction.class,
       AddTagsAction.class,
       RemoveTagsAction.class,

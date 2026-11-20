@@ -23,10 +23,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.sonar.api.ce.ComputeEngineSide;
 import org.sonar.api.measures.Metric;
 import org.sonar.api.server.ServerSide;
 
 @ServerSide
+@ComputeEngineSide
 public interface MeasureUpdateFormulaFactory {
   List<MeasureUpdateFormula> getFormulas();
 

@@ -29,6 +29,8 @@ public final class CeTaskTypes {
   public static final String GITHUB_PROJECT_PERMISSIONS_PROVISIONING = "GITHUB_PROJECT_PERMISSIONS_PROVISIONING";
   public static final String GITLAB_PROJECT_PERMISSIONS_PROVISIONING = "GITLAB_PROJECT_PERMISSIONS_PROVISIONING";
 
+  public static final String RESOLUTION_PROLIFERATION = "RESOLUTION_PROLIFERATION";
+
   private CeTaskTypes() {
     // only statics
   }
