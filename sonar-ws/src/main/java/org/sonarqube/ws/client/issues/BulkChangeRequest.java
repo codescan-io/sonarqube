@@ -41,7 +41,6 @@ public class BulkChangeRequest {
   private List<String> setSeverity;
   private List<String> setType;
   private String changeAuthor;
-  private String proliferate;
 
   /**
    * Example value: "security,java8"
@@ -194,14 +193,5 @@ public class BulkChangeRequest {
 
   public String getChangeAuthor() {
     return changeAuthor;
-  }
-
-  public BulkChangeRequest setProliferate(String proliferate) {
-    this.proliferate = proliferate;
-    return this;
-  }
-
-  public String getProliferate() {
-    return proliferate;
   }
 }

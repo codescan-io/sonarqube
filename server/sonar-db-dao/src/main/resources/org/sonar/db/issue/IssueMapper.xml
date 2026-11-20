@@ -290,37 +290,83 @@
     IMPORTANT - invariant columns can't be updated. See IssueDto#toDtoForUpdate()
   -->
 
+  <!--
+    The columns a full issue update writes, shared by "update" and "updateProliferated" so the two cannot drift:
+    a column added to one would otherwise be silently dropped by the other. ${p} is the property prefix - empty
+    when the statement takes the DTO directly, "dto." when it takes it alongside other parameters - and is a
+    MyBatis text substitution of our own literal, never user input.
+  -->
+  <sql id="updateIssueColumns">
+    severity=#{${p}severity,jdbcType=VARCHAR},
+    manual_severity=#{${p}manualSeverity,jdbcType=BOOLEAN},
+    message=#{${p}message,jdbcType=VARCHAR},
+    message_formattings=#{${p}messageFormattings,jdbcType=BINARY},
+    line=#{${p}line,jdbcType=INTEGER},
+    locations=#{${p}locations,jdbcType=BINARY},
+    gap=#{${p}gap,jdbcType=DOUBLE},
+    effort=#{${p}effort,jdbcType=INTEGER},
+    status=#{${p}status,jdbcType=VARCHAR},
+    resolution=#{${p}resolution,jdbcType=VARCHAR},
+    checksum=#{${p}checksum,jdbcType=VARCHAR},
+    assignee=#{${p}assigneeUuid,jdbcType=VARCHAR},
+    author_login=#{${p}authorLogin,jdbcType=VARCHAR},
+    tags=#{${p}tagsString,jdbcType=VARCHAR},
+    rule_description_context_key=#{${p}ruleDescriptionContextKey,jdbcType=VARCHAR},
+    project_uuid=#{${p}projectUuid,jdbcType=VARCHAR},
+    issue_creation_date=#{${p}issueCreationTime,jdbcType=BIGINT},
+    issue_update_date=#{${p}issueUpdateTime,jdbcType=BIGINT},
+    issue_close_date=#{${p}issueCloseTime,jdbcType=BIGINT},
+    updated_at=#{${p}updatedAt,jdbcType=BIGINT},
+    issue_type=#{${p}type,jdbcType=INTEGER},
+    code_variants=#{${p}codeVariantsString,jdbcType=VARCHAR},
+    clean_code_attribute=#{${p}effectiveCleanCodeAttribute,jdbcType=VARCHAR},
+    prioritized_rule=#{${p}prioritizedRule,jdbcType=BOOLEAN},
+    codefix_status=#{${p}codefixStatus,jdbcType=VARCHAR},
+    issue_ai_metadata=#{${p}issueAiMetadata,jdbcType=VARCHAR},
+    issue_resolution_expires_at=#{${p}issueResolutionExpiresAt,jdbcType=BIGINT}
+  </sql>
+
   <update id="update" parameterType="Issue">
     update issues set
-    severity=#{severity,jdbcType=VARCHAR},
-    manual_severity=#{manualSeverity,jdbcType=BOOLEAN},
-    message=#{message,jdbcType=VARCHAR},
-    message_formattings=#{messageFormattings,jdbcType=BINARY},
-    line=#{line,jdbcType=INTEGER},
-    locations=#{locations,jdbcType=BINARY},
-    gap=#{gap,jdbcType=DOUBLE},
-    effort=#{effort,jdbcType=INTEGER},
-    status=#{status,jdbcType=VARCHAR},
-    resolution=#{resolution,jdbcType=VARCHAR},
-    checksum=#{checksum,jdbcType=VARCHAR},
-    assignee=#{assigneeUuid,jdbcType=VARCHAR},
-    author_login=#{authorLogin,jdbcType=VARCHAR},
-    tags=#{tagsString,jdbcType=VARCHAR},
-    rule_description_context_key=#{ruleDescriptionContextKey,jdbcType=VARCHAR},
-    project_uuid=#{projectUuid,jdbcType=VARCHAR},
-    issue_creation_date=#{issueCreationTime,jdbcType=BIGINT},
-    issue_update_date=#{issueUpdateTime,jdbcType=BIGINT},
-    issue_close_date=#{issueCloseTime,jdbcType=BIGINT},
-    updated_at=#{updatedAt,jdbcType=BIGINT},
-    issue_type=#{type,jdbcType=INTEGER},
-    code_variants=#{codeVariantsString,jdbcType=VARCHAR},
-    clean_code_attribute=#{effectiveCleanCodeAttribute,jdbcType=VARCHAR},
-    prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN},
-    codefix_status=#{codefixStatus,jdbcType=VARCHAR},
-    issue_ai_metadata=#{issueAiMetadata,jdbcType=VARCHAR},
-    issue_resolution_expires_at=#{issueResolutionExpiresAt,jdbcType=BIGINT}
+    <include refid="updateIssueColumns"><property name="p" value=""/></include>
     where kee = #{kee}
   </update>
+
+  <!--
+    As "update", but it refuses to write an issue whose status has left the set the caller read it in, and never
+    touches a security hotspot. Proliferation reads its targets, prepares them, then writes - and a user can mark
+    or close one of those targets in between. Without the guard that write would silently overwrite the user's
+    decision with the snapshot read earlier, including columns proliferation never meant to change. The set-based
+    path (bulkTransitionWithExpiry) carries the same two predicates; this is the per-issue half of it.
+  -->
+  <update id="updateProliferated" parameterType="map">
+    update issues set
+    <include refid="updateIssueColumns"><property name="p" value="dto."/></include>
+    where kee = #{dto.kee,jdbcType=VARCHAR}
+      and status in
+      <foreach collection="statuses" open="(" close=")" item="status" separator=",">#{status,jdbcType=VARCHAR}</foreach>
+      and issue_type &lt;&gt; 4
+  </update>
+
+  <!--
+    Which of these keys "bulkTransitionWithExpiry" just wrote. That statement reports a row count but not which
+    rows, and its status guard can refuse any of them.
+
+    The "kee in" list is what makes the answer exact: it is this group's own keys and nothing else, so no row
+    another group, another caller or another thread touched can come back. Within that list, "updated_at = now"
+    then separates the rows the guard let through from the ones it refused - a refused row still carries
+    whatever updated_at it had before.
+
+    "now" on its own would not be enough, and must not be relied on as if it were: it is the caller's single
+    timestamp for the whole save, shared by every set-based group and by the per-issue path, so on its own it
+    matches rows this statement never wrote. The key list is doing the isolating. Do not drop it as redundant.
+  -->
+  <select id="selectProliferatedKeys" parameterType="map" resultType="string">
+    select kee from issues
+    where updated_at = #{now,jdbcType=BIGINT}
+      and kee in
+      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+  </select>
 
   <!--
    IMPORTANT - invariant columns can't be updated. See IssueDto#toDtoForUpdate()

@@ -25,9 +25,10 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.issue.Issue;
 import org.sonar.core.issue.DefaultIssueComment;
 import org.sonar.core.issue.FieldDiffs;
@@ -49,6 +50,8 @@ import org.sonar.server.rule.ServerRuleFinder;
 @ServerSide
 @ComputeEngineSide
 public class ProliferationIssueStorage {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ProliferationIssueStorage.class);
 
   private static final IssueStorage CHANGE_WRITER = new IssueStorage();
 
@@ -116,14 +119,11 @@ public class ProliferationIssueStorage {
       .setMarkedAt(markedAt)
       .setStatuses(candidateStatuses);
 
-    setBased.forEach((group, grouped) -> {
-      List<String> keys = grouped.stream().map(DefaultIssue::key).toList();
-      writeSetBased(dbSession, group, keys, shared);
-      written.addAll(keys);
-    });
+    setBased.forEach((group, grouped) -> written.addAll(writeSetBased(dbSession, group,
+      grouped.stream().map(DefaultIssue::key).toList(), shared, branchUuid)));
 
     if (!perIssue.isEmpty()) {
-      written.addAll(writePerIssue(dbSession, perIssue, now));
+      written.addAll(writePerIssue(dbSession, perIssue, now, candidateStatuses));
     }
 
     dbSession.commit();
@@ -139,13 +139,27 @@ public class ProliferationIssueStorage {
   }
 
   public void queueBranchForRecovery(DbSession dbSession, String branchUuid) {
+    dbSession.rollback();
     indexer.queueBranchForRecovery(dbSession, branchUuid);
     dbSession.commit();
   }
-
-
-  private void writeSetBased(DbSession dbSession, SetBasedGroup group, List<String> keys,
-    ProliferationChangeQuery shared) {
+  /**
+   * The set-based write: one statement for every issue of the group, for the markings it can express.
+   * <p>
+   * The changelog statements run first, and must. They are INSERT ... SELECT over {@code issues}, filtered by the
+   * same statuses the update is guarded on, so they read each row while it is still unresolved. Run after the
+   * update they would select nothing - it has just moved every one of these issues to RESOLVED - and the marking
+   * would land with no history at all. That shared predicate is also what keeps them honest: an issue a user
+   * marked or closed between the read and this write is passed over by the changelog and refused by the update
+   * alike, so neither can describe something that did not happen.
+   * <p>
+   * What the update adds is its row count - how many the guard let through - which is the one thing the statement
+   * order cannot tell the caller. A refused issue must not be counted or indexed as proliferated.
+   *
+   * @return the keys actually written, which is what the caller counts and indexes
+   */
+  private List<String> writeSetBased(DbSession dbSession, SetBasedGroup group, List<String> keys,
+    ProliferationChangeQuery shared, String branchUuid) {
 
     dbClient.issueChangeDao().insertProliferationDiffs(dbSession, shared.copyFor(keys)
       .setResolution(group.resolution())
@@ -157,18 +171,41 @@ public class ProliferationIssueStorage {
         .setChangeType(IssueChangeDto.TYPE_COMMENT), uuidFactory);
     }
 
-    dbClient.issueDao().bulkTransitionWithExpiry(dbSession, keys, group.resolution(), group.expiresAt(),
-      shared.getMarkedAt(), shared.getNow(), shared.getStatuses());
+    int updated = dbClient.issueDao().bulkTransitionWithExpiry(dbSession, keys, group.resolution(),
+      group.expiresAt(), shared.getMarkedAt(), shared.getNow(), shared.getStatuses());
+    if (updated == keys.size()) {
+      return keys;
+    }
+
+    List<String> written = updated == 0
+      ? List.of()
+      : dbClient.issueDao().selectProliferatedKeys(dbSession, keys, shared.getNow());
+    logSkipped(keys.size() - written.size(), branchUuid);
+    return written;
+  }
+
+  private static void logSkipped(int skipped, String branchUuid) {
+    if (skipped > 0) {
+      LOG.info("Skipped {} issue(s) on branch {} that changed while the marking was being proliferated", skipped,
+        branchUuid);
+    }
   }
 
 
-  private List<String> writePerIssue(DbSession dbSession, Collection<DefaultIssue> issues, long now) {
+
+  private List<String> writePerIssue(DbSession dbSession, Collection<DefaultIssue> issues, long now,
+    Collection<String> candidateStatuses) {
     IssueChangeMapper changeMapper = dbSession.getMapper(IssueChangeMapper.class);
     List<String> written = new ArrayList<>(issues.size());
+    int skipped = 0;
     for (DefaultIssue issue : issues) {
       IssueDto dto = IssueDto.toDtoForUpdate(issue, now);
 
-      dbClient.issueDao().updateWithoutIssueImpacts(dbSession, dto);
+      if (dbClient.issueDao().updateProliferated(dbSession, dto, candidateStatuses) == 0) {
+        // Someone marked, closed or reopened it between the read and this write. Their decision stands.
+        skipped++;
+        continue;
+      }
       ruleFinder.findDtoByKey(issue.ruleKey()).ifPresent(rule -> {
         dto.setRuleUuid(rule.getUuid());
         dto.setCleanCodeAttribute(rule.getCleanCodeAttribute());
@@ -177,7 +214,12 @@ public class ProliferationIssueStorage {
       CHANGE_WRITER.insertChanges(changeMapper, issue, uuidFactory);
       written.add(issue.key());
     }
+    logSkipped(skipped, branchUuidOf(issues));
     return written;
+  }
+
+  private static String branchUuidOf(Collection<DefaultIssue> issues) {
+    return issues.iterator().next().projectUuid();
   }
 
 

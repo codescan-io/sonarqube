@@ -35,7 +35,6 @@ import org.sonar.ce.queue.CeTaskSubmit;
 import org.sonar.core.issue.IssueChangeContext;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
-import org.sonar.db.MyBatis;
 import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.component.BranchDto;
 import org.sonar.server.setting.ProjectConfigurationLoader;
@@ -55,28 +54,39 @@ public class IssueProliferationSubmitter {
   static final int ISSUES_PER_TASK = 500;
 
   private final DbClient dbClient;
-  private final MyBatis myBatis;
   private final CeQueue ceQueue;
-  private final IssueMarkingProliferationService proliferationService;
   private final ProjectConfigurationLoader projectConfigurationLoader;
 
-  public IssueProliferationSubmitter(DbClient dbClient, MyBatis myBatis, CeQueue ceQueue,
-    IssueMarkingProliferationService proliferationService,
+  public IssueProliferationSubmitter(DbClient dbClient, CeQueue ceQueue,
     ProjectConfigurationLoader projectConfigurationLoader) {
     this.dbClient = dbClient;
-    this.myBatis = myBatis;
     this.ceQueue = ceQueue;
-    this.proliferationService = proliferationService;
     this.projectConfigurationLoader = projectConfigurationLoader;
   }
 
 
-  public void submit(String sourceBranchUuid, Collection<String> issueKeys,
+  /**
+   * Queues the proliferation of a marking that has just been applied to {@code issueKeys} on
+   * {@code sourceBranchUuid}. Does nothing if the transition is not one that proliferates, or if the feature is
+   * off for the project.
+   * <p>
+   * <b>The caller's own work must already be committed.</b> This method commits {@code dbSession} on success -
+   * the task input rows have to be visible before the queue rows are, or a worker could pick a task up and find
+   * nothing to read - and rolls it back if anything throws, so a half-written task is never left behind. Either
+   * way the session is no longer the caller's to finish: whatever is uncommitted on it when this is called is
+   * committed or discarded along with the queue rows. Both call sites, {@code DoTransitionAction} and
+   * {@code BulkChangeAction}, save and commit the issue change before reaching here, so the rollback can only
+   * ever discard rows this method wrote.
+   * <p>
+   * Proliferation is best-effort by design: a failure is logged and swallowed, because the user's own marking
+   * has already been applied and must not be reported back as failed.
+   */
+  public void submit(DbSession dbSession, String sourceBranchUuid, Collection<String> issueKeys,
     IssueChangeContext context, String transitionKey, @Nullable String comment, @Nullable String exceptionReason) {
-    try (DbSession dbSession = myBatis.openSession(false)) {
-      if (issueKeys.isEmpty() || !proliferationService.isProliferable(transitionKey)) {
-        return;
-      }
+    if (issueKeys.isEmpty() || !IssueMarkingProliferationService.isProliferable(transitionKey)) {
+      return;
+    }
+    try {
       Optional<BranchDto> sourceBranch = dbClient.branchDao().selectByUuid(dbSession, sourceBranchUuid);
       if (sourceBranch.isEmpty()) {
         return;
@@ -108,7 +118,9 @@ public class IssueProliferationSubmitter {
       LOG.debug("Queued {} proliferation task(s) for {} issue(s) on branch {}", submissions.size(), issueKeys.size(),
         sourceBranchUuid);
     } catch (RuntimeException e) {
-      LOG.error("Failed to queue proliferation for branch " + sourceBranchUuid, e);
+      dbSession.rollback();
+      LOG.error("Failed to queue proliferation for branch {} (user {}, transition {}, {} issue(s))",
+        sourceBranchUuid, context.userUuid(), transitionKey, issueKeys.size(), e);
     }
   }
 

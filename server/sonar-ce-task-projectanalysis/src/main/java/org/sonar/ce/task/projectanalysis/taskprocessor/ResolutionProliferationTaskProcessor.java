@@ -87,9 +87,6 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
   static final Duration JOBS_TIMEOUT = Duration.ofHours(1);
 
 
-  private static final String LEGACY_CHARACTERISTIC_COMMENT = "proliferationComment";
-  private static final String LEGACY_CHARACTERISTIC_EXCEPTION_REASON = "proliferationExceptionReason";
-
   private final DbClient dbClient;
   private final IssueMarkingProliferationService proliferationService;
   private final System2 system2;
@@ -154,6 +151,13 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
       return;
     }
 
+    Map<String, String> characteristics = task.getCharacteristics();
+    String transitionKey = characteristics.get(CHARACTERISTIC_TRANSITION);
+    if (transitionKey == null) {
+      LOG.warn("Proliferation task {} has no transition, skipping", task.getUuid());
+      return;
+    }
+
     List<IssueDto> sourceIssues;
     List<String> targetBranchUuids;
     ProliferationTaskPayload payload;
@@ -167,9 +171,21 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
       if (payload.issueKeys().isEmpty()) {
         return;
       }
-      sourceIssues = dbClient.issueDao().selectByKeys(dbSession, payload.issueKeys());
+      List<IssueDto> queuedIssues = dbClient.issueDao().selectByKeys(dbSession, payload.issueKeys());
+      sourceIssues = queuedIssues.stream()
+        .filter(issue -> IssueMarkingProliferationService.carriesTransitionResolution(issue.getResolution(),
+          transitionKey))
+        .toList();
       if (sourceIssues.isEmpty()) {
+        if (!queuedIssues.isEmpty()) {
+          LOG.info("Proliferation task {}: none of the {} source issue(s) still carry the '{}' marking, skipping",
+            task.getUuid(), queuedIssues.size(), transitionKey);
+        }
         return;
+      }
+      if (sourceIssues.size() < queuedIssues.size()) {
+        LOG.info("Proliferation task {}: {} of {} source issue(s) no longer carry the '{}' marking and are skipped",
+          task.getUuid(), queuedIssues.size() - sourceIssues.size(), queuedIssues.size(), transitionKey);
       }
 
       targetBranchUuids = dbClient.branchDao().selectByProjectUuid(dbSession, projectUuid).stream()
@@ -186,21 +202,12 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
     Failures failures = new Failures();
     targets = readTargets(sourceIssues, targetBranchUuids, failures);
 
-    Map<String, String> characteristics = task.getCharacteristics();
-    String transitionKey = characteristics.get(CHARACTERISTIC_TRANSITION);
-    if (transitionKey == null) {
-      LOG.warn("Proliferation task {} has no transition, skipping", task.getUuid());
-      return;
-    }
     ProliferatedMarking marking = new ProliferatedMarking(
       issueChangeContextByUserBuilder(markedAt(characteristics),
         characteristics.get(CHARACTERISTIC_AUTHOR)).build(),
       transitionKey,
-      // The characteristics are the fallback, not the source: a task queued before the text moved into the
-      // payload still carries it there. Removable once no such task can still be pending.
-      payload.comment() != null ? payload.comment() : characteristics.get(LEGACY_CHARACTERISTIC_COMMENT),
-      payload.exceptionReason() != null ? payload.exceptionReason()
-        : characteristics.get(LEGACY_CHARACTERISTIC_EXCEPTION_REASON),
+      payload.comment(),
+      payload.exceptionReason(),
       characteristics.getOrDefault(CHARACTERISTIC_SOURCE_BRANCH_LABEL, sourceBranchUuid));
 
     long writeStart = system2.now();

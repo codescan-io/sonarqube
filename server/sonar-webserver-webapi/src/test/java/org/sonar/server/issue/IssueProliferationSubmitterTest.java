@@ -32,7 +32,6 @@ import org.sonar.ce.queue.CeTaskSubmit;
 import org.sonar.core.issue.IssueChangeContext;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
-import org.sonar.db.MyBatis;
 import org.sonar.db.ce.CeTaskInputDao;
 import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.component.BranchDao;
@@ -43,6 +42,7 @@ import org.sonar.server.setting.ProjectConfigurationLoader;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -62,11 +62,9 @@ public class IssueProliferationSubmitterTest {
 
   private final DbSession dbSession = mock(DbSession.class);
   private final DbClient dbClient = mock(DbClient.class);
-  private final MyBatis myBatis = mock(MyBatis.class);
   private final BranchDao branchDao = mock(BranchDao.class);
   private final CeTaskInputDao ceTaskInputDao = mock(CeTaskInputDao.class);
   private final CeQueue ceQueue = mock(CeQueue.class);
-  private final IssueMarkingProliferationService proliferationService = mock(IssueMarkingProliferationService.class);
   private final ProjectConfigurationLoader projectConfigurationLoader = mock(ProjectConfigurationLoader.class);
   private final Configuration configuration = mock(Configuration.class);
 
@@ -74,19 +72,14 @@ public class IssueProliferationSubmitterTest {
 
   @Before
   public void setUp() {
-    when(myBatis.openSession(false)).thenReturn(dbSession);
     when(dbClient.branchDao()).thenReturn(branchDao);
     when(dbClient.ceTaskInputDao()).thenReturn(ceTaskInputDao);
     when(branchDao.selectByUuid(dbSession, BRANCH_UUID)).thenReturn(Optional.of(branch()));
     when(projectConfigurationLoader.loadProjectConfiguration(any(), anyString())).thenReturn(configuration);
     when(ceQueue.prepareSubmit()).thenAnswer(invocation -> new CeTaskSubmit.Builder(TASK_UUID));
-    when(proliferationService.isProliferable(anyString())).thenReturn(false);
-    when(proliferationService.isProliferable(DefaultTransitions.ACCEPT)).thenReturn(true);
-    when(proliferationService.isProliferable(DefaultTransitions.FALSE_POSITIVE)).thenReturn(true);
     enableProliferation(true);
 
-    underTest = new IssueProliferationSubmitter(dbClient, myBatis, ceQueue, proliferationService,
-      projectConfigurationLoader);
+    underTest = new IssueProliferationSubmitter(dbClient, ceQueue, projectConfigurationLoader);
   }
 
   @Test
@@ -113,7 +106,7 @@ public class IssueProliferationSubmitterTest {
 
   @Test
   public void leavesTheSubmitterNullWhenNoUserIsBehindTheChange() {
-    underTest.submit(BRANCH_UUID, List.of("issue-1"),
+    underTest.submit(dbSession, BRANCH_UUID, List.of("issue-1"),
       IssueChangeContext.issueChangeContextByScanBuilder(new Date()).build(),
       DefaultTransitions.ACCEPT, null, null);
 
@@ -137,23 +130,6 @@ public class IssueProliferationSubmitterTest {
 
     verify(ceTaskInputDao).insert(any(DbSession.class), anyString(), any());
     verify(ceQueue).massSubmit(any());
-  }
-
-  @Test
-  public void queuesNothingWhenThereAreNoIssues() {
-    submit(DefaultTransitions.ACCEPT, List.of());
-
-    verifyNoInteractions(branchDao, ceTaskInputDao);
-    verify(ceQueue, never()).massSubmit(any());
-  }
-
-  /** reopen, confirm and resolve-as-fixed are not markings this feature copies. */
-  @Test
-  public void queuesNothingForATransitionThatIsNotAMarking() {
-    submit(DefaultTransitions.REOPEN, List.of("issue-1"));
-
-    verifyNoInteractions(branchDao, ceTaskInputDao);
-    verify(ceQueue, never()).massSubmit(any());
   }
 
   @Test
@@ -187,25 +163,71 @@ public class IssueProliferationSubmitterTest {
   }
 
 
+  /**
+   * The caller's session is borrowed, never closed: the request opened it and the request closes it. Closing it
+   * here would pull the connection out from under the rest of the bulk change.
+   */
   @Test
-  public void opensItsOwnConnectionAndClosesIt() {
+  public void leavesTheCallersSessionOpen() {
     submit(DefaultTransitions.ACCEPT, List.of("issue-1"));
 
-    verify(myBatis).openSession(false);
-    verify(dbSession).close();
+    verify(dbSession, never()).close();
   }
 
+  /**
+   * The point of the rollback: PostgreSQL refuses every later statement on an aborted transaction, so without it
+   * a failure here would take down the live measure refresh that BulkChangeAction runs next, on this same
+   * session, and the user would get a 500 for a bulk change whose issues were already saved.
+   */
   @Test
-  public void closesItsSessionWhenQueuingFails() {
+  public void rollsTheCallersSessionBackWhenQueuingFails() {
     when(ceQueue.prepareSubmit()).thenThrow(new IllegalStateException("queue is down"));
 
     submit(DefaultTransitions.ACCEPT, List.of("issue-1"));
 
-    verify(dbSession).close();
+    verify(dbSession).rollback();
+    verify(ceQueue, never()).massSubmit(any());
+  }
+
+  @Test
+  public void rollsBackWhenTheSubmitItselfFails() {
+    doThrow(new IllegalStateException("queue is down")).when(ceQueue).massSubmit(any());
+
+    submit(DefaultTransitions.ACCEPT, List.of("issue-1"));
+
+    verify(dbSession).rollback();
+  }
+
+  @Test
+  public void leavesTheSessionAloneWhenItSucceeds() {
+    submit(DefaultTransitions.ACCEPT, List.of("issue-1"));
+
+    verify(dbSession, never()).rollback();
+  }
+
+  /**
+   * A transition that is not a marking must not reach the database at all: reopen and confirm are the common
+   * case on an instance where this feature is never switched on, and they used to pay for a branch lookup.
+   */
+  @Test
+  public void touchesNoDatabaseForATransitionThatIsNotAMarking() {
+    submit(DefaultTransitions.REOPEN, List.of("issue-1"));
+
+    verifyNoInteractions(dbSession, branchDao, ceTaskInputDao, projectConfigurationLoader);
+    verify(ceQueue, never()).massSubmit(any());
+  }
+
+  /** reopen, confirm and resolve-as-fixed are not markings this feature copies. */
+  @Test
+  public void touchesNoDatabaseWhenThereAreNoIssues() {
+    submit(DefaultTransitions.ACCEPT, List.of());
+
+    verifyNoInteractions(dbSession, branchDao, ceTaskInputDao, projectConfigurationLoader);
+    verify(ceQueue, never()).massSubmit(any());
   }
 
   private void submit(String transition, List<String> issueKeys) {
-    underTest.submit(BRANCH_UUID, issueKeys, userContext(), transition, null, null);
+    underTest.submit(dbSession, BRANCH_UUID, issueKeys, userContext(), transition, null, null);
   }
 
   private CeTaskSubmit captureSubmission() {

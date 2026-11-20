@@ -19,15 +19,18 @@
  */
 package org.sonar.server.issue;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.sonar.api.issue.Issue;
 import org.sonar.api.utils.System2;
 import org.sonar.core.issue.DefaultIssue;
+import org.sonar.core.issue.DefaultIssueComment;
 import org.sonar.core.issue.DefaultIssueExceptionReason;
 import org.sonar.core.issue.FieldDiffs;
 import org.sonar.core.util.SequenceUuidFactory;
@@ -44,6 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -69,6 +73,13 @@ public class ProliferationIssueStorageTest {
   @Before
   public void setUp() {
     when(dbClient.issueDao()).thenReturn(issueDao);
+    when(issueDao.updateProliferated(any(), any(), any())).thenReturn(1);
+    when(issueDao.bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any()))
+      .thenAnswer(invocation -> {
+        // Null when Mockito is recording a re-stub in a test, rather than running the storage.
+        Collection<?> keys = invocation.getArgument(1);
+        return keys == null ? 0 : keys.size();
+      });
     when(dbClient.issueChangeDao()).thenReturn(issueChangeDao);
     when(dbSession.getMapper(IssueChangeMapper.class)).thenReturn(mock(IssueChangeMapper.class));
     when(system2.now()).thenReturn(MARKED_AT);
@@ -115,7 +126,7 @@ public class ProliferationIssueStorageTest {
     assertThat(diffs.getValue().getMarkedAt()).isEqualTo(MARKED_AT);
     assertThat(diffs.getValue().getStatuses()).isEqualTo(STATUSES);
     // Nothing went down the per-issue path.
-    verify(issueDao, never()).updateWithoutIssueImpacts(any(), any());
+    verify(issueDao, never()).updateProliferated(any(), any(), any());
   }
 
   @Test
@@ -153,7 +164,7 @@ public class ProliferationIssueStorageTest {
 
     // The set-based statements have no column for an Exception reason, so they must not be used.
     verify(issueDao, never()).bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any());
-    verify(issueDao, times(1)).updateWithoutIssueImpacts(eq(dbSession), any());
+    verify(issueDao, times(1)).updateProliferated(eq(dbSession), any(), eq(STATUSES));
   }
 
   @Test
@@ -165,7 +176,7 @@ public class ProliferationIssueStorageTest {
 
     // The update writes status, resolution and expiry only - an assignee change would be silently dropped.
     verify(issueDao, never()).bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any());
-    verify(issueDao, times(1)).updateWithoutIssueImpacts(eq(dbSession), any());
+    verify(issueDao, times(1)).updateProliferated(eq(dbSession), any(), eq(STATUSES));
   }
 
   @Test
@@ -177,7 +188,66 @@ public class ProliferationIssueStorageTest {
 
     // Proliferation never changes impacts; issueDao.update() would delete and re-insert every impact row.
     verify(issueDao, never()).update(any(), any());
-    verify(issueDao, times(1)).updateWithoutIssueImpacts(any(), any());
+    verify(issueDao, times(1)).updateProliferated(any(), any(), any());
+  }
+
+  /**
+   * The per-issue statement carries the same status guard the set-based one has. Proliferation reads its targets,
+   * prepares them and writes them, and a user can mark or close one in between - without the guard the write
+   * would put the prepared snapshot over whatever the user did, across every column it sets.
+   */
+  @Test
+  public void passesTheCandidateStatusesToTheGuardedUpdate() {
+    DefaultIssue exception = resolved("AAA-1", Issue.RESOLUTION_WONT_FIX);
+    exception.addExceptionReason(DefaultIssueExceptionReason.create("AAA-1", "u", "r"));
+
+    underTest.save(dbSession, List.of(exception), BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES);
+
+    verify(issueDao).updateProliferated(eq(dbSession), any(), eq(STATUSES));
+  }
+
+  /** The guard rejected the row: someone else got there first, so there is nothing to report as written. */
+  @Test
+  public void doesNotCountAnIssueTheGuardRefused() {
+    when(issueDao.updateProliferated(any(), any(), any())).thenReturn(0);
+    DefaultIssue exception = resolved("AAA-1", Issue.RESOLUTION_WONT_FIX);
+    exception.addExceptionReason(DefaultIssueExceptionReason.create("AAA-1", "u", "r"));
+
+    List<String> written = underTest.save(dbSession, List.of(exception), BRANCH_UUID, MARKED_AT, "user-uuid",
+      STATUSES);
+
+    assertThat(written).isEmpty();
+  }
+
+  /**
+   * The changelog follows the write rather than preceding it. A refused issue that still got its changelog row
+   * would carry a "proliferated from" note for a marking it never received.
+   */
+  @Test
+  public void writesNoChangelogForAnIssueTheGuardRefused() {
+    when(issueDao.updateProliferated(any(), any(), any())).thenReturn(0);
+    DefaultIssue exception = resolved("AAA-1", Issue.RESOLUTION_WONT_FIX);
+    exception.addExceptionReason(DefaultIssueExceptionReason.create("AAA-1", "u", "r"));
+
+    underTest.save(dbSession, List.of(exception), BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES);
+
+    verify(ruleFinder, never()).findDtoByKey(any());
+  }
+
+  /** One refused issue must not cancel the rest of the batch. */
+  @Test
+  public void keepsWritingTheRestOfTheBatchAfterARefusal() {
+    DefaultIssue refused = resolved("AAA-1", Issue.RESOLUTION_WONT_FIX);
+    refused.addExceptionReason(DefaultIssueExceptionReason.create("AAA-1", "u", "r"));
+    DefaultIssue accepted = resolved("AAA-2", Issue.RESOLUTION_WONT_FIX);
+    accepted.addExceptionReason(DefaultIssueExceptionReason.create("AAA-2", "u", "r"));
+    when(issueDao.updateProliferated(any(), any(), any())).thenReturn(0).thenReturn(1);
+
+    List<String> written = underTest.save(dbSession, List.of(refused, accepted), BRANCH_UUID, MARKED_AT,
+      "user-uuid", STATUSES);
+
+    assertThat(written).containsExactly("AAA-2");
+    verify(issueDao, times(2)).updateProliferated(any(), any(), any());
   }
 
   @Test
@@ -201,5 +271,86 @@ public class ProliferationIssueStorageTest {
     assertThat(underTest.save(dbSession, List.of(), BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES)).isEmpty();
 
     verify(dbSession, never()).commit();
+  }
+  /**
+   * The statement order is load-bearing, not a style choice. insertProliferationDiffs and
+   * insertProliferationComments are INSERT ... SELECT over issues, filtered on the same statuses the update is
+   * guarded on. Run them after the update and they select nothing, because it has just resolved every one of
+   * these issues - the marking lands with no changelog and no comment. A mock cannot see that, so this test
+   * pins the order instead.
+   */
+  @Test
+  public void writesTheChangelogAndCommentsBeforeTheUpdate() {
+    DefaultIssue issue = resolved("AAA-1", Issue.RESOLUTION_WONT_FIX);
+    issue.addComment(DefaultIssueComment.create("AAA-1", "user-uuid", "why"));
+
+    underTest.save(dbSession, List.of(issue), BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES);
+
+    InOrder inOrder = inOrder(issueChangeDao, issueDao);
+    inOrder.verify(issueChangeDao).insertProliferationDiffs(any(), any(), any());
+    inOrder.verify(issueChangeDao).insertProliferationComments(any(), any(), any());
+    inOrder.verify(issueDao).bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any());
+  }
+
+  /**
+   * The changelog statements take every key, because their own WHERE clause does the filtering: an issue that is
+   * no longer OPEN or REOPENED is passed over by the SELECT. Narrowing the key list here would be redundant, and
+   * - since the statements must run before the update - impossible to do correctly anyway.
+   */
+  @Test
+  public void passesEveryKeyToTheChangelogAndLetsItsPredicateFilter() {
+    List<DefaultIssue> issues = List.of(
+      resolved("AAA-1", Issue.RESOLUTION_WONT_FIX),
+      resolved("AAA-2", Issue.RESOLUTION_WONT_FIX));
+    when(issueDao.bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any())).thenReturn(1);
+    when(issueDao.selectProliferatedKeys(any(), any(), anyLong())).thenReturn(List.of("AAA-1"));
+
+    underTest.save(dbSession, issues, BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES);
+
+    ArgumentCaptor<ProliferationChangeQuery> diffs = ArgumentCaptor.forClass(ProliferationChangeQuery.class);
+    verify(issueChangeDao).insertProliferationDiffs(eq(dbSession), diffs.capture(), any());
+    assertThat(diffs.getValue().getKeys()).containsExactly("AAA-1", "AAA-2");
+    assertThat(diffs.getValue().getStatuses()).isEqualTo(STATUSES);
+  }
+
+  @Test
+  public void doesNotCountASetBasedIssueTheGuardRefused() {
+    List<DefaultIssue> issues = List.of(
+      resolved("AAA-1", Issue.RESOLUTION_WONT_FIX),
+      resolved("AAA-2", Issue.RESOLUTION_WONT_FIX));
+    // One of the two was marked or closed by someone else between the read and the write.
+    when(issueDao.bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any())).thenReturn(1);
+    when(issueDao.selectProliferatedKeys(eq(dbSession), eq(List.of("AAA-1", "AAA-2")), anyLong()))
+      .thenReturn(List.of("AAA-1"));
+
+    // The refused issue is neither reported as proliferated nor handed to the indexer.
+    assertThat(underTest.save(dbSession, issues, BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES))
+      .containsExactly("AAA-1");
+  }
+
+  @Test
+  public void doesNotQueryTheWrittenKeysWhenEveryIssueWasWritten() {
+    List<DefaultIssue> issues = List.of(
+      resolved("AAA-1", Issue.RESOLUTION_WONT_FIX),
+      resolved("AAA-2", Issue.RESOLUTION_WONT_FIX));
+
+    assertThat(underTest.save(dbSession, issues, BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES))
+      .containsExactly("AAA-1", "AAA-2");
+
+    // The ordinary case must not cost an extra round trip: the row count already says every key was written.
+    verify(issueDao, never()).selectProliferatedKeys(any(), any(), anyLong());
+  }
+
+  @Test
+  public void countsNothingWhenEverySetBasedIssueWasRefused() {
+    List<DefaultIssue> issues = List.of(
+      resolved("AAA-1", Issue.RESOLUTION_WONT_FIX),
+      resolved("AAA-2", Issue.RESOLUTION_WONT_FIX));
+    when(issueDao.bulkTransitionWithExpiry(any(), any(), any(), any(), anyLong(), anyLong(), any())).thenReturn(0);
+
+    assertThat(underTest.save(dbSession, issues, BRANCH_UUID, MARKED_AT, "user-uuid", STATUSES)).isEmpty();
+
+    // Nothing was written, so there is nothing to ask about.
+    verify(issueDao, never()).selectProliferatedKeys(any(), any(), anyLong());
   }
 }
