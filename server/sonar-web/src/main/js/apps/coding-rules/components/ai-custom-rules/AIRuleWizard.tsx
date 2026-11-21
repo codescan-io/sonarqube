@@ -21,7 +21,6 @@
 import * as React from 'react';
 import { addGlobalErrorMessage } from '~design-system';
 import { createRule } from '../../../../api/rules';
-import { translate, translateWithParameters } from '../../../../helpers/l10n';
 import { RuleDetails } from '../../../../types/types';
 import { generateAIXPath, getAiRuleQuota, parseCodescanErrorMessage } from './aiRuleService';
 import './AIRuleWizard.css';
@@ -53,12 +52,15 @@ export default function AIRuleWizard(props: Readonly<Props>) {
   const [ruleData, setRuleData] = React.useState<RuleData | null>(null);
   const [generationError, setGenerationError] = React.useState(false);
   const [defineError, setDefineError] = React.useState<string | undefined>(undefined);
+  // Set when a regenerate fails but the earlier result is still usable.
+  const [regenerateFailed, setRegenerateFailed] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 
   const handleClose = () => {
     setCurrentStep('define');
     setRuleData(null);
     setGenerationError(false);
+    setRegenerateFailed(false);
     setLoading(false);
     onClose();
   };
@@ -91,24 +93,19 @@ export default function AIRuleWizard(props: Readonly<Props>) {
   const handleDefineSubmit = async (values: AIRuleFormValues) => {
     setFormValues(values);
     setDefineError(undefined);
+    setRegenerateFailed(false);
 
     try {
       if (!organization) {
         throw new Error('Organization is required to create a custom rule');
       }
 
-      // Short-circuit on credit shortage — backend would 400 anyway; failing fast here
-      // avoids spending a partial round-trip and gives the user a clearer message.
+      // Licence and credit refusals can only be fixed by an administrator, so close the wizard
+      // instead of leaving the user on a form they cannot complete.
       const quota = await getAiRuleQuota(organization);
-      if (!quota.moduleLicensed) {
-        addGlobalErrorMessage(translate('ai_custom_rules.module_not_licensed'));
-        return;
-      }
-      if (quota.remainingCredits < quota.costPerGenerate) {
-        addGlobalErrorMessage(translateWithParameters(
-          'ai_custom_rules.insufficient_credits',
-          String(quota.costPerGenerate),
-          String(quota.remainingCredits)));
+      if (quota.generateBlockedReason) {
+        addGlobalErrorMessage(quota.generateBlockedReason);
+        handleClose();
         return;
       }
 
@@ -167,6 +164,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
   };
 
   const handleReviewBack = () => {
+    setRegenerateFailed(false);
     setCurrentStep('define');
   };
 
@@ -178,19 +176,16 @@ export default function AIRuleWizard(props: Readonly<Props>) {
         throw new Error('Organization is required to create a custom rule');
       }
 
+      // The earlier XPath was generated and paid for, so a refused regenerate keeps the user on
+      // Review with it rather than closing the wizard.
       const quota = await getAiRuleQuota(organization);
-      if (!quota.moduleLicensed) {
-        addGlobalErrorMessage(translate('ai_custom_rules.module_not_licensed'));
-        return;
-      }
-      if (quota.remainingCredits < quota.costPerRegenerate) {
-        addGlobalErrorMessage(translateWithParameters(
-          'ai_custom_rules.insufficient_credits',
-          String(quota.costPerRegenerate),
-          String(quota.remainingCredits)));
+      if (quota.regenerateBlockedReason) {
+        addGlobalErrorMessage(quota.regenerateBlockedReason);
+        setRegenerateFailed(true);
         return;
       }
 
+      setRegenerateFailed(false);
       setCurrentStep('generate');
       setGenerationError(false);
 
@@ -221,6 +216,12 @@ export default function AIRuleWizard(props: Readonly<Props>) {
       const message = await parseCodescanErrorMessage(error);
       if (message !== undefined) {
         addGlobalErrorMessage(message);
+      }
+      if (ruleData?.generatedXPath) {
+        setRegenerateFailed(true);
+        setGenerationError(false);
+        setCurrentStep('review');
+        return;
       }
       setGenerationError(true);
     }
@@ -346,6 +347,7 @@ export default function AIRuleWizard(props: Readonly<Props>) {
             onActivate={handleActivateRule}
             loading={loading}
             hasError={generationError}
+            regenerateFailed={regenerateFailed}
           />
         ) : null;
     }
