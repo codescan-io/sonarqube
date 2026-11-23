@@ -99,6 +99,22 @@ public class ComponentDao implements Dao {
   }
 
   /**
+   * The uuids one file resolves to across a set of branches of its project. Every branch stores the file under the
+   * same key (the project key and the file path), so the lookup goes through the unique (kee, branch_uuid) index
+   * instead of filtering every component of every branch on the unindexed path; the path is still compared so the
+   * match stays exact. Partitioned like every other IN list, so a project with more branches than the dialect
+   * allows in one statement is read in several.
+   */
+  public List<String> selectUuidsByKeyAndPathInBranches(DbSession dbSession, String fileKey, String filePath,
+    Collection<String> branchUuids) {
+    if (branchUuids.isEmpty()) {
+      return List.of();
+    }
+    return executeLargeInputs(branchUuids,
+      partition -> mapper(dbSession).selectUuidsByKeyAndPathInBranches(fileKey, filePath, partition));
+  }
+
+  /**
    * @throws IllegalArgumentException if parameter query#getComponentIds() has more than {@link org.sonar.db.DatabaseUtils#PARTITION_SIZE_FOR_ORACLE} values
    * @throws IllegalArgumentException if parameter query#getComponentKeys() has more than {@link org.sonar.db.DatabaseUtils#PARTITION_SIZE_FOR_ORACLE} values
    * @throws IllegalArgumentException if parameter query#getMainComponentUuids() has more than {@link org.sonar.db.DatabaseUtils#PARTITION_SIZE_FOR_ORACLE} values

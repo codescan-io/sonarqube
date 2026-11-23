@@ -19,14 +19,18 @@
  */
 package org.sonar.db.issue;
 
+import com.google.common.collect.Lists;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.cursor.Cursor;
+import org.apache.ibatis.session.ResultHandler;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
 import org.sonar.db.Pagination;
@@ -34,6 +38,7 @@ import org.sonar.db.RowNotFoundException;
 import org.sonar.db.component.ComponentDto;
 
 import static java.util.stream.Collectors.groupingBy;
+import static org.sonar.db.DatabaseUtils.PARTITION_SIZE_FOR_ORACLE;
 import static org.sonar.db.DatabaseUtils.executeLargeInputs;
 import static org.sonar.db.DatabaseUtils.executeLargeUpdates;
 
@@ -69,6 +74,33 @@ public class IssueDao implements Dao {
    */
   public List<IssueDto> selectByKeys(DbSession session, Collection<String> keys) {
     return executeLargeInputs(keys, mapper(session)::selectByKeys);
+  }
+
+  /**
+   * Streams the proliferation candidates of one rule on one file: the issues on {@code componentUuids} (the file on
+   * each target branch) in {@code statuses} whose line is one of {@code lines}, or is null when
+   * {@code includeNullLine}. The line filter is in the statement so the rows read are bounded by the lines being
+   * marked rather than by the rule's whole footprint on the file, and only the four columns matching needs are
+   * read. Both lists are partitioned for the dialects' IN-list limit; the null-line branch is asked once.
+   */
+  public void scrollProliferationCandidates(DbSession session, Collection<String> componentUuids, String ruleUuid,
+    Collection<String> statuses, Collection<Integer> lines, boolean includeNullLine,
+    Consumer<ProliferationCandidateDto> consumer) {
+    if (componentUuids.isEmpty() || statuses.isEmpty() || (lines.isEmpty() && !includeNullLine)) {
+      return;
+    }
+    ResultHandler<ProliferationCandidateDto> handler = context -> consumer.accept(context.getResultObject());
+    List<List<Integer>> linePartitions = lines.isEmpty()
+      ? List.of(List.of())
+      : Lists.partition(List.copyOf(lines), PARTITION_SIZE_FOR_ORACLE);
+    for (List<String> components : Lists.partition(List.copyOf(componentUuids), PARTITION_SIZE_FOR_ORACLE)) {
+      boolean nullLinePending = includeNullLine;
+      for (List<Integer> linePartition : linePartitions) {
+        mapper(session).scrollProliferationCandidates(components, ruleUuid, statuses, linePartition,
+          nullLinePending, handler);
+        nullLinePending = false;
+      }
+    }
   }
 
   public Set<String> selectIssueKeysByComponentUuid(DbSession session, String componentUuid) {
@@ -259,12 +291,38 @@ public class IssueDao implements Dao {
       partition -> mapper(session).bulkTransition(partition, branchUuid, resolution, expiresAt, now));
   }
 
+
+  /**
+   * @param markedAt when the marking being copied was made, written to {@code issue_update_date}
+   * @param now      when this statement runs, written to {@code updated_at}
+   */
+  public int bulkTransitionWithExpiry(DbSession session, Collection<String> keys, String resolution,
+    @Nullable Long expiresAt, long markedAt, long now, Collection<String> statuses) {
+    if (keys.isEmpty() || statuses.isEmpty()) {
+      return 0;
+    }
+    AtomicInteger updated = new AtomicInteger();
+    executeLargeUpdates(keys, partition -> updated
+      .addAndGet(mapper(session).bulkTransitionWithExpiry(partition, resolution, expiresAt, markedAt, now, statuses)));
+    return updated.get();
+  }
+
+
+  public List<String> selectProliferatedKeys(DbSession session, Collection<String> keys, long now) {
+    return executeLargeInputs(keys, partition -> mapper(session).selectProliferatedKeys(partition, now));
+  }
+
   /**
    * Update issue without updating issue impacts. Used only in batch update.
    * Issue impacts should be updated separately.
    */
   public void updateWithoutIssueImpacts(DbSession session, IssueDto dto) {
     mapper(session).update(dto);
+  }
+
+
+  public int updateProliferated(DbSession session, IssueDto dto, Collection<String> statuses) {
+    return mapper(session).updateProliferated(dto, statuses);
   }
 
   public boolean updateIfBeforeSelectedDate(DbSession session, IssueDto dto) {

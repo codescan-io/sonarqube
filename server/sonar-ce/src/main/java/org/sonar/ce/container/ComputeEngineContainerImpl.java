@@ -58,6 +58,7 @@ import org.sonar.ce.task.projectanalysis.notification.ReportAnalysisFailureNotif
 import org.sonar.ce.task.projectanalysis.taskprocessor.AuditPurgeTaskModule;
 import org.sonar.ce.task.projectanalysis.taskprocessor.IssueSyncTaskModule;
 import org.sonar.ce.task.projectanalysis.taskprocessor.MeasureRecomputeTaskModule;
+import org.sonar.ce.task.projectanalysis.taskprocessor.ResolutionProliferationTaskModule;
 import org.sonar.ce.taskprocessor.CeProcessingScheduler;
 import org.sonar.ce.taskprocessor.CeTaskProcessorModule;
 import org.sonar.core.config.CorePropertyDefinitions;
@@ -444,6 +445,7 @@ public class ComputeEngineContainerImpl implements ComputeEngineContainer {
       new IssueSyncTaskModule(),
       new AuditPurgeTaskModule(),
       new MeasureRecomputeTaskModule(),
+      new ResolutionProliferationTaskModule(),
       new CeTaskProcessorModule(),
       OfficialDistribution.class,
 
@@ -457,10 +459,12 @@ public class ComputeEngineContainerImpl implements ComputeEngineContainer {
 
       QualityGateFinder.class,
       QualityGateEvaluatorImpl.class,
-
-      // CodeScan: the measure recomputation task runs the live measure refresh the web server runs after a manual
-      // transition, and broadcasts its quality-gate changes to the same listeners.
+      // QualityGateEvaluatorImpl has always been registered here but was never instantiated: the container is
+      // lazy, and nothing in the compute engine asked for it until the live measure refresh below did.
       QualityGateFallbackManager.class,
+
+      // CodeScan: live measure refresh and quality-gate change broadcast in the compute engine, used by the
+      // measure recomputation task (CSN-316) and by resolution proliferation (CSN-81).
       ProjectConfigurationLoaderImpl.class,
       new LiveMeasureModule(),
       QGChangeEventListenersImpl.class,
