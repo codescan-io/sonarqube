@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.Rule;
 import org.junit.Test;
-import org.sonar.api.config.internal.MapSettings;
 import org.sonar.api.issue.DefaultTransitions;
 import org.sonar.api.utils.System2;
 import org.sonar.ce.queue.CeQueue;
@@ -40,8 +39,6 @@ import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ProjectData;
 import org.sonar.db.DbInputStream;
 import org.sonar.server.platform.NodeInformation;
-import org.sonar.server.setting.ProjectConfigurationLoader;
-import org.sonar.server.setting.ProjectConfigurationLoaderImpl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -67,11 +64,7 @@ public class IssueProliferationSubmitterIT {
   private final DbClient dbClient = db.getDbClient();
   private final CeQueue ceQueue = new CeQueueImpl(system2, dbClient, UuidFactoryFast.getInstance(),
     mock(NodeInformation.class));
-  private final ProjectConfigurationLoader configurationLoader = new ProjectConfigurationLoaderImpl(
-    new MapSettings(), dbClient);
-
-  private final IssueProliferationSubmitter underTest = new IssueProliferationSubmitter(dbClient, ceQueue,
-    configurationLoader);
+  private final IssueProliferationSubmitter underTest = new IssueProliferationSubmitter(dbClient, ceQueue);
 
   @Test
   public void writesAQueueRowAndItsPayloadForAMarking() {

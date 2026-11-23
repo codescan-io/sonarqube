@@ -52,6 +52,7 @@ import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueDto;
+import org.sonar.db.property.PropertyDto;
 import org.sonar.server.issue.IssueMarkingProliferationService;
 import org.sonar.server.issue.IssueMarkingProliferationService.BranchOutcome;
 import org.sonar.server.issue.IssueMarkingProliferationService.ProliferatedMarking;
@@ -59,7 +60,6 @@ import org.sonar.server.issue.IssueMarkingProliferationService.Signature;
 import org.sonar.server.issue.IssueMarkingProliferationService.TargetIndex;
 import org.sonar.server.issue.ProliferationTaskPayload;
 import org.sonar.server.measure.live.LiveMeasureComputer;
-import org.sonar.server.setting.ProjectConfigurationLoader;
 
 import static org.sonar.core.issue.IssueChangeContext.issueChangeContextByUserBuilder;
 import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_AUTHOR;
@@ -91,18 +91,16 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
   private final IssueMarkingProliferationService proliferationService;
   private final System2 system2;
   private final LiveMeasureComputer liveMeasureComputer;
-  private final ProjectConfigurationLoader projectConfigurationLoader;
 
   private ExecutorService executor;
 
   public ResolutionProliferationTaskProcessor(DbClient dbClient,
     IssueMarkingProliferationService proliferationService, System2 system2,
-    LiveMeasureComputer liveMeasureComputer, ProjectConfigurationLoader projectConfigurationLoader) {
+    LiveMeasureComputer liveMeasureComputer) {
     this.dbClient = dbClient;
     this.proliferationService = proliferationService;
     this.system2 = system2;
     this.liveMeasureComputer = liveMeasureComputer;
-    this.projectConfigurationLoader = projectConfigurationLoader;
   }
 
   @Override
@@ -224,10 +222,11 @@ public class ResolutionProliferationTaskProcessor implements CeTaskProcessor, St
     }
   }
 
+
   private boolean isProliferationEnabled(DbSession dbSession, String projectUuid) {
-    return projectConfigurationLoader.loadProjectConfiguration(dbSession, projectUuid)
-      .getBoolean(IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED)
-      .orElse(false);
+    PropertyDto property = dbClient.propertiesDao().selectProjectProperty(dbSession, projectUuid,
+      IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED);
+    return property != null && Boolean.parseBoolean(property.getValue());
   }
 
   /**

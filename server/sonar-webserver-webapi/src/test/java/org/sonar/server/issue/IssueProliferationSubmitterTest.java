@@ -25,7 +25,6 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.sonar.api.config.Configuration;
 import org.sonar.api.issue.DefaultTransitions;
 import org.sonar.ce.queue.CeQueue;
 import org.sonar.ce.queue.CeTaskSubmit;
@@ -37,7 +36,8 @@ import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.component.BranchDao;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.BranchType;
-import org.sonar.server.setting.ProjectConfigurationLoader;
+import org.sonar.db.property.PropertiesDao;
+import org.sonar.db.property.PropertyDto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -65,8 +65,7 @@ public class IssueProliferationSubmitterTest {
   private final BranchDao branchDao = mock(BranchDao.class);
   private final CeTaskInputDao ceTaskInputDao = mock(CeTaskInputDao.class);
   private final CeQueue ceQueue = mock(CeQueue.class);
-  private final ProjectConfigurationLoader projectConfigurationLoader = mock(ProjectConfigurationLoader.class);
-  private final Configuration configuration = mock(Configuration.class);
+  private final PropertiesDao propertiesDao = mock(PropertiesDao.class);
 
   private IssueProliferationSubmitter underTest;
 
@@ -75,11 +74,11 @@ public class IssueProliferationSubmitterTest {
     when(dbClient.branchDao()).thenReturn(branchDao);
     when(dbClient.ceTaskInputDao()).thenReturn(ceTaskInputDao);
     when(branchDao.selectByUuid(dbSession, BRANCH_UUID)).thenReturn(Optional.of(branch()));
-    when(projectConfigurationLoader.loadProjectConfiguration(any(), anyString())).thenReturn(configuration);
+    when(dbClient.propertiesDao()).thenReturn(propertiesDao);
     when(ceQueue.prepareSubmit()).thenAnswer(invocation -> new CeTaskSubmit.Builder(TASK_UUID));
     enableProliferation(true);
 
-    underTest = new IssueProliferationSubmitter(dbClient, ceQueue, projectConfigurationLoader);
+    underTest = new IssueProliferationSubmitter(dbClient, ceQueue);
   }
 
   @Test
@@ -135,6 +134,20 @@ public class IssueProliferationSubmitterTest {
   @Test
   public void queuesNothingWhenProliferationIsDisabledForTheProject() {
     enableProliferation(false);
+
+    submit(DefaultTransitions.ACCEPT, List.of("issue-1"));
+
+    verifyNoInteractions(ceTaskInputDao);
+    verify(ceQueue, never()).massSubmit(any());
+  }
+
+  @Test
+  public void queuesNothingWhenTheProjectHasNoSettingOfItsOwn() {
+    // No row for this project: the state of every project nobody has configured, including every project created
+    // after the feature shipped. The submitter must not fall back to a wider scope - a configuration would
+    // inherit the global value, and one global row would then turn proliferation on across the whole instance.
+    when(propertiesDao.selectProjectProperty(dbSession, PROJECT_UUID,
+      IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED)).thenReturn(null);
 
     submit(DefaultTransitions.ACCEPT, List.of("issue-1"));
 
@@ -213,7 +226,7 @@ public class IssueProliferationSubmitterTest {
   public void touchesNoDatabaseForATransitionThatIsNotAMarking() {
     submit(DefaultTransitions.REOPEN, List.of("issue-1"));
 
-    verifyNoInteractions(dbSession, branchDao, ceTaskInputDao, projectConfigurationLoader);
+    verifyNoInteractions(dbSession, branchDao, ceTaskInputDao, propertiesDao);
     verify(ceQueue, never()).massSubmit(any());
   }
 
@@ -222,7 +235,7 @@ public class IssueProliferationSubmitterTest {
   public void touchesNoDatabaseWhenThereAreNoIssues() {
     submit(DefaultTransitions.ACCEPT, List.of());
 
-    verifyNoInteractions(dbSession, branchDao, ceTaskInputDao, projectConfigurationLoader);
+    verifyNoInteractions(dbSession, branchDao, ceTaskInputDao, propertiesDao);
     verify(ceQueue, never()).massSubmit(any());
   }
 
@@ -237,9 +250,12 @@ public class IssueProliferationSubmitterTest {
     return captor.getValue().get(0);
   }
 
+
   private void enableProliferation(boolean enabled) {
-    when(configuration.getBoolean(IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED))
-      .thenReturn(Optional.of(enabled));
+    when(propertiesDao.selectProjectProperty(dbSession, PROJECT_UUID,
+      IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED))
+        .thenReturn(new PropertyDto().setKey(IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED)
+          .setEntityUuid(PROJECT_UUID).setValue(String.valueOf(enabled)));
   }
 
   private static IssueChangeContext userContext() {
