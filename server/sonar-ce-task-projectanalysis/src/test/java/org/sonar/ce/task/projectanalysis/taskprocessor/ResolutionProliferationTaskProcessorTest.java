@@ -35,7 +35,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.sonar.api.config.Configuration;
 import org.sonar.api.issue.DefaultTransitions;
 import org.sonar.api.issue.Issue;
 import org.sonar.api.utils.System2;
@@ -50,6 +49,8 @@ import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDao;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueDto;
+import org.sonar.db.property.PropertiesDao;
+import org.sonar.db.property.PropertyDto;
 import org.sonar.db.issue.IssueDao;
 import org.sonar.server.issue.IssueMarkingProliferationService;
 import org.sonar.server.issue.IssueMarkingProliferationService.BranchOutcome;
@@ -57,7 +58,6 @@ import org.sonar.server.issue.IssueMarkingProliferationService.Signature;
 import org.sonar.server.issue.IssueMarkingProliferationService.TargetIndex;
 import org.sonar.server.issue.ProliferationTaskPayload;
 import org.sonar.server.measure.live.LiveMeasureComputer;
-import org.sonar.server.setting.ProjectConfigurationLoader;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -88,8 +88,7 @@ public class ResolutionProliferationTaskProcessorTest {
   private final CeTaskInputDao ceTaskInputDao = mock(CeTaskInputDao.class);
   private final IssueMarkingProliferationService service = mock(IssueMarkingProliferationService.class);
   private final LiveMeasureComputer liveMeasureComputer = mock(LiveMeasureComputer.class);
-  private final ProjectConfigurationLoader projectConfigurationLoader = mock(ProjectConfigurationLoader.class);
-  private final Configuration configuration = mock(Configuration.class);
+  private final PropertiesDao propertiesDao = mock(PropertiesDao.class);
 
   private ResolutionProliferationTaskProcessor underTest;
 
@@ -114,12 +113,12 @@ public class ResolutionProliferationTaskProcessorTest {
       Collection<String> uuids = invocation.getArgument(1);
       return uuids.stream().map(uuid -> new ComponentDto().setUuid(uuid)).toList();
     });
+    when(dbClient.propertiesDao()).thenReturn(propertiesDao);
     // Proliferation is on by default here; the setting-gate tests switch it off or leave it unset.
-    when(projectConfigurationLoader.loadProjectConfiguration(any(), anyString())).thenReturn(configuration);
     enableProliferation(true);
 
-    underTest = new ResolutionProliferationTaskProcessor(dbClient, service, System2.INSTANCE, liveMeasureComputer,
-      projectConfigurationLoader);
+    underTest = new ResolutionProliferationTaskProcessor(dbClient, service, System2.INSTANCE,
+      liveMeasureComputer);
     underTest.start();
   }
 
@@ -313,15 +312,19 @@ public class ResolutionProliferationTaskProcessorTest {
 
     underTest.process(taskWith(DefaultTransitions.ACCEPT));
 
-    verify(projectConfigurationLoader).loadProjectConfiguration(dbSession, PROJECT_UUID);
+    verify(propertiesDao).selectProjectProperty(dbSession, PROJECT_UUID,
+      IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED);
     verifyNoInteractions(ceTaskInputDao);
   }
 
-  /** A setting left unset is off: proliferation is opt-in per project. */
+  /**
+   * A setting left unset is off: proliferation is opt-in per project. The project's own row is what is read, so
+   * this also covers a project that inherits an enabling value from the global scope - that must not count.
+   */
   @Test
   public void treatsAnAbsentSettingAsDisabled() {
-    when(configuration.getBoolean(IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED))
-      .thenReturn(Optional.empty());
+    when(propertiesDao.selectProjectProperty(dbSession, PROJECT_UUID,
+      IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED)).thenReturn(null);
 
     underTest.process(taskWith(DefaultTransitions.ACCEPT));
 
@@ -366,7 +369,7 @@ public class ResolutionProliferationTaskProcessorTest {
 
     assertThat(underTest.process(task)).isNull();
 
-    verifyNoInteractions(projectConfigurationLoader, ceTaskInputDao, issueDao, service);
+    verifyNoInteractions(propertiesDao, ceTaskInputDao, issueDao, service);
   }
 
   /** The transition is read from the characteristics; without it the task cannot know which marking to copy. */
@@ -441,9 +444,15 @@ public class ResolutionProliferationTaskProcessorTest {
     verify(issueDao, times(1)).selectByKeys(any(), eq(List.of(SOURCE_KEY)));
   }
 
+  /**
+   * The project's own property row, which is what the processor reads. Deliberately not a {@code Configuration}:
+   * that inherits the global scope, and a global value must not enable the feature for an unconfigured project.
+   */
   private void enableProliferation(boolean enabled) {
-    when(configuration.getBoolean(IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED))
-      .thenReturn(Optional.of(enabled));
+    when(propertiesDao.selectProjectProperty(dbSession, PROJECT_UUID,
+      IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED))
+        .thenReturn(new PropertyDto().setKey(IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED)
+          .setEntityUuid(PROJECT_UUID).setValue(String.valueOf(enabled)));
   }
 
   private static CeTask taskWith(@Nullable String transition) {
