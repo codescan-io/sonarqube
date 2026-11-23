@@ -31,9 +31,11 @@ import { useAiCreditsContext } from '../../../app/components/ai-credits/AiCredit
 
 const SALESFORCE_CONNECTION_PAGE_KEY = 'developer/salesforce_connection';
 const RESOLUTION_TRANSFER_PAGE_KEY = 'developer/resolution_transfer';
+const SLACK_PAGE_KEY = 'developer/slack';
 
 // Module-level so the react-query key is a stable reference across renders.
 const RESOLUTION_TRANSFER_SETTING_KEYS = [GlobalSettingKeys.CodescanResolutionTransferEnabled];
+const SLACK_SETTING_KEYS = [GlobalSettingKeys.CodescanSlackEnabled];
 
 interface Props {
   billing?: OrganizationBillingDetails;
@@ -70,6 +72,14 @@ export default function OrganizationNavigationAdministration({ billing, location
     resolutionTransferSettings?.find(
       (setting) => setting?.key === GlobalSettingKeys.CodescanResolutionTransferEnabled,
     )?.value === 'true';
+
+  // Same contract as Resolution Transfer above: read live rather than from appState so the entry appears and
+  // disappears with the switch, and fail closed (hidden) until the value is in. With it off there is no way
+  // into the Slack page from the UI at all.
+  const { data: slackSettings } = useGetValuesQuery(SLACK_SETTING_KEYS);
+  const slackEnabled =
+    slackSettings?.find((setting) => setting?.key === GlobalSettingKeys.CodescanSlackEnabled)
+      ?.value === 'true';
 
 
   const canSeeAdministration =
@@ -111,6 +121,7 @@ export default function OrganizationNavigationAdministration({ billing, location
             )
             .filter((e) => !isTrialOrganization || e.key !== SALESFORCE_CONNECTION_PAGE_KEY)
             .filter((e) => resolutionTransferEnabled || e.key !== RESOLUTION_TRANSFER_PAGE_KEY)
+            .filter((e) => slackEnabled || e.key !== SLACK_PAGE_KEY)
             .map((extension) => (
             <DropdownMenu.ItemLink
               isMatchingFullPath

@@ -56,6 +56,7 @@ export enum GlobalSettingKeys {
   CodescanMsaConsentDisplayMessageForTrialUser = 'codescan.cloud.msaConsent.trial.displayMessage',
   CodescanResolutionTransferEnabled = 'codescan.cloud.resolutionTransfer.enabled',
   CodescanAiCustomRulesEnabled = 'codescan.cloud.aiCustomRules.enabled',
+  CodescanSlackEnabled = 'codescan.cloud.slack.enabled',
 }
 
 export type SettingDefinitionAndValue = {
