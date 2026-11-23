@@ -37,7 +37,7 @@ import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.component.BranchDto;
-import org.sonar.server.setting.ProjectConfigurationLoader;
+import org.sonar.db.property.PropertyDto;
 
 import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_AUTHOR;
 import static org.sonar.server.issue.IssueMarkingProliferationService.CHARACTERISTIC_MARKED_AT;
@@ -55,13 +55,10 @@ public class IssueProliferationSubmitter {
 
   private final DbClient dbClient;
   private final CeQueue ceQueue;
-  private final ProjectConfigurationLoader projectConfigurationLoader;
 
-  public IssueProliferationSubmitter(DbClient dbClient, CeQueue ceQueue,
-    ProjectConfigurationLoader projectConfigurationLoader) {
+  public IssueProliferationSubmitter(DbClient dbClient, CeQueue ceQueue) {
     this.dbClient = dbClient;
     this.ceQueue = ceQueue;
-    this.projectConfigurationLoader = projectConfigurationLoader;
   }
 
 
@@ -124,10 +121,11 @@ public class IssueProliferationSubmitter {
     }
   }
 
+
   private boolean isEnabled(DbSession dbSession, String projectUuid) {
-    return projectConfigurationLoader.loadProjectConfiguration(dbSession, projectUuid)
-      .getBoolean(IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED)
-      .orElse(false);
+    PropertyDto property = dbClient.propertiesDao().selectProjectProperty(dbSession, projectUuid,
+      IssueMarkingProliferationService.KEY_RESOLUTION_PROLIFERATION_ENABLED);
+    return property != null && Boolean.parseBoolean(property.getValue());
   }
 
   private static Map<String, String> characteristicsOf(IssueChangeContext context, String transitionKey,
