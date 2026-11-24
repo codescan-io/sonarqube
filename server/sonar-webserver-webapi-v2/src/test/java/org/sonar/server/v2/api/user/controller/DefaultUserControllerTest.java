@@ -33,6 +33,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.common.SearchResults;
+import org.sonar.server.common.organization.OrganizationService;
 import org.sonar.server.common.user.service.UserInformation;
 import org.sonar.server.common.user.service.UserService;
 import org.sonar.server.common.user.service.UsersSearchRequest;
@@ -78,7 +79,8 @@ public class DefaultUserControllerTest {
   public UserSessionRule userSession = UserSessionRule.standalone();
   private final UserService userService = mock(UserService.class);
   private final UsersSearchRestResponseGenerator responseGenerator = mock(UsersSearchRestResponseGenerator.class);
-  private final MockMvc mockMvc = ControllerTester.getMockMvc(new DefaultUserController(userSession, userService, responseGenerator));
+  private final OrganizationService organizationService = mock(OrganizationService.class);
+  private final MockMvc mockMvc = ControllerTester.getMockMvc(new DefaultUserController(organizationService, userSession, userService, responseGenerator));
 
   private static final Gson gson = new GsonBuilder().registerTypeAdapter(UserRestResponse.class, new RestUserDeserializer()).create();
 
@@ -188,7 +190,7 @@ public class DefaultUserControllerTest {
     SearchResults<UserInformation> searchResult = new SearchResults<>(users, users.size());
     when(userService.findUsers(any())).thenReturn(searchResult);
     List<UserRestResponse> restUserForAdmins = List.of(toRestUser(user1), toRestUser(user2), toRestUser(user3), toRestUser(user4));
-    when(responseGenerator.toUsersForResponse(eq(searchResult.searchResults()), any(), false)).thenReturn(new UsersSearchRestResponse(restUserForAdmins, new PageRestResponse(1, 50, 4)));
+    when(responseGenerator.toUsersForResponse(eq(searchResult.searchResults()), any(), eq(false))).thenReturn(new UsersSearchRestResponse(restUserForAdmins, new PageRestResponse(1, 50, 4)));
     userSession.logIn().setSystemAdministrator();
 
     MvcResult mvcResult = mockMvc.perform(get(USER_ENDPOINT))
@@ -249,7 +251,9 @@ public class DefaultUserControllerTest {
       userInformation.avatar().orElse(""),
       formatDateTime(userInformation.userDto().getLastConnectionDate()),
       formatDateTime(userInformation.userDto().getLastSonarlintConnectionDate()),
-      userInformation.userDto().getSortedScmAccounts());
+      userInformation.userDto().getSortedScmAccounts(),
+      List.copyOf(userInformation.groups()),
+      userInformation.tokensCount());
   }
 
   @Test

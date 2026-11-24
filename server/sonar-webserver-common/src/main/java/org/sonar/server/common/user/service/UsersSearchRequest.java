@@ -42,6 +42,7 @@ public class UsersSearchRequest {
   private final String groupUuid;
   private final String excludedGroupUuid;
   private final List<String> organizationUuids;
+  private final String groupsOrganizationUuid;
 
   private UsersSearchRequest(Builder builder) {
     this.page = builder.page;
@@ -53,6 +54,7 @@ public class UsersSearchRequest {
     this.groupUuid = builder.groupUuid;
     this.excludedGroupUuid = builder.excludedGroupUuid;
     this.organizationUuids = builder.organizationUuids;
+    this.groupsOrganizationUuid = builder.groupsOrganizationUuid;
     try {
       this.lastConnectionDateFrom = Optional.ofNullable(builder.lastConnectionDateFrom).map(DateUtils::parseOffsetDateTime).orElse(null);
       this.lastConnectionDateTo = Optional.ofNullable(builder.lastConnectionDateTo).map(DateUtils::parseOffsetDateTime).orElse(null);
@@ -82,6 +84,14 @@ public class UsersSearchRequest {
 
   public List<String> getOrganizationUuids() {
     return organizationUuids;
+  }
+
+  /**
+   * When set, the groups returned for each user are limited to the groups of this organization.
+   * When not set, the groups of all organizations are returned.
+   */
+  public Optional<String> getGroupsOrganizationUuid() {
+    return Optional.ofNullable(groupsOrganizationUuid);
   }
 
   @CheckForNull
@@ -135,6 +145,7 @@ public class UsersSearchRequest {
     private String groupUuid;
     private String excludedGroupUuid;
     private List<String> organizationUuids;
+    private String groupsOrganizationUuid;
 
     private Builder() {
       // enforce factory method use
@@ -202,6 +213,11 @@ public class UsersSearchRequest {
 
     public Builder setOrganizationUuids(List<String> organizationUuids) {
       this.organizationUuids = organizationUuids;
+      return this;
+    }
+
+    public Builder setGroupsOrganizationUuid(@Nullable String groupsOrganizationUuid) {
+      this.groupsOrganizationUuid = groupsOrganizationUuid;
       return this;
     }
 

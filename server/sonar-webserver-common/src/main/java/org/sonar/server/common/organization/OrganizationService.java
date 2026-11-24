@@ -19,6 +19,7 @@
  */
 package org.sonar.server.common.organization;
 
+import java.util.Set;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.organization.OrganizationDto;
@@ -35,6 +36,12 @@ public class OrganizationService {
     try (DbSession dbSession = dbClient.openSession(false)) {
       return dbClient.organizationDao().selectByKey(dbSession, key)
           .orElseThrow(() -> new IllegalArgumentException("No organization found by key: " + key));
+    }
+  }
+
+  public Set<String> getOrganizationUuidsOfMember(String userUuid) {
+    try (DbSession dbSession = dbClient.openSession(false)) {
+      return dbClient.organizationMemberDao().selectOrganizationUuidsByUser(dbSession, userUuid);
     }
   }
 

@@ -52,6 +52,12 @@ public record UserRestResponseForAdmins(
   @Schema(accessMode = Schema.AccessMode.READ_ONLY)
   String sonarLintLastConnectionDate,
   @Nullable
-  List<String> scmAccounts
+  List<String> scmAccounts,
+  @Nullable
+  @Schema(accessMode = Schema.AccessMode.READ_ONLY)
+  List<String> groups,
+  @Nullable
+  @Schema(accessMode = Schema.AccessMode.READ_ONLY)
+  Integer tokensCount
 ) implements UserRestResponse {
 }

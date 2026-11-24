@@ -351,6 +351,59 @@ public class UserServiceIT {
   }
 
   @Test
+  public void findUsers_whenNoGroupsOrganization_returnsGroupsOfAllOrganizations() {
+    UserDto user = db.users().insertUser();
+    GroupDto groupOrg1 = db.users().insertGroup(g -> g.setName("group-org1").setOrganizationUuid("org1"));
+    GroupDto groupOrg2 = db.users().insertGroup(g -> g.setName("group-org2").setOrganizationUuid("org2"));
+    db.users().insertMember(groupOrg1, user);
+    db.users().insertMember(groupOrg2, user);
+
+    SearchResults<UserInformation> users = userService.findUsers(SEARCH_REQUEST);
+
+    assertThat(users.searchResults())
+      .extracting(r -> r.userDto().getLogin(), UserInformation::groups)
+      .containsExactlyInAnyOrder(tuple(user.getLogin(), asList("group-org1", "group-org2")));
+  }
+
+  @Test
+  public void findUsers_whenGroupsOrganizationSet_returnsOnlyGroupsOfThisOrganization() {
+    UserDto user = db.users().insertUser();
+    UserDto userWithoutGroupInOrg1 = db.users().insertUser();
+    GroupDto groupOrg1 = db.users().insertGroup(g -> g.setName("group-org1").setOrganizationUuid("org1"));
+    GroupDto groupOrg2 = db.users().insertGroup(g -> g.setName("group-org2").setOrganizationUuid("org2"));
+    db.users().insertMember(groupOrg1, user);
+    db.users().insertMember(groupOrg2, user);
+    db.users().insertMember(groupOrg2, userWithoutGroupInOrg1);
+
+    SearchResults<UserInformation> users = userService.findUsers(getBuilderWithDefaultsPageSize().setGroupsOrganizationUuid("org1").build());
+
+    assertThat(users.searchResults())
+      .extracting(r -> r.userDto().getLogin(), r -> List.copyOf(r.groups()))
+      .containsExactlyInAnyOrder(
+        tuple(user.getLogin(), List.of("group-org1")),
+        tuple(userWithoutGroupInOrg1.getLogin(), List.of()));
+  }
+
+  @Test
+  public void fetchUser_whenGroupsOrganizationsGiven_returnsOnlyGroupsOfTheseOrganizations() {
+    UserDto user = db.users().insertUser();
+    GroupDto groupOrg1 = db.users().insertGroup(g -> g.setName("group-org1").setOrganizationUuid("org1"));
+    GroupDto groupOrg2 = db.users().insertGroup(g -> g.setName("group-org2").setOrganizationUuid("org2"));
+    GroupDto groupOrg3 = db.users().insertGroup(g -> g.setName("group-org3").setOrganizationUuid("org3"));
+    db.users().insertMember(groupOrg1, user);
+    db.users().insertMember(groupOrg2, user);
+    db.users().insertMember(groupOrg3, user);
+    db.users().insertToken(user);
+
+    UserInformation scoped = userService.fetchUser(user.getUuid(), List.of("org1", "org3"));
+    UserInformation unscoped = userService.fetchUser(user.getUuid());
+
+    assertThat(scoped.groups()).containsExactlyInAnyOrder("group-org1", "group-org3");
+    assertThat(unscoped.groups()).containsExactlyInAnyOrder("group-org1", "group-org2", "group-org3");
+    assertThat(scoped.tokensCount()).isEqualTo(1).isEqualTo(unscoped.tokensCount());
+  }
+
+  @Test
   public void return_external_information() {
     UserDto user = db.users().insertUser();
 

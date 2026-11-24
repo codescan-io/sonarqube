@@ -77,7 +77,9 @@ public class DefaultUserController implements UserController {
     SearchResults<UserInformation> userSearchResults = userService.findUsers(toUserSearchRequest(usersSearchRestRequest, organization, excludedGroupId, page));
     PaginationInformation paging = forPageIndex(page.pageIndex()).withPageSize(page.pageSize()).andTotal(userSearchResults.total());
 
-    return usersSearchResponseGenerator.toUsersForResponse(userSearchResults.searchResults(), paging, false /* TODO */);
+    // Results are scoped to the organization, so its administrators can see email and last connection info of every returned user.
+    boolean isOrganizationAdmin = organization != null && userSession.hasPermission(OrganizationPermission.ADMINISTER, organization);
+    return usersSearchResponseGenerator.toUsersForResponse(userSearchResults.searchResults(), paging, isOrganizationAdmin);
   }
 
   private void throwIfAdminOnlyParametersAreUsed(UsersSearchRestRequest usersSearchRestRequest, OrganizationDto organization, @Nullable String excludedGroupId) {
@@ -103,6 +105,8 @@ public class DefaultUserController implements UserController {
   private static UsersSearchRequest toUserSearchRequest(UsersSearchRestRequest usersSearchRestRequest, @Nullable OrganizationDto organizationDto, @Nullable String excludedGroupId, RestPage page) {
     return UsersSearchRequest.builder()
       .setOrganizationUuids(organizationDto != null ? List.of(organizationDto.getUuid()) : null)
+      // do not expose groups the users have in other organizations
+      .setGroupsOrganizationUuid(organizationDto != null ? organizationDto.getUuid() : null)
       .setDeactivated(Optional.ofNullable(usersSearchRestRequest.active()).map(active -> !active).orElse(false))
       .setManaged(usersSearchRestRequest.managed())
       .setQuery(usersSearchRestRequest.q())
@@ -127,7 +131,23 @@ public class DefaultUserController implements UserController {
 
   @Override
   public UserRestResponse fetchUser(String id) {
-    return usersSearchResponseGenerator.toRestUser(userService.fetchUser(id), false /* TODO */);
+    if (!userSession.isLoggedIn() || userSession.isSystemAdministrator() || id.equals(userSession.getUuid())) {
+      // anonymous users never see restricted fields; system administrators and the user themselves already see them all
+      return usersSearchResponseGenerator.toRestUser(userService.fetchUser(id), false);
+    }
+    List<String> administeredOrganizationUuids = getAdministeredOrganizationUuidsOf(id);
+    if (administeredOrganizationUuids.isEmpty()) {
+      return usersSearchResponseGenerator.toRestUser(userService.fetchUser(id), false);
+    }
+    // only expose the groups of the organizations administered by the caller
+    return usersSearchResponseGenerator.toRestUser(userService.fetchUser(id, administeredOrganizationUuids), true);
+  }
+
+  private List<String> getAdministeredOrganizationUuidsOf(String userUuid) {
+    return organizationService.getOrganizationUuidsOfMember(userUuid).stream()
+      .filter(orgUuid -> userSession.hasPermission(OrganizationPermission.ADMINISTER, orgUuid))
+      .sorted()
+      .toList();
   }
 
   @Override
