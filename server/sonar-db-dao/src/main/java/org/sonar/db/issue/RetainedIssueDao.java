@@ -39,7 +39,7 @@ public class RetainedIssueDao implements Dao {
 
   /** The branch, its organization's toggle and its retained branch row, or empty when the branch does not exist. */
   public Optional<RetainBranchContextDto> selectBranchContext(DbSession dbSession, String branchUuid) {
-    return Optional.ofNullable(mapper(dbSession).selectBranchContext(branchUuid));
+    return Optional.ofNullable(mapper(dbSession).selectBranchContextByBranchUuid(branchUuid));
   }
 
   /**
@@ -92,6 +92,21 @@ public class RetainedIssueDao implements Dao {
     }
     writeBranch(dbSession, branch.get());
     insertIssues(dbSession, branchUuid, retainedStatus, statusMarkedByUuid, now, issueKeys);
+  }
+
+  /**
+   * Retains the issues the purge of disabled components closed at {@code closedAt} on the branch, when its organization
+   * has the toggle on. One statement selects them in the database, so they are never loaded.
+   */
+  public void insertIssuesClosedByPurge(DbSession dbSession, String branchUuid, long closedAt) {
+    Optional<RetainBranchContextDto> branch = selectBranchContext(dbSession, branchUuid)
+      .filter(RetainBranchContextDto::isRetainEnabled);
+    if (branch.isEmpty()) {
+      return;
+    }
+    writeBranch(dbSession, branch.get());
+    mapper(dbSession).insertOfDisabledComponents(branchUuid, IssueStatus.FIXED.name(), null, closedAt,
+      RuleType.SECURITY_HOTSPOT.getDbConstant());
   }
 
   /**

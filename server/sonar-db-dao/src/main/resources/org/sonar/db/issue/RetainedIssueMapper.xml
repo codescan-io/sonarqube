@@ -6,7 +6,7 @@
 
   <!-- cs_retain_details -->
 
-  <select id="selectBranchContext" parameterType="map" resultType="org.sonar.db.issue.RetainBranchContextDto">
+  <select id="selectBranchContextByBranchUuid" parameterType="map" resultType="org.sonar.db.issue.RetainBranchContextDto">
     select
       pb.uuid as "branchUuid",
       pb.project_uuid as "projectUuid",
@@ -79,12 +79,8 @@
 
   <!-- cs_issue_track_for_retain -->
 
-  <!--
-    Copies the issues' own columns from their rows, so callers pass only keys: one statement for many issues of one
-    branch. The issue rows must already be written in the same session. The status check repeats the caller's in SQL,
-    so an issue whose row is no longer Fixed is never retained.
-  -->
-  <sql id="insertIssuesFromIssuesSql">
+  <!-- Copies the issues' own columns from their rows; the statements below add which issues. -->
+  <sql id="sqlInsertSelectFromIssues">
     insert into cs_issue_track_for_retain
     (
       branch_uuid,
@@ -118,12 +114,21 @@
       coalesce(i.issue_close_date, #{now, jdbcType=BIGINT})
     from issues i
     left join components c on c.uuid = i.component_uuid
+  </sql>
+
+  <!--
+    Callers pass only keys: one statement for many issues of one branch. The issue rows must already be written in the
+    same session. The status check repeats the caller's in SQL, so an issue whose row is no longer Fixed is never
+    retained. The keys alone select the rows through the primary key; a filter on the branch would make PostgreSQL read
+    the branch's whole issues_project_uuid index for every statement, and branch_uuid is the issue's own branch anyway.
+  -->
+  <sql id="sqlInsertByIssueKeys">
+    <include refid="sqlInsertSelectFromIssues"/>
     where
       i.kee in
       <foreach collection="issueKeys" open="(" close=")" item="issueKey" separator=",">
         #{issueKey, jdbcType=VARCHAR}
       </foreach>
-      and i.project_uuid = #{branchUuid, jdbcType=VARCHAR}
       and i.issue_type &lt;&gt; #{excludedIssueType, jdbcType=INTEGER}
       <if test="retainedStatus == 'FIXED'">
       and (i.status = 'CLOSED' or (i.status = 'RESOLVED' and i.resolution = 'FIXED'))
@@ -136,13 +141,43 @@
     must not fail either save: a row written by the other one is kept.
   -->
   <insert id="insertIssuesFromIssues" parameterType="map" useGeneratedKeys="false" databaseId="postgresql">
-    <include refid="insertIssuesFromIssuesSql"/>
+    <include refid="sqlInsertByIssueKeys"/>
     on conflict (issue_kee) do nothing
   </insert>
 
   <!-- For the tests only: they run on H2, which has no "on conflict". CodeScan runs the postgresql statement above. -->
   <insert id="insertIssuesFromIssues" parameterType="map" useGeneratedKeys="false">
-    <include refid="insertIssuesFromIssuesSql"/>
+    <include refid="sqlInsertByIssueKeys"/>
+      and not exists (
+        select 1 from cs_issue_track_for_retain r
+        where r.issue_kee = i.kee
+      )
+  </insert>
+
+  <!--
+    The issues the purge of disabled components has just closed: unresolved issues of the branch's disabled files, all
+    closed at the same time ("now"). Issues of those files closed earlier keep their close date and are not matched.
+    Filtered on the issue's own branch: issue_close_date has no index, so this keeps the scan to the branch's issues.
+  -->
+  <sql id="sqlInsertOfDisabledComponents">
+    <include refid="sqlInsertSelectFromIssues"/>
+    where
+      i.project_uuid = #{branchUuid, jdbcType=VARCHAR}
+      and c.enabled = ${_false}
+      and i.issue_close_date = #{now, jdbcType=BIGINT}
+      and i.status = 'CLOSED'
+      and i.issue_type &lt;&gt; #{excludedIssueType, jdbcType=INTEGER}
+      and i.rule_uuid is not null
+  </sql>
+
+  <insert id="insertOfDisabledComponents" parameterType="map" useGeneratedKeys="false" databaseId="postgresql">
+    <include refid="sqlInsertOfDisabledComponents"/>
+    on conflict (issue_kee) do nothing
+  </insert>
+
+  <!-- For the tests only: they run on H2, which has no "on conflict". CodeScan runs the postgresql statement above. -->
+  <insert id="insertOfDisabledComponents" parameterType="map" useGeneratedKeys="false">
+    <include refid="sqlInsertOfDisabledComponents"/>
       and not exists (
         select 1 from cs_issue_track_for_retain r
         where r.issue_kee = i.kee
@@ -169,8 +204,9 @@
 
   <!-- cs_retain_issue_comments -->
 
-  <!-- Driven by the branch's retained rows (semi-join, one row per comment even if an issue is retained in several
-       statuses), so a branch with many changes and few retained issues stays cheap. -->
+  <!-- Driven by the branch's retained rows (semi-join, so each comment is copied once). Changes are written with their
+       issue's branch, so filtering them on it first reads only the branch's
+       changes through issue_changes_project_uuid instead of the whole table. -->
   <insert id="copyCommentsOfBranch" parameterType="map">
     insert into cs_retain_issue_comments
     (
@@ -188,7 +224,8 @@
       ic.issue_change_creation_date
     from issue_changes ic
     where
-      ic.issue_key in (select t.issue_kee from cs_issue_track_for_retain t where t.branch_uuid = #{branchUuid, jdbcType=VARCHAR})
+      ic.project_uuid = #{branchUuid, jdbcType=VARCHAR}
+      and ic.issue_key in (select t.issue_kee from cs_issue_track_for_retain t where t.branch_uuid = #{branchUuid, jdbcType=VARCHAR})
       and ic.change_type = 'comment'
       and not exists (select 1 from cs_retain_issue_comments c where c.uuid = ic.uuid)
   </insert>

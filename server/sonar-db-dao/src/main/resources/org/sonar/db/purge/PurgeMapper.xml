@@ -114,18 +114,6 @@
       resolution is null
   </select>
 
-  <select id="selectUnresolvedIssueKeysOfDisabledComponents" parameterType="map" resultType="String">
-    select
-      i.kee
-    from issues i
-    inner join components p on
-      p.uuid = i.component_uuid
-      and p.enabled = ${_false}
-      and p.branch_uuid=#{branchUuid,jdbcType=VARCHAR}
-    where
-      i.resolution is null
-  </select>
-
   <select id="selectDisabledComponentsWithMeasures" parameterType="map" resultType="String">
     select
       m.component_uuid
@@ -352,8 +340,9 @@
         AND issue_close_date &lt; #{toDate}
       </otherwise>
     </choose>
-    <!-- retained issues stay until their branch is deleted, see CSN-9 -->
-    AND NOT EXISTS (SELECT 1 FROM cs_issue_track_for_retain t WHERE t.issue_kee = issues.kee)
+    <!-- retained issues stay until their branch is deleted, see CSN-9. A retained row has its issue's branch, so reading
+         the branch's retained keys once (hash anti join) replaces one primary-key lookup per closed issue -->
+    AND NOT EXISTS (SELECT 1 FROM cs_issue_track_for_retain t WHERE t.branch_uuid = #{projectUuid,jdbcType=VARCHAR} AND t.issue_kee = issues.kee)
   </select>
 
   <select id="selectBranchOrphanIssues" parameterType="map">
@@ -361,7 +350,7 @@
     left outer join components c on i.component_uuid = c.uuid
     where i.project_uuid = #{branchUuid,jdbcType=VARCHAR} and c.kee is null
     <!-- retained issues stay until their branch is deleted; without a component they are simply not indexed -->
-    and not exists (select 1 from cs_issue_track_for_retain t where t.issue_kee = i.kee)
+    and not exists (select 1 from cs_issue_track_for_retain t where t.branch_uuid = #{branchUuid,jdbcType=VARCHAR} and t.issue_kee = i.kee)
   </select>
 
 

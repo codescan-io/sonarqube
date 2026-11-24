@@ -27,7 +27,7 @@ import org.apache.ibatis.annotations.Param;
 public interface RetainedIssueMapper {
 
   @CheckForNull
-  RetainBranchContextDto selectBranchContext(@Param("branchUuid") String branchUuid);
+  RetainBranchContextDto selectBranchContextByBranchUuid(@Param("branchUuid") String branchUuid);
 
   void insertBranch(@Param("dto") RetainDetailsDto dto);
 
@@ -40,6 +40,13 @@ public interface RetainedIssueMapper {
   void insertIssuesFromIssues(@Param("branchUuid") String branchUuid, @Param("retainedStatus") String retainedStatus,
     @Nullable @Param("statusMarkedByUuid") String statusMarkedByUuid, @Param("now") long now,
     @Param("issueKeys") Collection<String> issueKeys, @Param("excludedIssueType") int excludedIssueType);
+
+  /**
+   * @param now when the purge closed the issues: their close date, also used as the time they became Fixed
+   */
+  void insertOfDisabledComponents(@Param("branchUuid") String branchUuid, @Param("retainedStatus") String retainedStatus,
+    @Nullable @Param("statusMarkedByUuid") String statusMarkedByUuid, @Param("now") long now,
+    @Param("excludedIssueType") int excludedIssueType);
 
   void deleteRetainedIssues(@Param("retainedStatus") String retainedStatus, @Param("issueKeys") Collection<String> issueKeys);
 
