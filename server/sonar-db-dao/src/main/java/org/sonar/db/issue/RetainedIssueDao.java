@@ -105,7 +105,7 @@ public class RetainedIssueDao implements Dao {
       return;
     }
     writeBranch(dbSession, branch.get());
-    mapper(dbSession).insertOfDisabledComponents(branchUuid, IssueStatus.FIXED.name(), null, closedAt,
+    mapper(dbSession).insertIssuesOfDisabledComponents(branchUuid, IssueStatus.FIXED.name(), null, closedAt,
       RuleType.SECURITY_HOTSPOT.getDbConstant());
   }
 

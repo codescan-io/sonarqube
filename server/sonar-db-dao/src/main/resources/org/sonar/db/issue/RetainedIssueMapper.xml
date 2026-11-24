@@ -159,7 +159,7 @@
     closed at the same time ("now"). Issues of those files closed earlier keep their close date and are not matched.
     Filtered on the issue's own branch: issue_close_date has no index, so this keeps the scan to the branch's issues.
   -->
-  <sql id="sqlInsertOfDisabledComponents">
+  <sql id="sqlInsertIssuesOfDisabledComponents">
     <include refid="sqlInsertSelectFromIssues"/>
     where
       i.project_uuid = #{branchUuid, jdbcType=VARCHAR}
@@ -170,14 +170,14 @@
       and i.rule_uuid is not null
   </sql>
 
-  <insert id="insertOfDisabledComponents" parameterType="map" useGeneratedKeys="false" databaseId="postgresql">
-    <include refid="sqlInsertOfDisabledComponents"/>
+  <insert id="insertIssuesOfDisabledComponents" parameterType="map" useGeneratedKeys="false" databaseId="postgresql">
+    <include refid="sqlInsertIssuesOfDisabledComponents"/>
     on conflict (issue_kee) do nothing
   </insert>
 
   <!-- For the tests only: they run on H2, which has no "on conflict". CodeScan runs the postgresql statement above. -->
-  <insert id="insertOfDisabledComponents" parameterType="map" useGeneratedKeys="false">
-    <include refid="sqlInsertOfDisabledComponents"/>
+  <insert id="insertIssuesOfDisabledComponents" parameterType="map" useGeneratedKeys="false">
+    <include refid="sqlInsertIssuesOfDisabledComponents"/>
       and not exists (
         select 1 from cs_issue_track_for_retain r
         where r.issue_kee = i.kee
