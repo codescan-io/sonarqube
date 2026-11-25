@@ -73,6 +73,10 @@ final class IpRangeMatcher {
     return new IpRangeMatcher(mask(parsed.address, parsed.prefixLength), parsed.prefixLength);
   }
 
+  int prefixLength() {
+    return prefixLength;
+  }
+
   /** Surrounding spaces, including no-break spaces, are ignored, as {@code IpRange.Address.parse} does. */
   boolean contains(@Nullable String ip) {
     return ip != null && containsLiteral(stripSpaces(ip));

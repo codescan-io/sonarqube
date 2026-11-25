@@ -133,6 +133,74 @@ public class OrganizationIpAccessTest {
     assertThat(access.isBlocked("org-v6", "2001:dba::1", () -> false)).isTrue();
   }
 
+  private OrganizationIpAccess accessWithDefaultRanges(String defaultRanges) {
+    Properties withDefaults = new Properties();
+    withDefaults.putAll(settings);
+    withDefaults.setProperty(OrganizationIpAccess.DEFAULT_RANGES_PROPERTY, defaultRanges);
+    return access(withDefaults);
+  }
+
+  @Test
+  public void address_in_the_default_ranges_is_let_in_by_every_org_with_a_list() {
+    OrganizationIpAccess access = accessWithDefaultRanges("192.0.2.0/24, 2001:db8::/32");
+
+    assertThat(access.isBlocked("org-a", "192.0.2.1", () -> false)).isFalse();
+    assertThat(access.isBlocked("org-empty", "2001:db8::1", () -> false)).isFalse();
+    assertThat(access.isBlocked("org-a", "203.0.113.9", () -> false)).isFalse();
+    assertThat(access.isBlocked("org-a", "198.51.100.200", () -> false)).isTrue();
+  }
+
+  @Test
+  public void default_ranges_let_admins_in_when_the_list_applies_to_them() {
+    assertThat(accessWithDefaultRanges("192.0.2.0/24").isBlocked("org-admins", "192.0.2.1", () -> true)).isFalse();
+  }
+
+  @Test
+  public void default_ranges_are_left_out_of_the_search_filter() {
+    assertThat(accessWithDefaultRanges("192.0.2.0/24").blockedOrganizationUuids("192.0.2.1")).isEmpty();
+  }
+
+  @Test
+  public void default_single_address_and_host_bits_are_accepted_like_codescanng_does() {
+    OrganizationIpAccess access = accessWithDefaultRanges("192.0.2.7,198.51.100.9/24");
+
+    assertThat(access.isBlocked("org-a", "192.0.2.7", () -> false)).isFalse();
+    assertThat(access.isBlocked("org-a", "192.0.2.8", () -> false)).isTrue();
+    assertThat(access.isBlocked("org-a", "198.51.100.200", () -> false)).isFalse();
+  }
+
+  @Test
+  public void bad_or_everything_default_entry_drops_the_whole_list_and_is_logged() {
+    for (String bad : new String[] {"192.0.2.0/24,garbage", "192.0.2.0/24,0.0.0.0/0", "::/0"}) {
+      logTester.clear();
+      OrganizationIpAccess access = accessWithDefaultRanges(bad);
+
+      assertThat(access.isBlocked("org-a", "192.0.2.1", () -> false)).as(bad).isTrue();
+      assertThat(logTester.logs(Level.WARN)).as(bad)
+        .filteredOn(l -> l.contains(OrganizationIpAccess.DEFAULT_RANGES_PROPERTY)).hasSize(1);
+    }
+  }
+
+  @Test
+  public void default_ranges_do_not_let_hosted_mcp_past_an_org_that_refuses_it() {
+    assertThat(accessWithDefaultRanges("192.0.2.0/24").isBlockedForHostedMcp("org-a")).isTrue();
+  }
+
+  @Test
+  public void default_ranges_change_nothing_when_the_feature_is_off() {
+    setFeatureFlag("false");
+
+    assertThat(accessWithDefaultRanges("192.0.2.0/24").isBlocked("org-a", "198.51.100.200", () -> false)).isFalse();
+  }
+
+  @Test
+  public void default_ranges_do_not_open_an_org_while_the_client_address_cannot_be_trusted() {
+    Properties untrusted = new Properties();
+    untrusted.setProperty(OrganizationIpAccess.DEFAULT_RANGES_PROPERTY, "192.0.2.0/24");
+
+    assertThat(access(untrusted).isBlocked("org-a", "192.0.2.1", () -> false)).isTrue();
+  }
+
   @Test
   public void admins_are_exempt_unless_applies_to_admins() {
     assertThat(underTest.isBlocked("org-a", "192.0.2.1", () -> true)).isFalse();

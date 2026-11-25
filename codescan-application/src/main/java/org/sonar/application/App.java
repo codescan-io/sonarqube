@@ -48,6 +48,9 @@ public class App {
     /** Same name the CodeScan API reads, so the deployment sets the hosted MCP server's keys once for both. */
     static final String MCP_KEYS_ENV_VAR = "MCP_KEYS";
     private static final String MCP_KEYS_PROPERTY = "sonar.codescan.mcpKeys";
+    /** Same name the CodeScan API reads: ranges our internal products call from, let past every IP allowlist. */
+    static final String DEFAULT_RANGES_ENV_VAR = "IP_ALLOWLIST_DEFAULT_RANGES";
+    private static final String DEFAULT_RANGES_PROPERTY = "sonar.codescan.ipAllowlistDefaultRanges";
 
     private final SystemExit systemExit = new SystemExit();
     private StopRequestWatcher stopRequestWatcher = null;
@@ -113,6 +116,7 @@ public class App {
         // prop.* or SONARQUBE_PROPERTIES entry for the same property overwrites it when both are present.
         putIfSet(props, TRUSTED_PROXIES_PROPERTY, env.get(TRUSTED_PROXIES_ENV_VAR));
         putIfSet(props, MCP_KEYS_PROPERTY, env.get(MCP_KEYS_ENV_VAR));
+        putIfSet(props, DEFAULT_RANGES_PROPERTY, env.get(DEFAULT_RANGES_ENV_VAR));
         for (Entry<String, String> e : env.entrySet()) {
             if (e.getKey().startsWith("prop.")) {
                 props.put(e.getKey().substring(5), e.getValue());

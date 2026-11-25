@@ -79,9 +79,14 @@ public class OrganizationIpAccess {
   public static final String TRUSTED_PROXIES_PROPERTY = "sonar.web.trustedProxiesRegex";
   /** The environment variable the deployment sets; the application launcher maps it to {@value #TRUSTED_PROXIES_PROPERTY}. */
   public static final String TRUSTED_PROXIES_ENV_VAR = "CODESCAN_TRUSTED_PROXIES";
+  /**
+   * Ranges our internal products call from, which every organization's allowlist lets in on top of its own. The
+   * application launcher maps the deployment's {@code IP_ALLOWLIST_DEFAULT_RANGES} to it, as codescanng reads it.
+   */
+  public static final String DEFAULT_RANGES_PROPERTY = "sonar.codescan.ipAllowlistDefaultRanges";
   public static final String FEATURE_FLAG_PROPERTY = "codescan.cloud.ipAllowlist.enabled";
   /** Read only from the web server's startup properties, so a value saved in the database would be ignored. */
-  public static final Set<String> STARTUP_ONLY_PROPERTIES = Set.of(TRUSTED_PROXIES_PROPERTY, INTERNAL_CIDR_PROPERTY);
+  public static final Set<String> STARTUP_ONLY_PROPERTIES = Set.of(TRUSTED_PROXIES_PROPERTY, INTERNAL_CIDR_PROPERTY, DEFAULT_RANGES_PROPERTY);
   static final long SNAPSHOT_TTL_MS = 30_000L;
   /** Oldest a snapshot may be and still answer while a reload is running or after a reload failed. */
   static final long MAX_STALE_MS = 2 * SNAPSHOT_TTL_MS;
@@ -101,6 +106,7 @@ public class OrganizationIpAccess {
   private final DbClient dbClient;
   private final LongSupplier clock;
   private final List<IpRangeMatcher> internalRanges;
+  private final List<IpRangeMatcher> defaultRanges;
   private final Map<String, Long> lastBlockLogByOrgAndIp = new ConcurrentHashMap<>();
   private final Set<String> reportedBadRanges = ConcurrentHashMap.newKeySet();
   private final AtomicLong lastBlockLogCleanupAt;
@@ -139,6 +145,7 @@ public class OrganizationIpAccess {
     this.takeoverAfterMs = takeoverAfterMs;
     String internalCidrs = processProperties.getProperty(INTERNAL_CIDR_PROPERTY);
     this.internalRanges = parseInternalRanges(internalCidrs == null ? new String[0] : internalCidrs.split(","));
+    this.defaultRanges = parseDefaultRanges(processProperties.getProperty(DEFAULT_RANGES_PROPERTY));
     this.clientAddressTrusted = isTrustedProxiesSet(processProperties.getProperty(TRUSTED_PROXIES_PROPERTY));
     long now = clock.getAsLong();
     this.lastBlockLogCleanupAt = new AtomicLong(now - BLOCK_LOG_CLEANUP_INTERVAL_MS);
@@ -451,7 +458,11 @@ public class OrganizationIpAccess {
       }
     }
     Map<String, Policy> result = new HashMap<>();
-    settings.forEach((org, row) -> result.put(org, new Policy(row.isAppliesToAdmins(), row.isAllowsMcp(), List.copyOf(ranges.get(org)))));
+    settings.forEach((org, row) -> {
+      List<IpRangeMatcher> allowed = new ArrayList<>(ranges.get(org));
+      allowed.addAll(defaultRanges);
+      result.put(org, new Policy(row.isAppliesToAdmins(), row.isAllowsMcp(), List.copyOf(allowed)));
+    });
     return Map.copyOf(result);
   }
 
@@ -514,6 +525,33 @@ public class OrganizationIpAccess {
           INTERNAL_CIDR_PROPERTY, printable(entry));
         return List.of();
       }
+    }
+    return List.copyOf(ranges);
+  }
+
+  /**
+   * Comma-separated ranges or single addresses, with host bits masked off, as codescanng reads the same value. A bad
+   * entry, or a range covering every address, empties the whole list rather than keeping the rest of a wrong value.
+   */
+  private static List<IpRangeMatcher> parseDefaultRanges(@Nullable String configured) {
+    List<String> entries = configured == null ? List.of() : Arrays.stream(configured.split(","))
+      .map(String::trim)
+      .filter(s -> !s.isEmpty())
+      .toList();
+    List<IpRangeMatcher> ranges = new ArrayList<>();
+    for (String entry : entries) {
+      IpRangeMatcher range;
+      try {
+        range = IpRangeMatcher.parseLenient(entry);
+      } catch (IllegalArgumentException e) {
+        LOG.warn("{} contains '{}', which is not an IP address or range: no default ranges are used", DEFAULT_RANGES_PROPERTY, printable(entry));
+        return List.of();
+      }
+      if (range.prefixLength() == 0) {
+        LOG.warn("{} contains '{}', which covers every address: no default ranges are used", DEFAULT_RANGES_PROPERTY, printable(entry));
+        return List.of();
+      }
+      ranges.add(range);
     }
     return List.copyOf(ranges);
   }

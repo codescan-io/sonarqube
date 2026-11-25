@@ -156,6 +156,22 @@ public class AppTest {
       .isEqualTo("explicit-key-0123456789abcdefghijklmnop");
   }
 
+  @Test
+  public void shared_default_ranges_variable_sets_the_web_server_property() throws IOException {
+    Properties props = App.buildDefaultProperties(env("IP_ALLOWLIST_DEFAULT_RANGES", " 192.0.2.0/24,198.51.100.7 "), new Properties());
+
+    assertThat(props.getProperty("sonar.codescan.ipAllowlistDefaultRanges")).isEqualTo("192.0.2.0/24,198.51.100.7");
+  }
+
+  @Test
+  public void explicit_prop_environment_variable_wins_over_the_shared_default_ranges_variable() throws IOException {
+    Map<String, String> env = env("IP_ALLOWLIST_DEFAULT_RANGES", "192.0.2.0/24");
+    env.put("prop.sonar.codescan.ipAllowlistDefaultRanges", "198.51.100.0/24");
+
+    assertThat(App.buildDefaultProperties(env, new Properties()).getProperty("sonar.codescan.ipAllowlistDefaultRanges"))
+      .isEqualTo("198.51.100.0/24");
+  }
+
   private static Map<String, String> env(String key, String value) {
     Map<String, String> env = new HashMap<>();
     env.put(key, value);

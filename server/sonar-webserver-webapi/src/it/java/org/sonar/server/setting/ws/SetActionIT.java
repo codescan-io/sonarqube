@@ -859,6 +859,14 @@ public class SetActionIT {
   }
 
   @Test
+  public void ip_allowlist_default_ranges_cannot_be_saved_in_the_database() {
+    assertThatThrownBy(() -> callForGlobalSetting("sonar.codescan.ipAllowlistDefaultRanges", "192.0.2.0/24"))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.codescan.ipAllowlistDefaultRanges' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("sonar.codescan.ipAllowlistDefaultRanges")).isNull();
+  }
+
+  @Test
   public void hosted_mcp_keys_are_refused_whatever_the_case_of_the_key() {
     assertThatThrownBy(() -> callForMultiValueGlobalSetting("SONAR.CODESCAN.MCPKEYS", List.of("m".repeat(40))))
       .isInstanceOf(IllegalArgumentException.class)
