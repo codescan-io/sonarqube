@@ -46,6 +46,9 @@ public class AppTest {
   private static final String ENV_VAR = "CODESCAN_TRUSTED_PROXIES";
   private static final String PROPERTY = "sonar.web.trustedProxiesRegex";
   private static final String LOAD_BALANCER = "10\\.0\\.0\\.2";
+  private static final String MCP_ENV_VAR = "MCP_KEYS";
+  private static final String MCP_PROPERTY = "sonar.codescan.mcpKeys";
+  private static final String MCP_KEYS = "first-key-0123456789abcdefghijklmnop,second-key-0123456789abcdefghijklmno";
 
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
@@ -120,6 +123,37 @@ public class AppTest {
 
     assertThat(web.getReadsArgumentsFromFile()).isTrue();
     assertThat(web.getArguments()).containsEntry(PROPERTY, LOAD_BALANCER);
+  }
+
+  @Test
+  public void shared_mcp_keys_variable_sets_the_web_server_property() throws IOException {
+    Properties props = App.buildDefaultProperties(env(MCP_ENV_VAR, "  " + MCP_KEYS + " \n"), new Properties());
+
+    assertThat(props.getProperty(MCP_PROPERTY)).isEqualTo(MCP_KEYS);
+  }
+
+  @Test
+  public void mcp_keys_property_is_left_out_when_the_variable_is_missing_or_blank() throws IOException {
+    assertThat(App.buildDefaultProperties(new HashMap<>(), new Properties()).getProperty(MCP_PROPERTY)).isNull();
+    assertThat(App.buildDefaultProperties(env(MCP_ENV_VAR, "   "), new Properties()).getProperty(MCP_PROPERTY)).isNull();
+  }
+
+  @Test
+  public void explicit_prop_environment_variable_wins_over_the_shared_mcp_keys_variable() throws IOException {
+    Map<String, String> env = env(MCP_ENV_VAR, MCP_KEYS);
+    env.put("prop." + MCP_PROPERTY, "explicit-key-0123456789abcdefghijklmnop");
+
+    assertThat(App.buildDefaultProperties(env, new Properties()).getProperty(MCP_PROPERTY))
+      .isEqualTo("explicit-key-0123456789abcdefghijklmnop");
+  }
+
+  @Test
+  public void sonarqube_properties_entry_wins_over_the_shared_mcp_keys_variable() throws IOException {
+    Map<String, String> env = env(MCP_ENV_VAR, MCP_KEYS);
+    env.put("SONARQUBE_PROPERTIES", MCP_PROPERTY + "=explicit-key-0123456789abcdefghijklmnop");
+
+    assertThat(App.buildDefaultProperties(env, new Properties()).getProperty(MCP_PROPERTY))
+      .isEqualTo("explicit-key-0123456789abcdefghijklmnop");
   }
 
   private static Map<String, String> env(String key, String value) {

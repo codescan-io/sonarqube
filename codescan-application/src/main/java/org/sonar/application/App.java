@@ -45,6 +45,9 @@ public class App {
     /** The one variable the deployment sets for both this server and the CodeScan API. */
     static final String TRUSTED_PROXIES_ENV_VAR = "CODESCAN_TRUSTED_PROXIES";
     private static final String TRUSTED_PROXIES_PROPERTY = "sonar.web.trustedProxiesRegex";
+    /** Same name the CodeScan API reads, so the deployment sets the hosted MCP server's keys once for both. */
+    static final String MCP_KEYS_ENV_VAR = "MCP_KEYS";
+    private static final String MCP_KEYS_PROPERTY = "sonar.codescan.mcpKeys";
 
     private final SystemExit systemExit = new SystemExit();
     private StopRequestWatcher stopRequestWatcher = null;
@@ -107,11 +110,9 @@ public class App {
         Properties props = new Properties();
         props.load(App.class.getResourceAsStream("/default.sonar.properties"));
         // Applied before the prop.* and SONARQUBE_PROPERTIES entries below, so an explicit
-        // prop.sonar.web.trustedProxiesRegex or SONARQUBE_PROPERTIES entry overwrites it when both are present.
-        String trustedProxies = env.get(TRUSTED_PROXIES_ENV_VAR);
-        if (trustedProxies != null && !trustedProxies.isBlank()) {
-            props.put(TRUSTED_PROXIES_PROPERTY, trustedProxies.trim());
-        }
+        // prop.* or SONARQUBE_PROPERTIES entry for the same property overwrites it when both are present.
+        putIfSet(props, TRUSTED_PROXIES_PROPERTY, env.get(TRUSTED_PROXIES_ENV_VAR));
+        putIfSet(props, MCP_KEYS_PROPERTY, env.get(MCP_KEYS_ENV_VAR));
         for (Entry<String, String> e : env.entrySet()) {
             if (e.getKey().startsWith("prop.")) {
                 props.put(e.getKey().substring(5), e.getValue());
@@ -132,6 +133,12 @@ public class App {
             }
         }
         return props;
+    }
+
+    private static void putIfSet(Properties props, String property, String value) {
+        if (value != null && !value.isBlank()) {
+            props.put(property, value.trim());
+        }
     }
 
     public static void main(String[] args) throws Exception {
