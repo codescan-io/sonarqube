@@ -144,7 +144,7 @@ public class LiveMeasureComputerImpl implements LiveMeasureComputer {
         m.getValue()
       );
     }));
-    measureDtoPerComponent.values().forEach(m -> dbClient.measureDao().insertOrUpdate(dbSession, m));
+    dbClient.measureDao().insertOrUpdate(dbSession, measureDtoPerComponent.values());
     projectIndexer.commitAndIndexBranches(dbSession, singleton(branch), Indexers.BranchEvent.MEASURE_CHANGE);
   }
 

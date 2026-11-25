@@ -70,9 +70,9 @@ public interface IssueMapper {
   int bulkTransition(@Param("keys") List<String> keys, @Param("branchUuid") String branchUuid,
     @Param("resolution") String resolution, @Nullable @Param("expiresAt") Long expiresAt, @Param("now") long now);
 
-  /** CodeScan: the source exception a resolution transfer paired each of {@code keys} with. */
+  /** CodeScan: the source issue a resolution transfer paired each of {@code keys} with, and its resolution. */
   List<IssueExceptionSourceDto> selectExceptionSourcesOfTransfer(@Param("transferUuid") String transferUuid,
-    @Param("keys") List<String> keys, @Param("now") long now);
+    @Param("keys") List<String> keys);
 
   void insertAsNewCodeOnReferenceBranch(NewCodeReferenceIssueDto issue);
 
@@ -99,6 +99,18 @@ public interface IssueMapper {
   Collection<IssueImpactGroupDto> selectIssueImpactGroupsByComponent(@Param("component") ComponentDto component, @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
 
   Collection<IssueImpactSeverityGroupDto> selectIssueImpactSeverityGroupsByComponent(@Param("component") ComponentDto component,
+    @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
+
+  /** As the three statements above, for several components at once; each row carries its component uuid. */
+  List<IssueGroupDto> selectIssueGroupsByComponentUuids(@Param("componentUuids") Collection<String> componentUuids,
+    @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
+
+  List<IssueImpactGroupDto> selectIssueImpactGroupsByComponentUuids(
+    @Param("componentUuids") Collection<String> componentUuids,
+    @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
+
+  List<IssueImpactSeverityGroupDto> selectIssueImpactSeverityGroupsByComponentUuids(
+    @Param("componentUuids") Collection<String> componentUuids,
     @Param("leakPeriodBeginningDate") long leakPeriodBeginningDate);
 
   List<IssueDto> selectByBranch(@Param("keys") Set<String> keys, @Nullable @Param("changedSince") Long changedSince);

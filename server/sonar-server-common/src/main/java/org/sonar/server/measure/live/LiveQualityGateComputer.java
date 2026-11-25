@@ -20,6 +20,7 @@
 package org.sonar.server.measure.live;
 
 import java.util.Set;
+import org.sonar.api.ce.ComputeEngineSide;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.server.ServerSide;
 import org.sonar.db.DbSession;
@@ -31,6 +32,7 @@ import org.sonar.server.qualitygate.EvaluatedQualityGate;
 import org.sonar.server.qualitygate.QualityGate;
 
 @ServerSide
+@ComputeEngineSide
 public interface LiveQualityGateComputer {
 
   QualityGate loadQualityGate(DbSession dbSession, OrganizationDto organization, ProjectDto project, BranchDto branch);
