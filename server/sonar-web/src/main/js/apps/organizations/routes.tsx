@@ -41,6 +41,7 @@ import PolicyResults from "../policy-results/components/PolicyResults";
 import PermissionsGlobalApp from "../permissions/global/components/PermissionsGlobalApp";
 import GroupsApp from "../groups/GroupsApp";
 import codingRulesRoutes from "../coding-rules/routes";
+import OrganizationTokensApp from "../organizationTokens/OrganizationTokensApp";
 
 const routes = () => (
     <Route path="organizations">
@@ -54,6 +55,7 @@ const routes = () => (
         <Route path="groups" element={<GroupsApp />}/>
         <Route path="projects_management" element={<ProjectManagementApp />}/>
         <Route path="webhooks" element={<WebhookApp />}/>
+        <Route path="tokens" element={<OrganizationTokensApp />}/>
         <Route path="issues" element={<IssuesApp />}/>
         <Route path="policy-results" element={<PolicyResults/>}/>
         {qualityGatesRoutes()}
