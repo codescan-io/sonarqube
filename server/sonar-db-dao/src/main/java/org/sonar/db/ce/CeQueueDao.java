@@ -20,6 +20,7 @@
 package org.sonar.db.ce;
 
 import com.google.common.collect.ImmutableMap;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +40,13 @@ import static org.sonar.db.ce.CeQueueDto.Status.PENDING;
 public class CeQueueDao implements Dao {
 
   private static final Pagination ONE_RESULT_PAGINATION = Pagination.forPage(1).andSize(1);
+
+  /**
+   * How long a {@link CeTaskTypes#RESOLUTION_PROLIFERATION} task may be held behind a project's other pending
+   * work before it becomes eligible regardless. The deferral keeps proliferation out of the way of analyses;
+   * this bounds it, so a project that is analysed continuously cannot starve a marking indefinitely.
+   */
+  private static final long PROLIFERATION_MAX_DEFERRAL_MS = Duration.ofHours(1).toMillis();
 
   private final System2 system2;
 
@@ -192,10 +200,14 @@ public class CeQueueDao implements Dao {
   }
 
   /**
-   * Only returns tasks for projects that currently have no other tasks running
+   * Only returns tasks for projects that currently have no other tasks running.
+   * <p>
+   * A {@link CeTaskTypes#RESOLUTION_PROLIFERATION} task additionally waits for the other work pending on its own
+   * project, but no longer than {@link #PROLIFERATION_MAX_DEFERRAL_MS}. Other task types are unaffected.
    */
   public Optional<CeTaskDtoLight> selectEligibleForPeek(DbSession session, boolean excludeIndexationJob, boolean excludeView) {
-    return mapper(session).selectEligibleForPeek(ONE_RESULT_PAGINATION, excludeIndexationJob, excludeView);
+    return mapper(session).selectEligibleForPeek(ONE_RESULT_PAGINATION, excludeIndexationJob, excludeView,
+      CeTaskTypes.RESOLUTION_PROLIFERATION, system2.now() - PROLIFERATION_MAX_DEFERRAL_MS);
   }
 
   public List<PrOrBranchTask> selectOldestPendingPrOrBranch(DbSession session) {
