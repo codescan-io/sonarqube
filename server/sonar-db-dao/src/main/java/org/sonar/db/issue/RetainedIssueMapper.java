@@ -29,7 +29,7 @@ public interface RetainedIssueMapper {
   @CheckForNull
   RetainBranchContextDto selectBranchContextByBranchUuid(@Param("branchUuid") String branchUuid);
 
-  int countRetainedIssuesOfBranch(@Param("branchUuid") String branchUuid);
+  boolean hasRetainedIssuesOfBranch(@Param("branchUuid") String branchUuid);
 
   void deleteBranch(@Param("branchUuid") String branchUuid);
 

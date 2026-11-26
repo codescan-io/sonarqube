@@ -103,7 +103,7 @@ public class RetainedIssueDao implements Dao {
 
   /** Whether the branch has retained issues, so its deletion has something to keep. */
   public boolean hasRetainedIssues(DbSession dbSession, String branchUuid) {
-    return mapper(dbSession).countRetainedIssuesOfBranch(branchUuid) > 0;
+    return mapper(dbSession).hasRetainedIssuesOfBranch(branchUuid);
   }
 
   /** Drops the branch's retained row; for a branch deleted without retained issues. */

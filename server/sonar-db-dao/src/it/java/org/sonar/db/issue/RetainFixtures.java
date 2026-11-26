@@ -100,6 +100,12 @@ public final class RetainFixtures {
     db.executeUpdateSql("update project_branches set pull_request_binary = ? where uuid = ?", data, branchUuid);
   }
 
+  public static void setTarget(DbTester db, String branchUuid, String sourceBranch, String target) {
+    byte[] data = DbProjectBranches.PullRequestData.newBuilder().setBranch(sourceBranch).setTitle(sourceBranch).setTarget(target)
+      .build().toByteArray();
+    db.executeUpdateSql("update project_branches set pull_request_binary = ? where uuid = ?", data, branchUuid);
+  }
+
   public static void file(DbTester db, String fileUuid, String branchUuid, String key) {
     file(db, fileUuid, branchUuid, key, true);
   }
