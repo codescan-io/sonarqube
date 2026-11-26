@@ -20,6 +20,7 @@
 package org.sonar.server.measure.live;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.sonar.api.config.Configuration;
@@ -30,6 +31,9 @@ import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.BranchType;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.component.SnapshotDto;
+import org.sonar.db.issue.IssueGroupDto;
+import org.sonar.db.issue.IssueImpactGroupDto;
+import org.sonar.db.issue.IssueImpactSeverityGroupDto;
 import org.sonar.server.measure.DebtRatingGrid;
 import org.sonar.server.measure.Rating;
 
@@ -86,12 +90,23 @@ public class LiveMeasureTreeUpdaterImpl implements LiveMeasureTreeUpdater {
     DebtRatingGrid debtRatingGrid = new DebtRatingGrid(config);
     FormulaContextImpl context = new FormulaContextImpl(matrix, components, debtRatingGrid);
 
-    components.getSortedTree().forEach(c -> {
+    // The issue groups of every component of the tree in three statements rather than three per component: the
+    // refresh is bound by round trips, and a bulk change touching hundreds of files would otherwise issue a
+    // thousand small statements per branch.
+    List<ComponentDto> tree = components.getSortedTree();
+    List<String> uuids = tree.stream().map(ComponentDto::uuid).toList();
+    Map<String, List<IssueGroupDto>> groups = dbClient.issueDao()
+      .selectIssueGroupsByComponentUuids(dbSession, uuids, beginningOfLeak);
+    Map<String, List<IssueImpactGroupDto>> impactGroups = dbClient.issueDao()
+      .selectIssueImpactGroupsByComponentUuids(dbSession, uuids, beginningOfLeak);
+    Map<String, List<IssueImpactSeverityGroupDto>> impactSeverityGroups = dbClient.issueDao()
+      .selectIssueImpactSeverityGroupsByComponentUuids(dbSession, uuids, beginningOfLeak);
+
+    tree.forEach(c -> {
       IssueCounter issueCounter = new IssueCounter(
-        dbClient.issueDao().selectIssueGroupsByComponent(dbSession, c, beginningOfLeak),
-        dbClient.issueDao().selectIssueImpactGroupsByComponent(dbSession, c, beginningOfLeak),
-        dbClient.issueDao().selectIssueImpactSeverityGroupsByComponent(dbSession, c, beginningOfLeak)
-        );
+        groups.getOrDefault(c.uuid(), List.of()),
+        impactGroups.getOrDefault(c.uuid(), List.of()),
+        impactSeverityGroups.getOrDefault(c.uuid(), List.of()));
       for (MeasureUpdateFormula formula : formulaFactory.getFormulas()) {
         if (shouldComputeMetric(formula, useLeakFormulas, components.getBranch(), matrix)) {
           context.change(c, formula);

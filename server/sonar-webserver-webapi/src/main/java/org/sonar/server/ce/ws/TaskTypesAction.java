@@ -25,6 +25,7 @@ import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.ce.task.taskprocessor.CeTaskProcessor;
+import org.sonar.db.ce.CeTaskTypes;
 import org.sonarqube.ws.Ce;
 
 import static org.sonar.server.ws.WsUtils.writeProtobuf;
@@ -37,6 +38,9 @@ public class TaskTypesAction implements CeWsAction {
     for (CeTaskProcessor taskProcessor : taskProcessors) {
       taskTypesBuilder.addAll(taskProcessor.getHandledCeTaskTypes());
     }
+    // CodeScan: run by the Compute Engine only, so no processor in the web server declares them.
+    taskTypesBuilder.add(CeTaskTypes.MEASURE_RECOMPUTE);
+    taskTypesBuilder.add(CeTaskTypes.RESOLUTION_PROLIFERATION);
     this.taskTypes = taskTypesBuilder.build();
   }
 
