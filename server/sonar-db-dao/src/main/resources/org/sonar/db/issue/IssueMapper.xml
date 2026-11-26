@@ -248,17 +248,32 @@
     where <include refid="transitionablePredicate"><property name="alias" value="i."/></include>
   </select>
 
-  <!-- cs_resolution_transfer_issue is CodeScan's resolution transfer report, in the same schema. -->
+  <!-- CodeScan's transfer report, same schema. Every predicate is on it: a predicate on issues.resolution reads
+       as matching nothing and flips the planner onto issues. -->
   <select id="selectExceptionSourcesOfTransfer" parameterType="map" resultType="org.sonar.db.issue.IssueExceptionSourceDto">
-    select r.destination_issue_key as issueKey, s.kee as sourceKey, s.issue_resolution_expires_at as expiresAt
+    select r.destination_issue_key as issueKey, s.kee as sourceKey, s.resolution as resolution,
+      s.issue_resolution_expires_at as expiresAt
     from cs_resolution_transfer_issue r
     inner join issues s on s.kee = r.issue_key
     where r.transfer_uuid = #{transferUuid,jdbcType=VARCHAR}
-      and s.resolution = 'EXCEPTION'
-      and (s.issue_resolution_expires_at is null or s.issue_resolution_expires_at &gt; #{now,jdbcType=BIGINT})
       and r.destination_issue_key in
       <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
   </select>
+
+
+  <update id="bulkTransitionWithExpiry" parameterType="map">
+    update issues
+    set status = 'RESOLVED',
+      resolution = #{resolution,jdbcType=VARCHAR},
+      issue_resolution_expires_at = #{expiresAt,jdbcType=BIGINT},
+      issue_update_date = #{markedAt,jdbcType=BIGINT},
+      updated_at = #{now,jdbcType=BIGINT}
+    where status in
+      <foreach collection="statuses" open="(" close=")" item="status" separator=",">#{status,jdbcType=VARCHAR}</foreach>
+      and issue_type &lt;&gt; 4
+      and kee in
+      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+  </update>
 
   <update id="bulkTransition" parameterType="map">
     update issues
@@ -275,37 +290,83 @@
     IMPORTANT - invariant columns can't be updated. See IssueDto#toDtoForUpdate()
   -->
 
+  <!--
+    The columns a full issue update writes, shared by "update" and "updateProliferated" so the two cannot drift:
+    a column added to one would otherwise be silently dropped by the other. ${p} is the property prefix - empty
+    when the statement takes the DTO directly, "dto." when it takes it alongside other parameters - and is a
+    MyBatis text substitution of our own literal, never user input.
+  -->
+  <sql id="updateIssueColumns">
+    severity=#{${p}severity,jdbcType=VARCHAR},
+    manual_severity=#{${p}manualSeverity,jdbcType=BOOLEAN},
+    message=#{${p}message,jdbcType=VARCHAR},
+    message_formattings=#{${p}messageFormattings,jdbcType=BINARY},
+    line=#{${p}line,jdbcType=INTEGER},
+    locations=#{${p}locations,jdbcType=BINARY},
+    gap=#{${p}gap,jdbcType=DOUBLE},
+    effort=#{${p}effort,jdbcType=INTEGER},
+    status=#{${p}status,jdbcType=VARCHAR},
+    resolution=#{${p}resolution,jdbcType=VARCHAR},
+    checksum=#{${p}checksum,jdbcType=VARCHAR},
+    assignee=#{${p}assigneeUuid,jdbcType=VARCHAR},
+    author_login=#{${p}authorLogin,jdbcType=VARCHAR},
+    tags=#{${p}tagsString,jdbcType=VARCHAR},
+    rule_description_context_key=#{${p}ruleDescriptionContextKey,jdbcType=VARCHAR},
+    project_uuid=#{${p}projectUuid,jdbcType=VARCHAR},
+    issue_creation_date=#{${p}issueCreationTime,jdbcType=BIGINT},
+    issue_update_date=#{${p}issueUpdateTime,jdbcType=BIGINT},
+    issue_close_date=#{${p}issueCloseTime,jdbcType=BIGINT},
+    updated_at=#{${p}updatedAt,jdbcType=BIGINT},
+    issue_type=#{${p}type,jdbcType=INTEGER},
+    code_variants=#{${p}codeVariantsString,jdbcType=VARCHAR},
+    clean_code_attribute=#{${p}effectiveCleanCodeAttribute,jdbcType=VARCHAR},
+    prioritized_rule=#{${p}prioritizedRule,jdbcType=BOOLEAN},
+    codefix_status=#{${p}codefixStatus,jdbcType=VARCHAR},
+    issue_ai_metadata=#{${p}issueAiMetadata,jdbcType=VARCHAR},
+    issue_resolution_expires_at=#{${p}issueResolutionExpiresAt,jdbcType=BIGINT}
+  </sql>
+
   <update id="update" parameterType="Issue">
     update issues set
-    severity=#{severity,jdbcType=VARCHAR},
-    manual_severity=#{manualSeverity,jdbcType=BOOLEAN},
-    message=#{message,jdbcType=VARCHAR},
-    message_formattings=#{messageFormattings,jdbcType=BINARY},
-    line=#{line,jdbcType=INTEGER},
-    locations=#{locations,jdbcType=BINARY},
-    gap=#{gap,jdbcType=DOUBLE},
-    effort=#{effort,jdbcType=INTEGER},
-    status=#{status,jdbcType=VARCHAR},
-    resolution=#{resolution,jdbcType=VARCHAR},
-    checksum=#{checksum,jdbcType=VARCHAR},
-    assignee=#{assigneeUuid,jdbcType=VARCHAR},
-    author_login=#{authorLogin,jdbcType=VARCHAR},
-    tags=#{tagsString,jdbcType=VARCHAR},
-    rule_description_context_key=#{ruleDescriptionContextKey,jdbcType=VARCHAR},
-    project_uuid=#{projectUuid,jdbcType=VARCHAR},
-    issue_creation_date=#{issueCreationTime,jdbcType=BIGINT},
-    issue_update_date=#{issueUpdateTime,jdbcType=BIGINT},
-    issue_close_date=#{issueCloseTime,jdbcType=BIGINT},
-    updated_at=#{updatedAt,jdbcType=BIGINT},
-    issue_type=#{type,jdbcType=INTEGER},
-    code_variants=#{codeVariantsString,jdbcType=VARCHAR},
-    clean_code_attribute=#{effectiveCleanCodeAttribute,jdbcType=VARCHAR},
-    prioritized_rule=#{prioritizedRule,jdbcType=BOOLEAN},
-    codefix_status=#{codefixStatus,jdbcType=VARCHAR},
-    issue_ai_metadata=#{issueAiMetadata,jdbcType=VARCHAR},
-    issue_resolution_expires_at=#{issueResolutionExpiresAt,jdbcType=BIGINT}
+    <include refid="updateIssueColumns"><property name="p" value=""/></include>
     where kee = #{kee}
   </update>
+
+  <!--
+    As "update", but it refuses to write an issue whose status has left the set the caller read it in, and never
+    touches a security hotspot. Proliferation reads its targets, prepares them, then writes - and a user can mark
+    or close one of those targets in between. Without the guard that write would silently overwrite the user's
+    decision with the snapshot read earlier, including columns proliferation never meant to change. The set-based
+    path (bulkTransitionWithExpiry) carries the same two predicates; this is the per-issue half of it.
+  -->
+  <update id="updateProliferated" parameterType="map">
+    update issues set
+    <include refid="updateIssueColumns"><property name="p" value="dto."/></include>
+    where kee = #{dto.kee,jdbcType=VARCHAR}
+      and status in
+      <foreach collection="statuses" open="(" close=")" item="status" separator=",">#{status,jdbcType=VARCHAR}</foreach>
+      and issue_type &lt;&gt; 4
+  </update>
+
+  <!--
+    Which of these keys "bulkTransitionWithExpiry" just wrote. That statement reports a row count but not which
+    rows, and its status guard can refuse any of them.
+
+    The "kee in" list is what makes the answer exact: it is this group's own keys and nothing else, so no row
+    another group, another caller or another thread touched can come back. Within that list, "updated_at = now"
+    then separates the rows the guard let through from the ones it refused - a refused row still carries
+    whatever updated_at it had before.
+
+    "now" on its own would not be enough, and must not be relied on as if it were: it is the caller's single
+    timestamp for the whole save, shared by every set-based group and by the per-issue path, so on its own it
+    matches rows this statement never wrote. The key list is doing the isolating. Do not drop it as redundant.
+  -->
+  <select id="selectProliferatedKeys" parameterType="map" resultType="string">
+    select kee from issues
+    where updated_at = #{now,jdbcType=BIGINT}
+      and kee in
+      <foreach collection="keys" open="(" close=")" item="key" separator=",">#{key,jdbcType=VARCHAR}</foreach>
+  </select>
 
   <!--
    IMPORTANT - invariant columns can't be updated. See IssueDto#toDtoForUpdate()
@@ -603,6 +664,41 @@
     </foreach>
   </select>
 
+
+  <select id="scrollProliferationCandidates" parameterType="map"
+          resultType="org.sonar.db.issue.ProliferationCandidateDto" fetchSize="${_scrollFetchSize}"
+          resultSetType="FORWARD_ONLY">
+    select
+      i.kee as issueKey,
+      i.project_uuid as branchUuid,
+      i.line as line,
+      i.message as message
+    from issues i
+    where i.component_uuid in
+    <foreach collection="componentUuids" open="(" close=")" item="componentUuid" separator=",">
+      #{componentUuid,jdbcType=VARCHAR}
+    </foreach>
+    and i.rule_uuid = #{ruleUuid,jdbcType=VARCHAR}
+    and i.status in
+    <foreach collection="statuses" open="(" close=")" item="status" separator=",">
+      #{status,jdbcType=VARCHAR}
+    </foreach>
+    and (
+      <if test="!lines.isEmpty()">
+        i.line in
+        <foreach collection="lines" open="(" close=")" item="line" separator=",">
+          #{line,jdbcType=INTEGER}
+        </foreach>
+      </if>
+      <if test="!lines.isEmpty() and includeNullLine">
+        or
+      </if>
+      <if test="includeNullLine">
+        i.line is null
+      </if>
+    )
+  </select>
+
   <select id="selectByKeysIfNotUpdatedAt" parameterType="map" resultMap="issueResultMap">
     select
       <include refid="issueColumns"/>
@@ -776,6 +872,158 @@
           and i.component_uuid = #{component.uuid,jdbcType=VARCHAR}
       ) i2
     group by i2.status, i2.resolution, i2.severity, i2.inLeak
+  </select>
+
+  <select id="selectIssueGroupsByComponentUuids" resultType="org.sonar.db.issue.IssueGroupDto" parameterType="map">
+    select
+      i.component_uuid as componentUuid,
+      i.issue_type as ruleType,
+      i.severity as severity,
+      i.resolution as resolution,
+      i.status as status, sum(i.effort) as effort,
+      count(i.issue_type) as "count",
+      sum(case when i.prioritized_rule = true then 1 else 0 end) as prioritizedRule,
+      <if test="leakPeriodBeginningDate &gt;= 0">
+        (i.issue_creation_date &gt; #{leakPeriodBeginningDate,jdbcType=BIGINT}) as inLeak
+      </if>
+      <if test="leakPeriodBeginningDate &lt; 0">
+        CASE WHEN n.uuid is null THEN false ELSE true END as inLeak
+      </if>
+    from issues i
+    <if test="leakPeriodBeginningDate &lt; 0">
+      left join new_code_reference_issues n on n.issue_key = i.kee
+    </if>
+    where i.status &lt;&gt; 'CLOSED'
+    and i.component_uuid in
+    <foreach collection="componentUuids" open="(" close=")" item="componentUuid" separator=",">
+      #{componentUuid,jdbcType=VARCHAR}
+    </foreach>
+    group by i.component_uuid, i.issue_type, i.severity, i.resolution, i.status, inLeak
+  </select>
+
+  <select id="selectIssueGroupsByComponentUuids" resultType="org.sonar.db.issue.IssueGroupDto" parameterType="map" databaseId="oracle">
+    <include refid="selectIssueGroupsByComponentUuidsVendorSpecific"/>
+  </select>
+
+  <select id="selectIssueGroupsByComponentUuids" resultType="org.sonar.db.issue.IssueGroupDto" parameterType="map" databaseId="mssql">
+    <include refid="selectIssueGroupsByComponentUuidsVendorSpecific"/>
+  </select>
+
+  <sql id="selectIssueGroupsByComponentUuidsVendorSpecific">
+    select
+      i2.component_uuid as componentUuid,
+      i2.issue_type as ruleType,
+      i2.severity as severity,
+      i2.resolution as resolution,
+      i2.status as status,
+      sum(i2.effort) as effort,
+      count(i2.issue_type) as "count",
+      sum(i2.prioritized_rule) as prioritizedRule,
+      i2.inLeak as inLeak
+    from (
+      select
+        i.component_uuid,
+        i.issue_type,
+        i.severity,
+        i.resolution,
+        i.status,
+        i.effort,
+        case when prioritized_rule = 1 then 1 else 0 end as prioritized_rule,
+        <if test="leakPeriodBeginningDate &gt;= 0">
+          case when i.issue_creation_date &gt; #{leakPeriodBeginningDate,jdbcType=BIGINT} then 1 else 0 end as inLeak
+        </if>
+        <if test="leakPeriodBeginningDate &lt; 0">
+          case when n.uuid is null then 0 else 1 end as inLeak
+        </if>
+      from issues i
+      <if test="leakPeriodBeginningDate &lt; 0">
+        left join new_code_reference_issues n on n.issue_key = i.kee
+      </if>
+      where i.status &lt;&gt; 'CLOSED'
+      and i.component_uuid in
+    <foreach collection="componentUuids" open="(" close=")" item="componentUuid" separator=",">
+      #{componentUuid,jdbcType=VARCHAR}
+    </foreach>
+    ) i2
+    group by i2.component_uuid, i2.issue_type, i2.severity, i2.resolution, i2.status, i2.inLeak
+  </sql>
+
+  <select id="selectIssueImpactGroupsByComponentUuids" resultType="org.sonar.db.issue.IssueImpactGroupDto" parameterType="map">
+    select
+      i2.component_uuid as componentUuid,
+      i2.status as status,
+      i2.resolution as resolution,
+      i2.software_quality as softwareQuality,
+      i2.severity as severity,
+      count(i2.kee) as "count",
+      i2.inLeak as inLeak,
+      sum(i2.effort) as effort
+      from (
+        select
+          i.component_uuid,
+          i.status,
+          i.resolution,
+          i.kee,
+          ii.software_quality,
+          ii.severity,
+          i.effort,
+          <if test="leakPeriodBeginningDate &gt;= 0">
+            case when i.issue_creation_date &gt; #{leakPeriodBeginningDate,jdbcType=BIGINT} then ${_true} else ${_false} end as inLeak
+          </if>
+          <if test="leakPeriodBeginningDate &lt; 0">
+            case when n.uuid is null then  ${_false} else ${_true} end as inLeak
+          </if>
+          from issues i
+            inner join issues_impacts ii on i.kee = ii.issue_key
+          <if test="leakPeriodBeginningDate &lt; 0">
+            left join new_code_reference_issues n on n.issue_key = i.kee
+          </if>
+          where i.status &lt;&gt; 'CLOSED'
+          and (i.resolution is null or i.resolution = 'WONTFIX')
+          and i.component_uuid in
+    <foreach collection="componentUuids" open="(" close=")" item="componentUuid" separator=",">
+      #{componentUuid,jdbcType=VARCHAR}
+    </foreach>
+      ) i2
+    group by i2.component_uuid, i2.status, i2.resolution, i2.software_quality, i2.severity, i2.inLeak
+  </select>
+
+  <select id="selectIssueImpactSeverityGroupsByComponentUuids" resultType="org.sonar.db.issue.IssueImpactSeverityGroupDto" parameterType="map">
+    select
+      i2.component_uuid as componentUuid,
+      i2.status as status,
+      i2.resolution as resolution,
+      i2.severity as severity,
+      count(i2.kee) as "count",
+      i2.inLeak as inLeak
+      from (
+        <!-- We need to use distinct keyword to not count twice issues with same impact severity on multiple software qualities -->
+        <!-- Sample RELIABILITY=BLOCKER and SECURITY=BLOCKER will be counted as 2 without the distinct keyword -->
+        select distinct
+          i.component_uuid,
+          i.status,
+          i.resolution,
+          i.kee,
+          ii.severity,
+          <if test="leakPeriodBeginningDate &gt;= 0">
+            case when i.issue_creation_date &gt; #{leakPeriodBeginningDate,jdbcType=BIGINT} then ${_true} else ${_false} end as inLeak
+          </if>
+          <if test="leakPeriodBeginningDate &lt; 0">
+            case when n.uuid is null then  ${_false} else ${_true} end as inLeak
+          </if>
+          from issues i
+            inner join issues_impacts ii on i.kee = ii.issue_key
+          <if test="leakPeriodBeginningDate &lt; 0">
+            left join new_code_reference_issues n on n.issue_key = i.kee
+          </if>
+          where i.status &lt;&gt; 'CLOSED'
+          and (i.resolution is null or i.resolution = 'WONTFIX')
+          and i.component_uuid in
+    <foreach collection="componentUuids" open="(" close=")" item="componentUuid" separator=",">
+      #{componentUuid,jdbcType=VARCHAR}
+    </foreach>
+      ) i2
+    group by i2.component_uuid, i2.status, i2.resolution, i2.severity, i2.inLeak
   </select>
 
   <select id="selectIssueKeysByComponentUuid" parameterType="string" resultType="string">

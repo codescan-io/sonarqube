@@ -26,8 +26,13 @@ public final class CeTaskTypes {
   public static final String REPORT = "REPORT";
   public static final String PROJECT_EXPORT = "PROJECT_EXPORT";
 
+  /** CodeScan: recomputes a branch's live measures and quality gate after its issues changed outside an analysis. */
+  public static final String MEASURE_RECOMPUTE = "MEASURE_RECOMPUTE";
+
   public static final String GITHUB_PROJECT_PERMISSIONS_PROVISIONING = "GITHUB_PROJECT_PERMISSIONS_PROVISIONING";
   public static final String GITLAB_PROJECT_PERMISSIONS_PROVISIONING = "GITLAB_PROJECT_PERMISSIONS_PROVISIONING";
+
+  public static final String RESOLUTION_PROLIFERATION = "RESOLUTION_PROLIFERATION";
 
   private CeTaskTypes() {
     // only statics

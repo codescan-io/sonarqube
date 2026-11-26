@@ -19,6 +19,7 @@
  */
 package org.sonar.server.issue.ws;
 
+import org.sonar.ce.queue.MeasureRecomputeSubmitter;
 import org.sonar.core.platform.Module;
 import org.sonar.server.common.avatar.AvatarResolverImpl;
 import org.sonar.server.issue.IssueChangeWSSupport;
@@ -80,6 +81,7 @@ public class IssueWsModule extends Module {
       ChangelogAction.class,
       BulkChangeAction.class,
       BulkTransitionAction.class,
+      MeasureRecomputeSubmitter.class,
       QGChangeEventListenersImpl.class,
       TaintChecker.class,
       PullAction.class,
