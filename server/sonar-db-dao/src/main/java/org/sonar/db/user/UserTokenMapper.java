@@ -20,7 +20,9 @@
 package org.sonar.db.user;
 
 import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.ibatis.annotations.Param;
+import org.sonar.db.Pagination;
 
 public interface UserTokenMapper {
 
@@ -43,5 +45,12 @@ public interface UserTokenMapper {
   List<UserTokenCount> countTokensByUserUuids(@Param("userUuids") List<String> userUuids);
 
   List<UserTokenDto> selectTokensExpiredOnDate(@Param("timestamp") long timestamp);
+
+  List<OrganizationUserTokenDto> selectByOrganizationUuid(@Param("organizationUuid") String organizationUuid,
+    @Nullable @Param("searchText") String searchText, @Nullable @Param("createdBefore") Long createdBefore,
+    @Param("pagination") Pagination pagination);
+
+  int countByOrganizationUuid(@Param("organizationUuid") String organizationUuid,
+    @Nullable @Param("searchText") String searchText, @Nullable @Param("createdBefore") Long createdBefore);
 
 }

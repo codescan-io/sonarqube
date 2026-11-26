@@ -48,6 +48,7 @@ const ADMIN_PATHS = [
   'permission_templates',
   'projects_management',
   'webhooks',
+  'tokens',
 ];
 
 export const BILLING_PAGE_KEY = 'billing/billing';
@@ -154,6 +155,13 @@ export default function OrganizationNavigationAdministration({ billing, location
             to={`/organizations/${organization.kee}/webhooks`}
           >
             {translate('webhooks.page')}
+          </DropdownMenu.ItemLink>
+
+          <DropdownMenu.ItemLink
+            isMatchingFullPath
+            to={`/organizations/${organization.kee}/tokens`}
+          >
+            {translate('organization.tokens.page')}
           </DropdownMenu.ItemLink>
         </>
       }
