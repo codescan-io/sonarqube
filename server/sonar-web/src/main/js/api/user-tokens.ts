@@ -21,7 +21,8 @@
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import { post, postJSON } from '../helpers/request';
-import { NewUserToken, UserToken } from '../types/token';
+import { Paging } from '../types/types';
+import { NewUserToken, OrganizationUserToken, UserToken } from '../types/token';
 
 /** List tokens for given user login */
 export function getTokens(login: string): Promise<UserToken[]> {
@@ -40,4 +41,22 @@ export function generateToken(data: {
 
 export function revokeToken(data: { login?: string; name: string }) {
   return post('/api/user_tokens/revoke', data).catch(throwGlobalError);
+}
+
+/**
+ * Tokens of the members of one organization. Requires org admin (or super admin) permission;
+ * the backend scopes everything by the organization key.
+ */
+export function searchOrganizationTokens(data: {
+  createdBefore?: string;
+  organization: string;
+  p?: number;
+  ps?: number;
+  q?: string;
+}): Promise<{ paging: Paging; userTokens: OrganizationUserToken[] }> {
+  return getJSON('/api/user_tokens/search_organization', data).catch(throwGlobalError);
+}
+
+export function revokeOrganizationToken(data: { login: string; name: string; organization: string }) {
+  return post('/api/user_tokens/revoke_organization', data).catch(throwGlobalError);
 }

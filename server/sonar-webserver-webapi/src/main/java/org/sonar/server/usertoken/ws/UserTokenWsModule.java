@@ -30,6 +30,8 @@ public class UserTokenWsModule extends Module {
       GenerateAction.class,
       RevokeAction.class,
       SearchAction.class,
+      SearchOrganizationTokensAction.class,
+      RevokeOrganizationTokenAction.class,
       GenerateActionValidation.class
     );
   }

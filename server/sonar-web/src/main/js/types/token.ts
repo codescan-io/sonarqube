@@ -45,3 +45,9 @@ export interface NewUserToken extends UserToken {
   login: string;
   token: string;
 }
+
+/** Token of an organization member, as listed on the organization "User tokens" admin page. */
+export interface OrganizationUserToken extends UserToken {
+  login: string;
+  userName?: string;
+}

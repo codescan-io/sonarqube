@@ -24,6 +24,7 @@ import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -33,10 +34,13 @@ import org.slf4j.LoggerFactory;
 import org.sonar.core.util.UuidFactory;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
+import org.sonar.db.Pagination;
 import org.sonar.db.audit.AuditPersister;
 import org.sonar.db.audit.model.UserTokenNewValue;
 
+import static org.sonar.db.DaoUtils.buildLikeValue;
 import static org.sonar.db.DatabaseUtils.executeLargeInputs;
+import static org.sonar.db.WildcardPosition.BEFORE_AND_AFTER;
 
 public class UserTokenDao implements Dao {
 
@@ -82,6 +86,27 @@ public class UserTokenDao implements Dao {
 
   public List<UserTokenDto> selectByUser(DbSession dbSession, UserDto user) {
     return mapper(dbSession).selectByUserUuid(user.getUuid());
+  }
+
+  /**
+   * Tokens of the members of the given organization, oldest first.
+   * Project analysis tokens of projects outside the organization are excluded.
+   */
+  public List<OrganizationUserTokenDto> selectByOrganization(DbSession dbSession, String organizationUuid, @Nullable String searchText,
+    @Nullable Long createdBefore, Pagination pagination) {
+    return mapper(dbSession).selectByOrganizationUuid(organizationUuid, toLikeValue(searchText), createdBefore, pagination);
+  }
+
+  public int countByOrganization(DbSession dbSession, String organizationUuid, @Nullable String searchText, @Nullable Long createdBefore) {
+    return mapper(dbSession).countByOrganizationUuid(organizationUuid, toLikeValue(searchText), createdBefore);
+  }
+
+  @CheckForNull
+  private static String toLikeValue(@Nullable String searchText) {
+    if (searchText == null || searchText.isBlank()) {
+      return null;
+    }
+    return buildLikeValue(searchText.trim().toLowerCase(Locale.ENGLISH), BEFORE_AND_AFTER);
   }
 
   public Map<String, Integer> countTokensByUsers(DbSession dbSession, Collection<UserDto> users) {

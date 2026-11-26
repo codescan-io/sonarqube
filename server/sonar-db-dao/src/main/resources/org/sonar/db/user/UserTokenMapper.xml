@@ -89,6 +89,46 @@
     GROUP BY t.user_uuid
   </select>
 
+  <!--
+    Tokens owned by members of an organization.
+    Project analysis tokens are only included when the project belongs to the same organization,
+    so that project names of another organization are never disclosed.
+  -->
+  <sql id="organizationTokensFromWhere">
+    FROM user_tokens t
+    INNER JOIN users u ON u.uuid = t.user_uuid
+    INNER JOIN organization_members om ON om.user_uuid = t.user_uuid
+      AND om.organization_uuid = #{organizationUuid, jdbcType=VARCHAR}
+    LEFT JOIN projects p ON t.project_uuid = p.uuid
+    WHERE
+      (t.project_uuid IS NULL OR p.organization_uuid = #{organizationUuid, jdbcType=VARCHAR})
+      <if test="searchText != null">
+        AND (
+          lower(u.login) LIKE #{searchText, jdbcType=VARCHAR} ESCAPE '/'
+          OR lower(u.name) LIKE #{searchText, jdbcType=VARCHAR} ESCAPE '/'
+          OR lower(t.name) LIKE #{searchText, jdbcType=VARCHAR} ESCAPE '/'
+        )
+      </if>
+      <if test="createdBefore != null">
+        AND t.created_at &lt; #{createdBefore, jdbcType=BIGINT}
+      </if>
+  </sql>
+
+  <select id="selectByOrganizationUuid" parameterType="map" resultType="org.sonar.db.user.OrganizationUserTokenDto">
+    SELECT
+    <include refid="userTokensColumns"/>,
+    u.login as "login",
+    u.name as "userName"
+    <include refid="organizationTokensFromWhere"/>
+    ORDER BY t.created_at ASC, t.uuid ASC
+    <include refid="org.sonar.db.common.Common.pagination"/>
+  </select>
+
+  <select id="countByOrganizationUuid" parameterType="map" resultType="int">
+    SELECT count(t.uuid)
+    <include refid="organizationTokensFromWhere"/>
+  </select>
+
   <delete id="deleteByUserUuid">
     DELETE FROM user_tokens WHERE user_uuid=#{userUuid, jdbcType=VARCHAR}
   </delete>
