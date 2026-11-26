@@ -23,6 +23,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import javax.annotation.Nullable;
 import org.sonar.api.utils.System2;
 import org.sonar.db.DbSession;
@@ -154,15 +155,16 @@ class PurgeCommands {
 
     profiler.start("purgeDisabledComponents (unresolved_issues)");
     long closedAt = system2.now();
+    Set<String> closedComponentUuids = purgeMapper.selectDisabledComponentsWithUnresolvedIssues(rootComponentUuid);
     executeLargeInputs(
-      purgeMapper.selectDisabledComponentsWithUnresolvedIssues(rootComponentUuid),
+      closedComponentUuids,
       input -> {
         purgeMapper.resolveComponentIssuesNotAlreadyResolved(input, closedAt);
         return input;
       });
     // CLOSED/REMOVED is Fixed, and the update above bypasses the issue workflow and its listeners: retain the issues it
     // just closed, selected in the database so their keys are never loaded
-    retainedIssueDao.insertIssuesClosedByPurge(session, rootComponentUuid, closedAt);
+    retainedIssueDao.insertIssuesClosedByPurge(session, rootComponentUuid, closedComponentUuids, closedAt);
     profiler.stop();
 
     profiler.start("purgeDisabledComponents (measures)");

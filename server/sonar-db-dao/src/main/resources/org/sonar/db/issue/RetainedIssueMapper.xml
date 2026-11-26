@@ -155,15 +155,17 @@
   </insert>
 
   <!--
-    The issues the purge of disabled components has just closed: unresolved issues of the branch's disabled files, all
-    closed at the same time ("now"). Issues of those files closed earlier keep their close date and are not matched.
-    Filtered on the issue's own branch: issue_close_date has no index, so this keeps the scan to the branch's issues.
+    The issues the purge of disabled components has just closed: issues of the disabled files it closed, all at the
+    same time ("now"). Issues of those files closed earlier keep their close date and are not matched. Read through the
+    files' issues (issues_component_uuid), so a branch without closed files costs nothing.
   -->
   <sql id="sqlInsertIssuesOfDisabledComponents">
     <include refid="sqlInsertSelectFromIssues"/>
     where
-      i.project_uuid = #{branchUuid, jdbcType=VARCHAR}
-      and c.enabled = ${_false}
+      i.component_uuid in
+      <foreach collection="componentUuids" open="(" close=")" item="componentUuid" separator=",">
+        #{componentUuid, jdbcType=VARCHAR}
+      </foreach>
       and i.issue_close_date = #{now, jdbcType=BIGINT}
       and i.status = 'CLOSED'
       and i.issue_type &lt;&gt; #{excludedIssueType, jdbcType=INTEGER}

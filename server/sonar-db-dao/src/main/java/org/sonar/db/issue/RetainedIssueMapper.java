@@ -44,9 +44,9 @@ public interface RetainedIssueMapper {
   /**
    * @param now when the purge closed the issues: their close date, also used as the time they became Fixed
    */
-  void insertIssuesOfDisabledComponents(@Param("branchUuid") String branchUuid, @Param("retainedStatus") String retainedStatus,
+  void insertIssuesOfDisabledComponents(@Param("retainedStatus") String retainedStatus,
     @Nullable @Param("statusMarkedByUuid") String statusMarkedByUuid, @Param("now") long now,
-    @Param("excludedIssueType") int excludedIssueType);
+    @Param("componentUuids") Collection<String> componentUuids, @Param("excludedIssueType") int excludedIssueType);
 
   void deleteRetainedIssues(@Param("retainedStatus") String retainedStatus, @Param("issueKeys") Collection<String> issueKeys);
 

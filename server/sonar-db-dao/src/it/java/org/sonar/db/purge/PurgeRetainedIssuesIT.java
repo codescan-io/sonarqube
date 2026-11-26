@@ -80,6 +80,19 @@ class PurgeRetainedIssuesIT {
     assertThat(db.countRowsOfTable("cs_issue_track_for_retain")).isZero();
   }
 
+  /** A purge that closes no issue reads and writes nothing for the branch, not even its retained row. */
+  @Test
+  void purgeDisabledComponents_writesNothing_whenItClosesNoIssue() {
+    RetainFixtures.project(db, true, "project-1");
+    RetainFixtures.branch(db, "branch-1", "project-1", "main", "BRANCH", null);
+    RetainFixtures.file(db, "removed-file", "branch-1", "project-1:src/Gone.cls", false);
+
+    purgeAt(PURGE_TIME, "branch-1", "removed-file");
+
+    assertThat(db.countRowsOfTable("cs_retain_details")).isZero();
+    assertThat(db.countRowsOfTable("cs_issue_track_for_retain")).isZero();
+  }
+
   /** The retained row is copied from the closed issue row: Fixed, closed by the purge, no user, file key kept. */
   @Test
   void purgeDisabledComponents_copiesTheClosedIssueRowAndWritesTheBranch() {
