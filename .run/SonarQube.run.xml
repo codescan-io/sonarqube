@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="SonarQube" type="Application" factoryName="Application">
+    <option name="ALTERNATIVE_JRE_PATH" value="17" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <envs>
+      <env name="AWS_DEFAULT_REGION" value="us-east-1" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="org.sonar.server.app.WebServer" />
+    <module name="sonarqube.server.sonar-webserver.main" />
+    <option name="PROGRAM_PARAMETERS" value="$USER_HOME$/tmp/sq-process-web.properties" />
+    <option name="VM_PARAMETERS" value="-Dfile.encoding=UTF-8 --add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED" />
+    <option name="WORKING_DIRECTORY" value="$USER_HOME$/tmp/sonarqube-debug" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

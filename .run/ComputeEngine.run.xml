@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="ComputeEngine" type="Application" factoryName="Application">
+    <option name="ALTERNATIVE_JRE_PATH" value="17" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <envs>
+      <env name="AWS_DEFAULT_REGION" value="us-east-1" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="org.sonar.ce.app.CeServer" />
+    <module name="sonarqube.server.sonar-ce.main" />
+    <option name="PROGRAM_PARAMETERS" value="$USER_HOME$/tmp/sq-process-ce.properties" />
+    <option name="WORKING_DIRECTORY" value="$USER_HOME$/tmp/sonarqube-debug" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

@@ -38,9 +38,9 @@ public class TaskTypesAction implements CeWsAction {
     for (CeTaskProcessor taskProcessor : taskProcessors) {
       taskTypesBuilder.addAll(taskProcessor.getHandledCeTaskTypes());
     }
-    taskTypesBuilder.add(CeTaskTypes.RESOLUTION_PROLIFERATION);
-    // CodeScan: run by the Compute Engine only, so no processor in the web server declares it.
+    // CodeScan: run by the Compute Engine only, so no processor in the web server declares them.
     taskTypesBuilder.add(CeTaskTypes.MEASURE_RECOMPUTE);
+    taskTypesBuilder.add(CeTaskTypes.RESOLUTION_PROLIFERATION);
     this.taskTypes = taskTypesBuilder.build();
   }
 
