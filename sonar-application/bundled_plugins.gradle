@@ -9,7 +9,7 @@ dependencies {
     bundledPlugin (group: 'org.sonarsource.javascript', name: 'sonar-javascript-plugin', classifier:'multi')
     bundledPlugin 'org.sonarsource.plugins.cayc:sonar-cayc-plugin'
     bundledPlugin 'org.sonarsource.python:sonar-python-plugin'
-    bundledPlugin 'org.sonarsource.slang:sonar-go-plugin'
+    bundledPlugin 'org.sonarsource.go:sonar-go-plugin'
     bundledPlugin "org.sonarsource.kotlin:sonar-kotlin-plugin"
     bundledPlugin "org.sonarsource.slang:sonar-ruby-plugin"
     bundledPlugin "org.sonarsource.slang:sonar-scala-plugin"
