@@ -60,6 +60,7 @@ import org.sonar.server.issue.retain.RetainIssueResolutionListener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -154,6 +155,59 @@ public class PersistIssuesStepRetainIT {
     underTest.execute(new TestComputationStepContext());
 
     assertThat(retainedKeys()).isEmpty();
+  }
+
+  /**
+   * A user resolved the issue as Fixed and it was retained as RESOLVED/FIXED; the analysis then closes it. The row
+   * follows the issue: CLOSED/FIXED, dated when it was closed.
+   */
+  @Test
+  public void refreshesTheStatus_whenTheAnalysisClosesAUserResolvedRetainedIssue() {
+    setRetain(true);
+    IssueDto issue = db.issues().insert(rule, project, file, i -> i.setStatus(STATUS_RESOLVED).setResolution(RESOLUTION_FIXED)
+      .setCreatedAt(NOW - 1_000_000_000L).setUpdatedAt(NOW - 1_000_000_000L));
+    db.executeInsert("cs_issue_track_for_retain",
+      "branch_uuid", project.uuid(),
+      "issue_kee", issue.getKey(),
+      "retained_status", IssueStatus.FIXED.name(),
+      "rule_uuid", rule.getUuid(),
+      "component_key", file.getKey(),
+      "status_changed_at", NOW - 10_000L,
+      "status", STATUS_RESOLVED,
+      "resolution", RESOLUTION_FIXED);
+
+    CacheAppender appender = protoIssueCache.newAppender();
+    appender.append(changeStatus(issue.toDefaultIssue(), STATUS_RESOLVED, STATUS_CLOSED, RESOLUTION_FIXED, RESOLUTION_FIXED)).close();
+    underTest.execute(new TestComputationStepContext());
+
+    assertThat(db.select("select status as \"status\", resolution as \"resolution\", status_changed_at as \"changedAt\" from cs_issue_track_for_retain"))
+      .extracting(row -> row.get("status"), row -> row.get("resolution"), row -> ((Number) row.get("changedAt")).longValue())
+      .containsExactly(tuple(STATUS_CLOSED, RESOLUTION_FIXED, NOW));
+  }
+
+  /** A row retained while the toggle was on stays and is kept right after the toggle is turned off (CSN-261 AC3). */
+  @Test
+  public void refreshesTheStatus_evenWhenTheOrganizationNoLongerRetains() {
+    setRetain(false);
+    IssueDto issue = db.issues().insert(rule, project, file, i -> i.setStatus(STATUS_RESOLVED).setResolution(RESOLUTION_FIXED)
+      .setCreatedAt(NOW - 1_000_000_000L).setUpdatedAt(NOW - 1_000_000_000L));
+    db.executeInsert("cs_issue_track_for_retain",
+      "branch_uuid", project.uuid(),
+      "issue_kee", issue.getKey(),
+      "retained_status", IssueStatus.FIXED.name(),
+      "rule_uuid", rule.getUuid(),
+      "component_key", file.getKey(),
+      "status_changed_at", NOW - 10_000L,
+      "status", STATUS_RESOLVED,
+      "resolution", RESOLUTION_FIXED);
+
+    CacheAppender appender = protoIssueCache.newAppender();
+    appender.append(changeStatus(issue.toDefaultIssue(), STATUS_RESOLVED, STATUS_CLOSED, RESOLUTION_FIXED, RESOLUTION_FIXED)).close();
+    underTest.execute(new TestComputationStepContext());
+
+    assertThat(db.select("select status as \"status\" from cs_issue_track_for_retain"))
+      .extracting(row -> row.get("status"))
+      .containsExactly(STATUS_CLOSED);
   }
 
   /** An issue that reopens was not fixed: its row goes even when the toggle is off. */

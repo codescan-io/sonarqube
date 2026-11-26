@@ -41,6 +41,8 @@ message PullRequest {
   optional string analysisDate = 7;
   optional string url = 8;
   optional string target = 9;
+  // project_branches.merge_branch_uuid; still set when the target branch was deleted (isOrphan)
+  optional string targetBranchUuid = 101;
 }
 
 message Status {

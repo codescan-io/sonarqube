@@ -43,16 +43,18 @@ public class RetainedIssueDao implements Dao {
   }
 
   /**
-   * Writes the branch row, or refreshes its name and target if they changed, so a renamed branch keeps its latest name
+   * Writes the branch row, or refreshes its key, name and target if they changed, so a renamed branch keeps its latest name
    * once deleted. Call it once per branch before its issues are retained.
    */
   public void writeBranch(DbSession dbSession, RetainBranchContextDto branch) {
     RetainedIssueMapper mapper = mapper(dbSession);
     if (branch.getRetainedBranchUuid() == null) {
-      mapper.insertBranch(branch.toRetainDetails());
+      mapper.insertBranch(branch);
     } else if (!Objects.equals(branch.getRetainedBranchKey(), branch.getBranchKey())
-      || !Objects.equals(branch.getRetainedTargetBranchKey(), branch.getTargetBranchKey())) {
-      mapper.updateBranch(branch.toRetainDetails());
+      || !Objects.equals(branch.getRetainedBranchName(), branch.getBranchName())
+      || !Objects.equals(branch.getRetainedTargetBranchKey(), branch.getTargetBranchKey())
+      || !Objects.equals(branch.getRetainedTargetBranchUuid(), branch.getTargetBranchUuid())) {
+      mapper.updateBranch(branch);
     }
   }
 
@@ -78,23 +80,6 @@ public class RetainedIssueDao implements Dao {
   }
 
   /**
-   * Retains one set of issues of a branch when its organization has the toggle on: reads the branch, writes its row and
-   * inserts. For callers that retain once, such as the purge; callers that retain repeatedly read the branch once.
-   */
-  public void insertIssuesOfBranch(DbSession dbSession, String branchUuid, IssueStatus retainedStatus,
-    @Nullable String statusMarkedByUuid, long now, Collection<String> issueKeys) {
-    if (issueKeys.isEmpty()) {
-      return;
-    }
-    Optional<RetainBranchContextDto> branch = selectBranchContext(dbSession, branchUuid);
-    if (branch.isEmpty() || !branch.get().isRetainEnabled()) {
-      return;
-    }
-    writeBranch(dbSession, branch.get());
-    insertIssues(dbSession, branchUuid, retainedStatus, statusMarkedByUuid, now, issueKeys);
-  }
-
-  /**
    * Retains the issues the purge of disabled components closed at {@code closedAt} on the branch's
    * {@code closedComponentUuids}, when its organization has the toggle on. Statements select them in the database, so
    * they are never loaded; a purge that closed nothing reads nothing.
@@ -116,6 +101,16 @@ public class RetainedIssueDao implements Dao {
       null, closedAt, partition, hotspot));
   }
 
+  /** Whether the branch has retained issues, so its deletion has something to keep. */
+  public boolean hasRetainedIssues(DbSession dbSession, String branchUuid) {
+    return mapper(dbSession).countRetainedIssuesOfBranch(branchUuid) > 0;
+  }
+
+  /** Drops the branch's retained row; for a branch deleted without retained issues. */
+  public void deleteBranch(DbSession dbSession, String branchUuid) {
+    mapper(dbSession).deleteBranch(branchUuid);
+  }
+
   /**
    * Drops the rows of issues that left {@code retainedStatus}: an issue that reopens was not fixed. For FIXED, a row
    * whose issue is still Fixed is kept.
@@ -127,9 +122,38 @@ public class RetainedIssueDao implements Dao {
     executeLargeUpdates(issueKeys, partition -> mapper(dbSession).deleteRetainedIssues(retainedStatus.name(), partition));
   }
 
+  /**
+   * Refreshes the status, resolution and date of retained issues that stay Fixed under another status, such as one a user
+   * resolved and the analysis then closed. The issue rows must already be written in {@code dbSession}; keys without a
+   * row are ignored, so no issue is retained here.
+   */
+  public void updateIssueStatuses(DbSession dbSession, Collection<String> issueKeys) {
+    if (issueKeys.isEmpty()) {
+      return;
+    }
+    executeLargeUpdates(issueKeys, partition -> mapper(dbSession).updateIssueStatuses(partition));
+  }
+
   /** Copies the comments of every retained issue of the branch. Call it before the branch is deleted. */
   public void copyCommentsOfBranch(DbSession dbSession, String branchUuid) {
     mapper(dbSession).copyCommentsOfBranch(branchUuid);
+  }
+
+  /**
+   * Copies the date of the latest assignment of every assigned retained issue of the branch, which goes with its
+   * 'issue_changes' rows. Call it before the branch is deleted.
+   */
+  public void copyAssignedDatesOfBranch(DbSession dbSession, String branchUuid) {
+    mapper(dbSession).copyAssignedDatesOfBranch(branchUuid);
+  }
+
+  /**
+   * Records that the branch is being deleted: sets 'deleted_at' and refreshes its name and, for a pull request, its
+   * target from 'project_branches', so the row keeps the last values even when no issue was retained after a rename or
+   * a retarget. Call it before the branch row is deleted. A branch without a row is ignored.
+   */
+  public void markBranchDeleted(DbSession dbSession, String branchUuid, long now) {
+    mapper(dbSession).markBranchDeleted(branchUuid, now);
   }
 
   /**

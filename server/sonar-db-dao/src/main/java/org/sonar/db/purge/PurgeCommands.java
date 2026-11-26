@@ -220,10 +220,21 @@ class PurgeCommands {
     profiler.stop();
   }
 
-  /** Keeps the comments of the branch's retained issues, which go with the 'issue_changes' rows. */
-  void copyRetainedIssueComments(String branchUuid) {
-    profiler.start("copyRetainedIssueComments (cs_retain_issue_comments)");
+  /**
+   * Keeps what the branch's retained issues lose with their 'issue_changes' rows (comments, assigned date) and marks
+   * its retained row deleted. A branch without retained issues keeps nothing: its retained row, if any (its issues
+   * were all reopened, say), goes with it.
+   */
+  void copyRetainedIssueDetails(String branchUuid) {
+    if (!retainedIssueDao.hasRetainedIssues(session, branchUuid)) {
+      retainedIssueDao.deleteBranch(session, branchUuid);
+      session.commit();
+      return;
+    }
+    profiler.start("copyRetainedIssueDetails (cs_retain_issue_comments, cs_issue_track_for_retain, cs_retain_details)");
     retainedIssueDao.copyCommentsOfBranch(session, branchUuid);
+    retainedIssueDao.copyAssignedDatesOfBranch(session, branchUuid);
+    retainedIssueDao.markBranchDeleted(session, branchUuid, system2.now());
     session.commit();
     profiler.stop();
   }

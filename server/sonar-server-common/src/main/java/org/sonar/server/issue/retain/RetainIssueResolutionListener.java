@@ -59,14 +59,17 @@ public class RetainIssueResolutionListener implements IssueResolutionListener {
   }
 
   @Override
-  public void onIssuesPersisted(IssuesPersistedEvent event, Buffer buffer) {
+      public void onIssuesPersisted(IssuesPersistedEvent event, Buffer buffer) {
     RetainBuffer retain = (RetainBuffer) buffer;
     DbSession dbSession = event.dbSession();
     retain.now = event.now();
     retain.statusMarkedByUuid = event.statusMarkedByUuid();
     for (DefaultIssue issue : event.issues()) {
       if (RetainedIssueStatus.isFixed(issue)) {
-        if (isRetainEnabled(dbSession, retain, issue.projectUuid())) {
+        if (RetainedIssueStatus.wasFixed(issue)) {
+          // still Fixed, under another status or resolution: refreshes the row it has, whatever the toggle says; never adds one
+          retain.statusChanged.add(issue.key());
+        } else if (isRetainEnabled(dbSession, retain, issue.projectUuid())) {
           retain.enteredFixed.add(new EnteredFixed(issue.projectUuid(), issue.key()));
         }
       } else {
@@ -80,6 +83,9 @@ public class RetainIssueResolutionListener implements IssueResolutionListener {
     if (retain.enteredFixed.size() >= WRITE_SIZE) {
       writeEnteredFixed(dbSession, retain);
     }
+    if (retain.statusChanged.size() >= WRITE_SIZE) {
+      writeStatusChanged(dbSession, retain);
+    }
   }
 
   @Override
@@ -87,6 +93,7 @@ public class RetainIssueResolutionListener implements IssueResolutionListener {
     RetainBuffer retain = (RetainBuffer) buffer;
     writeLeftFixed(dbSession, retain);
     writeEnteredFixed(dbSession, retain);
+    writeStatusChanged(dbSession, retain);
   }
 
   /** The branch rows were written to the failed session, so they may be gone with it. */
@@ -121,6 +128,11 @@ public class RetainIssueResolutionListener implements IssueResolutionListener {
     retain.enteredFixed.clear();
   }
 
+  private void writeStatusChanged(DbSession dbSession, RetainBuffer retain) {
+    retainedIssueDao.updateIssueStatuses(dbSession, retain.statusChanged);
+    retain.statusChanged.clear();
+  }
+
   private record EnteredFixed(String branchUuid, String issueKey) {
   }
 
@@ -128,6 +140,7 @@ public class RetainIssueResolutionListener implements IssueResolutionListener {
   private static final class RetainBuffer implements Buffer {
     private final List<EnteredFixed> enteredFixed = new ArrayList<>(WRITE_SIZE);
     private final List<String> leftFixed = new ArrayList<>(WRITE_SIZE);
+    private final List<String> statusChanged = new ArrayList<>();
     /** Empty for a branch whose organization does not retain. */
     private final Map<String, Optional<RetainBranchContextDto>> retainEnabledByBranch = new HashMap<>();
     /** The caller's user, null for the analysis. */
