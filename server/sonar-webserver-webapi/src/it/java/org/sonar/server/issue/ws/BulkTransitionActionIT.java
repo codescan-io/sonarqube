@@ -21,23 +21,29 @@ package org.sonar.server.issue.ws;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonar.api.impl.utils.TestSystem2;
 import org.sonar.api.utils.System2;
-import org.sonar.core.issue.DefaultIssue;
+import org.sonar.ce.queue.CeQueueImpl;
+import org.sonar.ce.queue.MeasureRecomputeSubmitter;
 import org.sonar.core.util.SequenceUuidFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
+import org.sonar.db.ce.CeQueueDto;
+import org.sonar.db.ce.CeTaskCharacteristicDto;
+import org.sonar.db.ce.CeTaskTypes;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.server.exceptions.ForbiddenException;
-import org.sonar.server.issue.TestIssueChangePostProcessor;
 import org.sonar.server.issue.index.IssueIndexer;
+import org.sonar.server.platform.NodeInformation;
 import org.sonar.server.tester.UserSessionRule;
 import org.sonar.server.ws.WsActionTester;
 
@@ -75,10 +81,11 @@ public class BulkTransitionActionIT {
     }
     return org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
   });
-  private final TestIssueChangePostProcessor postProcessor = new TestIssueChangePostProcessor();
+  private final MeasureRecomputeSubmitter submitter = new MeasureRecomputeSubmitter(dbClient,
+    new CeQueueImpl(system2, dbClient, new SequenceUuidFactory(), mock(NodeInformation.class)));
 
   private final WsActionTester tester = new WsActionTester(new BulkTransitionAction(dbClient, userSession,
-    issueIndexer, new SequenceUuidFactory(), system2, postProcessor));
+    issueIndexer, new SequenceUuidFactory(), system2, submitter));
 
   @Test
   public void requires_system_administrator() {
@@ -198,7 +205,7 @@ public class BulkTransitionActionIT {
   }
 
   @Test
-  public void an_empty_key_list_with_refresh_moves_nothing_and_recomputes_the_branch() {
+  public void an_empty_key_list_with_refresh_moves_nothing_and_queues_the_recomputation() {
     userSession.logIn().setSystemAdministrator();
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
     ComponentDto file = db.components().insertComponent(newFileDto(project));
@@ -210,20 +217,18 @@ public class BulkTransitionActionIT {
       .setParam("refreshMeasures", "true")
       .execute().getInput();
 
-    assertThat(response).contains("\"requested\":0", "\"transitioned\":0");
+    CeQueueDto task = onlyRecomputationOf(project);
+    assertThat(response).contains("\"requested\":0", "\"transitioned\":0", "\"ceTaskId\":\"" + task.getUuid() + "\"");
     assertThat(statusOf(issue.getKey())).isEqualTo(STATUS_OPEN);
-    assertThat(postProcessor.wasCalled()).isTrue();
-    assertThat(postProcessor.calledIssues())
+    assertThat(characteristicsOf(task))
       .as("no key was named, so there is no issue to carry to the quality-gate listeners")
       .isEmpty();
     verifyNoInteractions(issueIndexer);
   }
 
   /**
-   * The quality-gate listeners are dropped before any of them is called when this list is empty, so a transfer
-   * that flips the gate would send no webhook and leave no quality-gate event on the project's activity. One
-   * entry reaches every listener that a thousand would: a call carries one branch, and both listeners read the
-   * change event rather than the issues.
+   * The quality-gate listeners are dropped before any of them is called when the task carries no issue, so a
+   * transfer that flips the gate would send no webhook and leave no quality-gate event on the project's activity.
    */
   @Test
   public void the_recomputation_carries_an_issue_so_the_quality_gate_listeners_are_reached() {
@@ -233,21 +238,17 @@ public class BulkTransitionActionIT {
     RuleDto rule = db.rules().insertIssueRule();
     IssueDto open = insertOpenIssue(rule, project, file);
 
-    tester.newRequest()
+    String response = tester.newRequest()
       .setParam("issues", open.getKey())
       .setParam("transition", "falsepositive")
       .setParam("branchUuid", project.uuid())
       .setParam("refreshMeasures", "true")
-      .execute();
+      .execute().getInput();
 
-    assertThat(postProcessor.calledIssues()).hasSize(1);
-    DefaultIssue carried = postProcessor.calledIssues().get(0);
-    assertThat(carried.key()).isEqualTo(open.getKey());
-    assertThat(carried.projectUuid())
-      .as("the branch it belongs to, which is how the broadcast finds its change events")
-      .isEqualTo(project.uuid());
-    assertThat(carried.status()).isEqualTo("RESOLVED");
-    assertThat(carried.resolution()).isEqualTo("FALSE-POSITIVE");
+    assertThat(response).contains("\"transitioned\":1", "\"ceTaskId\":");
+    assertThat(characteristicsOf(onlyRecomputationOf(project))).containsOnly(
+      Map.entry(MeasureRecomputeSubmitter.CHARACTERISTIC_RESOLVED_ISSUE, open.getKey()),
+      Map.entry(MeasureRecomputeSubmitter.CHARACTERISTIC_RESOLUTION, "FALSE-POSITIVE"));
   }
 
   /** Nothing moved, but an earlier chunk of the same run did, so the gate may still have changed. */
@@ -267,8 +268,65 @@ public class BulkTransitionActionIT {
       .setParam("refreshMeasures", "true")
       .execute();
 
-    assertThat(postProcessor.calledIssues()).hasSize(1);
-    assertThat(postProcessor.calledIssues().get(0).key()).isEqualTo(alreadyResolved.getKey());
+    assertThat(characteristicsOf(onlyRecomputationOf(project)))
+      .containsEntry(MeasureRecomputeSubmitter.CHARACTERISTIC_RESOLVED_ISSUE, alreadyResolved.getKey());
+  }
+
+  @Test
+  public void broadcast_only_transitions_nothing_and_answers_with_the_queued_task() {
+    userSession.logIn().setSystemAdministrator();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    RuleDto rule = db.rules().insertIssueRule();
+    IssueDto open = insertOpenIssue(rule, project, file);
+
+    String response = broadcastOnly(project, open);
+
+    CeQueueDto task = onlyRecomputationOf(project);
+    assertThat(response).contains("\"requested\":1", "\"transitioned\":0", "\"notTransitioned\":[]",
+      "\"ceTaskId\":\"" + task.getUuid() + "\"");
+    assertThat(task.getStatus()).isEqualTo(CeQueueDto.Status.PENDING);
+    assertThat(statusOf(open.getKey())).isEqualTo(STATUS_OPEN);
+    assertThat(changelogRowsOf(open.getKey())).isZero();
+    verifyNoInteractions(issueIndexer);
+  }
+
+  @Test
+  public void a_repeated_broadcast_while_the_task_is_pending_answers_with_the_same_task() {
+    userSession.logIn().setSystemAdministrator();
+    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file = db.components().insertComponent(newFileDto(project));
+    IssueDto open = insertOpenIssue(db.rules().insertIssueRule(), project, file);
+
+    String first = broadcastOnly(project, open);
+    String second = broadcastOnly(project, open);
+    String third = broadcastOnly(project, open);
+
+    String taskId = onlyRecomputationOf(project).getUuid();
+    assertThat(List.of(first, second, third)).allMatch(response -> response.contains("\"ceTaskId\":\"" + taskId + "\""));
+  }
+
+  private String broadcastOnly(ComponentDto branch, IssueDto issue) {
+    return tester.newRequest()
+      .setParam("issues", issue.getKey())
+      .setParam("transition", "falsepositive")
+      .setParam("branchUuid", branch.uuid())
+      .setParam("refreshMeasures", "true")
+      .setParam("broadcastOnly", "true")
+      .execute().getInput();
+  }
+
+  private CeQueueDto onlyRecomputationOf(ComponentDto branch) {
+    List<CeQueueDto> tasks = dbClient.ceQueueDao().selectAllInAscOrder(db.getSession()).stream()
+      .filter(task -> CeTaskTypes.MEASURE_RECOMPUTE.equals(task.getTaskType()))
+      .toList();
+    assertThat(tasks).extracting(CeQueueDto::getComponentUuid).containsExactly(branch.uuid());
+    return tasks.get(0);
+  }
+
+  private Map<String, String> characteristicsOf(CeQueueDto task) {
+    return dbClient.ceTaskCharacteristicsDao().selectByTaskUuids(db.getSession(), List.of(task.getUuid())).stream()
+      .collect(Collectors.toMap(CeTaskCharacteristicDto::getKey, CeTaskCharacteristicDto::getValue));
   }
 
   private IssueDto insertOpenIssue(RuleDto rule, ComponentDto branch, ComponentDto file) {

@@ -350,6 +350,11 @@ public class IssueIndexer implements EventIndexer, AnalysisIndexer, NeedAuthoriz
       .toList();
   }
 
+
+  public void queueBranchForRecovery(DbSession dbSession, String branchUuid) {
+    dbClient.esQueueDao().insert(dbSession, createBranchRecoveryItems(List.of(branchUuid)));
+  }
+
   /**
    * Commits the DB transaction and adds the issues to Elasticsearch index.
    * <p>

@@ -81,8 +81,9 @@ public class IssueDaoBulkTransitionIT {
     assertThat(reload(falsePositive).getIssueResolutionExpiresAt()).isNull();
   }
 
+  /** The read judges nothing: it returns what each pairing points at, resolution and all, and the caller decides. */
   @Test
-  public void selectExceptionSourcesOfTransferReturnsEachPairedSourceThatIsStillAnException() {
+  public void selectExceptionSourcesOfTransferReturnsEveryPairedSourceOfTheRunWithItsResolution() {
     givenTheTransferReportTable();
     IssueDto expiring = insertOpenIssue();
     IssueDto neverExpires = insertOpenIssue();
@@ -102,19 +103,21 @@ public class IssueDaoBulkTransitionIT {
     pair(UUID.randomUUID().toString(), neverExpires, "D3");
 
     List<IssueExceptionSourceDto> sources = underTest.selectExceptionSourcesOfTransfer(db.getSession(), run,
-      List.of("D1", "D2", "D3", "D4"), EXPIRES_AT - 1);
+      List.of("D1", "D2", "D3", "D4"));
 
     assertThat(sources)
       .extracting(IssueExceptionSourceDto::getIssueKey, IssueExceptionSourceDto::getSourceKey,
-        IssueExceptionSourceDto::getExpiresAt)
+        IssueExceptionSourceDto::getResolution, IssueExceptionSourceDto::getExpiresAt)
       .containsExactlyInAnyOrder(
-        tuple("D1", expiring.getKey(), EXPIRES_AT),
-        tuple("D1", neverExpires.getKey(), null),
-        tuple("D3", expiring.getKey(), EXPIRES_AT));
+        tuple("D1", expiring.getKey(), RESOLUTION_EXCEPTION, EXPIRES_AT),
+        tuple("D1", neverExpires.getKey(), RESOLUTION_EXCEPTION, null),
+        tuple("D2", falsePositive.getKey(), RESOLUTION_FALSE_POSITIVE, null),
+        tuple("D3", expiring.getKey(), RESOLUTION_EXCEPTION, EXPIRES_AT));
   }
 
+  /** An expiry that has passed is data the caller weighs, not a row the read withholds. */
   @Test
-  public void selectExceptionSourcesOfTransferLeavesOutASourceThatHasExpired() {
+  public void selectExceptionSourcesOfTransferReportsAnExpiredSourcesExpiryRatherThanDroppingIt() {
     givenTheTransferReportTable();
     IssueDto expiring = insertOpenIssue();
     IssueDto neverExpires = insertOpenIssue();
@@ -128,9 +131,11 @@ public class IssueDaoBulkTransitionIT {
     pair(run, neverExpires, "D2");
 
     List<IssueExceptionSourceDto> sources = underTest.selectExceptionSourcesOfTransfer(db.getSession(), run,
-      List.of("D1", "D2"), EXPIRES_AT);
+      List.of("D1", "D2"));
 
-    assertThat(sources).extracting(IssueExceptionSourceDto::getIssueKey).containsExactly("D2");
+    assertThat(sources)
+      .extracting(IssueExceptionSourceDto::getIssueKey, IssueExceptionSourceDto::getExpiresAt)
+      .containsExactlyInAnyOrder(tuple("D1", EXPIRES_AT), tuple("D2", null));
   }
 
   /** The resolution transfer report lives in CodeScan's schema, so the test database only gets the columns read. */

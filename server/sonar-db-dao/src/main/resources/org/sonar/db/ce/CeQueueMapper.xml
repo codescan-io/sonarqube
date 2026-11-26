@@ -170,11 +170,32 @@
       cq.status='PENDING'
       and cq.started_at is null
       and cq2.uuid is null
+      <!--
+        Proliferation yields to a project's other pending work: a marking is never urgent enough to delay an
+        analysis of the same project. The wait is scoped to "cq.entity_uuid", so no other project is affected,
+        and it is bounded - once a proliferation task is older than "proliferationDeferralDeadline" it becomes
+        eligible anyway, so a continuously analysed project cannot starve a marking for ever.
+
+        The type arrives as a bound parameter rather than a literal so it stays tied to
+        CeTaskTypes.RESOLUTION_PROLIFERATION; for every other task type the first branch is true and the rest of
+        the condition is never evaluated, which is why this leaves all existing task types exactly as they were.
+      -->
+      and (cq.task_type &lt;&gt; #{proliferationTaskType,jdbcType=VARCHAR}
+        or cq.created_at &lt;= #{proliferationDeferralDeadline,jdbcType=BIGINT}
+        or not exists (
+          select 1 from ce_queue cq3
+          where cq3.entity_uuid = cq.entity_uuid
+            and cq3.status = 'PENDING'
+            and cq3.task_type &lt;&gt; #{proliferationTaskType,jdbcType=VARCHAR}))
       <if test="excludeIndexationJob">
         and cq.task_type &lt;&gt; 'ISSUE_SYNC'
       </if>
   </sql>
 
+  <!--
+    Oldest first. Proliferation is held back by the eligibility predicate above, which scopes the wait to the
+    project the task belongs to, so the ordering itself stays what it has always been for every task type.
+  -->
   <sql id="orderBySelectEligibleForPeek">
     order by
       cq.created_at asc,
