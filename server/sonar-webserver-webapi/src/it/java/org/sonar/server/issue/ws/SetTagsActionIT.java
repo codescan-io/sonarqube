@@ -52,6 +52,7 @@ import org.sonar.server.issue.WebIssueStorage;
 import org.sonar.server.issue.index.IssueIndexer;
 import org.sonar.server.issue.index.IssueIteratorFactory;
 import org.sonar.server.issue.notification.IssuesChangesNotificationSerializer;
+import org.sonar.server.issue.retain.IssueResolutionListeners;
 import org.sonar.server.notification.NotificationManager;
 import org.sonar.server.rule.DefaultRuleFinder;
 import org.sonar.server.rule.RuleDescriptionFormatter;
@@ -91,7 +92,7 @@ public class SetTagsActionIT {
 
   private WsActionTester ws = new WsActionTester(new SetTagsAction(userSession, dbClient, new IssueFinder(dbClient, userSession), new IssueFieldsSetter(),
     new IssueUpdater(dbClient,
-      new WebIssueStorage(system2, dbClient, new DefaultRuleFinder(dbClient, mock(RuleDescriptionFormatter.class)), issueIndexer, new SequenceUuidFactory()),
+      new WebIssueStorage(system2, dbClient, new DefaultRuleFinder(dbClient, mock(RuleDescriptionFormatter.class)), issueIndexer, new SequenceUuidFactory(), new IssueResolutionListeners()),
       mock(NotificationManager.class), issueChangePostProcessor, issuesChangesSerializer),
     responseWriter));
 

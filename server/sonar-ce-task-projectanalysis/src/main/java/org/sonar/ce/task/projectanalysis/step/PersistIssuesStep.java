@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.utils.System2;
 import org.sonar.ce.task.projectanalysis.issue.ProtoIssueCache;
 import org.sonar.ce.task.projectanalysis.issue.RuleRepository;
@@ -47,6 +49,7 @@ import org.sonar.db.issue.IssueDto;
 import org.sonar.db.issue.NewCodeReferenceIssueDto;
 import org.sonar.db.newcodeperiod.NewCodePeriodType;
 import org.sonar.server.issue.IssueStorage;
+import org.sonar.server.issue.retain.IssueResolutionListeners;
 
 import static org.sonar.core.util.FileUtils.humanReadableByteCountSI;
 import static org.sonar.db.issue.IssueDto.toDtoForComputationInsert;
@@ -55,6 +58,7 @@ public class PersistIssuesStep implements ComputationStep {
   // holding up to 1000 DefaultIssue (max size of addedIssues and updatedIssues at any given time) in memory should not
   // be a problem while making sure we leverage extensively the batch feature to speed up persistence
   private static final int ISSUE_BATCHING_SIZE = BatchSession.MAX_BATCH_SIZE * 2;
+  private static final Logger LOGGER = LoggerFactory.getLogger(PersistIssuesStep.class);
 
   private final DbClient dbClient;
   private final System2 system2;
@@ -64,10 +68,11 @@ public class PersistIssuesStep implements ComputationStep {
   private final ProtoIssueCache protoIssueCache;
   private final IssueStorage issueStorage;
   private final UuidFactory uuidFactory;
+  private final IssueResolutionListeners issueResolutionListeners;
 
   public PersistIssuesStep(DbClient dbClient, System2 system2, UpdateConflictResolver conflictResolver,
     RuleRepository ruleRepository, PeriodHolder periodHolder, ProtoIssueCache protoIssueCache, IssueStorage issueStorage,
-    UuidFactory uuidFactory) {
+    UuidFactory uuidFactory, IssueResolutionListeners issueResolutionListeners) {
     this.dbClient = dbClient;
     this.system2 = system2;
     this.conflictResolver = conflictResolver;
@@ -76,6 +81,7 @@ public class PersistIssuesStep implements ComputationStep {
     this.protoIssueCache = protoIssueCache;
     this.issueStorage = issueStorage;
     this.uuidFactory = uuidFactory;
+    this.issueResolutionListeners = issueResolutionListeners;
   }
 
   @Override
@@ -84,54 +90,68 @@ public class PersistIssuesStep implements ComputationStep {
     IssueStatistics statistics = new IssueStatistics();
     try (DbSession dbSession = dbClient.openSession(true);
       CloseableIterator<DefaultIssue> issues = protoIssueCache.traverse()) {
-      List<DefaultIssue> addedIssues = new ArrayList<>(ISSUE_BATCHING_SIZE);
-      List<DefaultIssue> updatedIssues = new ArrayList<>(ISSUE_BATCHING_SIZE);
-      List<DefaultIssue> noLongerNewIssues = new ArrayList<>(ISSUE_BATCHING_SIZE);
-      List<DefaultIssue> newCodeIssuesToMigrate = new ArrayList<>(ISSUE_BATCHING_SIZE);
-      IssueDao issueDao = dbClient.issueDao();
-      IssueChangeMapper changeMapper = dbSession.getMapper(IssueChangeMapper.class);
-      AnticipatedTransitionMapper anticipatedTransitionMapper = dbSession.getMapper(AnticipatedTransitionMapper.class);
-      while (issues.hasNext()) {
-        DefaultIssue issue = issues.next();
-        if (issue.isNew() || issue.isCopied()) {
-          addedIssues.add(issue);
-          if (addedIssues.size() >= ISSUE_BATCHING_SIZE) {
-            persistNewIssues(statistics, addedIssues, issueDao, changeMapper, anticipatedTransitionMapper, dbSession);
-            addedIssues.clear();
-          }
-        } else if (issue.isChanged()) {
-          updatedIssues.add(issue);
-          if (updatedIssues.size() >= ISSUE_BATCHING_SIZE) {
-            persistUpdatedIssues(statistics, updatedIssues, issueDao, changeMapper, dbSession);
-            updatedIssues.clear();
-          }
-        } else if (isOnBranchUsingReferenceBranch() && issue.isNoLongerNewCodeReferenceIssue()) {
-          noLongerNewIssues.add(issue);
-          if (noLongerNewIssues.size() >= ISSUE_BATCHING_SIZE) {
-            persistNoLongerNewIssues(statistics, noLongerNewIssues, issueDao, dbSession);
-            noLongerNewIssues.clear();
-          }
-        } else if (isOnBranchUsingReferenceBranch() && issue.isToBeMigratedAsNewCodeReferenceIssue()) {
-          newCodeIssuesToMigrate.add(issue);
-          if (newCodeIssuesToMigrate.size() >= ISSUE_BATCHING_SIZE) {
-            persistNewCodeIssuesToMigrate(statistics, newCodeIssuesToMigrate, issueDao, dbSession);
-            newCodeIssuesToMigrate.clear();
-          }
-        }
+      // collects Fixed changes across the batches of this analysis; local, so never shared between analyses
+      IssueResolutionListeners.Batch resolutionBatch = issueResolutionListeners.newBatch(dbSession);
+      try {
+        persistIssues(statistics, issues, dbSession, resolutionBatch);
+      } catch (RuntimeException e) {
+        forceFlushResolutionChanges(dbSession, resolutionBatch);
+        throw e;
       }
-
-      persistNewIssues(statistics, addedIssues, issueDao, changeMapper, anticipatedTransitionMapper, dbSession);
-      persistUpdatedIssues(statistics, updatedIssues, issueDao, changeMapper, dbSession);
-      persistNoLongerNewIssues(statistics, noLongerNewIssues, issueDao, dbSession);
-      persistNewCodeIssuesToMigrate(statistics, newCodeIssuesToMigrate, issueDao, dbSession);
-      flushSession(dbSession);
     } finally {
       statistics.dumpTo(context);
     }
   }
 
+  private void persistIssues(IssueStatistics statistics, CloseableIterator<DefaultIssue> issues, DbSession dbSession,
+    IssueResolutionListeners.Batch resolutionBatch) {
+    List<DefaultIssue> addedIssues = new ArrayList<>(ISSUE_BATCHING_SIZE);
+    List<DefaultIssue> updatedIssues = new ArrayList<>(ISSUE_BATCHING_SIZE);
+    List<DefaultIssue> noLongerNewIssues = new ArrayList<>(ISSUE_BATCHING_SIZE);
+    List<DefaultIssue> newCodeIssuesToMigrate = new ArrayList<>(ISSUE_BATCHING_SIZE);
+    IssueDao issueDao = dbClient.issueDao();
+    IssueChangeMapper changeMapper = dbSession.getMapper(IssueChangeMapper.class);
+    AnticipatedTransitionMapper anticipatedTransitionMapper = dbSession.getMapper(AnticipatedTransitionMapper.class);
+    while (issues.hasNext()) {
+      DefaultIssue issue = issues.next();
+      if (issue.isNew() || issue.isCopied()) {
+        addedIssues.add(issue);
+        if (addedIssues.size() >= ISSUE_BATCHING_SIZE) {
+          persistNewIssues(statistics, addedIssues, issueDao, changeMapper, anticipatedTransitionMapper, dbSession, resolutionBatch);
+          addedIssues.clear();
+        }
+      } else if (issue.isChanged()) {
+        updatedIssues.add(issue);
+        if (updatedIssues.size() >= ISSUE_BATCHING_SIZE) {
+          persistUpdatedIssues(statistics, updatedIssues, issueDao, changeMapper, dbSession, resolutionBatch);
+          updatedIssues.clear();
+        }
+      } else if (isOnBranchUsingReferenceBranch() && issue.isNoLongerNewCodeReferenceIssue()) {
+        noLongerNewIssues.add(issue);
+        if (noLongerNewIssues.size() >= ISSUE_BATCHING_SIZE) {
+          persistNoLongerNewIssues(statistics, noLongerNewIssues, issueDao, dbSession);
+          noLongerNewIssues.clear();
+        }
+      } else if (isOnBranchUsingReferenceBranch() && issue.isToBeMigratedAsNewCodeReferenceIssue()) {
+        newCodeIssuesToMigrate.add(issue);
+        if (newCodeIssuesToMigrate.size() >= ISSUE_BATCHING_SIZE) {
+          persistNewCodeIssuesToMigrate(statistics, newCodeIssuesToMigrate, issueDao, dbSession);
+          newCodeIssuesToMigrate.clear();
+        }
+      }
+    }
+
+    persistNewIssues(statistics, addedIssues, issueDao, changeMapper, anticipatedTransitionMapper, dbSession, resolutionBatch);
+    persistUpdatedIssues(statistics, updatedIssues, issueDao, changeMapper, dbSession, resolutionBatch);
+    persistNoLongerNewIssues(statistics, noLongerNewIssues, issueDao, dbSession);
+    persistNewCodeIssuesToMigrate(statistics, newCodeIssuesToMigrate, issueDao, dbSession);
+    resolutionBatch.flush();
+    flushSession(dbSession);
+  }
+
   private void persistNewIssues(IssueStatistics statistics, List<DefaultIssue> addedIssues,
-    IssueDao issueDao, IssueChangeMapper changeMapper, AnticipatedTransitionMapper anticipatedTransitionMapper, DbSession dbSession) {
+    IssueDao issueDao, IssueChangeMapper changeMapper, AnticipatedTransitionMapper anticipatedTransitionMapper, DbSession dbSession,
+    IssueResolutionListeners.Batch resolutionBatch) {
 
     final long now = system2.now();
 
@@ -150,6 +170,7 @@ public class PersistIssuesStep implements ComputationStep {
     });
 
     issueDtos.forEach(issueDto -> insertAdditionalIssueData(issueDao, dbSession, issueDto));
+    resolutionBatch.onIssuesPersisted(addedIssues, now);
   }
 
   private void insertAdditionalIssueData(IssueDao issueDao, DbSession dbSession, IssueDto issueDto) {
@@ -161,7 +182,7 @@ public class PersistIssuesStep implements ComputationStep {
   }
 
   private void persistUpdatedIssues(IssueStatistics statistics, List<DefaultIssue> updatedIssues, IssueDao issueDao,
-    IssueChangeMapper changeMapper, DbSession dbSession) {
+    IssueChangeMapper changeMapper, DbSession dbSession, IssueResolutionListeners.Batch resolutionBatch) {
     if (updatedIssues.isEmpty()) {
       return;
     }
@@ -199,6 +220,27 @@ public class PersistIssuesStep implements ComputationStep {
     }
 
     updatedIssues.forEach(i -> issueStorage.insertChanges(changeMapper, i, uuidFactory));
+    // after the conflict merge, which writes the user's status and resolution back into the DefaultIssue
+    resolutionBatch.onIssuesPersisted(updatedIssues, now);
+  }
+
+  /**
+   * The session commits on its own every {@link BatchSession#MAX_BATCH_SIZE} statements, so issues saved before the
+   * failure stay Fixed while the keys the listeners hold are lost with it. Writes those in a session of their own; the
+   * analysis still fails with its original error. See CSN-254.
+   */
+  private void forceFlushResolutionChanges(DbSession dbSession, IssueResolutionListeners.Batch resolutionBatch) {
+    try {
+      // ends the failed transaction now: closing the session comes only after this, and until then its locks would
+      // make the writes below wait for it
+      dbSession.rollback();
+      try (DbSession flushSession = dbClient.openSession(false)) {
+        resolutionBatch.forceFlush(flushSession);
+        flushSession.commit();
+      }
+    } catch (RuntimeException e) {
+      LOGGER.warn("Fixed issues saved before the failure may not be retained", e);
+    }
   }
 
   private static void persistNoLongerNewIssues(IssueStatistics statistics, List<DefaultIssue> noLongerNewIssues, IssueDao issueDao, DbSession dbSession) {

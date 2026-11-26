@@ -40,6 +40,7 @@ import org.sonar.api.utils.System2;
 import org.sonar.api.utils.TimeUtils;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
+import org.sonar.db.issue.RetainedIssueDao;
 import org.sonar.db.audit.AuditPersister;
 import org.sonar.db.audit.model.ComponentNewValue;
 import org.sonar.db.component.BranchDto;
@@ -55,15 +56,17 @@ public class PurgeDao implements Dao {
 
   private final System2 system2;
   private final AuditPersister auditPersister;
+  private final RetainedIssueDao retainedIssueDao;
 
-  public PurgeDao(System2 system2, AuditPersister auditPersister) {
+  public PurgeDao(System2 system2, AuditPersister auditPersister, RetainedIssueDao retainedIssueDao) {
     this.system2 = system2;
     this.auditPersister = auditPersister;
+    this.retainedIssueDao = retainedIssueDao;
   }
 
   public void purge(DbSession session, PurgeConfiguration conf, PurgeListener listener, PurgeProfiler profiler) {
     PurgeMapper mapper = session.getMapper(PurgeMapper.class);
-    PurgeCommands commands = new PurgeCommands(session, mapper, profiler, system2);
+    PurgeCommands commands = new PurgeCommands(session, mapper, profiler, system2, retainedIssueDao);
     String rootUuid = conf.rootUuid();
     deleteAbortedAnalyses(rootUuid, commands);
     purgeAnalyses(commands, rootUuid);
@@ -171,7 +174,7 @@ public class PurgeDao implements Dao {
 
   public void purgeCeActivities(DbSession session, PurgeProfiler profiler) {
     PurgeMapper mapper = session.getMapper(PurgeMapper.class);
-    PurgeCommands commands = new PurgeCommands(session, mapper, profiler, system2);
+    PurgeCommands commands = new PurgeCommands(session, mapper, profiler, system2, retainedIssueDao);
     purgeOldCeActivities(session, null, commands);
   }
 
@@ -200,7 +203,7 @@ public class PurgeDao implements Dao {
 
   public void purgeCeScannerContexts(DbSession session, PurgeProfiler profiler) {
     PurgeMapper mapper = session.getMapper(PurgeMapper.class);
-    PurgeCommands commands = new PurgeCommands(session, mapper, profiler, system2);
+    PurgeCommands commands = new PurgeCommands(session, mapper, profiler, system2, retainedIssueDao);
     purgeOldCeScannerContexts(session, null, commands);
   }
 
@@ -226,14 +229,14 @@ public class PurgeDao implements Dao {
 
   public void deleteBranch(DbSession session, String uuid) {
     PurgeProfiler profiler = new PurgeProfiler();
-    PurgeCommands purgeCommands = new PurgeCommands(session, profiler, system2);
+    PurgeCommands purgeCommands = new PurgeCommands(session, profiler, system2, retainedIssueDao);
     deleteBranch(uuid, purgeCommands);
   }
 
   public void deleteProject(DbSession session, String uuid, String qualifier, String name, String key) {
     PurgeProfiler profiler = new PurgeProfiler();
     PurgeMapper purgeMapper = mapper(session);
-    PurgeCommands purgeCommands = new PurgeCommands(session, profiler, system2);
+    PurgeCommands purgeCommands = new PurgeCommands(session, profiler, system2, retainedIssueDao);
     long start = System2.INSTANCE.now();
 
     List<String> branchUuids = session.getMapper(BranchMapper.class).selectByProjectUuid(uuid).stream()
@@ -243,6 +246,8 @@ public class PurgeDao implements Dao {
       .toList();
     ComponentDto componentDto = session.getMapper(ComponentMapper.class).selectByUuid(uuid);
 
+    // first, so that deleting the branches copies no comments
+    purgeCommands.deleteRetainedIssues(uuid);
     branchUuids.forEach(id -> deleteBranch(id, purgeCommands));
 
     deleteProject(uuid, purgeMapper, purgeCommands);
@@ -275,6 +280,7 @@ public class PurgeDao implements Dao {
   private static void deleteBranch(String branchUuid, PurgeCommands commands) {
     commands.deleteScannerCache(branchUuid);
     commands.deleteAnalyses(branchUuid);
+    commands.copyRetainedIssueComments(branchUuid);
     commands.deleteIssues(branchUuid);
     commands.deleteFileSources(branchUuid);
     commands.deleteCeActivity(branchUuid);
@@ -335,7 +341,7 @@ public class PurgeDao implements Dao {
     }
 
     PurgeProfiler profiler = new PurgeProfiler();
-    PurgeCommands purgeCommands = new PurgeCommands(dbSession, profiler, system2);
+    PurgeCommands purgeCommands = new PurgeCommands(dbSession, profiler, system2, retainedIssueDao);
     deleteNonRootComponentsInView(nonRootComponents, purgeCommands);
   }
 
@@ -359,7 +365,7 @@ public class PurgeDao implements Dao {
   }
 
   public void deleteAnalyses(DbSession session, PurgeProfiler profiler, List<String> analysisUuids) {
-    new PurgeCommands(session, profiler, system2).deleteAnalyses(analysisUuids);
+    new PurgeCommands(session, profiler, system2, retainedIssueDao).deleteAnalyses(analysisUuids);
   }
 
   private static PurgeMapper mapper(DbSession session) {
