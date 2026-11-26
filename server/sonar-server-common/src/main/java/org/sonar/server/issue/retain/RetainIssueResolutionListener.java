@@ -59,7 +59,7 @@ public class RetainIssueResolutionListener implements IssueResolutionListener {
   }
 
   @Override
-      public void onIssuesPersisted(IssuesPersistedEvent event, Buffer buffer) {
+  public void onIssuesPersisted(IssuesPersistedEvent event, Buffer buffer) {
     RetainBuffer retain = (RetainBuffer) buffer;
     DbSession dbSession = event.dbSession();
     retain.now = event.now();

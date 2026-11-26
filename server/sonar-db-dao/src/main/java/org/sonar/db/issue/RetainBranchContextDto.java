@@ -109,9 +109,22 @@ public class RetainBranchContextDto {
     }
   }
 
+  /**
+   * The name of a pull request's target. A target deleted before it had a retained row leaves no name in the tables, so
+   * the name the pull request was analysed against is read from its data; an unreadable name stays unknown.
+   */
   @CheckForNull
   public String getTargetBranchKey() {
-    return targetBranchKey;
+    if (targetBranchKey != null || branchType != BranchType.PULL_REQUEST || pullRequestBinary == null) {
+      return targetBranchKey;
+    }
+    try {
+      String target = DbProjectBranches.PullRequestData.parseFrom(pullRequestBinary).getTarget();
+      return target.isEmpty() ? null : target;
+    } catch (InvalidProtocolBufferException | RuntimeException e) {
+      LOG.warn("Cannot read the target of pull request {}", branchUuid, e);
+      return null;
+    }
   }
 
   public RetainBranchContextDto setTargetBranchKey(@Nullable String targetBranchKey) {

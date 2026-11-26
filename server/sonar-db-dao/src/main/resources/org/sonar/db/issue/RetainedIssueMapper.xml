@@ -35,9 +35,11 @@
     where pb.uuid = #{branchUuid, jdbcType=VARCHAR}
   </select>
 
-  <!-- read through ix_cs_issue_track_retain_br; 0 for every branch that never had a retained issue -->
-  <select id="countRetainedIssuesOfBranch" parameterType="map" resultType="int">
-    select count(1) from cs_issue_track_for_retain where branch_uuid = #{branchUuid, jdbcType=VARCHAR}
+  <!-- read through ix_cs_issue_track_retain_br; stops at the first row instead of counting the whole branch -->
+  <select id="hasRetainedIssuesOfBranch" parameterType="map" resultType="boolean">
+    select case when exists (
+      select 1 from cs_issue_track_for_retain where branch_uuid = #{branchUuid, jdbcType=VARCHAR}
+    ) then 1 else 0 end
   </select>
 
   <delete id="deleteBranch" parameterType="map">

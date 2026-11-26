@@ -277,6 +277,24 @@ class RetainedIssueDaoInsertIssuesOfBranchIT {
     assertThat(retainedIssueKeys(db)).containsExactly("ISSUE-1", "ISSUE-2");
   }
 
+  /** The target was deleted before it had a row, so the tables hold no name; the pull request's own data does. */
+  @Test
+  void readsTheTargetNameFromThePullRequest_whenTheTargetWasDeletedWithoutARow() {
+    RetainFixtures.project(db, true, "project-1");
+    RetainFixtures.branch(db, "branch-main", "project-1", "main", "BRANCH", null);
+    RetainFixtures.branch(db, "pr-1", "project-1", "42", "PULL_REQUEST", "branch-x");
+    RetainFixtures.setTarget(db, "pr-1", "feature/pr-42", "feature/x");
+    RetainFixtures.file(db, "file-1", "pr-1", "project-1:src/Foo.cls");
+    RetainFixtures.closedIssue(db, "ISSUE-1", "pr-1", "file-1", CODE_SMELL, 1_000L);
+
+    RetainFixtures.retainIssues(db, db.getSession(), "pr-1", IssueStatus.FIXED, null, 1_000L, List.of("ISSUE-1"));
+    db.getSession().commit();
+
+    assertThat(retainedBranches(db))
+      .extracting(row -> row.get("TARGET_BRANCH_KEY"), row -> row.get("TARGET_BRANCH_UUID"))
+      .containsExactly(tuple("feature/x", "branch-x"));
+  }
+
   /** A pull request's key is its id; its name is the source branch held in its data. */
   @Test
   void storesThePullRequestSourceBranchAsItsNameAndRefreshesIt() {
