@@ -23,11 +23,10 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import javax.annotation.Nullable;
-import org.sonar.api.issue.IssueStatus;
 import org.sonar.api.utils.System2;
 import org.sonar.db.DbSession;
-import org.sonar.db.issue.RetainBranchContextDto;
 import org.sonar.db.issue.RetainedIssueDao;
 
 import static org.sonar.db.DatabaseUtils.executeLargeInputs;
@@ -155,22 +154,17 @@ class PurgeCommands {
     profiler.stop();
 
     profiler.start("purgeDisabledComponents (unresolved_issues)");
-    // CLOSED/REMOVED is Fixed, and this update bypasses the issue workflow and its listeners; the keys are only
-    // collected when the organization retains Fixed issues
-    boolean retainEnabled = retainedIssueDao.selectBranchContext(session, rootComponentUuid)
-      .filter(RetainBranchContextDto::isRetainEnabled)
-      .isPresent();
-    List<String> issueKeysClosedByPurge = retainEnabled
-      ? purgeMapper.selectUnresolvedIssueKeysOfDisabledComponents(rootComponentUuid)
-      : List.of();
     long closedAt = system2.now();
+    Set<String> closedComponentUuids = purgeMapper.selectDisabledComponentsWithUnresolvedIssues(rootComponentUuid);
     executeLargeInputs(
-      purgeMapper.selectDisabledComponentsWithUnresolvedIssues(rootComponentUuid),
+      closedComponentUuids,
       input -> {
         purgeMapper.resolveComponentIssuesNotAlreadyResolved(input, closedAt);
         return input;
       });
-    retainedIssueDao.insertIssuesOfBranch(session, rootComponentUuid, IssueStatus.FIXED, null, closedAt, issueKeysClosedByPurge);
+    // CLOSED/REMOVED is Fixed, and the update above bypasses the issue workflow and its listeners: retain the issues it
+    // just closed, selected in the database so their keys are never loaded
+    retainedIssueDao.insertIssuesClosedByPurge(session, rootComponentUuid, closedComponentUuids, closedAt);
     profiler.stop();
 
     profiler.start("purgeDisabledComponents (measures)");

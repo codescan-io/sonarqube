@@ -39,7 +39,7 @@ public class RetainedIssueDao implements Dao {
 
   /** The branch, its organization's toggle and its retained branch row, or empty when the branch does not exist. */
   public Optional<RetainBranchContextDto> selectBranchContext(DbSession dbSession, String branchUuid) {
-    return Optional.ofNullable(mapper(dbSession).selectBranchContext(branchUuid));
+    return Optional.ofNullable(mapper(dbSession).selectBranchContextByBranchUuid(branchUuid));
   }
 
   /**
@@ -92,6 +92,28 @@ public class RetainedIssueDao implements Dao {
     }
     writeBranch(dbSession, branch.get());
     insertIssues(dbSession, branchUuid, retainedStatus, statusMarkedByUuid, now, issueKeys);
+  }
+
+  /**
+   * Retains the issues the purge of disabled components closed at {@code closedAt} on the branch's
+   * {@code closedComponentUuids}, when its organization has the toggle on. Statements select them in the database, so
+   * they are never loaded; a purge that closed nothing reads nothing.
+   */
+  public void insertIssuesClosedByPurge(DbSession dbSession, String branchUuid, Collection<String> closedComponentUuids,
+    long closedAt) {
+    if (closedComponentUuids.isEmpty()) {
+      return;
+    }
+    Optional<RetainBranchContextDto> branch = selectBranchContext(dbSession, branchUuid)
+      .filter(RetainBranchContextDto::isRetainEnabled);
+    if (branch.isEmpty()) {
+      return;
+    }
+    writeBranch(dbSession, branch.get());
+    RetainedIssueMapper mapper = mapper(dbSession);
+    int hotspot = RuleType.SECURITY_HOTSPOT.getDbConstant();
+    executeLargeUpdates(closedComponentUuids, partition -> mapper.insertIssuesOfDisabledComponents(IssueStatus.FIXED.name(),
+      null, closedAt, partition, hotspot));
   }
 
   /**
