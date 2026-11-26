@@ -75,8 +75,9 @@ class IssueResolutionListenersTest {
     assertThat(events.get(0).issues()).extracting(DefaultIssue::key).containsExactly("closed", "reopened", "copied");
   }
 
+  /** Inside Fixed, only a change of status or resolution passes: it refreshes the retained row. */
   @Test
-  void onIssuesPersisted_skipsChangesThatStayInsideOrOutsideFixed() {
+  void onIssuesPersisted_skipsChangesThatStayOutsideFixedOrKeepTheStatus() {
     DefaultIssue resolvedThenClosed = issue(STATUS_CLOSED, RESOLUTION_FIXED).setKey("fixed-to-fixed");
     resolvedThenClosed.setFieldChange(context, "status", STATUS_RESOLVED, STATUS_CLOSED);
     DefaultIssue fixedThenRemoved = issue(STATUS_CLOSED, RESOLUTION_REMOVED).setKey("fixed-to-removed");
@@ -89,12 +90,15 @@ class IssueResolutionListenersTest {
     DefaultIssue acceptedThenClosed = issue(STATUS_CLOSED, RESOLUTION_FIXED).setKey("accepted-to-fixed");
     acceptedThenClosed.setFieldChange(context, "status", STATUS_RESOLVED, STATUS_CLOSED);
     acceptedThenClosed.setFieldChange(context, "resolution", RESOLUTION_WONT_FIX, RESOLUTION_FIXED);
+    DefaultIssue closedReassigned = issue(STATUS_CLOSED, RESOLUTION_FIXED).setKey("closed-reassigned");
+    closedReassigned.setFieldChange(context, "assignee", "user-1", "user-2");
 
     underTest.onIssuesPersisted(mock(DbSession.class),
-      List.of(resolvedThenClosed, fixedThenRemoved, accepted, confirmed, acceptedThenClosed), 1L);
+      List.of(resolvedThenClosed, fixedThenRemoved, accepted, confirmed, acceptedThenClosed, closedReassigned), 1L);
 
     assertThat(events).hasSize(1);
-    assertThat(events.get(0).issues()).extracting(DefaultIssue::key).containsExactly("accepted-to-fixed");
+    assertThat(events.get(0).issues()).extracting(DefaultIssue::key)
+      .containsExactly("fixed-to-fixed", "fixed-to-removed", "accepted-to-fixed");
   }
 
   @Test

@@ -22,8 +22,11 @@ package org.sonar.db.issue;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
+import org.sonar.api.issue.IssueStatus;
 import org.sonar.core.util.Uuids;
+import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
+import org.sonar.db.protobuf.DbProjectBranches;
 
 /**
  * Rows of the live tables a retained issue is copied from, inserted directly so the organization toggle can be set, and
@@ -70,6 +73,33 @@ public final class RetainFixtures {
       "is_main", "main".equals(key));
   }
 
+  /**
+   * Retains issues of one branch as the listener does: reads the branch, and when its organization retains, writes the
+   * branch row and inserts.
+   */
+  public static void retainIssues(DbTester db, DbSession session, String branchUuid, IssueStatus status,
+    @Nullable String statusMarkedByUuid, long now, List<String> issueKeys) {
+    RetainedIssueDao dao = db.getDbClient().retainedIssueDao();
+    dao.selectBranchContext(session, branchUuid)
+      .filter(RetainBranchContextDto::isRetainEnabled)
+      .ifPresent(branch -> {
+        dao.writeBranch(session, branch);
+        dao.insertIssues(session, branchUuid, status, statusMarkedByUuid, now, issueKeys);
+      });
+  }
+
+  /** A pull request whose data names its source branch, as SonarQube stores it. */
+  public static void pullRequest(DbTester db, String branchUuid, String projectUuid, String key, String mergeBranchUuid,
+    String sourceBranch) {
+    branch(db, branchUuid, projectUuid, key, "PULL_REQUEST", mergeBranchUuid);
+    setSourceBranch(db, branchUuid, sourceBranch);
+  }
+
+  public static void setSourceBranch(DbTester db, String branchUuid, String sourceBranch) {
+    byte[] data = DbProjectBranches.PullRequestData.newBuilder().setBranch(sourceBranch).setTitle(sourceBranch).build().toByteArray();
+    db.executeUpdateSql("update project_branches set pull_request_binary = ? where uuid = ?", data, branchUuid);
+  }
+
   public static void file(DbTester db, String fileUuid, String branchUuid, String key) {
     file(db, fileUuid, branchUuid, key, true);
   }
@@ -109,6 +139,7 @@ public final class RetainFixtures {
       "manual_severity", false,
       "message", "message of " + issueKey,
       "assignee", "user-7",
+      "line", 12,
       "issue_creation_date", 1_000L,
       "tags", "design,apex",
       "component_uuid", fileUuid,

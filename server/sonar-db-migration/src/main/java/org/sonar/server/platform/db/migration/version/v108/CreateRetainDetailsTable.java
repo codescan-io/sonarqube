@@ -25,12 +25,15 @@ import org.sonar.server.platform.db.migration.sql.CreateIndexBuilder;
 import org.sonar.server.platform.db.migration.sql.CreateTableBuilder;
 import org.sonar.server.platform.db.migration.step.CreateTableChange;
 
+import static org.sonar.server.platform.db.migration.def.BigIntegerColumnDef.newBigIntegerColumnDefBuilder;
 import static org.sonar.server.platform.db.migration.def.VarcharColumnDef.newVarcharColumnDefBuilder;
 
 /**
  * One row per branch or pull request that has retained issues. It keeps the branch's name and type, which are gone
  * from 'project_branches' once the branch is deleted. Keyed by the branch uuid: a branch re-created with the same
- * name gets a new uuid and therefore its own row. See CSN-204.
+ * name gets a new uuid and therefore its own row. 'branch_name' is the branch's name, which for a pull request is its
+ * source branch rather than its key. 'target_branch_uuid' identifies a pull request's target the same way as the branch
+ * uuid, and 'deleted_at' records when the branch or pull request was deleted. See CSN-204, CSN-257.
  */
 public class CreateRetainDetailsTable extends CreateTableChange {
 
@@ -39,7 +42,10 @@ public class CreateRetainDetailsTable extends CreateTableChange {
   static final String PROJECT_UUID_COLUMN = "project_uuid";
   static final String BRANCH_KEY_COLUMN = "branch_key";
   static final String BRANCH_TYPE_COLUMN = "branch_type";
+  static final String BRANCH_NAME_COLUMN = "branch_name";
   static final String TARGET_BRANCH_KEY_COLUMN = "target_branch_key";
+  static final String TARGET_BRANCH_UUID_COLUMN = "target_branch_uuid";
+  static final String DELETED_AT_COLUMN = "deleted_at";
   /** Lists a project's branches for the CSV export and finds them when the project is deleted. */
   static final String PROJECT_INDEX_NAME = "ix_cs_retain_details_project";
 
@@ -58,7 +64,10 @@ public class CreateRetainDetailsTable extends CreateTableChange {
       .addColumn(newVarcharColumnDefBuilder().setColumnName(PROJECT_UUID_COLUMN).setIsNullable(false).setLimit(ENTITY_UUID_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(BRANCH_KEY_COLUMN).setIsNullable(false).setLimit(BRANCH_KEY_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(BRANCH_TYPE_COLUMN).setIsNullable(false).setLimit(BRANCH_TYPE_SIZE).build())
+      .addColumn(newVarcharColumnDefBuilder().setColumnName(BRANCH_NAME_COLUMN).setIsNullable(true).setLimit(BRANCH_KEY_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(TARGET_BRANCH_KEY_COLUMN).setIsNullable(true).setLimit(BRANCH_KEY_SIZE).build())
+      .addColumn(newVarcharColumnDefBuilder().setColumnName(TARGET_BRANCH_UUID_COLUMN).setIsNullable(true).setLimit(ENTITY_UUID_SIZE).build())
+      .addColumn(newBigIntegerColumnDefBuilder().setColumnName(DELETED_AT_COLUMN).setIsNullable(true).build())
       .build());
     context.execute(new CreateIndexBuilder(getDialect())
       .setTable(tableName)

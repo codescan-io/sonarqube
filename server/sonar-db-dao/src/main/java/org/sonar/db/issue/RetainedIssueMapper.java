@@ -29,9 +29,13 @@ public interface RetainedIssueMapper {
   @CheckForNull
   RetainBranchContextDto selectBranchContextByBranchUuid(@Param("branchUuid") String branchUuid);
 
-  void insertBranch(@Param("dto") RetainDetailsDto dto);
+  int countRetainedIssuesOfBranch(@Param("branchUuid") String branchUuid);
 
-  void updateBranch(@Param("dto") RetainDetailsDto dto);
+  void deleteBranch(@Param("branchUuid") String branchUuid);
+
+  void insertBranch(@Param("dto") RetainBranchContextDto dto);
+
+  void updateBranch(@Param("dto") RetainBranchContextDto dto);
 
   /**
    * @param issueKeys keys of issues of {@code branchUuid}, at most one partition of
@@ -50,7 +54,13 @@ public interface RetainedIssueMapper {
 
   void deleteRetainedIssues(@Param("retainedStatus") String retainedStatus, @Param("issueKeys") Collection<String> issueKeys);
 
+  void updateIssueStatuses(@Param("issueKeys") Collection<String> issueKeys);
+
   void copyCommentsOfBranch(@Param("branchUuid") String branchUuid);
+
+  void copyAssignedDatesOfBranch(@Param("branchUuid") String branchUuid);
+
+  void markBranchDeleted(@Param("branchUuid") String branchUuid, @Param("now") long now);
 
   void deleteCommentsByProjectUuid(@Param("projectUuid") String projectUuid);
 

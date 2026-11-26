@@ -19,9 +19,13 @@
  */
 package org.sonar.db.issue;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.db.component.BranchType;
+import org.sonar.db.protobuf.DbProjectBranches;
 
 /**
  * What recording a retained issue needs to know about its branch, read in one query: the live branch, whether its
@@ -29,15 +33,21 @@ import org.sonar.db.component.BranchType;
  */
 public class RetainBranchContextDto {
 
+  private static final Logger LOG = LoggerFactory.getLogger(RetainBranchContextDto.class);
+
   private String branchUuid;
   private String projectUuid;
   private String branchKey;
   private BranchType branchType;
+  private byte[] pullRequestBinary;
   private String targetBranchKey;
+  private String targetBranchUuid;
   private boolean retainEnabled;
   private String retainedBranchUuid;
   private String retainedBranchKey;
+  private String retainedBranchName;
   private String retainedTargetBranchKey;
+  private String retainedTargetBranchUuid;
 
   public String getBranchUuid() {
     return branchUuid;
@@ -73,6 +83,30 @@ public class RetainBranchContextDto {
   public RetainBranchContextDto setBranchType(BranchType branchType) {
     this.branchType = branchType;
     return this;
+  }
+
+  /** A pull request's data, which holds its source branch; null for a branch. */
+  public RetainBranchContextDto setPullRequestBinary(@Nullable byte[] pullRequestBinary) {
+    this.pullRequestBinary = pullRequestBinary;
+    return this;
+  }
+
+  /**
+   * The branch's name: its key for a branch, its source branch for a pull request. A branch's key is its name, but a
+   * pull request's key is its id, so the source branch is read from its data. Without readable data the key is used,
+   * as {@code api/project_pull_requests/list} does; the name must never fail the analysis that retains the issues.
+   */
+  public String getBranchName() {
+    if (branchType != BranchType.PULL_REQUEST || pullRequestBinary == null) {
+      return branchKey;
+    }
+    try {
+      String branch = DbProjectBranches.PullRequestData.parseFrom(pullRequestBinary).getBranch();
+      return branch.isEmpty() ? branchKey : branch;
+    } catch (InvalidProtocolBufferException | RuntimeException e) {
+      LOG.warn("Cannot read the data of pull request {}; its key is used as its name", branchUuid, e);
+      return branchKey;
+    }
   }
 
   @CheckForNull
@@ -117,6 +151,16 @@ public class RetainBranchContextDto {
   }
 
   @CheckForNull
+  public String getRetainedBranchName() {
+    return retainedBranchName;
+  }
+
+  public RetainBranchContextDto setRetainedBranchName(@Nullable String retainedBranchName) {
+    this.retainedBranchName = retainedBranchName;
+    return this;
+  }
+
+  @CheckForNull
   public String getRetainedTargetBranchKey() {
     return retainedTargetBranchKey;
   }
@@ -126,12 +170,24 @@ public class RetainBranchContextDto {
     return this;
   }
 
-  RetainDetailsDto toRetainDetails() {
-    return new RetainDetailsDto()
-      .setBranchUuid(branchUuid)
-      .setProjectUuid(projectUuid)
-      .setBranchKey(branchKey)
-      .setBranchType(branchType)
-      .setTargetBranchKey(targetBranchKey);
+  /** The uuid of a pull request's target branch, kept even when that branch is deleted; null for a branch. */
+  @CheckForNull
+  public String getTargetBranchUuid() {
+    return targetBranchUuid;
+  }
+
+  public RetainBranchContextDto setTargetBranchUuid(@Nullable String targetBranchUuid) {
+    this.targetBranchUuid = targetBranchUuid;
+    return this;
+  }
+
+  @CheckForNull
+  public String getRetainedTargetBranchUuid() {
+    return retainedTargetBranchUuid;
+  }
+
+  public RetainBranchContextDto setRetainedTargetBranchUuid(@Nullable String retainedTargetBranchUuid) {
+    this.retainedTargetBranchUuid = retainedTargetBranchUuid;
+    return this;
   }
 }

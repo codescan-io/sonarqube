@@ -340,8 +340,8 @@
         AND issue_close_date &lt; #{toDate}
       </otherwise>
     </choose>
-    <!-- retained issues stay until their branch is deleted, see CSN-9. A retained row has its issue's branch, so reading
-         the branch's retained keys once (hash anti join) replaces one primary-key lookup per closed issue -->
+    <!-- retained issues stay until their branch is deleted, see CSN-9; a retained row has its issue's branch, so the
+         check reads only the branch's retained keys (ix_cs_issue_track_retain_br) -->
     AND NOT EXISTS (SELECT 1 FROM cs_issue_track_for_retain t WHERE t.branch_uuid = #{projectUuid,jdbcType=VARCHAR} AND t.issue_kee = issues.kee)
   </select>
 

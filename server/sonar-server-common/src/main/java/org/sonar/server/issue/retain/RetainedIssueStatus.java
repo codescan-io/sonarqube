@@ -19,6 +19,7 @@
  */
 package org.sonar.server.issue.retain;
 
+import java.util.Objects;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonar.api.issue.IssueStatus;
@@ -44,11 +45,21 @@ public final class RetainedIssueStatus {
   }
 
   /**
-   * True when this save moves the issue into or out of Fixed. A new or copied issue counts as coming from outside
-   * Fixed. Any other change (assignee, comment, Open to Accepted, Resolved Fixed to Closed) is ignored.
+   * True when this save moves the issue into or out of Fixed, or keeps it Fixed under another status or resolution
+   * (Resolved Fixed to Closed, for one). A new or copied issue counts as coming from outside Fixed. Any other change
+   * (assignee, comment, Open to Accepted) is ignored.
    */
   public static boolean isCandidate(DefaultIssue issue) {
-    return isFixed(issue) != wasFixed(issue);
+    boolean fixed = isFixed(issue);
+    boolean wasFixed = wasFixed(issue);
+    return fixed != wasFixed || (fixed && statusChanged(issue));
+  }
+
+  /** Whether this save changed the issue's status or resolution, which its retained row copies. */
+  static boolean statusChanged(DefaultIssue issue) {
+    FieldDiffs change = issue.currentChange();
+    return !Objects.equals(valueBefore(change, STATUS_FIELD, issue.status()), issue.status())
+      || !Objects.equals(valueBefore(change, RESOLUTION_FIELD, issue.resolution()), issue.resolution());
   }
 
   /** Whether the issue was Fixed before this save, read from the old values its current change keeps. */

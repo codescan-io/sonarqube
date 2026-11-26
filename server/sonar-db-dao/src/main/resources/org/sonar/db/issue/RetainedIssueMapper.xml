@@ -12,11 +12,20 @@
       pb.project_uuid as "projectUuid",
       pb.kee as "branchKey",
       pb.branch_type as "branchType",
-      tb.kee as "targetBranchKey",
+      pb.pull_request_binary as "pullRequestBinary",
+      <!-- a deleted target's name: stored while the pull request still points at it, else the target's own retained row -->
+      coalesce(
+        tb.kee,
+        case when d.target_branch_uuid = pb.merge_branch_uuid then d.target_branch_key end,
+        (select td.branch_key from cs_retain_details td where td.branch_uuid = pb.merge_branch_uuid)
+      ) as "targetBranchKey",
+      case when pb.branch_type = 'PULL_REQUEST' then pb.merge_branch_uuid end as "targetBranchUuid",
       o.retain_issue_history_enabled as "retainEnabled",
       d.branch_uuid as "retainedBranchUuid",
       d.branch_key as "retainedBranchKey",
-      d.target_branch_key as "retainedTargetBranchKey"
+      d.branch_name as "retainedBranchName",
+      d.target_branch_key as "retainedTargetBranchKey",
+      d.target_branch_uuid as "retainedTargetBranchUuid"
     from project_branches pb
     inner join projects p on p.uuid = pb.project_uuid
     inner join organizations o on o.uuid = p.organization_uuid
@@ -25,6 +34,15 @@
     left join cs_retain_details d on d.branch_uuid = pb.uuid
     where pb.uuid = #{branchUuid, jdbcType=VARCHAR}
   </select>
+
+  <!-- read through ix_cs_issue_track_retain_br; 0 for every branch that never had a retained issue -->
+  <select id="countRetainedIssuesOfBranch" parameterType="map" resultType="int">
+    select count(1) from cs_issue_track_for_retain where branch_uuid = #{branchUuid, jdbcType=VARCHAR}
+  </select>
+
+  <delete id="deleteBranch" parameterType="map">
+    delete from cs_retain_details where branch_uuid = #{branchUuid, jdbcType=VARCHAR}
+  </delete>
 
   <!--
     An analysis and a user can retain the first issues of a branch at the same moment, both finding no branch row. The
@@ -37,7 +55,9 @@
       project_uuid,
       branch_key,
       branch_type,
-      target_branch_key
+      branch_name,
+      target_branch_key,
+      target_branch_uuid
     )
     values
     (
@@ -45,7 +65,9 @@
       #{dto.projectUuid, jdbcType=VARCHAR},
       #{dto.branchKey, jdbcType=VARCHAR},
       #{dto.branchType, jdbcType=VARCHAR},
-      #{dto.targetBranchKey, jdbcType=VARCHAR}
+      #{dto.branchName, jdbcType=VARCHAR},
+      #{dto.targetBranchKey, jdbcType=VARCHAR},
+      #{dto.targetBranchUuid, jdbcType=VARCHAR}
     )
     on conflict (branch_uuid) do nothing
   </insert>
@@ -58,14 +80,18 @@
       project_uuid,
       branch_key,
       branch_type,
-      target_branch_key
+      branch_name,
+      target_branch_key,
+      target_branch_uuid
     )
     select
       #{dto.branchUuid, jdbcType=VARCHAR},
       #{dto.projectUuid, jdbcType=VARCHAR},
       #{dto.branchKey, jdbcType=VARCHAR},
       #{dto.branchType, jdbcType=VARCHAR},
-      #{dto.targetBranchKey, jdbcType=VARCHAR}
+      #{dto.branchName, jdbcType=VARCHAR},
+      #{dto.targetBranchKey, jdbcType=VARCHAR},
+      #{dto.targetBranchUuid, jdbcType=VARCHAR}
     from dual
     where not exists (select 1 from cs_retain_details d where d.branch_uuid = #{dto.branchUuid, jdbcType=VARCHAR})
   </insert>
@@ -73,7 +99,9 @@
   <update id="updateBranch" parameterType="map">
     update cs_retain_details set
       branch_key = #{dto.branchKey, jdbcType=VARCHAR},
-      target_branch_key = #{dto.targetBranchKey, jdbcType=VARCHAR}
+      branch_name = #{dto.branchName, jdbcType=VARCHAR},
+      target_branch_key = #{dto.targetBranchKey, jdbcType=VARCHAR},
+      target_branch_uuid = #{dto.targetBranchUuid, jdbcType=VARCHAR}
     where branch_uuid = #{dto.branchUuid, jdbcType=VARCHAR}
   </update>
 
@@ -95,7 +123,10 @@
       assignee_uuid,
       status_marked_by_uuid,
       issue_creation_date,
-      status_changed_at
+      status_changed_at,
+      line,
+      status,
+      resolution
     )
     select
       i.project_uuid,
@@ -111,7 +142,10 @@
       #{statusMarkedByUuid, jdbcType=VARCHAR},
       i.issue_creation_date,
       <!-- empty for an issue a user resolved: it became Fixed now -->
-      coalesce(i.issue_close_date, #{now, jdbcType=BIGINT})
+      coalesce(i.issue_close_date, #{now, jdbcType=BIGINT}),
+      i.line,
+      i.status,
+      i.resolution
     from issues i
     left join components c on c.uuid = i.component_uuid
   </sql>
@@ -204,6 +238,29 @@
       </if>
   </delete>
 
+  <!--
+    Issues that stay Fixed under another status or resolution: the retained row follows the issue's own values and close
+    date. The issue rows must already be written in the same session.
+  -->
+  <update id="updateIssueStatuses" parameterType="map">
+    update cs_issue_track_for_retain set
+      (status, resolution, status_changed_at) = (
+        select
+          i.status,
+          i.resolution,
+          coalesce(i.issue_close_date, cs_issue_track_for_retain.status_changed_at)
+        from issues i
+        where i.kee = cs_issue_track_for_retain.issue_kee
+      )
+    where
+      retained_status = 'FIXED'
+      and issue_kee in
+      <foreach collection="issueKeys" open="(" close=")" item="issueKey" separator=",">
+        #{issueKey, jdbcType=VARCHAR}
+      </foreach>
+      and exists (select 1 from issues i where i.kee = cs_issue_track_for_retain.issue_kee)
+  </update>
+
   <!-- cs_retain_issue_comments -->
 
   <!-- Driven by the branch's retained rows (semi-join, so each comment is copied once). Changes are written with their
@@ -231,6 +288,56 @@
       and ic.change_type = 'comment'
       and not exists (select 1 from cs_retain_issue_comments c where c.uuid = ic.uuid)
   </insert>
+
+  <!--
+    The date of the latest assignment, as api/issues/search reports it, for the retained issues that have an assignee.
+    It is read from the issue's changes, which are deleted with the branch; retained issues are kept from the
+    closed-issue purge until then. A row whose changes are already gone keeps what it holds.
+  -->
+  <update id="copyAssignedDatesOfBranch" parameterType="map">
+    update cs_issue_track_for_retain set
+      assigned_at = coalesce((
+        select max(ic.issue_change_creation_date) from issue_changes ic
+        where ic.issue_key = cs_issue_track_for_retain.issue_kee
+          and ic.change_type = 'diff'
+          and ic.change_data like '%assignee%'
+      ), assigned_at)
+    where branch_uuid = #{branchUuid, jdbcType=VARCHAR}
+      and assignee_uuid is not null
+  </update>
+
+  <!--
+    Runs just before the branch row is deleted, so the live row is still there to read; it is read once, with its
+    target. A pull request keeps its target uuid when the target is already gone (an orphan); only the name falls back
+    to the stored one. The outer join from a one-row source keeps the stored values when there is no live row.
+  -->
+  <update id="markBranchDeleted" parameterType="map">
+    update cs_retain_details set
+      deleted_at = #{now, jdbcType=BIGINT},
+      (branch_key, branch_name, target_branch_uuid, target_branch_key) = (
+        select
+          coalesce(pb.kee, cs_retain_details.branch_key),
+          <!-- a pull request's name is in its binary data, so it keeps the name written with its last retained issue -->
+          case when cs_retain_details.branch_type = 'PULL_REQUEST'
+            then cs_retain_details.branch_name
+            else coalesce(pb.kee, cs_retain_details.branch_name) end,
+          case when cs_retain_details.branch_type = 'PULL_REQUEST'
+            then coalesce(pb.merge_branch_uuid, cs_retain_details.target_branch_uuid)
+            else cs_retain_details.target_branch_uuid end,
+          <!-- the target's name goes with its uuid, as in selectBranchContextByBranchUuid -->
+          case
+            when cs_retain_details.branch_type &lt;&gt; 'PULL_REQUEST' or pb.uuid is null then cs_retain_details.target_branch_key
+            else coalesce(
+              tb.kee,
+              case when cs_retain_details.target_branch_uuid = pb.merge_branch_uuid then cs_retain_details.target_branch_key end,
+              (select td.branch_key from cs_retain_details td where td.branch_uuid = pb.merge_branch_uuid))
+          end
+        from (select 1 as one) one_row
+        left join project_branches pb on pb.uuid = #{branchUuid, jdbcType=VARCHAR}
+        left join project_branches tb on tb.uuid = pb.merge_branch_uuid
+      )
+    where branch_uuid = #{branchUuid, jdbcType=VARCHAR}
+  </update>
 
   <!-- project deletion, children first -->
 

@@ -280,7 +280,7 @@ public class PurgeDao implements Dao {
   private static void deleteBranch(String branchUuid, PurgeCommands commands) {
     commands.deleteScannerCache(branchUuid);
     commands.deleteAnalyses(branchUuid);
-    commands.copyRetainedIssueComments(branchUuid);
+    commands.copyRetainedIssueDetails(branchUuid);
     commands.deleteIssues(branchUuid);
     commands.deleteFileSources(branchUuid);
     commands.deleteCeActivity(branchUuid);

@@ -25,22 +25,27 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.db.MigrationDbTester;
 
 import static java.sql.Types.BIGINT;
+import static java.sql.Types.INTEGER;
 import static java.sql.Types.TINYINT;
 import static java.sql.Types.VARCHAR;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.BRANCH_INDEX_NAME;
+import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.ASSIGNED_AT_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.ASSIGNEE_UUID_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.BRANCH_UUID_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.COMPONENT_KEY_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.ISSUE_CREATION_DATE_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.ISSUE_KEE_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.ISSUE_TYPE_COLUMN;
+import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.LINE_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.MESSAGE_COLUMN;
+import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.RESOLUTION_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.RETAINED_STATUS_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.RULE_UUID_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.SEVERITY_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.STATUS_CHANGED_AT_COLUMN;
+import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.STATUS_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.STATUS_MARKED_BY_UUID_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.TABLE_NAME;
 import static org.sonar.server.platform.db.migration.version.v108.CreateIssueTrackForRetainTable.TAGS_COLUMN;
@@ -74,6 +79,10 @@ class CreateIssueTrackForRetainTableTest {
     db.assertColumnDefinition(TABLE_NAME, STATUS_MARKED_BY_UUID_COLUMN, VARCHAR, 255, true);
     db.assertColumnDefinition(TABLE_NAME, ISSUE_CREATION_DATE_COLUMN, BIGINT, null, true);
     db.assertColumnDefinition(TABLE_NAME, STATUS_CHANGED_AT_COLUMN, BIGINT, null, false);
+    db.assertColumnDefinition(TABLE_NAME, LINE_COLUMN, INTEGER, null, true);
+    db.assertColumnDefinition(TABLE_NAME, ASSIGNED_AT_COLUMN, BIGINT, null, true);
+    db.assertColumnDefinition(TABLE_NAME, STATUS_COLUMN, VARCHAR, 20, true);
+    db.assertColumnDefinition(TABLE_NAME, RESOLUTION_COLUMN, VARCHAR, 20, true);
   }
 
   /**

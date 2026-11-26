@@ -26,6 +26,7 @@ import org.sonar.server.platform.db.migration.sql.CreateTableBuilder;
 import org.sonar.server.platform.db.migration.step.CreateTableChange;
 
 import static org.sonar.server.platform.db.migration.def.BigIntegerColumnDef.newBigIntegerColumnDefBuilder;
+import static org.sonar.server.platform.db.migration.def.IntegerColumnDef.newIntegerColumnDefBuilder;
 import static org.sonar.server.platform.db.migration.def.TinyIntColumnDef.newTinyIntColumnDefBuilder;
 import static org.sonar.server.platform.db.migration.def.VarcharColumnDef.MAX_SIZE;
 import static org.sonar.server.platform.db.migration.def.VarcharColumnDef.USER_UUID_SIZE;
@@ -36,6 +37,8 @@ import static org.sonar.server.platform.db.migration.def.VarcharColumnDef.newVar
  * One row per retained issue, keyed by the issue key alone: it is unique across branches, and a branch key changes when
  * the branch is renamed. It holds only what the CSV export needs once the issue, its file and its branch are
  * deleted; rules, users and the project are looked up by uuid because those rows outlive the issue. See CSN-204.
+ * {@code line}, {@code assigned_at}, {@code status} and {@code resolution} fill the export's Line, Assigned Date and
+ * Status columns. See CSN-257.
  */
 public class CreateIssueTrackForRetainTable extends CreateTableChange {
 
@@ -53,6 +56,12 @@ public class CreateIssueTrackForRetainTable extends CreateTableChange {
   static final String STATUS_MARKED_BY_UUID_COLUMN = "status_marked_by_uuid";
   static final String ISSUE_CREATION_DATE_COLUMN = "issue_creation_date";
   static final String STATUS_CHANGED_AT_COLUMN = "status_changed_at";
+  static final String LINE_COLUMN = "line";
+  /** When the issue was last assigned, as {@code api/issues/search} reports it. */
+  static final String ASSIGNED_AT_COLUMN = "assigned_at";
+  /** The issue's own status and resolution, copied as 'issues' stores them; the export derives what it shows. */
+  static final String STATUS_COLUMN = "status";
+  static final String RESOLUTION_COLUMN = "resolution";
   /** Reads by branch: the CSV export, the comment copy at branch deletion and project deletion. */
   static final String BRANCH_INDEX_NAME = "ix_cs_issue_track_retain_br";
 
@@ -82,6 +91,10 @@ public class CreateIssueTrackForRetainTable extends CreateTableChange {
       .addColumn(newVarcharColumnDefBuilder().setColumnName(STATUS_MARKED_BY_UUID_COLUMN).setIsNullable(true).setLimit(USER_UUID_SIZE).build())
       .addColumn(newBigIntegerColumnDefBuilder().setColumnName(ISSUE_CREATION_DATE_COLUMN).setIsNullable(true).build())
       .addColumn(newBigIntegerColumnDefBuilder().setColumnName(STATUS_CHANGED_AT_COLUMN).setIsNullable(false).build())
+      .addColumn(newIntegerColumnDefBuilder().setColumnName(LINE_COLUMN).setIsNullable(true).build())
+      .addColumn(newBigIntegerColumnDefBuilder().setColumnName(ASSIGNED_AT_COLUMN).setIsNullable(true).build())
+      .addColumn(newVarcharColumnDefBuilder().setColumnName(STATUS_COLUMN).setIsNullable(true).setLimit(STATUS_SIZE).build())
+      .addColumn(newVarcharColumnDefBuilder().setColumnName(RESOLUTION_COLUMN).setIsNullable(true).setLimit(STATUS_SIZE).build())
       .build());
     context.execute(new CreateIndexBuilder(getDialect())
       .setTable(tableName)
