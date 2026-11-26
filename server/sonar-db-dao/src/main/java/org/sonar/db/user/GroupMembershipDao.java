@@ -108,6 +108,24 @@ public class GroupMembershipDao implements Dao {
     return result;
   }
 
+  /**
+   * Same as {@link #selectGroupsByLogins(DbSession, Collection)}, limited to the groups of the given organization.
+   */
+  public Multimap<String, String> selectGroupsByLoginsAndOrganization(DbSession session, Collection<String> logins, String organizationUuid) {
+    Multimap<String, String> result = ArrayListMultimap.create();
+    executeLargeInputs(
+      logins,
+      input -> {
+        List<LoginGroup> groupMemberships = mapper(session).selectGroupsByLoginsAndOrganization(input, organizationUuid);
+        for (LoginGroup membership : groupMemberships) {
+          result.put(membership.login(), membership.groupName());
+        }
+        return groupMemberships;
+      });
+
+    return result;
+  }
+
   private static GroupMembershipMapper mapper(DbSession session) {
     return session.getMapper(GroupMembershipMapper.class);
   }

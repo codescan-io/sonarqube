@@ -57,16 +57,19 @@ public interface UserController {
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   @ResponseStatus(HttpStatus.OK)
   @Operation(summary = "Users search", description = """
-      Get a list of users. By default, only active users are returned.
-      The following fields are only returned when user has Administer System permission or for logged-in in user :
-        'email',
-        'externalIdentity',
-        'externalProvider',
-        'groups',
-        'lastConnectionDate',
+      Get a list of users of an organization. By default, only active users are returned.
+      Requires the 'Administer' permission on the organization given by the 'organization' parameter.
+      Users with the 'Administer' permission on the organization receive the following fields for every returned user:
+        'managed',
+        'externalLogin',
+        'sonarQubeLastConnectionDate',
         'sonarLintLastConnectionDate',
+        'scmAccounts',
+        'groups' (only the groups of the requested organization),
         'tokensCount'.
-      Field 'sonarqubeLastConnectionDate' is only updated every hour, so it may not be accurate, for instance when a user authenticates many times in less than one hour.
+      Other logged-in users receive these fields only for their own account.
+      A field is returned with a null value when it does not apply, for instance 'sonarLintLastConnectionDate' for a user who never connected with SonarLint.
+      Field 'sonarQubeLastConnectionDate' is only updated every hour, so it may not be accurate, for instance when a user authenticates many times in less than one hour.
       The results are sorted alphabetically by login.
     """)
   UsersSearchRestResponse search(
@@ -86,15 +89,16 @@ public interface UserController {
   @ResponseStatus(HttpStatus.OK)
   @Operation(summary = "Fetch a single user", description = """
     Fetch a single user.
-    The following fields are only returned when user has Administer System permission or for logged-in in user :
-        'email'
-        'externalIdentity'
-        'externalProvider'
-        'groups'
-        'lastConnectionDate'
+    The following fields are only returned to users with the 'Administer' permission on an organization the fetched user belongs to, or when fetching one's own account:
+        'managed'
+        'externalLogin'
+        'sonarQubeLastConnectionDate'
         'sonarLintLastConnectionDate'
+        'scmAccounts'
+        'groups' (for organization administrators, only the groups of the organizations they administer)
         'tokensCount'
-      Field 'sonarqubeLastConnectionDate' is only updated every hour, so it may not be accurate, for instance when a user authenticates many times in less than one hour.
+      A field is returned with a null value when it does not apply, for instance 'sonarLintLastConnectionDate' for a user who never connected with SonarLint.
+      Field 'sonarQubeLastConnectionDate' is only updated every hour, so it may not be accurate, for instance when a user authenticates many times in less than one hour.
     """)
   UserRestResponse fetchUser(@PathVariable("id") @Parameter(description = "The id of the user to fetch.", required = true, in = ParameterIn.PATH) String id);
 

@@ -79,6 +79,8 @@ public class UsersSearchRestResponseGenerator implements UsersSearchResponseGene
       String sqLastConnectionDate = toDateTime(userDto.getLastConnectionDate());
       String slLastConnectionDate = toDateTime(userDto.getLastSonarlintConnectionDate());
       List<String> scmAccounts = userInformation.userDto().getSortedScmAccounts();
+      List<String> groups = Optional.ofNullable(userInformation.groups()).map(List::copyOf).orElse(List.of());
+      Integer tokensCount = userInformation.tokensCount();
       return new UserRestResponseForAdmins(
         id,
         login,
@@ -92,7 +94,9 @@ public class UsersSearchRestResponseGenerator implements UsersSearchResponseGene
         avatar,
         sqLastConnectionDate,
         slLastConnectionDate,
-        scmAccounts);
+        scmAccounts,
+        groups,
+        tokensCount);
     }
     return new UserRestResponseForLoggedInUsers(id, login, name, email, active, local, externalIdentityProvider, avatar);
   }

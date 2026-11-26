@@ -40,6 +40,7 @@ import org.sonar.server.v2.api.user.response.UsersSearchRestResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonar.server.common.PaginationInformation.forPageIndex;
@@ -96,7 +97,9 @@ public class UsersSearchRestResponseGeneratorTest {
       userInformation.avatar().orElse(null),
       toDateTime(userDto.getLastConnectionDate()),
       toDateTime(userDto.getLastSonarlintConnectionDate()),
-      userInformation.userDto().getSortedScmAccounts()
+      userInformation.userDto().getSortedScmAccounts(),
+      List.copyOf(userInformation.groups()),
+      userInformation.tokensCount()
     );
   }
 
@@ -115,6 +118,26 @@ public class UsersSearchRestResponseGeneratorTest {
     UserRestResponseForLoggedInUsers expectUser2 = buildExpectedResponseForUser(userInformation2);
     assertThat(usersForResponse.users()).containsExactly(expectUser1, expectUser2);
     assertPaginationInformationAreCorrect(paging, usersForResponse.page());
+  }
+
+  @Test
+  public void toUsersForResponse_whenOrganizationAdminButNotSystemAdmin_mapsAllFieldsForAllUsers() {
+    when(userSession.isLoggedIn()).thenReturn(true);
+    when(userSession.isSystemAdministrator()).thenReturn(false);
+
+    PaginationInformation paging = forPageIndex(1).withPageSize(2).andTotal(3);
+
+    UserInformation userInformation1 = mockSearchResult(1, true);
+    UserInformation userInformation2 = mockSearchResult(2, false);
+
+    UsersSearchRestResponse usersForResponse = usersSearchRestResponseGenerator.toUsersForResponse(List.of(userInformation1, userInformation2), paging, true);
+
+    assertThat(usersForResponse.users()).containsExactly(
+      buildExpectedResponseForAdmin(userInformation1),
+      buildExpectedResponseForAdmin(userInformation2));
+    UserRestResponseForAdmins firstUser = (UserRestResponseForAdmins) usersForResponse.users().get(0);
+    assertThat(firstUser.groups()).containsExactly("group_1");
+    assertThat(firstUser.tokensCount()).isEqualTo(11);
   }
 
   private static UserRestResponseForLoggedInUsers buildExpectedResponseForUser(UserInformation userInformation) {
@@ -176,6 +199,8 @@ public class UsersSearchRestResponseGeneratorTest {
 
     when(userInformation.userDto()).thenReturn(user1);
     when(userInformation.managed()).thenReturn(booleanFlagsValue);
+    lenient().when(userInformation.groups()).thenReturn(List.of("group_" + i));
+    lenient().when(userInformation.tokensCount()).thenReturn(10 + i);
     return userInformation;
   }
 

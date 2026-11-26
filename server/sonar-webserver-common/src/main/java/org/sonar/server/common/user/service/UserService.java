@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.sonar.api.server.authentication.IdentityProvider;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
@@ -89,7 +90,7 @@ public class UserService {
       if (request.getPageSize() == 0) {
         return new SearchResults<>(List.of(), totalUsers);
       }
-      List<UserInformation> searchResults = performSearch(dbSession, userQuery, request.getPage(), request.getPageSize());
+      List<UserInformation> searchResults = performSearch(dbSession, userQuery, request.getPage(), request.getPageSize(), request.getGroupsOrganizationUuid().orElse(null));
       return new SearchResults<>(searchResults, totalUsers);
     }
   }
@@ -120,10 +121,12 @@ public class UserService {
       .build();
   }
 
-  private List<UserInformation> performSearch(DbSession dbSession, UserQuery userQuery, int pageIndex, int pageSize) {
+  private List<UserInformation> performSearch(DbSession dbSession, UserQuery userQuery, int pageIndex, int pageSize, @Nullable String groupsOrganizationUuid) {
     List<UserDto> userDtos = findUsersAndSortByLogin(dbSession, userQuery, pageIndex, pageSize);
     List<String> logins = userDtos.stream().map(UserDto::getLogin).toList();
-    Multimap<String, String> groupsByLogin = dbClient.groupMembershipDao().selectGroupsByLogins(dbSession, logins);
+    Multimap<String, String> groupsByLogin = groupsOrganizationUuid == null
+      ? dbClient.groupMembershipDao().selectGroupsByLogins(dbSession, logins)
+      : dbClient.groupMembershipDao().selectGroupsByLoginsAndOrganization(dbSession, logins, groupsOrganizationUuid);
     Map<String, Integer> tokenCountsByLogin = dbClient.userTokenDao().countTokensByUsers(dbSession, userDtos);
     Map<String, Boolean> userUuidToIsManaged = managedInstanceService.getUserUuidToManaged(dbSession, getUserUuids(userDtos));
     return userDtos.stream()
@@ -237,10 +240,29 @@ public class UserService {
     try (DbSession dbSession = dbClient.openSession(false)) {
       UserDto userDto = findUserOrThrow(uuid, dbSession);
       Collection<String> groups = dbClient.groupMembershipDao().selectGroupsByLogins(dbSession, Set.of(userDto.getLogin())).get(userDto.getLogin());
-      int tokenCount = dbClient.userTokenDao().selectByUser(dbSession, userDto).size();
-      boolean isManaged = managedInstanceService.isUserManaged(dbSession, uuid);
-      return toUserSearchResult(groups, tokenCount, isManaged, userDto);
+      return toUserInformation(dbSession, userDto, groups);
     }
+  }
+
+  /**
+   * Same as {@link #fetchUser(String)}, but the returned groups are limited to the groups of the given organizations.
+   */
+  public UserInformation fetchUser(String uuid, Collection<String> groupsOrganizationUuids) {
+    try (DbSession dbSession = dbClient.openSession(false)) {
+      UserDto userDto = findUserOrThrow(uuid, dbSession);
+      Set<String> logins = Set.of(userDto.getLogin());
+      List<String> groups = new ArrayList<>();
+      for (String organizationUuid : groupsOrganizationUuids) {
+        groups.addAll(dbClient.groupMembershipDao().selectGroupsByLoginsAndOrganization(dbSession, logins, organizationUuid).get(userDto.getLogin()));
+      }
+      return toUserInformation(dbSession, userDto, groups);
+    }
+  }
+
+  private UserInformation toUserInformation(DbSession dbSession, UserDto userDto, Collection<String> groups) {
+    int tokenCount = dbClient.userTokenDao().selectByUser(dbSession, userDto).size();
+    boolean isManaged = managedInstanceService.isUserManaged(dbSession, userDto.getUuid());
+    return toUserSearchResult(groups, tokenCount, isManaged, userDto);
   }
 
   private UserDto findUserOrThrow(String uuid, DbSession dbSession) {
