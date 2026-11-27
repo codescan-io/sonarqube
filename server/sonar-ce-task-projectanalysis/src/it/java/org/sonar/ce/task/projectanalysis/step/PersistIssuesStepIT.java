@@ -62,6 +62,7 @@ import org.sonar.db.rule.RuleDto;
 import org.sonar.db.rule.RuleTesting;
 import org.sonar.scanner.protocol.output.ScannerReport;
 import org.sonar.server.issue.IssueStorage;
+import org.sonar.server.issue.retain.IssueResolutionListeners;
 
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -114,7 +115,7 @@ public class PersistIssuesStepIT extends BaseStepTest {
     reportReader.setMetadata(ScannerReport.Metadata.getDefaultInstance());
 
     underTest = new PersistIssuesStep(dbClient, system2, conflictResolver, new RuleRepositoryImpl(adHocRuleCreator, dbClient), periodHolder,
-      protoIssueCache, new IssueStorage(), UuidFactoryImpl.INSTANCE);
+      protoIssueCache, new IssueStorage(), UuidFactoryImpl.INSTANCE, new IssueResolutionListeners());
   }
 
   @After

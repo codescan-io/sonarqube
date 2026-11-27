@@ -145,6 +145,7 @@ public class ListAction implements PullRequestWsAction {
 
         ProjectPullRequests.PullRequest.Builder builder = ProjectPullRequests.PullRequest.newBuilder();
         builder.setKey(branch.getKey());
+        ofNullable(branch.getMergeBranchUuid()).ifPresent(builder::setTargetBranchUuid);
 
         // The additional PR information might be optionally specified inside data attribute.
         DbProjectBranches.PullRequestData pullRequestData = branch.getPullRequestData();

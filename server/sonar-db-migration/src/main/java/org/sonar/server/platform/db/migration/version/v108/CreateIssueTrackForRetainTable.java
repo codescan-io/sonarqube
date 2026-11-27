@@ -21,10 +21,12 @@ package org.sonar.server.platform.db.migration.version.v108;
 
 import java.sql.SQLException;
 import org.sonar.db.Database;
+import org.sonar.server.platform.db.migration.sql.CreateIndexBuilder;
 import org.sonar.server.platform.db.migration.sql.CreateTableBuilder;
 import org.sonar.server.platform.db.migration.step.CreateTableChange;
 
 import static org.sonar.server.platform.db.migration.def.BigIntegerColumnDef.newBigIntegerColumnDefBuilder;
+import static org.sonar.server.platform.db.migration.def.IntegerColumnDef.newIntegerColumnDefBuilder;
 import static org.sonar.server.platform.db.migration.def.TinyIntColumnDef.newTinyIntColumnDefBuilder;
 import static org.sonar.server.platform.db.migration.def.VarcharColumnDef.MAX_SIZE;
 import static org.sonar.server.platform.db.migration.def.VarcharColumnDef.USER_UUID_SIZE;
@@ -32,14 +34,15 @@ import static org.sonar.server.platform.db.migration.def.VarcharColumnDef.UUID_S
 import static org.sonar.server.platform.db.migration.def.VarcharColumnDef.newVarcharColumnDefBuilder;
 
 /**
- * One row per retained issue and status. It holds only what the CSV export needs once the issue, its file and its
- * branch are deleted; rules, users and the project are looked up by uuid because those rows outlive the issue. See
- * CSN-204.
+ * One row per retained issue, keyed by the issue key alone: it is unique across branches, and a branch key changes when
+ * the branch is renamed. It holds only what the CSV export needs once the issue, its file and its branch are
+ * deleted; rules, users and the project are looked up by uuid because those rows outlive the issue. See CSN-204.
+ * {@code line}, {@code assigned_at}, {@code status} and {@code resolution} fill the export's Line, Assigned Date and
+ * Status columns. See CSN-257.
  */
 public class CreateIssueTrackForRetainTable extends CreateTableChange {
 
   static final String TABLE_NAME = "cs_issue_track_for_retain";
-  static final String UUID_COLUMN = "uuid";
   static final String BRANCH_UUID_COLUMN = "branch_uuid";
   static final String ISSUE_KEE_COLUMN = "issue_kee";
   static final String RETAINED_STATUS_COLUMN = "retained_status";
@@ -52,7 +55,15 @@ public class CreateIssueTrackForRetainTable extends CreateTableChange {
   static final String ASSIGNEE_UUID_COLUMN = "assignee_uuid";
   static final String STATUS_MARKED_BY_UUID_COLUMN = "status_marked_by_uuid";
   static final String ISSUE_CREATION_DATE_COLUMN = "issue_creation_date";
-  static final String FIXED_AT_COLUMN = "fixed_at";
+  static final String STATUS_CHANGED_AT_COLUMN = "status_changed_at";
+  static final String LINE_COLUMN = "line";
+  /** When the issue was last assigned, as {@code api/issues/search} reports it. */
+  static final String ASSIGNED_AT_COLUMN = "assigned_at";
+  /** The issue's own status and resolution, copied as 'issues' stores them; the export derives what it shows. */
+  static final String STATUS_COLUMN = "status";
+  static final String RESOLUTION_COLUMN = "resolution";
+  /** Reads by branch: the CSV export, the comment copy at branch deletion and project deletion. */
+  static final String BRANCH_INDEX_NAME = "ix_cs_issue_track_retain_br";
 
   private static final int ENTITY_UUID_SIZE = 50;
   private static final int ISSUE_KEE_SIZE = 50;
@@ -67,12 +78,11 @@ public class CreateIssueTrackForRetainTable extends CreateTableChange {
   @Override
   public void execute(Context context, String tableName) throws SQLException {
     context.execute(new CreateTableBuilder(getDialect(), tableName)
-      .addPkColumn(newVarcharColumnDefBuilder().setColumnName(UUID_COLUMN).setIsNullable(false).setLimit(UUID_SIZE).build())
-      .addColumn(newVarcharColumnDefBuilder().setColumnName(BRANCH_UUID_COLUMN).setIsNullable(false).setLimit(ENTITY_UUID_SIZE).build())
-      .addColumn(newVarcharColumnDefBuilder().setColumnName(ISSUE_KEE_COLUMN).setIsNullable(false).setLimit(ISSUE_KEE_SIZE).build())
+      .addPkColumn(newVarcharColumnDefBuilder().setColumnName(ISSUE_KEE_COLUMN).setIsNullable(false).setLimit(ISSUE_KEE_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(RETAINED_STATUS_COLUMN).setIsNullable(false).setLimit(STATUS_SIZE).build())
+      .addColumn(newVarcharColumnDefBuilder().setColumnName(BRANCH_UUID_COLUMN).setIsNullable(false).setLimit(ENTITY_UUID_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(RULE_UUID_COLUMN).setIsNullable(false).setLimit(UUID_SIZE).build())
-      .addColumn(newVarcharColumnDefBuilder().setColumnName(COMPONENT_KEY_COLUMN).setIsNullable(false).setLimit(COMPONENT_KEY_SIZE).build())
+      .addColumn(newVarcharColumnDefBuilder().setColumnName(COMPONENT_KEY_COLUMN).setIsNullable(true).setLimit(COMPONENT_KEY_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(MESSAGE_COLUMN).setIsNullable(true).setLimit(MAX_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(SEVERITY_COLUMN).setIsNullable(true).setLimit(SEVERITY_SIZE).build())
       .addColumn(newTinyIntColumnDefBuilder().setColumnName(ISSUE_TYPE_COLUMN).setIsNullable(true).build())
@@ -80,7 +90,16 @@ public class CreateIssueTrackForRetainTable extends CreateTableChange {
       .addColumn(newVarcharColumnDefBuilder().setColumnName(ASSIGNEE_UUID_COLUMN).setIsNullable(true).setLimit(USER_UUID_SIZE).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(STATUS_MARKED_BY_UUID_COLUMN).setIsNullable(true).setLimit(USER_UUID_SIZE).build())
       .addColumn(newBigIntegerColumnDefBuilder().setColumnName(ISSUE_CREATION_DATE_COLUMN).setIsNullable(true).build())
-      .addColumn(newBigIntegerColumnDefBuilder().setColumnName(FIXED_AT_COLUMN).setIsNullable(false).build())
+      .addColumn(newBigIntegerColumnDefBuilder().setColumnName(STATUS_CHANGED_AT_COLUMN).setIsNullable(false).build())
+      .addColumn(newIntegerColumnDefBuilder().setColumnName(LINE_COLUMN).setIsNullable(true).build())
+      .addColumn(newBigIntegerColumnDefBuilder().setColumnName(ASSIGNED_AT_COLUMN).setIsNullable(true).build())
+      .addColumn(newVarcharColumnDefBuilder().setColumnName(STATUS_COLUMN).setIsNullable(true).setLimit(STATUS_SIZE).build())
+      .addColumn(newVarcharColumnDefBuilder().setColumnName(RESOLUTION_COLUMN).setIsNullable(true).setLimit(STATUS_SIZE).build())
+      .build());
+    context.execute(new CreateIndexBuilder(getDialect())
+      .setTable(tableName)
+      .setName(BRANCH_INDEX_NAME)
+      .addColumn(BRANCH_UUID_COLUMN, false)
       .build());
   }
 }

@@ -20,39 +20,47 @@
 package org.sonar.db.issue;
 
 import java.util.Collection;
-import java.util.List;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.session.ResultHandler;
 
 public interface RetainedIssueMapper {
 
   @CheckForNull
-  RetainDetailsDto selectBranch(@Param("branchUuid") String branchUuid);
+  RetainBranchContextDto selectBranchContextByBranchUuid(@Param("branchUuid") String branchUuid);
 
-  void insertBranch(@Param("dto") RetainDetailsDto dto);
+  boolean hasRetainedIssuesOfBranch(@Param("branchUuid") String branchUuid);
 
-  void updateBranch(@Param("dto") RetainDetailsDto dto);
+  void deleteBranch(@Param("branchUuid") String branchUuid);
 
-  List<RetainedBranchDto> selectBranchesByProjectUuid(@Param("projectUuid") String projectUuid);
+  void insertBranch(@Param("dto") RetainBranchContextDto dto);
 
-  List<String> selectRetainedIssueKeys(@Param("retainedStatus") String retainedStatus, @Param("issueKeys") Collection<String> issueKeys);
+  void updateBranch(@Param("dto") RetainBranchContextDto dto);
 
-  void insertIssue(@Param("dto") IssueTrackForRetainDto dto);
+  /**
+   * @param issueKeys keys of issues of {@code branchUuid}, at most one partition of
+   *                  {@link org.sonar.db.DatabaseUtils#PARTITION_SIZE_FOR_ORACLE}
+   */
+  void insertIssuesFromIssues(@Param("branchUuid") String branchUuid, @Param("retainedStatus") String retainedStatus,
+    @Nullable @Param("statusMarkedByUuid") String statusMarkedByUuid, @Param("now") long now,
+    @Param("issueKeys") Collection<String> issueKeys, @Param("excludedIssueType") int excludedIssueType);
+
+  /**
+   * @param now when the purge closed the issues: their close date, also used as the time they became Fixed
+   */
+  void insertIssuesOfDisabledComponents(@Param("retainedStatus") String retainedStatus,
+    @Nullable @Param("statusMarkedByUuid") String statusMarkedByUuid, @Param("now") long now,
+    @Param("componentUuids") Collection<String> componentUuids, @Param("excludedIssueType") int excludedIssueType);
 
   void deleteRetainedIssues(@Param("retainedStatus") String retainedStatus, @Param("issueKeys") Collection<String> issueKeys);
 
-  void scrollIssuesByProjectUuid(@Param("projectUuid") String projectUuid, @Param("retainedStatus") String retainedStatus,
-    @Nullable @Param("branchUuids") Collection<String> branchUuids, ResultHandler<IssueTrackForRetainDto> handler);
-
-  long countIssuesByProjectUuid(@Param("projectUuid") String projectUuid);
-
-  void copyCommentsOfIssueKeys(@Param("issueKeys") Collection<String> issueKeys);
+  void updateIssueStatuses(@Param("issueKeys") Collection<String> issueKeys);
 
   void copyCommentsOfBranch(@Param("branchUuid") String branchUuid);
 
-  List<RetainIssueCommentDto> selectCommentsByIssueKeys(@Param("issueKeys") Collection<String> issueKeys);
+  void copyAssignedDatesOfBranch(@Param("branchUuid") String branchUuid);
+
+  void markBranchDeleted(@Param("branchUuid") String branchUuid, @Param("now") long now);
 
   void deleteCommentsByProjectUuid(@Param("projectUuid") String projectUuid);
 

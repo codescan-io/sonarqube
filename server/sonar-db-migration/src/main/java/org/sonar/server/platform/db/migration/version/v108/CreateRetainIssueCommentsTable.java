@@ -21,6 +21,7 @@ package org.sonar.server.platform.db.migration.version.v108;
 
 import java.sql.SQLException;
 import org.sonar.db.Database;
+import org.sonar.server.platform.db.migration.sql.CreateIndexBuilder;
 import org.sonar.server.platform.db.migration.sql.CreateTableBuilder;
 import org.sonar.server.platform.db.migration.step.CreateTableChange;
 
@@ -42,6 +43,8 @@ public class CreateRetainIssueCommentsTable extends CreateTableChange {
   static final String CHANGE_DATA_COLUMN = "change_data";
   static final String USER_UUID_COLUMN = "user_uuid";
   static final String ISSUE_CHANGE_CREATION_DATE_COLUMN = "issue_change_creation_date";
+  /** Reads the comments of an issue for the CSV export and removes them when the project is deleted. */
+  static final String ISSUE_INDEX_NAME = "ix_cs_retain_comments_issue";
 
   private static final int ISSUE_KEE_SIZE = 50;
 
@@ -57,6 +60,11 @@ public class CreateRetainIssueCommentsTable extends CreateTableChange {
       .addColumn(newClobColumnDefBuilder().setColumnName(CHANGE_DATA_COLUMN).setIsNullable(true).build())
       .addColumn(newVarcharColumnDefBuilder().setColumnName(USER_UUID_COLUMN).setIsNullable(true).setLimit(USER_UUID_SIZE).build())
       .addColumn(newBigIntegerColumnDefBuilder().setColumnName(ISSUE_CHANGE_CREATION_DATE_COLUMN).setIsNullable(true).build())
+      .build());
+    context.execute(new CreateIndexBuilder(getDialect())
+      .setTable(tableName)
+      .setName(ISSUE_INDEX_NAME)
+      .addColumn(ISSUE_KEE_COLUMN, false)
       .build());
   }
 }

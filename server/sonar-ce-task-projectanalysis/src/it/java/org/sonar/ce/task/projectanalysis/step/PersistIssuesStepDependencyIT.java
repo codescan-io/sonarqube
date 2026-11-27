@@ -52,6 +52,7 @@ import org.sonar.db.rule.RuleDto;
 import org.sonar.db.rule.RuleTesting;
 import org.sonar.scanner.protocol.output.ScannerReport;
 import org.sonar.server.issue.IssueStorage;
+import org.sonar.server.issue.retain.IssueResolutionListeners;
 
 import static java.nio.file.Files.createTempFile;
 import static org.mockito.Mockito.mock;
@@ -87,7 +88,7 @@ class PersistIssuesStepDependencyIT {
     reportReader.setMetadata(ScannerReport.Metadata.getDefaultInstance());
 
     persistIssuesStep = new PersistIssuesStep(dbClient, System2.INSTANCE, new UpdateConflictResolver(), new RuleRepositoryImpl(mock(AdHocRuleCreator.class), dbClient),
-      periodHolder, protoIssueCache, new IssueStorage(), UuidFactoryImpl.INSTANCE);
+      periodHolder, protoIssueCache, new IssueStorage(), UuidFactoryImpl.INSTANCE, new IssueResolutionListeners());
 
     project = db.components().insertPrivateProject().getMainBranchComponent();
     scaRule = db.rules().insert(RuleTesting.newRule(RuleKey.of("external_sca", "use-of-vulnerable-dependency")));

@@ -24,14 +24,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.db.MigrationDbTester;
 
+import static java.sql.Types.BIGINT;
 import static java.sql.Types.VARCHAR;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.sonar.server.platform.db.migration.version.v108.CreateRetainDetailsTable.PROJECT_INDEX_NAME;
 import static org.sonar.server.platform.db.migration.version.v108.CreateRetainDetailsTable.BRANCH_KEY_COLUMN;
+import static org.sonar.server.platform.db.migration.version.v108.CreateRetainDetailsTable.BRANCH_NAME_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateRetainDetailsTable.BRANCH_TYPE_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateRetainDetailsTable.BRANCH_UUID_COLUMN;
+import static org.sonar.server.platform.db.migration.version.v108.CreateRetainDetailsTable.DELETED_AT_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateRetainDetailsTable.PROJECT_UUID_COLUMN;
 import static org.sonar.server.platform.db.migration.version.v108.CreateRetainDetailsTable.TABLE_NAME;
 import static org.sonar.server.platform.db.migration.version.v108.CreateRetainDetailsTable.TARGET_BRANCH_KEY_COLUMN;
+import static org.sonar.server.platform.db.migration.version.v108.CreateRetainDetailsTable.TARGET_BRANCH_UUID_COLUMN;
 
 class CreateRetainDetailsTableTest {
 
@@ -48,11 +53,15 @@ class CreateRetainDetailsTableTest {
 
     db.assertTableExists(TABLE_NAME);
     db.assertPrimaryKey(TABLE_NAME, "pk_cs_retain_details", BRANCH_UUID_COLUMN);
+    db.assertIndex(TABLE_NAME, PROJECT_INDEX_NAME, "project_uuid");
     db.assertColumnDefinition(TABLE_NAME, BRANCH_UUID_COLUMN, VARCHAR, 50, false);
     db.assertColumnDefinition(TABLE_NAME, PROJECT_UUID_COLUMN, VARCHAR, 50, false);
     db.assertColumnDefinition(TABLE_NAME, BRANCH_KEY_COLUMN, VARCHAR, 255, false);
     db.assertColumnDefinition(TABLE_NAME, BRANCH_TYPE_COLUMN, VARCHAR, 12, false);
+    db.assertColumnDefinition(TABLE_NAME, BRANCH_NAME_COLUMN, VARCHAR, 255, true);
     db.assertColumnDefinition(TABLE_NAME, TARGET_BRANCH_KEY_COLUMN, VARCHAR, 255, true);
+    db.assertColumnDefinition(TABLE_NAME, TARGET_BRANCH_UUID_COLUMN, VARCHAR, 50, true);
+    db.assertColumnDefinition(TABLE_NAME, DELETED_AT_COLUMN, BIGINT, null, true);
   }
 
   @Test

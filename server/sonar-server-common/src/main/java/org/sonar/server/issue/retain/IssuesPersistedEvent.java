@@ -17,44 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-package org.sonar.db.issue;
+package org.sonar.server.issue.retain;
 
-import javax.annotation.CheckForNull;
+import java.util.List;
+import javax.annotation.Nullable;
+import org.sonar.core.issue.DefaultIssue;
+import org.sonar.db.DbSession;
 
 /**
- * A row of 'cs_retain_issue_comments': a comment of a retained issue, copied from 'issue_changes' before the issue
- * was deleted.
+ * Issues whose Fixed state may have changed, just saved in {@link #dbSession()}: one save batch of an analysis, which
+ * covers one branch, or one user change, which may cover several. Listeners write in the same session so the issue and
+ * its retained row are committed together. See CSN-253 and CSN-254.
+ *
+ * @param statusMarkedByUuid the user who made the change, the same for every issue; null when the analysis made it
  */
-public class RetainIssueCommentDto {
-
-  private String uuid;
-  private String issueKey;
-  private String changeData;
-  private String userUuid;
-  private Long issueChangeCreationDate;
-
-  /** The uuid of the 'issue_changes' row it was copied from. */
-  public String getUuid() {
-    return uuid;
-  }
-
-  public String getIssueKey() {
-    return issueKey;
-  }
-
-  /** The comment text, in markdown. */
-  @CheckForNull
-  public String getChangeData() {
-    return changeData;
-  }
-
-  @CheckForNull
-  public String getUserUuid() {
-    return userUuid;
-  }
-
-  @CheckForNull
-  public Long getIssueChangeCreationDate() {
-    return issueChangeCreationDate;
-  }
+public record IssuesPersistedEvent(DbSession dbSession, List<DefaultIssue> issues, long now, @Nullable String statusMarkedByUuid) {
 }

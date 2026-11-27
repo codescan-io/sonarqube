@@ -340,12 +340,17 @@
         AND issue_close_date &lt; #{toDate}
       </otherwise>
     </choose>
+    <!-- retained issues stay until their branch is deleted, see CSN-9; a retained row has its issue's branch, so the
+         check reads only the branch's retained keys (ix_cs_issue_track_retain_br) -->
+    AND NOT EXISTS (SELECT 1 FROM cs_issue_track_for_retain t WHERE t.branch_uuid = #{projectUuid,jdbcType=VARCHAR} AND t.issue_kee = issues.kee)
   </select>
 
   <select id="selectBranchOrphanIssues" parameterType="map">
     select i.kee from issues i
     left outer join components c on i.component_uuid = c.uuid
     where i.project_uuid = #{branchUuid,jdbcType=VARCHAR} and c.kee is null
+    <!-- retained issues stay until their branch is deleted; without a component they are simply not indexed -->
+    and not exists (select 1 from cs_issue_track_for_retain t where t.branch_uuid = #{branchUuid,jdbcType=VARCHAR} and t.issue_kee = i.kee)
   </select>
 
 
