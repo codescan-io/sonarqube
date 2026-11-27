@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "mybatis-3-mapper.dtd">
+
+<mapper namespace="org.sonar.db.organization.IpAllowlistMapper">
+
+  <select id="selectEnabledRanges" resultType="org.sonar.db.organization.IpAllowlistRangeDto" timeout="5">
+    select
+      org.uuid as "organizationUuid",
+      org.ip_allowlist_applies_to_admins as "appliesToAdmins",
+      org.ip_allowlist_allows_mcp as "allowsMcp",
+      r.cidr as "cidr"
+    from organizations org
+    left join cs_ip_allowlist_range r on r.organization_uuid = org.uuid
+    where org.ip_allowlist_enabled = ${_true}
+  </select>
+
+  <select id="selectCidrsByOrganizationUuid" parameterType="String" resultType="String">
+    select r.cidr
+    from cs_ip_allowlist_range r
+    where r.organization_uuid = #{organizationUuid, jdbcType=VARCHAR}
+    order by r.cidr
+  </select>
+
+  <select id="selectGlobalPropertyValues" parameterType="String" resultType="String" timeout="5">
+    select p.text_value
+    from properties p
+    where p.prop_key = #{key, jdbcType=VARCHAR}
+      and p.entity_uuid is null
+      and p.user_uuid is null
+  </select>
+</mapper>

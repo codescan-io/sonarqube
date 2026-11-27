@@ -59,6 +59,7 @@ import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.ForbiddenException;
 import org.sonar.server.exceptions.NotFoundException;
 import org.sonar.server.l18n.I18nRule;
+import org.sonar.server.organization.OrganizationIpAccess;
 import org.sonar.server.setting.SettingsChangeNotifier;
 import org.sonar.server.tester.UserSessionRule;
 import org.sonar.server.ws.TestRequest;
@@ -77,11 +78,19 @@ import static org.sonar.core.config.MQRModeConstants.MULTI_QUALITY_MODE_ENABLED;
 import static org.sonar.db.property.PropertyTesting.newComponentPropertyDto;
 import static org.sonar.db.property.PropertyTesting.newGlobalPropertyDto;
 import static org.sonar.db.user.UserTesting.newUserDto;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @RunWith(DataProviderRunner.class)
 public class SetActionIT {
 
   private static final Gson GSON = GsonHelper.create();
+  private static final String IP_ALLOWLIST_FLAG = "codescan.cloud.ipAllowlist.enabled";
+  private static final String IP_ALLOWLIST_TRUE_OR_FALSE = "Use true or false for codescan.cloud.ipAllowlist.enabled.";
+  private static final String IP_ALLOWLIST_REFUSED = "IP Allowlist cannot be turned on until the web server's trusted proxies are set "
+    + "(CODESCAN_TRUSTED_PROXIES).";
+  private static final String IP_ALLOWLIST_INTERNAL_REFUSED = "IP Allowlist cannot be turned on until the internal service ranges are set "
+    + "(sonar.codescan.internalCidr), otherwise analysis jobs of organizations with an IP allowlist would be blocked.";
 
   @Rule
   public UserSessionRule userSession = UserSessionRule.standalone().logIn();
@@ -96,7 +105,8 @@ public class SetActionIT {
   private final FakeSettingsNotifier settingsChangeNotifier = new FakeSettingsNotifier(dbClient);
   private final SettingsUpdater settingsUpdater = new SettingsUpdater(dbClient, definitions);
   private final SettingValidations validations = new SettingValidations(definitions, dbClient, i18n);
-  private final SetAction underTest = new SetAction(definitions, dbClient, userSession, settingsUpdater, settingsChangeNotifier, validations);
+  private final OrganizationIpAccess ipAccess = mock(OrganizationIpAccess.class);
+  private final SetAction underTest = new SetAction(definitions, dbClient, userSession, settingsUpdater, settingsChangeNotifier, validations, ipAccess);
 
   private final WsActionTester ws = new WsActionTester(underTest);
 
@@ -636,6 +646,269 @@ public class SetActionIT {
     assertThatThrownBy(() -> callForGlobalSetting("  ", "my value"))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessage("The 'key' parameter is missing");
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_is_refused_while_trusted_proxies_are_not_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "true"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_REFUSED);
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+    assertThat(settingsChangeNotifier.wasCalled).isFalse();
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_through_the_values_parameter_is_refused_while_trusted_proxies_are_not_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting(IP_ALLOWLIST_FLAG, List.of("true")))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_REFUSED);
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_is_refused_while_trusted_proxies_are_not_set_when_the_setting_is_defined() {
+    definitions.addComponent(PropertyDefinition.builder(IP_ALLOWLIST_FLAG).type(PropertyType.BOOLEAN).defaultValue("false").build());
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "true"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_REFUSED);
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_for_a_project_is_refused_while_trusted_proxies_are_not_set() {
+    ProjectDto project = db.components().insertPrivateProject().getProjectDto();
+    logInAsProjectAdministrator(project);
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForProjectSettingByKey(IP_ALLOWLIST_FLAG, "true", project.getKey()))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_REFUSED);
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_is_allowed_once_trusted_proxies_and_internal_ranges_are_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+    when(ipAccess.isInternalCidrSet()).thenReturn(true);
+
+    callForGlobalSetting(IP_ALLOWLIST_FLAG, "true");
+
+    assertGlobalSetting(IP_ALLOWLIST_FLAG, "true");
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_is_refused_while_internal_ranges_are_not_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "true"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_INTERNAL_REFUSED);
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+    assertThat(settingsChangeNotifier.wasCalled).isFalse();
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_through_the_values_parameter_is_refused_while_internal_ranges_are_not_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting(IP_ALLOWLIST_FLAG, List.of("true")))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_INTERNAL_REFUSED);
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_is_refused_while_internal_ranges_are_not_set_when_the_setting_is_defined() {
+    definitions.addComponent(PropertyDefinition.builder(IP_ALLOWLIST_FLAG).type(PropertyType.BOOLEAN).defaultValue("false").build());
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "true"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_INTERNAL_REFUSED);
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_for_a_project_is_refused_while_internal_ranges_are_not_set() {
+    ProjectDto project = db.components().insertPrivateProject().getProjectDto();
+    logInAsProjectAdministrator(project);
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForProjectSettingByKey(IP_ALLOWLIST_FLAG, "true", project.getKey()))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_INTERNAL_REFUSED);
+  }
+
+  @Test
+  public void turning_ip_allowlist_on_names_the_trusted_proxies_first_when_neither_is_set() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "true"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_REFUSED);
+  }
+
+  @Test
+  public void turning_ip_allowlist_off_is_always_allowed() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+    when(ipAccess.isInternalCidrSet()).thenReturn(false);
+    propertyDb.insertProperty(newGlobalPropertyDto(IP_ALLOWLIST_FLAG, "true"), null, null, null, null);
+
+    callForGlobalSetting(IP_ALLOWLIST_FLAG, "false");
+
+    assertGlobalSetting(IP_ALLOWLIST_FLAG, "false");
+  }
+
+  @Test
+  public void a_malformed_request_turning_ip_allowlist_on_gets_the_usual_message() {
+    definitions.addComponent(PropertyDefinition.builder(IP_ALLOWLIST_FLAG).type(PropertyType.BOOLEAN).defaultValue("false").build());
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting(IP_ALLOWLIST_FLAG, List.of("true")))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage("Parameter 'value' must be used for single value setting. Parameter 'values' must be used for multi value setting.");
+  }
+
+  @Test
+  public void ip_allowlist_setting_accepts_only_lower_case_true_or_false() {
+    definitions.addComponent(PropertyDefinition.builder(IP_ALLOWLIST_FLAG).type(PropertyType.BOOLEAN).defaultValue("false").build());
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+
+    for (String value : List.of("TRUE", "True", "FALSE", "False")) {
+      assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, value))
+        .as(value)
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage(IP_ALLOWLIST_TRUE_OR_FALSE);
+    }
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+  }
+
+  @Test
+  public void ip_allowlist_setting_accepts_only_lower_case_true_or_false_through_the_values_parameter() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting(IP_ALLOWLIST_FLAG, List.of("True")))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_TRUE_OR_FALSE);
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting(IP_ALLOWLIST_FLAG, List.of("true", "true")))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_TRUE_OR_FALSE);
+    assertThat(dbClient.propertiesDao().selectGlobalProperty(IP_ALLOWLIST_FLAG)).isNull();
+  }
+
+  @Test
+  public void ip_allowlist_setting_accepts_only_true_or_false_when_it_is_not_defined() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(true);
+
+    for (String value : List.of("yes", "1", "on")) {
+      assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, value))
+        .as(value)
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage(IP_ALLOWLIST_TRUE_OR_FALSE);
+    }
+  }
+
+  @Test
+  public void ip_allowlist_setting_in_the_wrong_case_gets_the_true_or_false_message_even_without_trusted_proxies() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    assertThatThrownBy(() -> callForGlobalSetting(IP_ALLOWLIST_FLAG, "TRUE"))
+      .isInstanceOf(BadRequestException.class)
+      .hasMessage(IP_ALLOWLIST_TRUE_OR_FALSE);
+  }
+
+  @Test
+  public void trusted_proxies_cannot_be_saved_in_the_database() {
+    assertThatThrownBy(() -> callForGlobalSetting("sonar.web.trustedProxiesRegex", ".*"))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.web.trustedProxiesRegex' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("sonar.web.trustedProxiesRegex")).isNull();
+  }
+
+  @Test
+  public void internal_cidr_cannot_be_saved_in_the_database() {
+    assertThatThrownBy(() -> callForGlobalSetting("sonar.codescan.internalCidr", "0.0.0.0/0"))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.codescan.internalCidr' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("sonar.codescan.internalCidr")).isNull();
+  }
+
+  @Test
+  public void startup_only_settings_are_refused_whatever_the_case_of_the_key() {
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting("SONAR.WEB.TRUSTEDPROXIESREGEX", List.of(".*")))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'SONAR.WEB.TRUSTEDPROXIESREGEX' can only be set in the web server's startup properties");
+  }
+
+  @Test
+  public void hosted_mcp_keys_cannot_be_saved_in_the_database() {
+    String key = "m".repeat(40);
+
+    assertThatThrownBy(() -> callForGlobalSetting("sonar.codescan.mcpKeys", key))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.codescan.mcpKeys' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("sonar.codescan.mcpKeys")).isNull();
+  }
+
+  @Test
+  public void ip_allowlist_default_ranges_cannot_be_saved_in_the_database() {
+    assertThatThrownBy(() -> callForGlobalSetting("sonar.codescan.ipAllowlistDefaultRanges", "192.0.2.0/24"))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.codescan.ipAllowlistDefaultRanges' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("sonar.codescan.ipAllowlistDefaultRanges")).isNull();
+  }
+
+  @Test
+  public void hosted_mcp_keys_are_refused_whatever_the_case_of_the_key() {
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting("SONAR.CODESCAN.MCPKEYS", List.of("m".repeat(40))))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'SONAR.CODESCAN.MCPKEYS' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("SONAR.CODESCAN.MCPKEYS")).isNull();
+  }
+
+  @Test
+  public void fail_when_setting_arm_keys() {
+    String key = "a".repeat(40);
+
+    assertThatThrownBy(() -> callForGlobalSetting("sonar.codescan.armKeys", key))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.codescan.armKeys' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("sonar.codescan.armKeys")).isNull();
+  }
+
+  @Test
+  public void fail_when_setting_arm_keys_whatever_the_case_of_the_key() {
+    assertThatThrownBy(() -> callForMultiValueGlobalSetting("SONAR.CODESCAN.ARMKEYS", List.of("a".repeat(40))))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'SONAR.CODESCAN.ARMKEYS' can only be set in the web server's startup properties");
+    assertThat(dbClient.propertiesDao().selectGlobalProperty("SONAR.CODESCAN.ARMKEYS")).isNull();
+  }
+
+  @Test
+  public void startup_only_settings_cannot_be_saved_on_a_project() {
+    ProjectDto project = db.components().insertPrivateProject().getProjectDto();
+    logInAsProjectAdministrator(project);
+
+    assertThatThrownBy(() -> callForProjectSettingByKey("sonar.codescan.internalCidr", "0.0.0.0/0", project.getKey()))
+      .isInstanceOf(IllegalArgumentException.class)
+      .hasMessage("Setting 'sonar.codescan.internalCidr' can only be set in the web server's startup properties");
+  }
+
+  @Test
+  public void other_settings_set_to_true_do_not_need_trusted_proxies() {
+    when(ipAccess.isTrustedProxiesSet()).thenReturn(false);
+
+    callForGlobalSetting("codescan.cloud.resolutionTransfer.enabled", "true");
+
+    assertGlobalSetting("codescan.cloud.resolutionTransfer.enabled", "true");
   }
 
   @Test

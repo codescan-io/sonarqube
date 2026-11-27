@@ -80,6 +80,8 @@ public class OrganizationDto {
   private boolean inviteUsersEnabled;
   private boolean isArchived;
   private long archivedAt;
+  private boolean ipAllowlistEnabled;
+  private boolean ipAllowlistAppliesToAdmins;
 
   public String getUuid() {
     return uuid;
@@ -209,6 +211,24 @@ public class OrganizationDto {
     this.archivedAt = archivedAt;
   }
 
+  public boolean isIpAllowlistEnabled() {
+    return ipAllowlistEnabled;
+  }
+
+  public OrganizationDto setIpAllowlistEnabled(boolean ipAllowlistEnabled) {
+    this.ipAllowlistEnabled = ipAllowlistEnabled;
+    return this;
+  }
+
+  public boolean isIpAllowlistAppliesToAdmins() {
+    return ipAllowlistAppliesToAdmins;
+  }
+
+  public OrganizationDto setIpAllowlistAppliesToAdmins(boolean ipAllowlistAppliesToAdmins) {
+    this.ipAllowlistAppliesToAdmins = ipAllowlistAppliesToAdmins;
+    return this;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -241,6 +261,8 @@ public class OrganizationDto {
             ", createdAt=" + createdAt +
             ", updatedAt=" + updatedAt +
             ", inviteUsersEnabled=" + inviteUsersEnabled +
+            ", ipAllowlistEnabled=" + ipAllowlistEnabled +
+            ", ipAllowlistAppliesToAdmins=" + ipAllowlistAppliesToAdmins +
             '}';
   }
 }

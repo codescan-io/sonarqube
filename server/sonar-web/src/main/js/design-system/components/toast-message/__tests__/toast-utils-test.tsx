@@ -24,6 +24,7 @@ import {
   addGlobalErrorMessage,
   addGlobalSuccessMessage,
   dismissAllGlobalMessages,
+  dismissGlobalMessage,
 } from '../toast-utils';
 
 jest.mock('react-toastify', () => ({
@@ -54,4 +55,13 @@ it('should call react-toastify with the right args', () => {
   dismissAllGlobalMessages();
 
   expect(toast.dismiss).toHaveBeenCalled();
+});
+
+it('should dismiss only the toast with the given id', () => {
+  toast.dismiss = jest.fn();
+
+  dismissGlobalMessage('some-id');
+
+  expect(toast.dismiss).toHaveBeenCalledTimes(1);
+  expect(toast.dismiss).toHaveBeenCalledWith('some-id');
 });

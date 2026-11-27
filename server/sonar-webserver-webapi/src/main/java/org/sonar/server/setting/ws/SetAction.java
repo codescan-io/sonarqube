@@ -52,8 +52,11 @@ import org.sonar.db.property.PropertyDto;
 import org.sonar.db.user.TokenType;
 import org.sonar.db.user.UserTokenDto;
 import org.sonar.scanner.protocol.GsonHelper;
+import org.sonar.server.authentication.ArmRequest;
+import org.sonar.server.authentication.HostedMcpRequest;
 import org.sonar.server.exceptions.BadRequestException;
 import org.sonar.server.exceptions.NotFoundException;
+import org.sonar.server.organization.OrganizationIpAccess;
 import org.sonar.server.setting.SettingsChangeNotifier;
 import org.sonar.server.setting.ws.SettingValidations.SettingData;
 import org.sonar.server.user.ThreadLocalUserSession;
@@ -78,6 +81,11 @@ public class SetAction implements SettingsWsAction {
   private static final Collector<CharSequence, ?, String> COMMA_JOINER = Collectors.joining(",");
   private static final String MSG_NO_EMPTY_VALUE = "A non empty value must be provided";
   private static final int VALUE_MAXIMUM_LENGTH = 4000;
+  private static final String MSG_IP_ALLOWLIST_NEEDS_TRUSTED_PROXIES = "IP Allowlist cannot be turned on until the web server's trusted proxies are set ("
+    + OrganizationIpAccess.TRUSTED_PROXIES_ENV_VAR + ").";
+  private static final String MSG_IP_ALLOWLIST_NEEDS_INTERNAL_CIDR = "IP Allowlist cannot be turned on until the internal service ranges are set ("
+    + OrganizationIpAccess.INTERNAL_CIDR_PROPERTY + "), otherwise analysis jobs of organizations with an IP allowlist would be blocked.";
+  private static final String MSG_IP_ALLOWLIST_TRUE_OR_FALSE = "Use true or false for " + OrganizationIpAccess.FEATURE_FLAG_PROPERTY + ".";
   private static final TypeToken<Map<String, String>> MAP_TYPE_TOKEN = new TypeToken<>() {
   };
   private static final Set<String> FORBIDDEN_KEYS = Set.of(GITLAB_AUTH_URL, GITHUB_API_URL, GITHUB_WEB_URL, MULTI_QUALITY_MODE_ENABLED);
@@ -90,15 +98,18 @@ public class SetAction implements SettingsWsAction {
   private final SettingsUpdater settingsUpdater;
   private final SettingsChangeNotifier settingsChangeNotifier;
   private final SettingValidations validations;
+  private final OrganizationIpAccess organizationIpAccess;
 
   public SetAction(PropertyDefinitions propertyDefinitions, DbClient dbClient, UserSession userSession,
-    SettingsUpdater settingsUpdater, SettingsChangeNotifier settingsChangeNotifier, SettingValidations validations) {
+    SettingsUpdater settingsUpdater, SettingsChangeNotifier settingsChangeNotifier, SettingValidations validations,
+    OrganizationIpAccess organizationIpAccess) {
     this.propertyDefinitions = propertyDefinitions;
     this.dbClient = dbClient;
     this.userSession = userSession;
     this.settingsUpdater = settingsUpdater;
     this.settingsChangeNotifier = settingsChangeNotifier;
     this.validations = validations;
+    this.organizationIpAccess = organizationIpAccess;
   }
 
   @Override
@@ -151,6 +162,7 @@ public class SetAction implements SettingsWsAction {
     try (DbSession dbSession = dbClient.openSession(false)) {
       SetRequest wsRequest = toWsRequest(request);
       throwIfForbiddenKey(wsRequest.getKey());
+      throwIfStartupOnlyKey(wsRequest.getKey());
       SettingsWsSupport.validateKey(wsRequest.getKey());
       doHandle(dbSession, wsRequest);
     }
@@ -160,6 +172,18 @@ public class SetAction implements SettingsWsAction {
   private static void throwIfForbiddenKey(String key) {
     if (FORBIDDEN_KEYS.contains(key)) {
       throw new IllegalArgumentException(format("For security reasons, the key '%s' cannot be updated using this webservice. Please use the API v2", key));
+    }
+  }
+
+  /**
+   * Saved in the database, these settings would be ignored, so an admin would see a value that is not in use. The hosted
+   * MCP and ARM keys would also be returned by api/settings/values to any logged-in user.
+   */
+  private static void throwIfStartupOnlyKey(String key) {
+    if (OrganizationIpAccess.STARTUP_ONLY_PROPERTIES.stream().anyMatch(key::equalsIgnoreCase)
+      || HostedMcpRequest.KEYS_PROPERTY.equalsIgnoreCase(key)
+      || ArmRequest.KEYS_PROPERTY.equalsIgnoreCase(key)) {
+      throw new IllegalArgumentException(format("Setting '%s' can only be set in the web server's startup properties", key));
     }
   }
 
@@ -180,6 +204,8 @@ public class SetAction implements SettingsWsAction {
       value = doHandlePropertySet(dbSession, request, definition, component);
     } else {
       validate(request);
+      checkIpAllowlistValue(request);
+      checkIpAllowlistCanBeTurnedOn(request);
       PropertyDto property = toProperty(request, component);
       value = property.getValue();
       dbClient.propertiesDao().saveProperty(dbSession, property, null, projectKey, projectName, qualifier);
@@ -233,6 +259,33 @@ public class SetAction implements SettingsWsAction {
     validations.validateQualifier(settingData);
     validations.validateValueType(settingData);
     validations.validateSSRF(settingData);
+  }
+
+  /**
+   * Every reader treats only the exact value {@code true} as on, while a BOOLEAN definition also accepts {@code TRUE}, so
+   * a value in another case would be saved and shown as on while the feature stays off.
+   */
+  private void checkIpAllowlistValue(SetRequest request) {
+    if (OrganizationIpAccess.FEATURE_FLAG_PROPERTY.equals(persistedKey(request))) {
+      String value = persistedValue(request);
+      checkRequest("true".equals(value) || "false".equals(value), MSG_IP_ALLOWLIST_TRUE_OR_FALSE);
+    }
+  }
+
+  /**
+   * Without trusted proxies the client address can be forged through X-Forwarded-For, so turning the feature on would
+   * block every organization with an allowlist. Without internal service ranges no request counts as internal service
+   * traffic, so the analysis jobs of those organizations would be blocked too. Checked on the value as it is stored,
+   * whether {@code value} or {@code values} carried it; {@code fieldValues} stores field numbers, never {@code true}.
+   * Turning it off is never refused.
+   */
+  private void checkIpAllowlistCanBeTurnedOn(SetRequest request) {
+    if (!OrganizationIpAccess.FEATURE_FLAG_PROPERTY.equals(persistedKey(request))
+      || !OrganizationIpAccess.isFeatureOn(persistedValue(request))) {
+      return;
+    }
+    checkRequest(organizationIpAccess.isTrustedProxiesSet(), MSG_IP_ALLOWLIST_NEEDS_TRUSTED_PROXIES);
+    checkRequest(organizationIpAccess.isInternalCidrSet(), MSG_IP_ALLOWLIST_NEEDS_INTERNAL_CIDR);
   }
 
   private static void validatePropertySet(SetRequest request, @Nullable PropertyDefinition definition) {

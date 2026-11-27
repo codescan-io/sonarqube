@@ -73,6 +73,10 @@ dependencies {
 
     compileOnlyApi 'com.github.spotbugs:spotbugs-annotations'
 
+    testImplementation 'junit:junit'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.mockito:mockito-core'
+
     scanner project(path: ':sonar-scanner-engine-shaded', configuration: 'shadow')
     cyclonedx project(path: ':sonar-scanner-engine-shaded')
     web project(':server:sonar-web')

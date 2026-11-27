@@ -1,0 +1,197 @@
+/*
+ * SonarQube
+ * Copyright (C) 2009-2024 SonarSource SA
+ * mailto:info AT sonarsource DOT com
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+package org.sonar.server.platform.platformlevel;
+
+import java.util.List;
+import java.util.Properties;
+import org.junit.Test;
+import org.sonar.api.config.internal.MapSettings;
+import org.sonar.api.server.http.HttpRequest;
+import org.sonar.api.utils.System2;
+import org.sonar.core.platform.SpringComponentContainer;
+import org.sonar.db.DbClient;
+import org.sonar.db.organization.IpAllowlistDao;
+import org.sonar.server.authentication.HostedMcpRequest;
+import org.sonar.server.authentication.RequestAuthenticator;
+import org.sonar.server.authentication.UserSessionInitializer;
+import org.sonar.server.authentication.event.AuthenticationEvent;
+import org.sonar.server.organization.OrganizationIpAccess;
+import org.sonar.server.platform.web.IpAllowlistActionInterceptor;
+import org.sonar.server.platform.web.IpAllowlistApiV2Filter;
+import org.sonar.server.platform.web.IpAllowlistRequestCheck;
+import org.sonar.server.pushapi.sonarlint.SonarLintClientPermissionsValidator;
+import org.sonar.server.setting.SettingsChangeNotifier;
+import org.sonar.server.setting.ws.SetAction;
+import org.sonar.server.setting.ws.SettingValidations;
+import org.sonar.server.setting.ws.SettingsUpdater;
+import org.sonar.server.user.ThreadLocalUserSession;
+import org.sonar.server.user.UserSessionFactory;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+/**
+ * The web server's container builds each component through its constructors, and a component it cannot build stops
+ * the server at startup. Unit tests call the constructors directly, so only this test sees such a failure, for
+ * example a second public constructor without {@code @Inject}.
+ */
+public class IpAllowlistContainerTest {
+
+  /** Components the IP allowlist adds to the web server's container, or whose constructor it changes. */
+  private static final List<Class<?>> COMPONENTS = List.of(
+    IpAllowlistDao.class,
+    OrganizationIpAccess.class,
+    HostedMcpRequest.class,
+    UserSessionInitializer.class,
+    IpAllowlistRequestCheck.class,
+    IpAllowlistActionInterceptor.class,
+    IpAllowlistApiV2Filter.class,
+    SonarLintClientPermissionsValidator.class,
+    SetAction.class);
+
+  @Test
+  public void container_creates_every_ip_allowlist_component() {
+    SpringComponentContainer container = new SpringComponentContainer();
+    try {
+      container.add(mock(DbClient.class), System2.INSTANCE, new MapSettings().asConfig(), new Properties(), new ThreadLocalUserSession(),
+        mock(UserSessionFactory.class), mock(AuthenticationEvent.class), mock(RequestAuthenticator.class),
+        mock(SettingsUpdater.class), mock(SettingsChangeNotifier.class), mock(SettingValidations.class));
+      COMPONENTS.forEach(container::add);
+
+      container.startComponents();
+
+      COMPONENTS.forEach(type -> assertThat(container.getComponentByType(type)).as(type.getName()).isNotNull());
+    } finally {
+      container.stopComponents();
+    }
+  }
+
+  /**
+   * The web server's Configuration also returns values saved in the database, which Tomcat never reads. Only the
+   * process properties, the ones Tomcat is configured with, may decide whether the client address is trusted and
+   * which addresses are internal.
+   */
+  @Test
+  public void ip_access_reads_trusted_proxies_and_internal_ranges_from_the_process_properties_only() {
+    MapSettings configurationWithDatabaseValues = new MapSettings()
+      .setProperty(OrganizationIpAccess.TRUSTED_PROXIES_PROPERTY, ".*")
+      .setProperty(OrganizationIpAccess.INTERNAL_CIDR_PROPERTY, "0.0.0.0/0");
+    SpringComponentContainer container = new SpringComponentContainer();
+    try {
+      container.add(mock(DbClient.class), System2.INSTANCE, configurationWithDatabaseValues.asConfig(), new Properties(),
+        OrganizationIpAccess.class);
+      container.startComponents();
+
+      OrganizationIpAccess ipAccess = container.getComponentByType(OrganizationIpAccess.class);
+      assertThat(ipAccess.isTrustedProxiesSet()).isFalse();
+      assertThat(ipAccess.isInternalServiceAddress("203.0.113.9")).isFalse();
+    } finally {
+      container.stopComponents();
+    }
+  }
+
+  /**
+   * As in the running server: the startup properties and the database-backed Configuration are added to the first
+   * container, and the IP allowlist to a later child container.
+   */
+  @Test
+  public void ip_access_in_a_child_container_gets_the_startup_properties_of_the_parent() {
+    Properties processProperties = new Properties();
+    processProperties.setProperty(OrganizationIpAccess.TRUSTED_PROXIES_PROPERTY, "10\\.0\\.0\\.1");
+    processProperties.setProperty(OrganizationIpAccess.INTERNAL_CIDR_PROPERTY, "10.2.0.0/16");
+    MapSettings configurationWithDatabaseValues = new MapSettings()
+      .setProperty(OrganizationIpAccess.INTERNAL_CIDR_PROPERTY, "0.0.0.0/0");
+    SpringComponentContainer parent = new SpringComponentContainer();
+    try {
+      parent.add(mock(DbClient.class), System2.INSTANCE, configurationWithDatabaseValues.asConfig(), processProperties);
+      parent.startComponents();
+      SpringComponentContainer child = parent.createChild();
+      child.add(OrganizationIpAccess.class);
+      child.startComponents();
+
+      OrganizationIpAccess ipAccess = child.getComponentByType(OrganizationIpAccess.class);
+      assertThat(ipAccess.isTrustedProxiesSet()).isTrue();
+      assertThat(ipAccess.isInternalServiceAddress("10.2.3.4")).isTrue();
+      assertThat(ipAccess.isInternalServiceAddress("203.0.113.9")).isFalse();
+    } finally {
+      parent.stopComponents();
+    }
+  }
+
+  /**
+   * A key saved in the database could be set through the settings web service, and a request carrying it would skip
+   * the address check of every organization that allows the hosted MCP server. Only a key in the startup properties
+   * counts.
+   */
+  @Test
+  public void hosted_mcp_keys_are_read_from_the_process_properties_only() {
+    String key = "k".repeat(40);
+    HttpRequest request = mock(HttpRequest.class);
+    when(request.getHeader(HostedMcpRequest.MCP_KEY_HEADER)).thenReturn(key);
+    MapSettings configurationWithDatabaseValues = new MapSettings().setProperty(HostedMcpRequest.KEYS_PROPERTY, key);
+    SpringComponentContainer container = new SpringComponentContainer();
+    try {
+      container.add(configurationWithDatabaseValues.asConfig(), new Properties(), HostedMcpRequest.class);
+      container.startComponents();
+
+      assertThat(container.getComponentByType(HostedMcpRequest.class).isHostedMcp(request)).isFalse();
+    } finally {
+      container.stopComponents();
+    }
+  }
+
+  @Test
+  public void hosted_mcp_keys_set_in_the_process_properties_are_used() {
+    String key = "k".repeat(40);
+    HttpRequest request = mock(HttpRequest.class);
+    when(request.getHeader(HostedMcpRequest.MCP_KEY_HEADER)).thenReturn(key);
+    Properties processProperties = new Properties();
+    processProperties.setProperty(HostedMcpRequest.KEYS_PROPERTY, "o".repeat(40) + "," + key);
+    SpringComponentContainer container = new SpringComponentContainer();
+    try {
+      container.add(new MapSettings().asConfig(), processProperties, HostedMcpRequest.class);
+      container.startComponents();
+
+      assertThat(container.getComponentByType(HostedMcpRequest.class).isHostedMcp(request)).isTrue();
+    } finally {
+      container.stopComponents();
+    }
+  }
+
+  @Test
+  public void ip_access_uses_trusted_proxies_and_internal_ranges_set_in_the_process_properties() {
+    Properties processProperties = new Properties();
+    processProperties.setProperty(OrganizationIpAccess.TRUSTED_PROXIES_PROPERTY, "10\\.0\\.0\\.1");
+    processProperties.setProperty(OrganizationIpAccess.INTERNAL_CIDR_PROPERTY, "10.1.0.0/16, 10.2.0.0/16");
+    SpringComponentContainer container = new SpringComponentContainer();
+    try {
+      container.add(mock(DbClient.class), System2.INSTANCE, new MapSettings().asConfig(), processProperties, OrganizationIpAccess.class);
+      container.startComponents();
+
+      OrganizationIpAccess ipAccess = container.getComponentByType(OrganizationIpAccess.class);
+      assertThat(ipAccess.isTrustedProxiesSet()).isTrue();
+      assertThat(ipAccess.isInternalServiceAddress("10.2.3.4")).isTrue();
+      assertThat(ipAccess.isInternalServiceAddress("10.3.3.4")).isFalse();
+    } finally {
+      container.stopComponents();
+    }
+  }
+}

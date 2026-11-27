@@ -894,7 +894,7 @@ public class IssueIndex {
   }
 
   private QueryBuilder createAuthorizationFilter() {
-    return authorizationTypeSupport.createQueryFilter();
+    return authorizationTypeSupport.createQueryFilter(FIELD_ISSUE_ORGANIZATION_UUID);
   }
 
   private void addDatesFilter(AllFilters filters, IssueQuery query) {

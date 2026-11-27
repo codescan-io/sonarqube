@@ -36,6 +36,7 @@ public class FooIndexDefinition implements IndexDefinition {
   public static final IndexType.IndexRelationType TYPE_FOO = IndexType.relation(TYPE_AUTHORIZATION, FOO_TYPE);
   public static final String FIELD_NAME = "name";
   public static final String FIELD_PROJECT_UUID = "projectUuid";
+  public static final String FIELD_ORGANIZATION_UUID = "organizationUuid";
 
   @Override
   public void define(IndexDefinitionContext context) {
@@ -47,6 +48,7 @@ public class FooIndexDefinition implements IndexDefinition {
 
     newIndex.createTypeMapping(TYPE_FOO)
       .keywordFieldBuilder(FIELD_NAME).build()
-      .keywordFieldBuilder(FIELD_PROJECT_UUID).build();
+      .keywordFieldBuilder(FIELD_PROJECT_UUID).build()
+      .keywordFieldBuilder(FIELD_ORGANIZATION_UUID).build();
   }
 }

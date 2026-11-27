@@ -23,11 +23,13 @@ import org.sonar.core.platform.Module;
 import org.sonar.server.authentication.event.AuthenticationEventImpl;
 import org.sonar.server.authentication.purge.ExpiredSessionsCleaner;
 import org.sonar.server.authentication.purge.ExpiredSessionsCleanerExecutorServiceImpl;
+import org.sonar.server.organization.OrganizationIpAccess;
 
 public class AuthenticationModule extends Module {
   @Override
   protected void configureModule() {
     add(
+      ArmRequest.class,
       AuthenticationEventImpl.class,
       BaseContextFactory.class,
       BasicAuthentication.class,
@@ -37,6 +39,7 @@ public class AuthenticationModule extends Module {
       CredentialsLocalAuthentication.class,
       DefaultAdminCredentialsVerifierFilter.class,
       GithubWebhookAuthentication.class,
+      HostedMcpRequest.class,
       HttpHeadersAuthentication.class,
       IdentityProviderRepository.class,
       InitFilter.class,
@@ -48,6 +51,7 @@ public class AuthenticationModule extends Module {
       OAuth2CallbackFilter.class,
       OAuth2ContextFactory.class,
       OAuthCsrfVerifier.class,
+      OrganizationIpAccess.class,
       RequestAuthenticatorImpl.class,
       ResetPasswordFilter.class,
       ExpiredSessionsCleaner.class,

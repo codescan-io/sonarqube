@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +59,11 @@ public class DefaultScannerWsClient implements ScannerWsClient {
   static final String SQ_TOKEN_EXPIRATION_HEADER = "SonarQube-Authentication-Token-Expiration";
   private static final DateTimeFormatter USER_FRIENDLY_DATETIME_FORMAT = DateTimeFormatter.ofPattern("MMMM dd, yyyy");
   private static final Logger LOG = LoggerFactory.getLogger(DefaultScannerWsClient.class);
+  /**
+   * Text the server puts in the message of the 403 it answers when an organization's IP allowlist blocks the request.
+   * Kept equal to {@code IpAllowlistBlockedException.MESSAGE_MARKER} on the server.
+   */
+  static final String IP_ALLOWLIST_MESSAGE_MARKER = "is blocked by its IP allowlist";
 
   private final Set<String> warningMessages = new HashSet<>();
 
@@ -115,7 +121,14 @@ public class DefaultScannerWsClient implements ScannerWsClient {
         ScannerWsClientProvider.TOKEN_PROPERTY, CoreProperties.LOGIN, CoreProperties.PASSWORD));
     }
     if (code == HTTP_FORBIDDEN) {
-      logResponseDetailsIfDebug(response);
+      String content = readContent(response);
+      if (LOG.isDebugEnabled()) {
+        logResponseDetails(response, content);
+      }
+      String ipAllowlistMessage = ipAllowlistMessage(content);
+      if (ipAllowlistMessage != null) {
+        throw MessageException.of(ipAllowlistMessage);
+      }
       throw MessageException.of("You're not authorized to analyze this project or the project doesn't exist on SonarQube" +
         " and you're not authorized to create it. Please contact an administrator.");
     }
@@ -133,9 +146,30 @@ public class DefaultScannerWsClient implements ScannerWsClient {
     if (!LOG.isDebugEnabled()) {
       return;
     }
-    String content = response.hasContent() ? response.content() : "<no content>";
+    logResponseDetails(response, response.hasContent() ? response.content() : null);
+  }
+
+  private static void logResponseDetails(WsResponse response, @Nullable String content) {
     Map<String, List<String>> headers = response.headers();
-    LOG.debug("Error response content: {}, headers: {}", content, headers);
+    LOG.debug("Error response content: {}, headers: {}", content == null ? "<no content>" : content, headers);
+  }
+
+  /** The body, read once; null when there is none or it cannot be read. */
+  @CheckForNull
+  private static String readContent(WsResponse response) {
+    try {
+      return response.hasContent() ? response.content() : null;
+    } catch (RuntimeException e) {
+      LOG.debug("Cannot read the body of the error response", e);
+      return null;
+    }
+  }
+
+  /** The server's message when the 403 is an IP allowlist block, so the user learns why; null for any other 403. */
+  @CheckForNull
+  private static String ipAllowlistMessage(@Nullable String content) {
+    String message = content == null ? null : tryParseAsJsonError(content);
+    return message != null && message.contains(IP_ALLOWLIST_MESSAGE_MARKER) ? message : null;
   }
 
   private void checkAuthenticationWarnings(WsResponse response) {

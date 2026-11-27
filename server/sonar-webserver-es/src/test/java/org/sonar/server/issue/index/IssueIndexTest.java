@@ -34,6 +34,7 @@ import org.sonar.db.component.ProjectData;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
+import org.sonar.server.es.Facets;
 import org.sonar.server.es.SearchOptions;
 
 import static com.google.common.collect.ImmutableSortedSet.of;
@@ -221,6 +222,31 @@ class IssueIndexTest extends IssueIndexTestCommon {
     // another user
     userSessionRule.logIn(newUserDto());
     assertThatSearchReturnsEmpty(IssueQuery.builder());
+  }
+
+  @Test
+  void search_leaves_out_issues_of_organizations_blocked_by_their_ip_allowlist() {
+    ComponentDto allowedProject = newPrivateProjectDto().setOrganizationUuid("org-allowed");
+    ComponentDto blockedProject = newPrivateProjectDto().setOrganizationUuid("org-blocked");
+    indexIssues(
+      newDocForProject("I1", allowedProject).setOrganizationUuid("org-allowed").setTags(Set.of("allowed-tag")),
+      newDocForProject("I2", blockedProject).setOrganizationUuid("org-blocked").setTags(Set.of("blocked-tag")));
+
+    userSessionRule.logIn().setIpBlockedOrganizationUuids("org-blocked");
+    assertThatSearchReturnsOnly(IssueQuery.builder(), "I1");
+    assertThatSearchReturnsOnly(IssueQuery.builder().allowedOrgUuids(List.of("org-allowed", "org-blocked")), "I1");
+    assertThatSearchReturnsEmpty(IssueQuery.builder().organizationUuid("org-blocked"));
+    SearchResponse withProjectFacet = underTest.search(IssueQuery.builder().build(), new SearchOptions().addFacets(singletonList("projects")));
+    assertThat(withProjectFacet.getHits().getTotalHits().value).isOne();
+    assertThat(new Facets(withProjectFacet, system2.getDefaultTimeZone().toZoneId()).get("projects"))
+      .containsOnly(entry(allowedProject.branchUuid(), 1L));
+    assertThat(underTest.searchTags(IssueQuery.builder().build(), null, 10)).containsOnly("allowed-tag");
+
+    userSessionRule.anonymous().setIpBlockedOrganizationUuids("org-blocked");
+    assertThatSearchReturnsOnly(IssueQuery.builder(), "I1");
+
+    userSessionRule.logIn();
+    assertThatSearchReturnsOnly(IssueQuery.builder(), "I1", "I2");
   }
 
   @Test

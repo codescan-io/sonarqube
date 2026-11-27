@@ -200,6 +200,72 @@ public class DefaultScannerWsClientTest {
   }
 
   @Test
+  public void call_whenBlockedByIpAllowlist_shouldFailWithTheServerMessage() {
+    String message = "Access to organization 'acme' is blocked by its IP allowlist. Your IP address is 203.0.113.9.";
+    WsRequest request = newRequest();
+    server.stubFor(get(urlEqualTo(URL_ENDPOINT))
+      .willReturn(aResponse()
+        .withStatus(403)
+        .withBody("{\"errors\":[{\"msg\":\"" + message + "\"}]}")));
+
+    DefaultScannerWsClient client = new DefaultScannerWsClient(wsClient, true,
+      new GlobalAnalysisMode(new ScannerProperties(Collections.emptyMap())), analysisWarnings);
+    assertThatThrownBy(() -> client.call(request))
+      .isInstanceOf(MessageException.class)
+      .hasMessage(message);
+  }
+
+  @Test
+  public void call_whenBlockedByIpAllowlistAndDebugEnabled_shouldLogResponseDetails() {
+    String body = "{\"errors\":[{\"msg\":\"Access to organization 'acme' is blocked by its IP allowlist. Your IP address is 203.0.113.9.\"}]}";
+    WsRequest request = newRequest();
+    server.stubFor(get(urlEqualTo(URL_ENDPOINT))
+      .willReturn(aResponse()
+        .withStatus(403)
+        .withBody(body)));
+    logTester.setLevel(Level.DEBUG);
+
+    DefaultScannerWsClient client = new DefaultScannerWsClient(wsClient, true,
+      new GlobalAnalysisMode(new ScannerProperties(Collections.emptyMap())), analysisWarnings);
+    assertThatThrownBy(() -> client.call(request))
+      .isInstanceOf(MessageException.class)
+      .hasMessageContaining("is blocked by its IP allowlist");
+
+    assertThat(logTester.logs(Level.DEBUG)).anyMatch(log -> log.contains("Error response content: " + body));
+  }
+
+  @Test
+  public void call_whenForbiddenWithAnotherServerMessage_shouldKeepTheGenericMessage() {
+    WsRequest request = newRequest();
+    server.stubFor(get(urlEqualTo(URL_ENDPOINT))
+      .willReturn(aResponse()
+        .withStatus(403)
+        .withBody("{\"errors\":[{\"msg\":\"Insufficient privileges\"}]}")));
+
+    DefaultScannerWsClient client = new DefaultScannerWsClient(wsClient, true,
+      new GlobalAnalysisMode(new ScannerProperties(Collections.emptyMap())), analysisWarnings);
+    assertThatThrownBy(() -> client.call(request))
+      .isInstanceOf(MessageException.class)
+      .hasMessage(
+        "You're not authorized to analyze this project or the project doesn't exist on SonarQube and you're not authorized to create it. Please contact an administrator.");
+  }
+
+  @Test
+  public void call_whenUnauthorizedWithIpAllowlistText_shouldKeepTheGenericMessage() {
+    WsRequest request = newRequest();
+    server.stubFor(get(urlEqualTo(URL_ENDPOINT))
+      .willReturn(aResponse()
+        .withStatus(401)
+        .withBody("{\"errors\":[{\"msg\":\"Access to organization 'acme' is blocked by its IP allowlist.\"}]}")));
+
+    DefaultScannerWsClient client = new DefaultScannerWsClient(wsClient, true,
+      new GlobalAnalysisMode(new ScannerProperties(Collections.emptyMap())), analysisWarnings);
+    assertThatThrownBy(() -> client.call(request))
+      .isInstanceOf(MessageException.class)
+      .hasMessage("Not authorized. Please check the user token in the property 'sonar.token' or the credentials in the properties 'sonar.login' and 'sonar.password'.");
+  }
+
+  @Test
   public void call_whenTokenExpirationApproaches_shouldLogWarnings() {
     WsRequest request = newRequest();
     var fiveDaysLatter = LocalDateTime.now().atZone(ZoneOffset.UTC).plusDays(5);

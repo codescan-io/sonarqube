@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import org.apache.commons.lang3.StringUtils;
@@ -40,6 +41,16 @@ import static org.sonar.application.config.SonarQubeVersionHelper.getSonarqubeVe
 import static org.sonar.process.ProcessProperties.Property.CLUSTER_NAME;
 
 public class App {
+
+    /** The one variable the deployment sets for both this server and the CodeScan API. */
+    static final String TRUSTED_PROXIES_ENV_VAR = "CODESCAN_TRUSTED_PROXIES";
+    private static final String TRUSTED_PROXIES_PROPERTY = "sonar.web.trustedProxiesRegex";
+    /** Same name the CodeScan API reads, so the deployment sets the hosted MCP server's keys once for both. */
+    static final String MCP_KEYS_ENV_VAR = "MCP_KEYS";
+    private static final String MCP_KEYS_PROPERTY = "sonar.codescan.mcpKeys";
+    /** Same name the CodeScan API reads: ranges our internal products call from, let past every IP allowlist. */
+    static final String DEFAULT_RANGES_ENV_VAR = "IP_ALLOWLIST_DEFAULT_RANGES";
+    private static final String DEFAULT_RANGES_PROPERTY = "sonar.codescan.ipAllowlistDefaultRanges";
 
     private final SystemExit systemExit = new SystemExit();
     private StopRequestWatcher stopRequestWatcher = null;
@@ -89,32 +100,48 @@ public class App {
     private void createDefaultSonarPropertiesIfRequired() throws IOException {
         File out = new File("conf/sonar.properties");
         if (!out.exists()) {
-            Properties props = new Properties();
-            props.load(App.class.getResourceAsStream("/default.sonar.properties"));
-            for (Entry<String, String> e : System.getenv().entrySet()) {
-                if (e.getKey().startsWith("prop.")) {
-                    props.put(e.getKey().substring(5), e.getValue());
-                }
-            }
-            for (Entry<java.lang.Object, java.lang.Object> e : System.getProperties().entrySet()) {
-                if (((String) e.getKey()).startsWith("prop.")) {
-                    props.put(((String) e.getKey()).substring(5), e.getValue());
-                }
-            }
-            String sqProps = System.getenv("SONARQUBE_PROPERTIES");
-            if (sqProps != null) {
-                for (String prop : sqProps.split(";")) {
-                    if (prop.contains("=")) {
-                        String[] keyValue = StringUtils.split(prop, "=", 2);
-                        props.put(keyValue[0].trim(), keyValue[1].trim());
-                    }
-                }
-            }
+            Properties props = buildDefaultProperties(System.getenv(), System.getProperties());
 
             if (!out.getParentFile().exists()) {
                 Files.createDirectories(out.getParentFile().toPath());
             }
             props.store(new FileOutputStream(out), "#default and overwritten properties from environment");
+        }
+    }
+
+    static Properties buildDefaultProperties(Map<String, String> env, Properties systemProperties) throws IOException {
+        Properties props = new Properties();
+        props.load(App.class.getResourceAsStream("/default.sonar.properties"));
+        // Applied before the prop.* and SONARQUBE_PROPERTIES entries below, so an explicit
+        // prop.* or SONARQUBE_PROPERTIES entry for the same property overwrites it when both are present.
+        putIfSet(props, TRUSTED_PROXIES_PROPERTY, env.get(TRUSTED_PROXIES_ENV_VAR));
+        putIfSet(props, MCP_KEYS_PROPERTY, env.get(MCP_KEYS_ENV_VAR));
+        putIfSet(props, DEFAULT_RANGES_PROPERTY, env.get(DEFAULT_RANGES_ENV_VAR));
+        for (Entry<String, String> e : env.entrySet()) {
+            if (e.getKey().startsWith("prop.")) {
+                props.put(e.getKey().substring(5), e.getValue());
+            }
+        }
+        for (Entry<java.lang.Object, java.lang.Object> e : systemProperties.entrySet()) {
+            if (((String) e.getKey()).startsWith("prop.")) {
+                props.put(((String) e.getKey()).substring(5), e.getValue());
+            }
+        }
+        String sqProps = env.get("SONARQUBE_PROPERTIES");
+        if (sqProps != null) {
+            for (String prop : sqProps.split(";")) {
+                if (prop.contains("=")) {
+                    String[] keyValue = StringUtils.split(prop, "=", 2);
+                    props.put(keyValue[0].trim(), keyValue[1].trim());
+                }
+            }
+        }
+        return props;
+    }
+
+    private static void putIfSet(Properties props, String property, String value) {
+        if (value != null && !value.isBlank()) {
+            props.put(property, value.trim());
         }
     }
 

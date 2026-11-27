@@ -222,6 +222,7 @@ public class ListAction implements NotificationsWsAction {
     return dbClient.entityDao().selectByUuids(dbSession, entityUuids)
       .stream()
       .filter(c -> authorizedProjectUuids.contains(c.getUuid()))
+      .filter(c -> !userSession.isBlockedByIpAllowlist(c.getOrganizationUuid()))
       .collect(Collectors.toMap(EntityDto::getUuid, Function.identity()));
   }
 

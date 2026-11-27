@@ -127,6 +127,28 @@ class ListActionIT {
   }
 
   @Test
+  void filter_projects_of_organizations_blocked_by_their_ip_allowlist() {
+    UserDto user = insertUserByHand();
+    userSession.logIn(user).setIpBlockedOrganizationUuids("org-blocked");
+    when(dispatchers.getGlobalDispatchers()).thenReturn(singletonList(NOTIF_MY_NEW_ISSUES));
+    when(dispatchers.getProjectDispatchers()).thenReturn(singletonList(NOTIF_MY_NEW_ISSUES));
+    ProjectData allowedProject = db.components().insertPrivateProject(c -> c.setOrganizationUuid("org-allowed"), p -> p.setOrganizationUuid("org-allowed"));
+    ProjectData blockedProject = db.components().insertPrivateProject(c -> c.setOrganizationUuid("org-blocked"), p -> p.setOrganizationUuid("org-blocked"));
+    insertProjectPermissionByHand(user, USER, allowedProject.getProjectDto());
+    insertProjectPermissionByHand(user, USER, blockedProject.getProjectDto());
+    notificationUpdater.add(dbSession, emailChannel.getKey(), NOTIF_MY_NEW_ISSUES, user, null);
+    notificationUpdater.add(dbSession, emailChannel.getKey(), NOTIF_MY_NEW_ISSUES, user, allowedProject.getProjectDto());
+    notificationUpdater.add(dbSession, emailChannel.getKey(), NOTIF_MY_NEW_ISSUES, user, blockedProject.getProjectDto());
+    dbSession.commit();
+
+    ListResponse result = call();
+
+    assertThat(result.getNotificationsList())
+      .extracting(Notification::hasProject, Notification::getProject)
+      .containsExactlyInAnyOrder(tuple(false, ""), tuple(true, allowedProject.getProjectDto().getKey()));
+  }
+
+  @Test
   void filter_channels() {
     UserDto user = db.users().insertUser();
     userSession.logIn(user);
@@ -387,6 +409,18 @@ class ListActionIT {
 
   private ListResponse call(String login) {
     return ws.newRequest().setParam("login", login).executeProtobuf(ListResponse.class);
+  }
+
+  private UserDto insertUserByHand() {
+    db.executeInsert("users", "uuid", "user-uuid", "login", "user-login", "name", "User Name", "external_login", "user-login", "external_identity_provider", "sonarqube",
+      "external_id", "user-login", "is_root", false, "user_local", true, "onboarded", true, "reset_password", false, "active", true,
+      "created_at", 1L, "updated_at", 1L);
+    return dbClient.userDao().selectByUuid(dbSession, "user-uuid");
+  }
+
+  private void insertProjectPermissionByHand(UserDto user, String permission, ProjectDto project) {
+    db.executeInsert("user_roles", "uuid", "ur-" + project.getUuid(), "organization_uuid", project.getOrganizationUuid(),
+      "role", permission, "user_uuid", user.getUuid(), "entity_uuid", project.getUuid());
   }
 
   private static class FakeNotificationChannel extends NotificationChannel {
